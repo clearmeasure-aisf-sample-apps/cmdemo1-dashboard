@@ -1,0 +1,84 @@
+# Build of the health dashboard (a Blazor WebAssembly site): compile with warnings as errors, run the unit tests,
+# publish the static site and keep it as the artifact dashboard-site (the content of the published wwwroot folder,
+# index.html at its root). After a green Build of master, release.yml turns that artifact into a release candidate.
+# The site carries what it was built from and how good that build is: version.json and build-facts.json.
+# The version is MAJOR_VERSION.MINOR_VERSION.<run number>; release.yml reads the two numbers from this file.
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  MAJOR_VERSION: 1
+  MINOR_VERSION: 0
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6.0.1
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Version
+        run: echo "VERSION=${MAJOR_VERSION}.${MINOR_VERSION}.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+
+      - name: Restore
+        run: dotnet restore Dashboard.sln
+
+      - name: Build
+        run: dotnet build Dashboard.sln -c Release --no-restore -warnaserror "-p:Version=${VERSION}"
+
+      # The results (trx) and the coverage (Cobertura, by coverlet.collector) are what build-facts.json is written from.
+      - name: Test
+        run: dotnet test Dashboard.sln -c Release --no-build --logger trx --collect:"XPlat Code Coverage" --results-directory TestResults
+
+      - name: Publish
+        run: dotnet publish src/Dashboard -c Release --no-restore -warnaserror "-p:Version=${VERSION}" -o publish
+
+      # The site says which version it is where a browser can ask (as an app does at /_version): another dashboard
+      # of the system checks this one, and compares the version with the pinned one.
+      - name: Write version.json
+        run: |
+          printf '{ "version": "%s" }\n' "${VERSION}" > publish/wwwroot/version.json
+
+      # The site says what it was built from and how good that build is (as an app does at /_build): the commit and
+      # the run, the lines of code, the tests, the coverage and the complexity. A dashboard shows it as a "Code" card.
+      # A repository that took this workflow without the script (an older copy of the template) skips the step.
+      - name: Write build-facts.json
+        if: hashFiles('scripts/Write-BuildFacts.ps1') != ''
+        run: >-
+          pwsh -NoProfile -File scripts/Write-BuildFacts.ps1 -Version "${VERSION}"
+          -TestResultsPath TestResults -OutputPath publish/wwwroot/build-facts.json
+
+      - name: Upload the site
+        uses: actions/upload-artifact@v7
+        with:
+          name: dashboard-site
+          path: publish/wwwroot
+          if-no-files-found: error
+
+  # The one check the default-branch ruleset requires: it reports the outcome of the build job under a fixed name.
+  result:
+    name: Build result
+    needs: build
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: The build job succeeded
+        env:
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: |
+          echo "build: ${BUILD_RESULT}"
+          test "${BUILD_RESULT}" = "success"

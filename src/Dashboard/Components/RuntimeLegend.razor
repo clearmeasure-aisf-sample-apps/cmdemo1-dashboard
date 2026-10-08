@@ -46,9 +46,34 @@
             <span>– calls/min: no web app reports this number</span>
         </li>
     </ul>
+    @* The marks of a deployment: only where the topology names the deployments file. *@
+    @if (Deployments)
+    {
+        <ul>
+            @foreach (var (state, text) in Marks)
+            {
+                <li>
+                    <span class="runtime-legend__swatch runtime-legend__swatch--dot"><DeploymentDot State="state" /></span>
+                    <span>@text</span>
+                </li>
+            }
+        </ul>
+    }
 </div>
 
 @code {
+    /// <summary>True when the page marks deployments: the legend then says what the shapes of a mark mean.</summary>
+    [Parameter]
+    public bool Deployments { get; set; }
+
+    private static readonly (DeploymentState State, string Text)[] Marks =
+    [
+        (DeploymentState.Executing, "Deploying now (as Octopus Deploy had it some minutes ago)"),
+        (DeploymentState.Queued, "A deployment is queued"),
+        (DeploymentState.Waiting, "A deployment waits for a sign-off: a person has to act"),
+        (DeploymentState.Succeeded, "A deployment ended in the last ten minutes"),
+    ];
+
     private static readonly (string State, string Text)[] Nodes =
     [
         ("healthy", "Healthy: HTTP 200 (the database, a dependency: a web app's health check says it is reachable)"),

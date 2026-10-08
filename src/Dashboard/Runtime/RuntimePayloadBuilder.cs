@@ -14,6 +14,8 @@ namespace Dashboard.Runtime;
 /// last checks; where the topology has a link for a number or a name, the payload carries it. Where a web app
 /// answers its detailed health check (<see cref="HealthDetail"/>), its tile has one mark per entry, and a dependency of
 /// its deployable (a node of the manifest outside the subscription) takes its state from the entry the manifest names.
+/// A deployment in flight (<see cref="DeploymentMark"/>) marks every node of its deployable, by the deployable the
+/// manifest names for the node.
 /// </summary>
 public static class RuntimePayloadBuilder
 {
@@ -39,7 +41,16 @@ public static class RuntimePayloadBuilder
     /// <param name="environment">The monitor's environment of the same name; null when the topology has none.</param>
     /// <param name="page">The dashboard's own address: the static site that serves it is "this page".</param>
     /// <param name="zone">The viewer's time zone, for the tooltips.</param>
-    public static RuntimePayload Build(RuntimeManifest manifest, EnvironmentStatus? environment, Uri? page, TimeZoneInfo zone)
+    /// <param name="deployments">
+    /// What is marked as being deployed in the environment, with <see cref="Deployables"/> as the deployables a mark
+    /// may belong to; null without the file.
+    /// </param>
+    public static RuntimePayload Build(
+        RuntimeManifest manifest,
+        EnvironmentStatus? environment,
+        Uri? page,
+        TimeZoneInfo zone,
+        IReadOnlyList<DeploymentMark>? deployments = null)
     {
         ArgumentNullException.ThrowIfNull(manifest);
         ArgumentNullException.ThrowIfNull(zone);
@@ -55,12 +66,15 @@ public static class RuntimePayloadBuilder
 
         var tiles = manifest.Nodes
             .Where(node => node.Kind != RuntimeNodeKind.Person)
-            .Select(node => node.Kind switch
-            {
-                RuntimeNodeKind.Sql => DatabaseTile(node, Clients(manifest, node, RuntimeEdgeKind.Sql, byAlias), zone, environment?.Info.Links),
-                RuntimeNodeKind.Dependency => DependencyTile(node, Clients(manifest, node, RuntimeEdgeKind.Dependency, byAlias), zone),
-                _ => Tile(node, byAlias.GetValueOrDefault(node.Alias), environment, page, zone),
-            })
+            .Select(node => Deploying(
+                node.Kind switch
+                {
+                    RuntimeNodeKind.Sql => DatabaseTile(node, Clients(manifest, node, RuntimeEdgeKind.Sql, byAlias), zone, environment?.Info.Links),
+                    RuntimeNodeKind.Dependency => DependencyTile(node, Clients(manifest, node, RuntimeEdgeKind.Dependency, byAlias), zone),
+                    _ => Tile(node, byAlias.GetValueOrDefault(node.Alias), environment, page, zone),
+                },
+                node,
+                deployments))
             .ToList();
         var reachable = manifest.Nodes
             .Where(node => node.Kind == RuntimeNodeKind.Sql && tiles.Any(tile => tile.Alias == node.Alias && tile.State == Healthy))
@@ -69,6 +83,53 @@ public static class RuntimePayloadBuilder
         var regions = manifest.Regions.Select(region => Region(region, manifest, byAlias, reachable.Contains(region.Alias))).ToList();
         var edges = manifest.Edges.Select(edge => Edge(edge, manifest, byAlias)).ToList();
         return new RuntimePayload(tiles, regions, edges);
+    }
+
+    /// <summary>
+    /// The deployables the diagram draws a node of: those a deployment's mark is placed on, also where the topology
+    /// does not list them (the dashboard's static site, a node an application recorded for itself).
+    /// </summary>
+    public static IReadOnlyList<string> Deployables(RuntimeManifest manifest)
+    {
+        ArgumentNullException.ThrowIfNull(manifest);
+        return [.. manifest.Nodes.Where(Deploys).Select(node => node.Deployable!).Distinct(StringComparer.OrdinalIgnoreCase)];
+    }
+
+    /// <summary>
+    /// True for a node a deployment of its deployable changes. A dependency is none: it is what the deployable calls,
+    /// and the system does not deploy it.
+    /// </summary>
+    private static bool Deploys(RuntimeNode node) =>
+        node.Deployable is not null && node.Kind is not (RuntimeNodeKind.Person or RuntimeNodeKind.Dependency);
+
+    /// <summary>
+    /// The tile with the mark of what is being deployed to its node's deployable. The mark is found by the deployable
+    /// the manifest names for the node, not by what the monitor checks, so a node the topology does not have carries
+    /// it too. The first mark (the one a person has to act on, then what is executing) gives the dot its shape and
+    /// its link; the title has every one.
+    /// </summary>
+    private static RuntimeTile Deploying(RuntimeTile tile, RuntimeNode node, IReadOnlyList<DeploymentMark>? deployments)
+    {
+        if (deployments is null || !Deploys(node))
+        {
+            return tile;
+        }
+
+        var marks = deployments.Where(mark => string.Equals(mark.Deployable, node.Deployable, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (marks.Count == 0)
+        {
+            return tile;
+        }
+
+        var title = string.Join('\n', marks.Select(DeploymentText.Title));
+        return tile with
+        {
+            Title = $"{tile.Title}\n{title}",
+            Deployment = new RuntimeDeployment(
+                DeploymentText.Shape(marks[0].State),
+                title,
+                RuntimeLink.To(marks[0].Url, $"{title}\n{DeploymentText.TaskTitle}")),
+        };
     }
 
     /// <summary>The state word of a health state, as the payload carries it.</summary>

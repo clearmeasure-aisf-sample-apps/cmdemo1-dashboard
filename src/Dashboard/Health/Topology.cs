@@ -19,7 +19,18 @@ public sealed record Topology(SystemInfo System, DateTimeOffset? Generated, IRea
 /// <param name="DeliveryUrl">Where the browser reads the system's delivery facts (<c>delivery.json</c>); null without them.</param>
 /// <param name="CostUrl">Where the browser reads what the system cost in Azure (<c>cost.json</c>); null without it.</param>
 /// <param name="Dashboard">The dashboard itself and where it serves its own build facts; null when the topology does not say.</param>
-public sealed record SystemInfo(string Slug, string Name, Uri? Repository = null, Uri? DeliveryUrl = null, Uri? CostUrl = null, DashboardInfo? Dashboard = null);
+/// <param name="DeploymentsUrl">
+/// Where the browser reads the system's deployments in flight (<c>deployments.json</c>); null without them, and
+/// nothing is then marked as being deployed.
+/// </param>
+public sealed record SystemInfo(
+    string Slug,
+    string Name,
+    Uri? Repository = null,
+    Uri? DeliveryUrl = null,
+    Uri? CostUrl = null,
+    DashboardInfo? Dashboard = null,
+    Uri? DeploymentsUrl = null);
 
 /// <summary>
 /// The dashboard itself as a deployable of the system (<c>system.dashboard</c> of <c>topology.json</c>): this page.

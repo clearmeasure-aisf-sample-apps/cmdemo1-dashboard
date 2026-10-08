@@ -30,7 +30,8 @@ public class TopologyParserTests
                 "CM demo 2 multi-region",
                 new Uri("https://github.com/example-org/cmdemo2-system"),
                 new Uri("https://raw.githubusercontent.com/example-org/cmdemo2-system/status/delivery.json"),
-                new Uri("https://raw.githubusercontent.com/example-org/cmdemo2-system/status/cost.json")),
+                new Uri("https://raw.githubusercontent.com/example-org/cmdemo2-system/status/cost.json"),
+                DeploymentsUrl: new Uri("https://raw.githubusercontent.com/example-org/cmdemo2-system/deployments/deployments.json")),
             topology.System);
         Assert.Equal(new DateTimeOffset(2026, 10, 4, 22, 0, 0, TimeSpan.Zero), topology.Generated);
         Assert.Equal(["tdd", "uat"], topology.Environments.Select(environment => environment.Name));

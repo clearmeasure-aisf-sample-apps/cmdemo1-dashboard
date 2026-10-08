@@ -16,6 +16,9 @@
 // had it. A trend ({ points: 0..1, title }) is drawn as a small line after its number, with its words in a <title>.
 // A line's marks ([{ state, title }], the entries of a detailed health check) are drawn before its words, one small
 // icon each: the shape says the state, the <title> the entry's name, state and words.
+// A tile's deployment ({ state, title, link }, a deployment of the node's deployable that is in flight or just ended)
+// is drawn as a small dot in the corner of the tile: filled and pulsing for executing, hollow for queued, a dot in a
+// ring for waiting, small and still for ended. Its <title> is the sentence; it is a link where the payload has one.
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 // How far "Fit to width" scales the diagram down before it scrolls sideways instead.
@@ -48,7 +51,12 @@ function slotLayer(group) {
   if (!group.dataset.rtSlot) return null;
   const [x, y, width, height] = group.dataset.rtSlot.split(' ').map(Number);
   let layer = [...group.children].find(child => child.localName === 'g' && child.classList.contains('rt-slot'));
-  if (layer) layer.replaceChildren();
+  if (layer) {
+    // The layer is drawn again with every update: its classes of the state before go with its children, or a mark
+    // that was "down" and is "serving" again keeps both and the rule that comes later in the stylesheet wins.
+    layer.replaceChildren();
+    layer.setAttribute('class', 'rt-slot');
+  }
   else {
     layer = el('g', { class: 'rt-slot' });
     group.appendChild(layer);
@@ -265,6 +273,53 @@ function drawTile(group, tile) {
   }
 }
 
+// The mark of a deployment, on a white disc so it reads on a box of any state. It has a layer of its own, after the
+// tile's: in the corner of the slot, or of the node's box for a node without a slot. The pulse is CSS, and only where
+// the viewer has not asked for less motion.
+function drawDeployment(group, tile) {
+  let layer = [...group.children].find(child => child.localName === 'g' && child.classList.contains('rt-deploy-layer'));
+  const mark = tile.deployment;
+  if (!mark) {
+    if (layer) layer.remove();
+    return;
+  }
+  let cx, cy;
+  if (group.dataset.rtSlot) {
+    const [x, y, width] = group.dataset.rtSlot.split(' ').map(Number);
+    cx = x + width - 9;
+    cy = y + 10.5;
+  } else {
+    const box = [...group.children].find(child => child.localName === 'rect' && child.classList.contains('rt-box'));
+    if (!box) return;
+    cx = (parseFloat(box.getAttribute('x')) || 0) + (parseFloat(box.getAttribute('width')) || 0) - 13;
+    cy = (parseFloat(box.getAttribute('y')) || 0) + 13;
+  }
+  if (layer) layer.replaceChildren();
+  else layer = el('g', { class: 'rt-deploy-layer' });
+  group.appendChild(layer);
+  const dot = el('g', { class: `rt-deploy rt-deploy--${mark.state}`, role: 'img', 'aria-label': mark.title });
+  if (mark.link) layer.appendChild(anchor(mark.link, `${tile.alias}-deployment`)).appendChild(dot);
+  else layer.appendChild(dot).appendChild(el('title', {}, mark.title));
+  const add = (cls, r) => dot.appendChild(el('circle', { class: cls, cx, cy, r }));
+  if (mark.state === 'executing') add('rt-deploy__pulse', 7);
+  add('rt-deploy__back', 8.5);
+  switch (mark.state) {
+    case 'executing':
+      add('rt-deploy__fill', 5.5);
+      break;
+    case 'queued':
+      add('rt-deploy__ring', 4.75);
+      break;
+    case 'waiting':
+      add('rt-deploy__ring', 5.75);
+      add('rt-deploy__fill', 2.5);
+      break;
+    default: // ended
+      add('rt-deploy__fill', 2.5);
+      break;
+  }
+}
+
 function drawRegion(group, mark) {
   const slot = slotLayer(group);
   if (!slot) return;
@@ -389,6 +444,7 @@ export function update(host, json) {
     group.dataset.rtState = tile.state;
     setTitle(group, tile.title);
     drawTile(group, tile);
+    drawDeployment(group, tile);
     linkName(group, tile.nameLink, `${tile.alias}-name`);
   }
   for (const mark of payload.regions || []) {

@@ -26,6 +26,7 @@ public sealed record RuntimePayload(
 /// <param name="Title">The tooltip of the whole node.</param>
 /// <param name="Link">Where the badge leads (Live Metrics); null without a link.</param>
 /// <param name="NameLink">Where the node's name leads (the resource in the Azure portal); null without a link.</param>
+/// <param name="Deployment">The mark of a deployment of the node's deployable to this environment; null without one.</param>
 public sealed record RuntimeTile(
     string Alias,
     string State,
@@ -35,7 +36,20 @@ public sealed record RuntimeTile(
     IReadOnlyList<string>? History,
     string Title,
     RuntimeLink? Link = null,
-    RuntimeLink? NameLink = null);
+    RuntimeLink? NameLink = null,
+    RuntimeDeployment? Deployment = null);
+
+/// <summary>
+/// The mark of a deployment in the corner of a node's tile: a small dot whose shape says the state, with the sentence
+/// as its title.
+/// </summary>
+/// <param name="State">
+/// <c>executing</c> (filled, pulsing), <c>queued</c> (hollow), <c>waiting</c> (a dot in a ring: a person has to act)
+/// or <c>ended</c> (small and still).
+/// </param>
+/// <param name="Title">The sentence; one line per deployment when the deployable has more than one.</param>
+/// <param name="Link">Where the dot leads (the task in Octopus Deploy); null when the file gives no address.</param>
+public sealed record RuntimeDeployment(string State, string Title, RuntimeLink? Link = null);
 
 /// <summary>A link the script draws as a real <c>a</c> element: it opens a new tab.</summary>
 /// <param name="Href">The address.</param>

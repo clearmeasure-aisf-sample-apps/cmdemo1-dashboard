@@ -118,6 +118,7 @@
         foreach (var environment in monitor.Environments)
         {
             var environmentId = $"env-{environmentIndex++}";
+            var deploying = monitor.DeploymentMarks(environment.Name, environment.Deployables.Select(deployable => deployable.Info.Name), Time.GetUtcNow());
             <section class="environment" aria-labelledby="@environmentId">
                 <header class="environment__header">
                     <h2 id="@environmentId">@environment.Name</h2>
@@ -126,6 +127,8 @@
                         <span class="chip">@tier</span>
                     }
                     <EnvironmentLinks Links="environment.Info.Links" Environment="@environment.Name" />
+                    @* What is being deployed to the environment, first: there only with the deployments file, and while it names one. *@
+                    <DeploymentMarks Marks="deploying" Label="@($"Deployments to {environment.Name}")" Generated="monitor.Deployments?.Generated" Zone="Zone" />
                     @if (monitor.Cost is { } environmentCost && environmentCost.Find(environment.Name) is { } spent)
                     {
                         <CostLine Report="environmentCost" Amounts="spent.Amounts" Services="spent.TopServices" Estimate="spent.Estimate" Now="Time.GetUtcNow()" />
@@ -146,7 +149,8 @@
                 @foreach (var deployable in environment.Deployables)
                 {
                     <DeployableSection @key="deployable" Deployable="deployable" Environment="environment" Zone="Zone"
-                                       Monitor="monitor" Now="Time.GetUtcNow()" IdPrefix="@($"{environmentId}-app-{deployableIndex++}")" />
+                                       Monitor="monitor" Now="Time.GetUtcNow()" IdPrefix="@($"{environmentId}-app-{deployableIndex++}")"
+                                       Deployments="deploying" />
                 }
                 <EnvironmentDelivery Monitor="monitor" Environment="environment" IdPrefix="@environmentId" Zone="Zone" Now="Time.GetUtcNow()" />
             </section>

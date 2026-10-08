@@ -13,13 +13,26 @@
                 @foreach (var entry in index.Environments)
                 {
                     var selected = ReferenceEquals(entry, Current);
+                    @* An environment something is being deployed to carries a dot, so it shows while another one is looked at. *@
+                    var inFlight = Monitor.DeploymentMarks(entry.Name, [], Now).Where(mark => mark.InFlight).ToList();
                     <button type="button" class="button @(selected ? "button--selected" : "button--quiet")" aria-pressed="@(selected ? "true" : "false")"
-                            @onclick="() => SelectAsync(entry.Name)">@entry.Name</button>
+                            title="@(inFlight.Count > 0 ? string.Join('\n', inFlight.Select(DeploymentText.Title)) : null)"
+                            @onclick="() => SelectAsync(entry.Name)">
+                        @entry.Name
+                        @if (inFlight.Count > 0)
+                        {
+                            <DeploymentDot State="inFlight[0].State" />
+                            <span class="visually-hidden">: @string.Join("; ", inFlight.Select(mark => mark.Sentence))</span>
+                        }
+                    </button>
                 }
             </div>
-            <button type="button" class="button button--quiet runtime__fit" aria-pressed="@(_fit ? "true" : "false")"
-                    title="Fit the diagram to the width of the page (down to 70 % of its size), or show it at its actual size; it scrolls sideways when it does not fit"
-                    @onclick="() => _fit = !_fit">Fit to width</button>
+            <button type="button" class="button button--quiet runtime__fit"
+                    title="@(_fit ? "The diagram is fitted to the width of the page (down to 70 % of its size). Press to show it at its actual size; it then scrolls sideways" : "The diagram is shown at its actual size. Press to fit it to the width of the page (down to 70 % of its size)")"
+                    @onclick="() => _fit = !_fit">@(_fit ? "Actual size" : "Fit to width")</button>
+            @* What is being deployed to the shown environment: the system's own release marks the environment here, a
+               deployable's also the nodes of the diagram. *@
+            <DeploymentMarks Marks="Deploying" Label="@($"Deployments to {Current?.Name}")" Generated="Monitor.Deployments?.Generated" Zone="Zone" />
         }
     </header>
 
@@ -89,6 +102,15 @@
                 <text>
                     A box outside the subscription is something a web app depends on and the system does not own: the browser
                     does not call it, and its state is what the web apps' health checks say about it.
+                </text>
+            }
+            @* Said only where the topology names the deployments file. *@
+            @if (Monitor.Topology.System.DeploymentsUrl is not null)
+            {
+                <text>
+                    A dot in the corner of a node, and next to an environment's name above, marks a deployment, as the system
+                    last read it from Octopus Deploy (minutes old): filled while it runs, hollow while it is queued, a dot in a
+                    ring while it waits for a sign-off, small for ten minutes after it ended; hover it for the words.
                 </text>
             }
             The small line next to a number is its trend over the last checks of this page. An underlined number or name
@@ -166,7 +188,7 @@
             </section>
         }
 
-        <RuntimeLegend />
+        <RuntimeLegend Deployments="Monitor.Topology.System.DeploymentsUrl is not null" />
         @if (loaded.PlantUml is { } version)
         {
             <p class="help">Rendered with PlantUML @version when the dashboard was deployed.</p>
@@ -217,6 +239,14 @@
     private RuntimeIndexEntry? Current => _index?.Index?.Environments is { Count: > 0 } entries
         ? entries.FirstOrDefault(entry => string.Equals(entry.Name, Environment, StringComparison.OrdinalIgnoreCase)) ?? entries[0]
         : null;
+
+    /// <summary>
+    /// What is being deployed to the shown environment. A mark belongs to a deployable the diagram draws a node of,
+    /// also one the topology does not list; while the diagram is not loaded, to none.
+    /// </summary>
+    private IReadOnlyList<DeploymentMark> Deploying => _diagram is { IsValid: true, Manifest: { } manifest }
+        ? Monitor.DeploymentMarks(manifest.Environment, RuntimePayloadBuilder.Deployables(manifest), Now)
+        : Current is { } entry ? Monitor.DeploymentMarks(entry.Name, [], Now) : [];
 
     public async ValueTask DisposeAsync()
     {
@@ -284,7 +314,7 @@
         }
 
         var environment = Shown;
-        var payload = RuntimePayloadBuilder.Build(diagram.Manifest!, environment, Page, Zone).ToJson();
+        var payload = RuntimePayloadBuilder.Build(diagram.Manifest!, environment, Page, Zone, Deploying).ToJson();
         if (payload == _lastPayload)
         {
             return;

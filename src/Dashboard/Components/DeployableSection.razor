@@ -6,6 +6,7 @@
     var logs = Deployable.Info.Links?[LinkSet.Logs];
     var history = Environment.PinHistoryOf(Deployable);
     var hasVersionLine = versions is not null || Deployable.Info.ProjectUrl is not null || history is not null || logs is not null;
+    IReadOnlyList<DeploymentMark> deploying = [.. Deployments.Where(mark => string.Equals(mark.Deployable, Deployable.Info.Name, StringComparison.OrdinalIgnoreCase))];
 }
 <section class="deployable" aria-labelledby="@($"{IdPrefix}-title")">
     <header class="deployable__header">
@@ -72,7 +73,8 @@
             @foreach (var target in Deployable.Targets)
             {
                 var id = $"{IdPrefix}-tile-{index++}";
-                <TargetTile @key="target" Target="target" HeadingId="@id" Zone="Zone" IsExpected="ReferenceEquals(target, expected)" Deployable="Deployable" />
+                <TargetTile @key="target" Target="target" HeadingId="@id" Zone="Zone" IsExpected="ReferenceEquals(target, expected)" Deployable="Deployable"
+                            Deployments="deploying" DeploymentsAsOf="Monitor.Deployments?.Generated" />
             }
         </div>
     }
@@ -95,6 +97,10 @@
     /// <summary>The moment of this rendering: "2 h ago" is counted from it.</summary>
     [Parameter, EditorRequired]
     public DateTimeOffset Now { get; set; }
+
+    /// <summary>What is being deployed to the environment: the marks of this deployable are shown on its tiles.</summary>
+    [Parameter]
+    public IReadOnlyList<DeploymentMark> Deployments { get; set; } = [];
 
     /// <summary>Prefix of the element ids of this section, unique on the page.</summary>
     [Parameter, EditorRequired]

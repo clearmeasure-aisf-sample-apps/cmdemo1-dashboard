@@ -4,7 +4,8 @@
     "name": "CM demo 2 multi-region",
     "repository": "https://github.com/example-org/cmdemo2-system",
     "deliveryUrl": "https://raw.githubusercontent.com/example-org/cmdemo2-system/status/delivery.json",
-    "costUrl": "https://raw.githubusercontent.com/example-org/cmdemo2-system/status/cost.json"
+    "costUrl": "https://raw.githubusercontent.com/example-org/cmdemo2-system/status/cost.json",
+    "deploymentsUrl": "https://raw.githubusercontent.com/example-org/cmdemo2-system/deployments/deployments.json"
   },
   "generated": "2026-10-04T22:00:00Z",
   "environments": [

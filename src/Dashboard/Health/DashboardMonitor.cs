@@ -11,6 +11,12 @@ public sealed class DashboardMonitor
     /// <summary>How often the cost is read: its file changes a few times a day at most, and is read as the delivery facts are.</summary>
     public static readonly TimeSpan CostInterval = DeliveryInterval;
 
+    /// <summary>
+    /// How often the deployments in flight are read: the file is small, and GitHub may serve it a few minutes old, so
+    /// more often gains nothing.
+    /// </summary>
+    public static readonly TimeSpan DeploymentsInterval = TimeSpan.FromSeconds(60);
+
     /// <summary>How long the page waits before it asks again for its own build facts, while the file does not answer.</summary>
     public static readonly TimeSpan DashboardBuildRetry = DeliveryInterval;
 
@@ -20,6 +26,7 @@ public sealed class DashboardMonitor
     private readonly List<(EnvironmentStatus Environment, DeployableStatus Deployable, TargetStatus Target)> _targets;
     private DateTimeOffset? _deliveryReadAt;
     private DateTimeOffset? _costReadAt;
+    private DateTimeOffset? _deploymentsReadAt;
     private DateTimeOffset? _dashboardBuildAskedAt;
 
     /// <param name="events">
@@ -92,6 +99,21 @@ public sealed class DashboardMonitor
     public CostReport? Cost { get; private set; }
 
     /// <summary>
+    /// The system's deployments in flight, as last read; null when the topology names no <c>deploymentsUrl</c>, the
+    /// file was never read or the last reading failed. A reading that fails replaces a good one, unlike the cost: a
+    /// deployment that is executing in a file the page can no longer read would stay marked for ever.
+    /// </summary>
+    public DeploymentsReport? Deployments { get; private set; }
+
+    /// <summary>
+    /// What is marked as being deployed in an environment at <paramref name="now"/> (<see cref="DeploymentsReport.Marks"/>);
+    /// nothing without the file.
+    /// </summary>
+    /// <param name="deployables">The deployables a mark may belong to.</param>
+    public IReadOnlyList<DeploymentMark> DeploymentMarks(string environment, IEnumerable<string> deployables, DateTimeOffset now) =>
+        Deployments?.Marks(environment, Topology.System.Slug, deployables, now) ?? [];
+
+    /// <summary>
     /// The build of the dashboard itself (this page), from the file its own site serves; null when the topology names
     /// no <c>system.dashboard</c> or the file was not read. It belongs to the release that serves the page, so it is
     /// read once: until it answers, every <see cref="DashboardBuildRetry"/>.
@@ -113,8 +135,9 @@ public sealed class DashboardMonitor
     /// environment, and once per deployable that has a pin of its own (<c>pinUrl</c>); with the probe Health check, a
     /// node whose deployable names a <c>healthDetailPath</c> is also asked for the entries of its health check. A file that cannot be read is a
     /// result like any other and fails no check. So are the delivery facts, every <see cref="DeliveryInterval"/>, the
-    /// cost, every <see cref="CostInterval"/>, the dashboard's own build facts, once, and the two files of the cluster
-    /// view, every round, where the topology names a cluster.
+    /// cost, every <see cref="CostInterval"/>, the deployments in flight, every <see cref="DeploymentsInterval"/>, the
+    /// dashboard's own build facts, once, and the two files of the cluster view, every round, where the topology names
+    /// a cluster.
     /// </summary>
     public async Task CheckAllAsync(ProbeKind probe, CancellationToken cancellationToken)
     {
@@ -128,6 +151,7 @@ public sealed class DashboardMonitor
         await Task.WhenAll(checks.Concat(readings).Concat(pins)
             .Append(ReadDeliveryAsync(cancellationToken))
             .Append(ReadCostAsync(cancellationToken))
+            .Append(ReadDeploymentsAsync(cancellationToken))
             .Append(ReadDashboardBuildAsync(cancellationToken))
             .Append(Cluster?.CheckAsync(cancellationToken) ?? Task.CompletedTask));
         var now = _time.GetUtcNow();
@@ -231,6 +255,27 @@ public sealed class DashboardMonitor
         if (await _prober.ReadCostAsync(address, cancellationToken) is { } report)
         {
             Cost = report;
+            Changed?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// Reads what is being deployed. It marks, and nothing else: no event, no state of a node, no summary. A reading
+    /// that fails marks nothing.
+    /// </summary>
+    private async Task ReadDeploymentsAsync(CancellationToken cancellationToken)
+    {
+        var now = _time.GetUtcNow();
+        if (Topology.System.DeploymentsUrl is not { } address || (_deploymentsReadAt is { } last && now - last < DeploymentsInterval))
+        {
+            return;
+        }
+
+        _deploymentsReadAt = now;
+        var before = Deployments;
+        Deployments = await _prober.ReadDeploymentsAsync(address, cancellationToken);
+        if (before is not null || Deployments is not null)
+        {
             Changed?.Invoke();
         }
     }

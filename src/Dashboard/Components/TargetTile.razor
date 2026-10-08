@@ -14,6 +14,10 @@
         }
     </p>
 
+    @* What is being deployed to the tile's deployable in this environment: one line, the same as under the
+       environment's name. A deployment is no state of the node: the tile's state stays its health check's. *@
+    <DeploymentMarks Marks="Deployments" Label="@($"Deployments of {Deployable?.Info.Name ?? ResourceName}")" Generated="DeploymentsAsOf" Zone="Zone" />
+
     <p class="tile__address">
         <span class="tile__name">
             <DeepLink Href="NameLink" Title="@NameTitle">@ResourceName</DeepLink>
@@ -212,6 +216,14 @@
     /// <summary>The deployable of the tile: its project and its build say where a node's version leads.</summary>
     [Parameter]
     public DeployableStatus? Deployable { get; set; }
+
+    /// <summary>What is being deployed to the tile's deployable in its environment; none for a tile without a mark.</summary>
+    [Parameter]
+    public IReadOnlyList<DeploymentMark> Deployments { get; set; } = [];
+
+    /// <summary>When the system read Octopus Deploy: the marks are as of then.</summary>
+    [Parameter]
+    public DateTimeOffset? DeploymentsAsOf { get; set; }
 
     private bool IsFrontDoor => Target.Kind == TargetKind.FrontDoor;
 

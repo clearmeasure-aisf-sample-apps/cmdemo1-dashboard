@@ -446,6 +446,117 @@ public class RuntimePayloadBuilderTests
         Assert.StartsWith("sqldb-cmdemo2-uat: reachable. The database takes no call from a browser; the health check of ", Tile(Build(Uat()), "sqldb").Title, StringComparison.Ordinal);
     }
 
+    /// <summary>The marks of an environment as the runtime view asks for them: for the deployables its diagram draws.</summary>
+    private static IReadOnlyList<DeploymentMark> Deploying(RuntimeManifest manifest, string slug, string deployments) =>
+        DeploymentsReport.Parse($$"""{ "deployments": [ {{deployments}} ] }""")!.Marks(manifest.Environment, slug, RuntimePayloadBuilder.Deployables(manifest), Now);
+
+    [Fact]
+    public void ANodeOfADeployableThatIsBeingDeployedCarriesTheMarkAndAnotherDoesNot()
+    {
+        var marks = Deploying(Manifest("uat"), "cmdemo2", """
+            { "project": "cmdemo2-ui", "environment": "uat", "release": "2.4.43", "state": "executing", "since": "2026-10-04T21:57:00Z", "url": "https://octopus.example.net/app#/Spaces-1/tasks/ServerTasks-1" },
+            { "project": "cmdemo2-ui", "environment": "tdd", "release": "2.4.44", "state": "queued", "since": "2026-10-04T21:59:00Z" }
+            """);
+
+        var payload = RuntimePayloadBuilder.Build(Manifest("uat"), Uat(), Page, TimeZoneInfo.Utc, marks);
+
+        // Every node the manifest draws for the deployable: its web apps and its Front Door endpoint.
+        const string Sentence = "deploying cmdemo2-ui 2.4.43 to uat (3 min so far)";
+        var mark = new RuntimeDeployment(
+            "executing",
+            Sentence,
+            new RuntimeLink("https://octopus.example.net/app#/Spaces-1/tasks/ServerTasks-1", $"{Sentence}\nThe deployment's task in Octopus Deploy (opens in a new tab; Octopus Deploy asks you to sign in)"));
+        Assert.All(CheckedAliases, alias =>
+        {
+            Assert.Equal(mark, Tile(payload, alias).Deployment);
+            Assert.EndsWith($"\n{Sentence}", Tile(payload, alias).Title, StringComparison.Ordinal);
+        });
+
+        // The database is no deployable's, and nothing deploys the dashboard: neither is marked, and nothing else changed.
+        Assert.Null(Tile(payload, "sqldb").Deployment);
+        Assert.Null(Tile(payload, "swa_dashboard").Deployment);
+        Assert.Equal(Build(Uat()).Regions, payload.Regions);
+        Assert.Equal("healthy", Tile(payload, "app_ui_primary").State);
+
+        // Without the file, and for an environment nothing is deployed to, no node carries a mark.
+        Assert.All(Build(Uat()).Nodes, tile => Assert.Null(tile.Deployment));
+        Assert.All(RuntimePayloadBuilder.Build(Manifest("uat"), Uat(), Page, TimeZoneInfo.Utc, []).Nodes, tile => Assert.Null(tile.Deployment));
+
+        using var json = JsonDocument.Parse(payload.ToJson());
+        var drawn = json.RootElement.GetProperty("nodes").EnumerateArray().Single(node => node.GetProperty("alias").GetString() == "fd_ui").GetProperty("deployment");
+        Assert.Equal(["state", "title", "link"], drawn.EnumerateObject().Select(property => property.Name));
+        Assert.Equal(["href", "title"], drawn.GetProperty("link").EnumerateObject().Select(property => property.Name));
+    }
+
+    [Fact]
+    public void TheFirstMarkOfADeployableGivesTheDotItsShapeAndTheTitleHasEveryOne()
+    {
+        var marks = Deploying(Manifest("uat"), "cmdemo2", """
+            { "project": "cmdemo2-ui", "environment": "uat", "release": "2.4.42", "state": "succeeded", "since": "2026-10-04T21:40:00Z", "finished": "2026-10-04T21:58:00Z" },
+            { "project": "cmdemo2-ui", "environment": "uat", "release": "2.4.43", "state": "waiting", "since": "2026-10-04T21:59:30Z" }
+            """);
+
+        var mark = Tile(RuntimePayloadBuilder.Build(Manifest("uat"), Uat(), Page, TimeZoneInfo.Utc, marks), "app_ui_primary").Deployment;
+
+        // Without an address of the task the dot is no link.
+        Assert.Equal(
+            new RuntimeDeployment("waiting", "cmdemo2-ui 2.4.43 waits for a sign-off in uat (1 min so far)\ncmdemo2-ui 2.4.42 reached uat 2 min ago"),
+            mark);
+    }
+
+    [Fact]
+    public void ANodeTheTopologyDoesNotHaveCarriesTheMarkOfItsDeployable()
+    {
+        // The dashboard's static site: the sample topology lists no deployable "dashboard", and the diagram draws its node.
+        Assert.Equal(["ui", "dashboard"], RuntimePayloadBuilder.Deployables(Manifest("uat")));
+        var dashboard = Deploying(Manifest("uat"), "cmdemo2", """
+            { "project": "cmdemo2-dashboard", "environment": "uat", "release": "1.0.8", "state": "succeeded", "since": "2026-10-04T21:50:00Z", "finished": "2026-10-04T21:58:00Z" }
+            """);
+        var payload = RuntimePayloadBuilder.Build(Manifest("uat"), Uat(), Page, TimeZoneInfo.Utc, dashboard);
+        Assert.Equal(new RuntimeDeployment("ended", "cmdemo2-dashboard 1.0.8 reached uat 2 min ago"), Tile(payload, "swa_dashboard").Deployment);
+        Assert.All(CheckedAliases, alias => Assert.Null(Tile(payload, alias).Deployment));
+
+        // A node an application recorded for itself (it brings its own runtime): the topology has no environment for
+        // it, and the mark is found by the deployable the manifest names. What the deployable depends on is not deployed.
+        var own = new RuntimeManifest(
+            "prod",
+            [
+                new RuntimeNode("browser", RuntimeNodeKind.Person, "Browser"),
+                new RuntimeNode("site_web", RuntimeNodeKind.Other, "web-prod", null, "Web"),
+                new RuntimeNode("dep_web_mail", RuntimeNodeKind.Dependency, "Mail", null, "Web"),
+            ],
+            [],
+            []);
+        var recorded = RuntimePayloadBuilder.Build(
+            own,
+            null,
+            Page,
+            TimeZoneInfo.Utc,
+            Deploying(own, "demo", """{ "project": "demo-web", "environment": "prod", "release": "3.1.0", "state": "queued", "since": "2026-10-04T21:59:30Z" }"""));
+
+        Assert.Equal(new RuntimeDeployment("queued", "demo-web 3.1.0 is queued for prod (1 min so far)"), Tile(recorded, "site_web").Deployment);
+        Assert.Equal("web-prod\ndemo-web 3.1.0 is queued for prod (1 min so far)", Tile(recorded, "site_web").Title);
+        Assert.Null(Tile(recorded, "dep_web_mail").Deployment);
+    }
+
+    [Fact]
+    public void TheSystemsOwnReleaseMarksTheEnvironmentAndNoNode()
+    {
+        var marks = Deploying(Manifest("uat"), "cmdemo2", """
+            { "project": "cmdemo2-system", "environment": "uat", "release": "1.0.34", "state": "executing", "since": "2026-10-04T21:57:00Z" },
+            { "project": "cmdemo2-reports", "environment": "uat", "release": "0.1.0", "state": "queued", "since": "2026-10-04T21:57:00Z" }
+            """);
+
+        // The environment has both marks: the view shows them at the diagram's title and at the environment's button.
+        Assert.Equal(
+            [("deploying cmdemo2-system 1.0.34 to uat", true, true), ("cmdemo2-reports 0.1.0 is queued for uat", false, true)],
+            marks.Select(mark => (mark.Sentence, mark.OfSystem, mark.InFlight)));
+        Assert.All(marks, mark => Assert.Null(mark.Deployable));
+
+        // No node is the system's, or a project's the diagram does not draw.
+        Assert.All(RuntimePayloadBuilder.Build(Manifest("uat"), Uat(), Page, TimeZoneInfo.Utc, marks).Nodes, tile => Assert.Null(tile.Deployment));
+    }
+
     [Fact]
     public void ThePayloadIsCamelCaseJsonWithoutNulls()
     {

@@ -30,6 +30,9 @@ For each environment (tdd, uat, prod) and each deployable in it, the health view
 - under each environment's name, what it cost in Azure (the last complete day, seven days, the month so far, and the
   services that cost most), after the environments the same for what they share, and in the header for the whole
   system: a day old, and said so (see "Cost");
+- under each environment's name, on the tiles of the deployable and on its nodes in the runtime diagram, a mark for
+  every deployment that is queued, running, waiting for a sign-off or just ended, whatever the environment: a dot
+  and a sentence, minutes old, and said so (see "Deployments in flight");
 - under each environment's name, in how many of the pipeline's hourly health reports it was healthy, in 24 hours and
   in seven days, and when one last failed: hourly checks, not continuous monitoring, and said so (see "Availability");
 - under every view, "What just happened": the last 50 events this page observed (state changes, entries of a
@@ -87,6 +90,7 @@ topology" is pressed. The deployment writes the real file; the build does not kn
   "system": { "slug": "cmdemo2", "name": "CM demo 2 multi-region", "repository": "https://github.com/example-org/cmdemo2-system",
               "deliveryUrl": "https://raw.githubusercontent.com/example-org/cmdemo2-system/status/delivery.json",
               "costUrl": "https://raw.githubusercontent.com/example-org/cmdemo2-system/status/cost.json",
+              "deploymentsUrl": "https://raw.githubusercontent.com/example-org/cmdemo2-system/deployments/deployments.json",
               "dashboard": { "name": "dashboard", "buildPath": "/build-facts.json" } },
   "generated": "2026-10-04T22:00:00Z",
   "environments": [
@@ -123,6 +127,7 @@ topology" is pressed. The deployment writes the real file; the build does not kn
 | `system.repository` | no, may be `null` | The footer names the system without a link to its repository. |
 | `system.deliveryUrl` | no, may be `null` | No "Delivery" cards and no last failover test: nothing is read (see "Delivery"). |
 | `system.costUrl` | no, may be `null` | No cost anywhere on the page: nothing is read (see "Cost"). |
+| `system.deploymentsUrl` | no, may be `null` | No mark of a deployment anywhere on the page: nothing is read, and the page is as it was before the key existed (see "Deployments in flight"). |
 | `system.dashboard` | no, may be `null`; an object | No "Code" card of the dashboard itself: nothing is read from the page's own address but the topology and `runtime/` (see "The dashboard's own build"). Anything but an object is read as absent. |
 | `system.dashboard.buildPath` | no, may be `null` | The same: without the path there is no `system.dashboard`. A path of the page's own site, read from its root whatever it starts with (`/build-facts.json`). |
 | `system.dashboard.name` | no | `dashboard`. The name the card and its heading show. |
@@ -160,8 +165,8 @@ topology" is pressed. The deployment writes the real file; the build does not kn
 | `cluster.serviceUrl` | no, may be `null` | No "AKS service" card: Azure's facts are not read, and an unreachable cluster is not compared with them. |
 | `cluster.links` | no | No link to the cluster in the Azure portal. Keys: `portal`, `workloads`. |
 
-An address that is present (`system.repository`, `system.deliveryUrl`, `system.costUrl`, `versionsUrl`, `versionsHistoryUrl`,
-`projectUrl`, `pinUrl`, `pinHistoryUrl`, `frontDoor`, `nodes[].url`, `cluster.statusUrl`, `cluster.serviceUrl`) must be
+An address that is present (`system.repository`, `system.deliveryUrl`, `system.costUrl`, `system.deploymentsUrl`,
+`versionsUrl`, `versionsHistoryUrl`, `projectUrl`, `pinUrl`, `pinHistoryUrl`, `frontDoor`, `nodes[].url`, `cluster.statusUrl`, `cluster.serviceUrl`) must be
 an absolute http(s) address: anything else is an error. A topology without `repository`, `versionsUrl`, `versionsHistoryUrl`, `projectUrl`, `pinUrl` and
 `pinHistoryUrl` is shown as before these fields existed: no line about versions, no request to GitHub. A `links`
 object is more forgiving, because a link is a courtesy: an entry whose value is not an absolute http(s) address is
@@ -188,6 +193,26 @@ at says "This page", and every other one shows its state, with the arrow from th
 may also name `buildPath` `/build-facts.json` for a dashboard: the Build writes that file next to `index.html` too,
 and the dashboard then has a "Code" card like an app (see "Code"). The checked site must let other origins read `/`,
 `/version.json` and `/build-facts.json`.
+
+### An application that brings its own runtime
+
+A deployable does not have to be an App Service app. Where the system creates nothing for an application (hosting
+`own` in the demo-environment kit), the application itself reports what it runs on, and the deployment writes that
+into the deployable's entry: `nodes` as reported (each with its `url`; `name`, `region` and `role` where the
+application named them), `frontDoor` when it has a public address of its own in front of them, and `healthPath`,
+`alivePath` and `versionPath` where it named them. A path it did not name is left out, and the page asks its default
+(`/_healthcheck`, `/alive`, `/_version`). `projectUrl`, `telemetryPath`, `trafficPaths`, `buildPath` and
+`healthDetailPath` come from the system as for every deployable. There are no `links`: the deployment does not know
+the application's resources, so its numbers and names are plain text.
+
+The page treats such an entry like any other. Three things follow from what it is:
+
+- Several nodes may have the role `primary` (an application that serves from more than one region at once). The page
+  still names one node that is expected to serve, the first healthy primary in the order of the file, and shows the
+  others as ready ("How the states are decided").
+- The node answers the page from another origin by its own means ("CORS").
+- Calls per minute, process vitals, the Code card and the marks of the health check show only when the application
+  serves them at the paths the topology names, in the formats of this page.
 
 ## Pinned versions: what Git says next to what runs
 
@@ -275,10 +300,16 @@ The runtime view shows one environment as a C4 deployment diagram: the Azure sub
 tier's, and the Front Door's), the regions (primary, standby, and the region of the database and of the static
 sites), the App Service plans with their size, the web apps, the Front Door endpoint, the Azure SQL database, the
 dashboard's Static Web App and the browser, with the relationships between them. One button per environment selects
-the diagram; "Fit to width" fits it to the page (down to 70 % of its size, where the tiles' words are 8 px high;
-below that, and at its actual size, it scrolls sideways inside its own frame). The diagram is a light sheet in the
+the diagram, which opens fitted to the page (down to 70 % of its size, where the tiles' words are 8 px high; below
+that, and at its actual size, it scrolls sideways inside its own frame). The button at the right names what a press
+does: "Actual size" while the diagram is fitted, "Fit to width" while it is not. The diagram is a light sheet in the
 dark theme too. A system whose deployable declares what it depends on also has, outside the subscription, one box
-per dependency, with an arrow from each of the deployable's web apps.
+per dependency, with an arrow from each of the deployable's web apps. The database is drawn in an environment that
+has one. An application that brings its own runtime ("An application that brings its own runtime", above) is drawn
+outside the subscription too, in a boundary of its own, because the deployment does not know where it runs: its
+public address when it has one, and its nodes in one frame per region they name, each with the tile of a web app and
+no plan around it. The browser's arrow goes to the public address and from there to every node, or to each node
+where there is no public address.
 
 The widths of the diagram are set by the deployment (the slots below, and the names of the resources): an
 environment with a standby region is the browser, three columns of boxes and three columns of number lines wide,
@@ -304,9 +335,13 @@ diagram in place:
 | Web app to a dependency | Green from the web app that serves, dotted from the others, like the line to the database. |
 | Links | Where the topology has a link (see "Links"): a web app's badge (Live Metrics), its name (the web app in the portal), its version (the release in Octopus Deploy, or else the commit of its build), its requests (Performance) and its errors (Failures); the Front Door endpoint's and the database's name; the numbers on the arrows (Performance, the dependency calls, the requests in Logs). They are real `a` elements: underlined, in the order of the keyboard, each with a title that says where it goes. |
 | Static site | Neutral, "Not probed": the dashboard does not check itself. The static site that serves the page says "This page". |
+| Mark of a deployment | With `system.deploymentsUrl`: a small dot in the corner of the tile of every node whose deployable is being deployed to the shown environment (its web apps, its Front Door endpoint, the dashboard's static site), on a white disc so it reads on a box of any state. Its shape says the state, its tooltip the sentence, and it is a link to the task in Octopus Deploy where the file gives its address (see "Deployments in flight"). The node keeps its state: a deployment is no state of health. |
 
 A state is never colour alone: the badge has an icon and a word, the regions a word, the lines differ in dash and
 width. Hover a node or a line for its details.
+
+Above the diagram, under the title: what is being deployed to the shown environment, one line per deployment, and a
+dot on the button of every environment something is being deployed to (see "Deployments in flight").
 
 Under the diagram, for the environment it shows: the links to its resources in the Azure portal, what the pipeline's
 hourly health reports found (see "Availability"), what it cost and what the resources it shares with the others cost
@@ -368,6 +403,13 @@ The manifest maps each element's alias to what the browser knows, so the page ne
   A web app's relationship to a dependency is drawn from the dependency's side (which puts its box under or above
   the subscription and its number line into a free column), so its id is `dep_<d>_<n>-to-app_<d>_<role>`, while
   its `from` is the web app and its `to` the dependency.
+  An application that brings its own runtime: the boundary `own_<d>`; in it `fd_<d>` (its public address, kind
+  `frontdoor`), the frames `region_own_<d>_<n>` (one per region its nodes name, numbered in the order of the
+  topology; nodes without a region share one, named "region not reported") and the nodes `app_<d>_<n>` (kind
+  `webapp`, numbered in the order of the topology). Its relationships are `browser-to-fd_<d>` and
+  `fd_<d>-to-app_<d>_<n>` (kind `origin`, `priority` 1 for a node with the role `primary` and 2 for any other,
+  since the deployment does not know how the application's public address routes), or `browser-to-app_<d>_<n>`
+  without a public address. It has no relationship to the database.
 - **Kinds**: nodes `person`, `frontdoor`, `webapp`, `sql`, `staticsite`, `dependency`; relationships `public` (the
   browser to a public address), `origin` (with its `priority`), `sql`, `dashboard`, `dependency`. An unknown kind is
   drawn and not updated.
@@ -429,7 +471,9 @@ The payload, as JSON:
                             "marks": [ { "state": "healthy", "title": "API: Healthy. API layer is healthy. Took under 0.1 ms." },
                                        { "state": "degraded", "title": "LlmGateway: Degraded. ..." } ] } ],
                "history": [ "healthy", "unhealthy", "healthy" ], "title": "app-cmdemo2-uat-ui: Healthy\n...",
-               "link": { "href": "https://...", "title": "Live Metrics ..." }, "nameLink": { "href": "https://...", "title": "The web app ..." } } ],
+               "link": { "href": "https://...", "title": "Live Metrics ..." }, "nameLink": { "href": "https://...", "title": "The web app ..." },
+               "deployment": { "state": "executing", "title": "deploying cmdemo2-ui 2.4.43 to uat (3 min so far)",
+                               "link": { "href": "https://...", "title": "..." } } } ],
   "regions": [ { "alias": "region_primary", "state": "serving", "label": "serving traffic" } ],
   "edges": [ { "id": "fd_ui-to-app_ui_primary", "state": "active", "number": "10", "unit": "calls/min",
                "text": "first, while healthy", "title": "...",
@@ -451,7 +495,11 @@ words); a line's `marks`, one per entry of the node's detailed health check (`st
 or `unknown`, drawn before the line's words as a check, a warning triangle, a cross or dots, each with its `title`
 as tooltip and accessible name; eight at most, those that are not healthy first). The script draws a link as an `a`
 element (new tab, `rel="noopener"`, its own `title`) and gives the focus back to the link that had it when an update
-redraws the tile.
+redraws the tile. A tile's `deployment` is the mark of a deployment of the node's deployable to the shown environment:
+`state` `executing`, `queued`, `waiting` or `ended` (the dot's shape), `title` (the sentence; one line per deployment
+when the deployable has more than one, and the first gives the shape) and `link` (the task in Octopus Deploy; absent
+when the file gives no address). The script draws it in the corner of the node's slot, or of its box for a node
+without one.
 
 ## The cluster view
 
@@ -707,6 +755,10 @@ setting covers the Front Door tile.
 In a cluster the ingress can answer for the node: runtime aks-argocd of the demo-environment kit puts an Envoy Gateway
 `SecurityPolicy` (every origin, GET, no credentials) on each app's route while the system has a dashboard.
 
+A node that is not on App Service allows the origin in its own way: an application that runs on infrastructure of its
+own answers its health, liveness and version paths with the header `Access-Control-Allow-Origin` itself, also when the
+status is not 200.
+
 ## The repository
 
 ```
@@ -716,8 +768,9 @@ global.json                  the SDK
 src/Dashboard                the Blazor WebAssembly app
   App.razor                  the page: header, view tabs, environments, footer, polling
   Components/                tile, history strip, trend line, state badge, deployable section, version line, code and
-                             delivery cards, the dashboard's own code, cost line, availability line, events strip,
-                             links, runtime view, legend, cluster view (its cards, tables, meter and badge)
+                             delivery cards, the dashboard's own code, cost line, availability line, the marks of
+                             deployments and their dot, events strip, links, runtime view, legend, cluster view (its
+                             cards, tables, meter and badge)
   Health/                    the health logic, plain C# without a browser
   Runtime/                   the runtime view's files, payload and address, plain C# without a browser
   Cluster/                   the cluster view's files, states, grouping and words, plain C# without a browser
@@ -738,7 +791,8 @@ the dashboard's own are `DashboardInfo` of the topology and `DashboardMonitor.Da
 requests and its choice of environment (`TrafficPlan`),
 the entries of a detailed health check (`HealthDetail`, `HealthDetailText`),
 the delivery facts (`DeliveryReport`, `DeliveryText`) with the hourly health reports (`HealthReports`,
-`AvailabilityText`), the cost (`CostReport`, `CostText`) and the links (`LinkSet`, `LinkText`). The runtime view's logic is in `src/Dashboard/Runtime`: reading `runtime/`
+`AvailabilityText`), the cost (`CostReport`, `CostText`), the deployments in flight (`DeploymentsReport`,
+`DeploymentMark`, `DeploymentText`) and the links (`LinkSet`, `LinkText`). The runtime view's logic is in `src/Dashboard/Runtime`: reading `runtime/`
 (`RuntimeManifestParser`, `RuntimeLoader`), the update of the diagram (`RuntimePayloadBuilder`) and the view in the
 address (`ViewAddress`). The cluster view's logic is in `src/Dashboard/Cluster`: the two files (`ClusterStatus`,
 `AksService`) and their reading (`ClusterReader`, `ClusterMonitor`), the states (`PodRules`, `ClusterAssessment`), the
@@ -1111,3 +1165,96 @@ presented as live:
 Attribution is by tag, so it is as good as the tags: a resource that several environments use is counted for the one
 whose tag it carries (the App Service plan a tier's environments share carries the tag of the tier's first
 environment), and a resource created without the tag counts as shared.
+
+## Deployments in flight
+
+With `system.deploymentsUrl`, the page marks what is being deployed, in whatever environment. The system reads
+Octopus Deploy once for all of it and publishes one file, `deployments.json`; no application reports its own
+deployment, and the page itself never calls Octopus Deploy. The address is
+`https://raw.githubusercontent.com/<githubOrg>/<repository>/deployments/deployments.json`: workflow `deployments` of
+the system repository publishes the file to its branch `deployments` when a deployment pins its version, every five
+minutes and on demand (`scripts/write-deployments.ps1` of the system repository). Until it has, the address answers
+404 and nothing is marked.
+
+```json
+{ "generated": "2026-10-08T04:22:24Z", "system": "cmdemo2", "octopus": "https://example.octopus.app/app#/Spaces-1",
+  "deployments": [
+    { "project": "cmdemo2-ui", "environment": "uat", "release": "2.4.43", "state": "executing",
+      "since": "2026-10-08T04:22:07Z", "url": "https://example.octopus.app/app#/Spaces-1/tasks/ServerTasks-1" },
+    { "project": "cmdemo2-ui", "environment": "tdd", "release": "2.4.43", "state": "succeeded",
+      "since": "2026-10-08T04:15:00Z", "finished": "2026-10-08T04:20:00Z", "url": "https://..." } ] }
+```
+
+| Field | What it is |
+|---|---|
+| `generated` | When the system read Octopus Deploy. It is not the time of a check. |
+| `deployments[]` | One entry per deployment task that has not ended, or ended in the last half hour: in flight first. An empty list says that nothing is being deployed. |
+| `project` | The Octopus project: `<slug>-<deployable>` (with `system.slug` of the topology), and `<slug>-system` for the system's own release, its infrastructure and configuration. |
+| `environment`, `release` | Where it deploys to, and what. |
+| `state` | `queued` (behind another task), `executing`, `waiting` (stopped for a person: the sign-off), and ended: `succeeded`, `failed`, `canceled`. |
+| `since` | When it started, or when it was queued while it has not started. |
+| `finished` | When it ended; absent while it has not. |
+| `url` | The task in Octopus Deploy. |
+
+The file must be a JSON object with a `deployments` list. An entry without `project`, `environment`, `release` or
+`state` is left out; a time that does not parse is no time; an address that is not an absolute http(s) address is no
+link; unknown fields are ignored.
+
+**What is marked.** A deployment in flight (`queued`, `executing`, `waiting`), for as long as the file has it; one
+that ended, for ten minutes after `finished` (by the browser's clock) and then no more, so a deployment of a few
+minutes that ended before the page saw it start still shows. One that ended at a time the page cannot read is not
+marked. A state the page does not know is marked like one in flight while the file gives it no `finished`, and like
+one that ended otherwise. The marks of an environment are in this order: `waiting` first (a person has to act), then
+`executing`, `queued`, and what ended: `failed`, `canceled`, `succeeded`.
+
+**The words** are those of the fleet's dashboard, so both walls read alike; they name the project and the
+environment in full:
+
+| State | Sentence |
+|---|---|
+| `queued` | cmdemo2-ui 2.4.43 is queued for uat |
+| `executing` | deploying cmdemo2-ui 2.4.43 to uat |
+| `waiting` | cmdemo2-ui 2.4.43 waits for a sign-off in uat |
+| `succeeded` | cmdemo2-ui 2.4.43 reached uat 5 min ago |
+| `failed` | cmdemo2-ui 2.4.43 failed in uat 5 min ago |
+| `canceled` | cmdemo2-ui 2.4.43 was canceled in uat 5 min ago |
+| another | cmdemo2-ui 2.4.43 in uat: paused (the file's own word) |
+
+The age is minutes under an hour ("5 min", and "1 min" at least), hours under two days ("5 h"), then days ("3 d").
+The tooltip of a mark in flight adds for how long it has been so ("deploying cmdemo2-ui 2.4.43 to uat (3 min so
+far)").
+
+**The dot.** A mark is a dot and its sentence. The dot's colour is the marker's own, a blue that is none of the
+states of health, and it is never the only sign: the shape says the state, and the sentence says it in words.
+
+| Shape | State |
+|---|---|
+| Filled, with a ring that leaves it (the pulse; still where the viewer asks for less motion, `prefers-reduced-motion`) | `executing` |
+| Hollow | `queued` |
+| A dot in a ring | `waiting`: a person has to act |
+| Small and still | Ended in the last ten minutes (`succeeded`, `failed`, `canceled`), and a state the page does not know |
+
+**Where it shows.**
+
+| Where | What |
+|---|---|
+| Health, under an environment's name | Every mark of the environment, one line each: the dot and the sentence, the sentence a link to the task (`url`). First under the name, above the cost and the availability. |
+| Health, on a tile | The marks of the tile's deployable in its environment, the same lines, under the tile's chips: on the Front Door tile and on every node's. The project `<slug>-<deployable>` is the deployable `<deployable>` of the topology; the system's own project and a project the topology does not list are on no tile, only under the environment's name. |
+| Runtime, under the title | Every mark of the shown environment, as in the health view: the system's own release marks the environment here, and so does a project the diagram draws no node of. |
+| Runtime, the environments' buttons | A dot (the shape of its first mark) on every environment with a mark in flight, with the sentences as its tooltip: uat shows as deploying while prod is looked at. What only ended puts no dot there. |
+| Runtime, on a node | A dot in the corner of the tile of every node the manifest draws for the deployable (`deployable` of a node of `runtime/<env>.json`), also one the topology does not list, such as the dashboard's static site or a node an application recorded for itself. A dependency is not marked: nobody deploys it here. With more than one mark the first gives the shape, and the tooltip has all. |
+| Runtime, the legend | The four shapes, only with `system.deploymentsUrl`. |
+
+**How fresh.** Minutes, not seconds, and the tooltip of every list says so, with the time of `generated`: a
+deployment that started shows within about one to six minutes and its end as soon, one that is only queued within
+half an hour. The workflow runs at the pin of a deployment and stays while it is executing, and on a five-minute
+schedule that GitHub starts when it has room (every twenty to thirty minutes on 2026-10-08),
+`raw.githubusercontent.com` may serve the file a few minutes old, and the page reads it with the first round of
+checks and then every 60 seconds, with the rounds: more often gains nothing. Like the other files it is read only
+while the page checks (not while it is paused or its tab is hidden).
+
+A reading that fails (no answer, HTTP 404 while the system does not publish the file yet, anything but the file)
+marks nothing, and unlike the cost it does not keep the last good one: a deployment that was executing in a file the
+page can no longer read would stay marked for ever. The next reading marks again. A mark is no state: it changes no
+tile's state, no summary and no banner, and it is no event in "What just happened" (a web app that reports another
+version is, see there).

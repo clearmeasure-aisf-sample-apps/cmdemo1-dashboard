@@ -34,6 +34,11 @@
   --series-5: #e87ba4;
   --series-other: #898781;
 
+  /* The mark of a deployment in flight: its own blue, not a state of health, and never alone: the dot's shape and the
+     sentence next to it say what is being deployed. The second value is for a dot on the ink of a selected button. */
+  --deploying: #0b63ce;
+  --deploying-on-ink: #6aa9ff;
+
   --radius: 10px;
   --gap: 1rem;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -60,6 +65,9 @@
     --series-3: #199e70;
     --series-4: #c98500;
     --series-5: #d55181;
+
+    --deploying: #6aa9ff;
+    --deploying-on-ink: #0b63ce;
   }
 }
 
@@ -1085,8 +1093,92 @@ main {
 
 /* Under an environment's name: a row of its own in the heading. */
 .environment__header .cost,
-.environment__header .availability {
+.environment__header .availability,
+.environment__header .deployments {
   flex-basis: 100%;
+}
+
+/* ---------- Deployments in flight ---------- */
+
+/* What is being deployed: one line per deployment, a dot and the sentence. The dot's shape says the state (filled:
+   executing; hollow: queued; a dot in a ring: waiting for a person; small: ended), the sentence says it in words, and
+   the blue is the marker's own: a deployment is no state of health. What ended is quiet; what is in flight is ink. */
+.deployments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0;
+  color: var(--ink-secondary);
+  font-size: 0.88rem;
+  list-style: none;
+}
+
+.deployments__mark {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.deployments__mark--flight {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.deployments__mark .deploy-dot {
+  margin-top: 0.3em;
+}
+
+.tile .deployments {
+  font-size: 0.82rem;
+}
+
+.deploy-dot {
+  flex: none;
+  overflow: visible;
+  color: var(--deploying);
+}
+
+.deploy-dot__fill {
+  fill: currentColor;
+}
+
+.deploy-dot__ring {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+/* The ring that leaves a dot that is executing: drawn only where the viewer has not asked for less motion. */
+.deploy-dot__pulse,
+.rt-deploy__pulse {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.deploy-dot__pulse {
+  fill: currentColor;
+}
+
+@keyframes deploying-pulse {
+  from {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(2.2);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .deploy-dot__pulse,
+  .rt-deploy__pulse {
+    animation: deploying-pulse 1.8s ease-out infinite;
+  }
 }
 
 /* ---------- Availability ---------- */
@@ -1204,11 +1296,26 @@ main {
   gap: 0.4rem;
 }
 
-.button--selected,
-.runtime__fit[aria-pressed="true"] {
+.button--selected {
   border-color: var(--ink);
   background: var(--ink);
   color: var(--page);
+}
+
+/* An environment something is being deployed to: the mark's dot after its name. */
+.runtime__environments .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.button--selected .deploy-dot {
+  color: var(--deploying-on-ink);
+}
+
+/* What is being deployed to the shown environment: a row of its own under the title. */
+.runtime__header .deployments {
+  flex-basis: 100%;
 }
 
 .runtime__fit {
@@ -1286,6 +1393,19 @@ main {
   padding: 1px;
   border-radius: 4px;
   background: #ffffff;
+}
+
+/* The shapes of a deployment's mark, in the diagram's blue on the diagram's white. */
+.runtime-legend__swatch--dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 20px;
+}
+
+.runtime-legend__swatch--dot .deploy-dot {
+  color: #0b57d0;
 }
 
 /* The diagram's states. PlantUML writes its colours as attributes and inline styles, so these rules are !important.
@@ -1373,6 +1493,15 @@ main {
 .rt-tile .rt-check.rt-check--degraded .rt-row__icon .rt-icon__mark { stroke: #7a3b00; }
 .rt-tile .rt-check.rt-check--unknown .rt-row__icon .rt-icon__ring,
 .rt-tile .rt-check.rt-check--unknown .rt-row__icon .rt-icon__line { stroke: #ffffff; }
+
+/* The mark of a deployment in a tile's corner: the marker's blue on a white disc, so it reads on a box of any state.
+   Filled: executing (the white ring that leaves it is the pulse); hollow: queued; a dot in a ring: waiting for a
+   person; small: ended. */
+.rt-deploy__back,
+.rt-deploy__pulse { fill: #ffffff; }
+.rt-deploy__fill { fill: #0b57d0; }
+.rt-deploy__ring { fill: none; stroke: #0b57d0; stroke-width: 1.6; }
+.runtime-svg a.rt-link:focus-visible .rt-deploy__back { stroke: #ffb300; stroke-width: 3px; }
 
 .rt-bar--healthy { fill: #a5d6a7; }
 .rt-bar--unhealthy { fill: #ffcc80; }

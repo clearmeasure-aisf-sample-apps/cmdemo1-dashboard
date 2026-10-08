@@ -69,6 +69,7 @@ public static class TopologyParser
         Uri? repository = null;
         Uri? delivery = null;
         Uri? cost = null;
+        Uri? deployments = null;
         DashboardInfo? dashboard = null;
         if (root.TryGetProperty("system", out var system) && system.ValueKind == JsonValueKind.Object)
         {
@@ -77,10 +78,11 @@ public static class TopologyParser
             repository = ReadOptionalAddress(system, "repository", "system", errors);
             delivery = ReadOptionalAddress(system, "deliveryUrl", "system", errors);
             cost = ReadOptionalAddress(system, "costUrl", "system", errors);
+            deployments = ReadOptionalAddress(system, "deploymentsUrl", "system", errors);
             dashboard = ReadDashboard(system);
         }
 
-        return new SystemInfo(slug, name ?? (slug.Length > 0 ? slug : "System"), repository, delivery, cost, dashboard);
+        return new SystemInfo(slug, name ?? (slug.Length > 0 ? slug : "System"), repository, delivery, cost, dashboard, deployments);
     }
 
     /// <summary>

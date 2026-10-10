@@ -32,7 +32,8 @@
                     @onclick="() => _fit = !_fit">@(_fit ? "Actual size" : "Fit to width")</button>
             @* What is being deployed to the shown environment: the system's own release marks the environment here, a
                deployable's also the nodes of the diagram. *@
-            <DeploymentMarks Marks="Deploying" Label="@($"Deployments to {Current?.Name}")" Generated="Monitor.Deployments?.Generated" Zone="Zone" />
+            <DeploymentMarks Marks="Deploying" Activity="@(Current is { } named ? Monitor.EnvironmentActivity(named.Name, Deploying, Now, Zone) : [])"
+                             Label="@($"Deployments to {Current?.Name}")" Generated="Monitor.Deployments?.Generated" Zone="Zone" />
         }
     </header>
 
@@ -112,6 +113,15 @@
                     last read it from Octopus Deploy (minutes old): filled while it runs, hollow while it is queued, a dot in a
                     ring while it waits for a sign-off, small for ten minutes after it ended; hover it for the words.
                 </text>
+                @* Said only where the system's file says it (a file from before the lists is drawn as it was). *@
+                @if (Monitor.Deployments is { SaysActivity: true })
+                {
+                    <text>
+                        Under a node's own lines, where the diagram has room for them, up to two lines say it in words, the
+                        most urgent first: what waits for a person and who is responsible, what is deploying or queued, a
+                        deployment freeze in force or coming, and the last deployment that ended.
+                    </text>
+                }
             }
             The small line next to a number is its trend over the last checks of this page. An underlined number or name
             is a link: it opens the Azure portal or Octopus Deploy in a new tab, which ask you to sign in.
@@ -314,7 +324,14 @@
         }
 
         var environment = Shown;
-        var payload = RuntimePayloadBuilder.Build(diagram.Manifest!, environment, Page, Zone, Deploying).ToJson();
+        var shown = diagram.Manifest!.Environment;
+        var payload = RuntimePayloadBuilder.Build(
+            diagram.Manifest!,
+            environment,
+            Page,
+            Zone,
+            Deploying,
+            Monitor.Deployments is null ? null : deployable => Monitor.NodeActivity(shown, deployable, Now, Zone)).ToJson();
         if (payload == _lastPayload)
         {
             return;

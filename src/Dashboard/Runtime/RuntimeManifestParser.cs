@@ -13,7 +13,8 @@ public sealed record RuntimeParseResult<T>(T? Value, IReadOnlyList<string> Error
 /// Reads <c>runtime/index.json</c> and <c>runtime/&lt;env&gt;.json</c>. The deployment writes both next to the SVG it
 /// rendered (<c>deploy-staticwebapp.ps1</c>). Required: the index's environments with their name, manifest and SVG;
 /// the manifest's nodes with alias and kind, the regions with alias, the relationships with id. Unknown fields and
-/// kinds are kept apart, not refused: a newer diagram still shows.
+/// kinds are kept apart, not refused: a newer diagram still shows. Optional: the frames (with alias), and the
+/// <c>links</c> of a node, a region or a frame, of which only absolute https addresses are kept.
 /// </summary>
 public static class RuntimeManifestParser
 {
@@ -104,7 +105,8 @@ public static class RuntimeManifestParser
                     Text(element, "region"),
                     Text(element, "regionAlias"),
                     Text(element, "healthCheck"),
-                    Text(element, "dependencyKind"));
+                    Text(element, "dependencyKind"),
+                    Links(element));
             });
             var regions = ReadArray(root, "regions", errors, (element, path) =>
             {
@@ -118,7 +120,18 @@ public static class RuntimeManifestParser
                 var roles = element.TryGetProperty("roles", out var array) && array.ValueKind == JsonValueKind.Array
                     ? array.EnumerateArray().Where(role => role.ValueKind == JsonValueKind.String).Select(role => role.GetString()!).ToList()
                     : [];
-                return new RuntimeRegion(alias, Text(element, "name") ?? alias, roles);
+                return new RuntimeRegion(alias, Text(element, "name") ?? alias, roles, Links(element));
+            });
+            var frames = ReadArray(root, "frames", errors, (element, path) =>
+            {
+                var alias = Text(element, "alias");
+                if (alias is null)
+                {
+                    errors.Add($"{path}.alias: missing or empty.");
+                    return null;
+                }
+
+                return new RuntimeFrame(alias, Text(element, "kind") ?? string.Empty, Text(element, "name") ?? alias, Links(element));
             });
             var edges = ReadArray(root, "edges", errors, (element, path) =>
             {
@@ -137,7 +150,7 @@ public static class RuntimeManifestParser
 
             return errors.Count > 0 || environment is null
                 ? new RuntimeParseResult<RuntimeManifest>(null, errors)
-                : new RuntimeParseResult<RuntimeManifest>(new RuntimeManifest(environment, nodes, regions, edges), []);
+                : new RuntimeParseResult<RuntimeManifest>(new RuntimeManifest(environment, nodes, regions, edges, frames), []);
         }
     }
 
@@ -237,6 +250,31 @@ public static class RuntimeManifestParser
         && (address.Scheme == Uri.UriSchemeHttp || address.Scheme == Uri.UriSchemeHttps)
             ? address
             : null;
+
+    /// <summary>
+    /// The <c>links</c> of an element: a map of a key to an address. Only an absolute https address is kept (a link
+    /// is opened by a click, and nothing else belongs behind one); anything else is left out, never an error.
+    /// </summary>
+    private static Health.LinkSet? Links(JsonElement parent)
+    {
+        if (!parent.TryGetProperty("links", out var links) || links.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        var found = new Dictionary<string, Uri>(StringComparer.Ordinal);
+        foreach (var property in links.EnumerateObject())
+        {
+            if (property.Value.ValueKind == JsonValueKind.String
+                && Uri.TryCreate(property.Value.GetString()?.Trim(), UriKind.Absolute, out var address)
+                && address.Scheme == Uri.UriSchemeHttps)
+            {
+                found[property.Name] = address;
+            }
+        }
+
+        return found.Count == 0 ? null : new Health.LinkSet(found);
+    }
 
     private static RuntimeNodeKind NodeKind(string? kind) => kind?.ToLowerInvariant() switch
     {

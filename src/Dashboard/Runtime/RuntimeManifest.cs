@@ -64,11 +64,16 @@ public enum RuntimeEdgeKind
 /// <c>runtime/&lt;env&gt;.json</c>: which drawn element of the environment's diagram is which. The dashboard finds a
 /// node by its alias and a relationship by its id, and never reads names out of the SVG.
 /// </summary>
+/// <param name="Frames">
+/// The frames that are no region (the subscription, a resource group, the Front Door profile, a plan, a cluster);
+/// null in a manifest from before they were listed.
+/// </param>
 public sealed record RuntimeManifest(
     string Environment,
     IReadOnlyList<RuntimeNode> Nodes,
     IReadOnlyList<RuntimeRegion> Regions,
-    IReadOnlyList<RuntimeEdge> Edges);
+    IReadOnlyList<RuntimeEdge> Edges,
+    IReadOnlyList<RuntimeFrame>? Frames = null);
 
 /// <param name="Alias">The element's name in the PlantUML source: the last part of its <c>data-qualified-name</c>.</param>
 /// <param name="Kind">What it is.</param>
@@ -82,6 +87,9 @@ public sealed record RuntimeManifest(
 /// system names none.
 /// </param>
 /// <param name="DependencyKind">For a dependency: what it is, in the system's own words (<c>external</c>).</param>
+/// <param name="Links">
+/// Where the node's name leads when the topology has no link for it (<see cref="RuntimeBoxLink"/>); null without one.
+/// </param>
 public sealed record RuntimeNode(
     string Alias,
     RuntimeNodeKind Kind,
@@ -92,12 +100,25 @@ public sealed record RuntimeNode(
     string? Region = null,
     string? RegionAlias = null,
     string? HealthCheck = null,
-    string? DependencyKind = null);
+    string? DependencyKind = null,
+    Health.LinkSet? Links = null);
 
 /// <param name="Alias">The region boundary's alias.</param>
 /// <param name="Name">The Azure region.</param>
 /// <param name="Roles">primary, standby, data, static.</param>
-public sealed record RuntimeRegion(string Alias, string Name, IReadOnlyList<string> Roles);
+/// <param name="Links">Where the region's name leads (<see cref="RuntimeBoxLink"/>); null without a link.</param>
+public sealed record RuntimeRegion(string Alias, string Name, IReadOnlyList<string> Roles, Health.LinkSet? Links = null);
+
+/// <summary>A frame of the diagram that is no region: it has a name and, where the deployment knows one, a link.</summary>
+/// <param name="Alias">The boundary's alias.</param>
+/// <param name="Kind">
+/// What it is, in the deployment's word: <c>subscription</c>, <c>resourceGroup</c>, <c>frontDoorProfile</c>,
+/// <c>plan</c>, <c>cluster</c>, <c>runtime</c> (the boundary of an application with its own runtime). An unknown
+/// kind is linked all the same, with its name alone in the link's title.
+/// </param>
+/// <param name="Name">The resource's name, as drawn.</param>
+/// <param name="Links">Where the frame's name leads (<see cref="RuntimeBoxLink"/>); null without a link.</param>
+public sealed record RuntimeFrame(string Alias, string Kind, string Name, Health.LinkSet? Links = null);
 
 /// <param name="Id"><c>&lt;from&gt;-to-&lt;to&gt;</c>.</param>
 /// <param name="Priority">For an origin: Front Door's priority (1 first).</param>

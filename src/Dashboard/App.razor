@@ -12,7 +12,6 @@
 <header class="page-header">
     <div class="page-header__top">
         <div class="page-header__title">
-            <p class="eyebrow">Health dashboard</p>
             <h1>@(_monitor?.Topology.System.Name ?? "Health dashboard")</h1>
         </div>
         <div class="page-header__status">
@@ -127,8 +126,10 @@
                         <span class="chip">@tier</span>
                     }
                     <EnvironmentLinks Links="environment.Info.Links" Environment="@environment.Name" />
-                    @* What is being deployed to the environment, first: there only with the deployments file, and while it names one. *@
-                    <DeploymentMarks Marks="deploying" Label="@($"Deployments to {environment.Name}")" Generated="monitor.Deployments?.Generated" Zone="Zone" />
+                    @* What is being deployed to the environment, first, then a deployment freeze and the last deployment that
+                       ended: there only with the deployments file, and while it names any. *@
+                    <DeploymentMarks Marks="deploying" Activity="monitor.EnvironmentActivity(environment.Name, deploying, Time.GetUtcNow(), Zone)"
+                                     Label="@($"Deployments to {environment.Name}")" Generated="monitor.Deployments?.Generated" Zone="Zone" />
                     @if (monitor.Cost is { } environmentCost && environmentCost.Find(environment.Name) is { } spent)
                     {
                         <CostLine Report="environmentCost" Amounts="spent.Amounts" Services="spent.TopServices" Estimate="spent.Estimate" Now="Time.GetUtcNow()" />

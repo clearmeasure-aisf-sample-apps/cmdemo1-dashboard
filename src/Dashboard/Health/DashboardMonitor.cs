@@ -114,6 +114,20 @@ public sealed class DashboardMonitor
         Deployments?.Marks(environment, Topology.System.Slug, deployables, now) ?? [];
 
     /// <summary>
+    /// What the deployments file says in words about one deployable in an environment (<see cref="DeploymentActivity.OfNode"/>);
+    /// empty without the file.
+    /// </summary>
+    public IReadOnlyList<ActivityLine> NodeActivity(string environment, string deployable, DateTimeOffset now, TimeZoneInfo zone) =>
+        Deployments is { } report ? DeploymentActivity.OfNode(report, environment, Topology.System.Slug, deployable, now, zone) : [];
+
+    /// <summary>
+    /// What follows the marks under an environment's name (<see cref="DeploymentActivity.OfEnvironment"/>): a
+    /// deployment freeze and the last deployment that ended; empty without the file.
+    /// </summary>
+    public IReadOnlyList<ActivityLine> EnvironmentActivity(string environment, IReadOnlyList<DeploymentMark> marks, DateTimeOffset now, TimeZoneInfo zone) =>
+        Deployments is { } report ? DeploymentActivity.OfEnvironment(report, environment, marks, now, zone) : [];
+
+    /// <summary>
     /// The build of the dashboard itself (this page), from the file its own site serves; null when the topology names
     /// no <c>system.dashboard</c> or the file was not read. It belongs to the release that serves the page, so it is
     /// read once: until it answers, every <see cref="DashboardBuildRetry"/>.

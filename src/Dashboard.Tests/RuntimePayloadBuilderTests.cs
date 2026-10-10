@@ -43,6 +43,8 @@ public class RuntimePayloadBuilderTests
     /// <summary>A tile's lines as words and tone: what a reader sees, whatever is a link.</summary>
     private static (string Text, string Tone)[] Words(RuntimeTile tile) => [.. tile.Lines.Select(line => (line.Text, line.Tone))];
 
+    // The marks below are compared without the link of the region's name, which the sample manifest gives every
+    // region (RuntimeBoxLinkTests has the links).
     private static string Region(RuntimePayload payload, string alias) => payload.Regions.Single(region => region.Alias == alias).State;
 
     private static string Edge(RuntimePayload payload, string id) => payload.Edges.Single(edge => edge.Id == id).State;
@@ -91,8 +93,8 @@ public class RuntimePayloadBuilderTests
         var standby = Tile(payload, "app_ui_standby");
         Assert.Equal([("version 2.4.20", "strong"), ("differs from pinned 2.4.21", "differs"), ("standby: ready, no traffic", "muted")], Words(standby));
 
-        Assert.Equal(new RuntimeRegionMark("region_primary", "serving", "serving traffic"), payload.Regions.Single(region => region.Alias == "region_primary"));
-        Assert.Equal(new RuntimeRegionMark("region_standby", "standby", "standby: ready"), payload.Regions.Single(region => region.Alias == "region_standby"));
+        Assert.Equal(new RuntimeRegionMark("region_primary", "serving", "serving traffic"), payload.Regions.Single(region => region.Alias == "region_primary") with { NameLink = null });
+        Assert.Equal(new RuntimeRegionMark("region_standby", "standby", "standby: ready"), payload.Regions.Single(region => region.Alias == "region_standby") with { NameLink = null });
         Assert.Equal("active", Edge(payload, "fd_ui-to-app_ui_primary"));
         Assert.Equal("idle", Edge(payload, "fd_ui-to-app_ui_standby"));
         Assert.Equal("active", Edge(payload, "app_ui_primary-to-sqldb"));
@@ -168,7 +170,7 @@ public class RuntimePayloadBuilderTests
         Assert.Equal("This page", Tile(tdd, "swa_dashboard").Label);
         Assert.Equal(new RuntimeTileLine("its address is not in this deployment", "muted"), Assert.Single(Tile(uat, "swa_dashboard").Lines));
         Assert.Equal("neutral", Edge(uat, "browser-to-swa_dashboard"));
-        Assert.Equal(new RuntimeRegionMark("region_data", "neutral", "database, static sites: not probed"), uat.Regions.Single(region => region.Alias == "region_data"));
+        Assert.Equal(new RuntimeRegionMark("region_data", "neutral", "database, static sites: not probed"), uat.Regions.Single(region => region.Alias == "region_data") with { NameLink = null });
     }
 
     [Fact]
@@ -181,7 +183,7 @@ public class RuntimePayloadBuilderTests
         Assert.Equal(new RuntimeTileLine("health check of westus3 passed", "ok"), Assert.Single(database.Lines));
         Assert.Null(database.Facts);
         Assert.Contains("app-cmdemo2-uat-ui connected to it (last 22:00", database.Title, StringComparison.Ordinal);
-        Assert.Equal(new RuntimeRegionMark("region_data", "neutral", "database: reachable; static sites: not probed"), payload.Regions.Single(region => region.Alias == "region_data"));
+        Assert.Equal(new RuntimeRegionMark("region_data", "neutral", "database: reachable; static sites: not probed"), payload.Regions.Single(region => region.Alias == "region_data") with { NameLink = null });
         Assert.Equal(new RuntimeTileLine("health checks of 2 web apps passed", "ok"), Assert.Single(Tile(Build(Uat()), "sqldb").Lines));
     }
 
@@ -239,7 +241,7 @@ public class RuntimePayloadBuilderTests
         var tile = Tile(payload, "app_ui_standby");
         Assert.Equal(("neutral", "Not checked"), (tile.State, tile.Label));
         Assert.Equal(new RuntimeTileLine("not in topology.json", "muted"), Assert.Single(tile.Lines));
-        Assert.Equal(new RuntimeRegionMark("region_standby", "neutral", "not checked"), payload.Regions.Single(region => region.Alias == "region_standby"));
+        Assert.Equal(new RuntimeRegionMark("region_standby", "neutral", "not checked"), payload.Regions.Single(region => region.Alias == "region_standby") with { NameLink = null });
         Assert.Equal("neutral", Edge(payload, "fd_ui-to-app_ui_standby"));
         Assert.Equal("healthy", Tile(payload, "app_ui_primary").State);
     }
@@ -563,7 +565,7 @@ public class RuntimePayloadBuilderTests
         using var json = JsonDocument.Parse(Build(Environment("uat")).ToJson());
 
         var root = json.RootElement;
-        Assert.Equal(["nodes", "regions", "edges"], root.EnumerateObject().Select(property => property.Name));
+        Assert.Equal(["nodes", "regions", "edges", "names"], root.EnumerateObject().Select(property => property.Name));
         var sql = root.GetProperty("nodes").EnumerateArray().Single(node => node.GetProperty("alias").GetString() == "sqldb");
         // The sample topology has a link to the database: the name of its node leads there.
         Assert.Equal(["alias", "state", "label", "lines", "title", "nameLink"], sql.EnumerateObject().Select(property => property.Name));

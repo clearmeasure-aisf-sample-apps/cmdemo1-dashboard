@@ -15,7 +15,8 @@ namespace Dashboard.Runtime;
 /// answers its detailed health check (<see cref="HealthDetail"/>), its tile has one mark per entry, and a dependency of
 /// its deployable (a node of the manifest outside the subscription) takes its state from the entry the manifest names.
 /// A deployment in flight (<see cref="DeploymentMark"/>) marks every node of its deployable, by the deployable the
-/// manifest names for the node.
+/// manifest names for the node; and what the system's deployments file says about that deployable in words
+/// (<see cref="DeploymentActivity.OfNode"/>) follows the node's own lines.
 /// </summary>
 public static class RuntimePayloadBuilder
 {
@@ -45,12 +46,17 @@ public static class RuntimePayloadBuilder
     /// What is marked as being deployed in the environment, with <see cref="Deployables"/> as the deployables a mark
     /// may belong to; null without the file.
     /// </param>
+    /// <param name="activity">
+    /// The activity lines of a deployable in the environment (<see cref="DeploymentActivity.OfNode"/>), by its name;
+    /// null without the file.
+    /// </param>
     public static RuntimePayload Build(
         RuntimeManifest manifest,
         EnvironmentStatus? environment,
         Uri? page,
         TimeZoneInfo zone,
-        IReadOnlyList<DeploymentMark>? deployments = null)
+        IReadOnlyList<DeploymentMark>? deployments = null,
+        Func<string, IReadOnlyList<ActivityLine>>? activity = null)
     {
         ArgumentNullException.ThrowIfNull(manifest);
         ArgumentNullException.ThrowIfNull(zone);
@@ -66,23 +72,63 @@ public static class RuntimePayloadBuilder
 
         var tiles = manifest.Nodes
             .Where(node => node.Kind != RuntimeNodeKind.Person)
-            .Select(node => Deploying(
-                node.Kind switch
-                {
-                    RuntimeNodeKind.Sql => DatabaseTile(node, Clients(manifest, node, RuntimeEdgeKind.Sql, byAlias), zone, environment?.Info.Links),
-                    RuntimeNodeKind.Dependency => DependencyTile(node, Clients(manifest, node, RuntimeEdgeKind.Dependency, byAlias), zone),
-                    _ => Tile(node, byAlias.GetValueOrDefault(node.Alias), environment, page, zone),
-                },
-                node,
-                deployments))
+            .Select(node => Named(
+                Deploying(
+                    node.Kind switch
+                    {
+                        RuntimeNodeKind.Sql => DatabaseTile(node, Clients(manifest, node, RuntimeEdgeKind.Sql, byAlias), zone, environment?.Info.Links),
+                        RuntimeNodeKind.Dependency => DependencyTile(node, Clients(manifest, node, RuntimeEdgeKind.Dependency, byAlias), zone),
+                        _ => Tile(node, byAlias.GetValueOrDefault(node.Alias), environment, page, zone),
+                    },
+                    node,
+                    deployments,
+                    activity),
+                node))
             .ToList();
         var reachable = manifest.Nodes
             .Where(node => node.Kind == RuntimeNodeKind.Sql && tiles.Any(tile => tile.Alias == node.Alias && tile.State == Healthy))
             .Select(node => node.RegionAlias)
             .ToHashSet(StringComparer.Ordinal);
-        var regions = manifest.Regions.Select(region => Region(region, manifest, byAlias, reachable.Contains(region.Alias))).ToList();
+        var regions = manifest.Regions
+            .Select(region => Region(region, manifest, byAlias, reachable.Contains(region.Alias)) with { NameLink = RuntimeBoxLink.Of(region) })
+            .ToList();
         var edges = manifest.Edges.Select(edge => Edge(edge, manifest, byAlias)).ToList();
-        return new RuntimePayload(tiles, regions, edges);
+        return new RuntimePayload(tiles, regions, edges, Names(manifest));
+    }
+
+    /// <summary>
+    /// The tile with where its node's name leads: the link of the topology where it has one (a web app, a Front Door
+    /// endpoint, the database), and else the one the deployment wrote into the manifest (a static site, a node of an
+    /// application with its own runtime).
+    /// </summary>
+    private static RuntimeTile Named(RuntimeTile tile, RuntimeNode node) =>
+        tile.NameLink is not null ? tile : tile with { NameLink = RuntimeBoxLink.Of(node) };
+
+    /// <summary>
+    /// The boxes with a name and nothing else to update, each with its link: the frames that are no region, and the
+    /// browser. Null when the manifest has a link for none (a diagram from before the links), so the payload is as
+    /// it was.
+    /// </summary>
+    private static List<RuntimeName>? Names(RuntimeManifest manifest)
+    {
+        var names = new List<RuntimeName>();
+        foreach (var node in manifest.Nodes.Where(node => node.Kind == RuntimeNodeKind.Person))
+        {
+            if (RuntimeBoxLink.Of(node) is { } link)
+            {
+                names.Add(new RuntimeName(node.Alias, link));
+            }
+        }
+
+        foreach (var frame in manifest.Frames ?? [])
+        {
+            if (RuntimeBoxLink.Of(frame) is { } link)
+            {
+                names.Add(new RuntimeName(frame.Alias, link));
+            }
+        }
+
+        return names.Count == 0 ? null : names;
     }
 
     /// <summary>
@@ -103,34 +149,61 @@ public static class RuntimePayloadBuilder
         node.Deployable is not null && node.Kind is not (RuntimeNodeKind.Person or RuntimeNodeKind.Dependency);
 
     /// <summary>
-    /// The tile with the mark of what is being deployed to its node's deployable. The mark is found by the deployable
-    /// the manifest names for the node, not by what the monitor checks, so a node the topology does not have carries
-    /// it too. The first mark (the one a person has to act on, then what is executing) gives the dot its shape and
-    /// its link; the title has every one.
+    /// The tile with the mark of what is being deployed to its node's deployable, and with the deployable's activity
+    /// in words. Both are found by the deployable the manifest names for the node, not by what the monitor checks, so
+    /// a node the topology does not have carries them too. The first mark (the one a person has to act on, then what
+    /// is executing) gives the dot its shape and its link; the title has every one. The activity lines are the
+    /// tile's last: a slot from before them (a diagram an older deployment rendered) has no row for them, and the
+    /// script draws as many lines as a slot holds, so such a diagram loses them and nothing else.
     /// </summary>
-    private static RuntimeTile Deploying(RuntimeTile tile, RuntimeNode node, IReadOnlyList<DeploymentMark>? deployments)
+    private static RuntimeTile Deploying(
+        RuntimeTile tile,
+        RuntimeNode node,
+        IReadOnlyList<DeploymentMark>? deployments,
+        Func<string, IReadOnlyList<ActivityLine>>? activity)
     {
-        if (deployments is null || !Deploys(node))
+        if (!Deploys(node))
         {
             return tile;
         }
 
-        var marks = deployments.Where(mark => string.Equals(mark.Deployable, node.Deployable, StringComparison.OrdinalIgnoreCase)).ToList();
-        if (marks.Count == 0)
+        var marks = deployments?.Where(mark => string.Equals(mark.Deployable, node.Deployable, StringComparison.OrdinalIgnoreCase)).ToList() ?? [];
+        if (marks.Count > 0)
+        {
+            var title = string.Join('\n', marks.Select(DeploymentText.Title));
+            tile = tile with
+            {
+                Title = $"{tile.Title}\n{title}",
+                Deployment = new RuntimeDeployment(
+                    DeploymentText.Shape(marks[0].State),
+                    title,
+                    RuntimeLink.To(marks[0].Url, $"{title}\n{DeploymentText.TaskTitle}")),
+            };
+        }
+
+        var lines = activity?.Invoke(node.Deployable!) ?? [];
+        if (lines.Count == 0)
         {
             return tile;
         }
 
-        var title = string.Join('\n', marks.Select(DeploymentText.Title));
+        // What is in flight is in the title already, with the marks; a freeze and the last deployment are not.
+        var more = lines.Where(line => !InFlightKinds.Contains(line.Kind) || marks.Count == 0).Select(line => line.Title).ToList();
         return tile with
         {
-            Title = $"{tile.Title}\n{title}",
-            Deployment = new RuntimeDeployment(
-                DeploymentText.Shape(marks[0].State),
-                title,
-                RuntimeLink.To(marks[0].Url, $"{title}\n{DeploymentText.TaskTitle}")),
+            Title = more.Count == 0 ? tile.Title : $"{tile.Title}\n{string.Join('\n', more)}",
+            Lines = [.. tile.Lines, .. lines.Select(ActivityLineOf)],
         };
     }
+
+    private static readonly string[] InFlightKinds = [ActivityKind.Waiting, ActivityKind.Deploying, ActivityKind.Queued];
+
+    /// <summary>
+    /// An activity line as a line of the tile: its tone is its kind, and its words are a link to the task in Octopus
+    /// Deploy where the file gives the address.
+    /// </summary>
+    private static RuntimeTileLine ActivityLineOf(ActivityLine line) =>
+        RuntimeTileLine.Of(line.Kind, [new RuntimeTextPart(line.Text, RuntimeLink.To(line.Url, $"{line.Title}\n{DeploymentText.TaskTitle}"))]);
 
     /// <summary>The state word of a health state, as the payload carries it.</summary>
     public static string StateOf(HealthState state) => state switch

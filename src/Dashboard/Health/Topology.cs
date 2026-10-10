@@ -57,6 +57,7 @@ public sealed record DashboardInfo(string Name, string BuildPath)
 /// The namespace of the cluster that holds the environment's pods: the cluster view lists its pods under the
 /// environment. Null where the system runs in no cluster.
 /// </param>
+/// <param name="Pages">Pages of the system itself in this environment (<see cref="PageLink"/>); null without any.</param>
 public sealed record EnvironmentInfo(
     string Name,
     string? Tier,
@@ -64,7 +65,23 @@ public sealed record EnvironmentInfo(
     Uri? VersionsUrl = null,
     Uri? VersionsHistoryUrl = null,
     LinkSet? Links = null,
-    string? Namespace = null);
+    string? Namespace = null,
+    IReadOnlyList<PageLink>? Pages = null);
+
+/// <summary>
+/// A page of the system itself that the environment's part of the dashboard leads to
+/// (<c>environments[].pages</c> of <c>topology.json</c>): a deployable of the system names it
+/// (<c>dashboardLink</c> in <c>system.json</c>), and the deployment writes the address the deployable has in this
+/// environment. It is public like the page it is on, so its tooltip names no sign-in.
+/// </summary>
+/// <param name="Name">The words of the link.</param>
+/// <param name="Url">Where it leads.</param>
+/// <param name="Deployable">The deployable whose page it is; null when the topology does not say.</param>
+public sealed record PageLink(string Name, Uri Url, string? Deployable = null)
+{
+    /// <summary>The link's tooltip: its words, and that it opens a new tab.</summary>
+    public string Title => Name + LinkText.GitHubSuffix;
+}
 
 /// <summary>
 /// The Kubernetes cluster of the system (<c>cluster</c> of <c>topology.json</c>): the two public files the cluster

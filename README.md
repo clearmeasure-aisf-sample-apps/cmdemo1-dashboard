@@ -76,7 +76,10 @@ they stand on: white on the navy box is 8.9 to 1, the yellow of a line that diff
 to 1 on the page, and the word of a badge (Octopus's strong green, its red) 4.6 to 1 on the badge's white. A selected
 button is the navy with the primary blue as its edge, because white on the primary blue alone is 4.0 to 1.
 
-The two faces come from Google Fonts (`index.html`); without them the page reads in the fallbacks. Where a brand
+The two faces are files of the page (`wwwroot/fonts`, the `@font-face` rules at the top of `app.css`): the Latin part
+of Jost as one variable file and of Roboto in its three weights, each under the SIL Open Font License, whose text is
+beside them. The page asks no other site for them (until 2026-10-10 it loaded both from Google Fonts, which told
+Google of every visit); a character outside the Latin part is drawn in the fallbacks. Where a brand
 guide says otherwise, the variables at the top of `wwwroot/css/app.css` are the one place to change, and the
 diagram's colours are under "The diagram's colours" there.
 
@@ -165,6 +168,7 @@ topology" is pressed. The deployment writes the real file; the build does not kn
 | `environments[].versionsUrl` | no, may be `null` | No pinned versions for this environment: nothing is read and nothing is compared (but for a deployable with `pinUrl`). |
 | `environments[].versionsHistoryUrl` | no, may be `null` | No "Pin history" link (but for a deployable with `pinHistoryUrl`). |
 | `environments[].links` | no | No links to the environment's resources (see "Links"). Keys: `applicationInsights`, `applicationMap`, `database`, `resourceGroup`. |
+| `environments[].pages` | no | No link to a page of the system itself (see "Links"). A list of `{ "name", "url", "deployable" }`: the words of the link, an absolute http(s) address, and the deployable whose page it is. An entry without a name or with anything else as its address is left out, and the page is shown all the same. |
 | `environments[].namespace` | no, may be `null` | The cluster view has no group for this environment: the pods of its namespace are listed with the platform's. |
 | `environments[].deployables` | no | The environment is shown without tiles. |
 | `deployables[].name` | no | `app`. It is also the deployable's key in `versions.json`. |
@@ -731,6 +735,21 @@ destination asks for a sign-in: the page holds no credential and calls none of t
 | `cluster.links` | `portal` | The AKS cluster in the Azure portal. | "AKS cluster in the Azure portal" in the cluster view's "AKS service" card. |
 | | `workloads` | The cluster's workloads in the Azure portal. | "Workloads in the Azure portal" next to the cluster view's "Pods". |
 
+### A page of the system itself
+
+A system may lead from its dashboard to another page of its own: a container deployable names it in `system.json`
+(`"dashboardLink": { "text": "Scorecard", "path": "/scorecard" }`), and the dashboard's deployment writes, for every
+environment that deployable exists in, an entry of `environments[].pages` with the address the deployable has there.
+The page shows them after the environment's resource links, in the Health view and the Runtime view; each opens a
+new tab, and its title is its words and "(opens in a new tab)", with no sign-in named: it is a page as public as this
+one.
+
+Its limits. The address is the one the environment's stack reported when the dashboard was last deployed: a
+container app's address changes when the app moves (a placement), and the link is then stale until the dashboard is
+deployed again. A dashboard's deployment reads the stacks of the other environments as its own tier's deploy
+identity, so the dashboard of one tier may show no link for an environment of the other tier; its log says so in one
+line per link it left out. The capability check of the topology (CAP-075) compares nodes and does not look at pages.
+
 ### Every box of the runtime view
 
 In the runtime view a box leads to what it stands for. A web app, a Front Door endpoint and the database take the
@@ -875,8 +894,8 @@ grouping and the sums (`ClusterGroups`, `ClusterTotals`), the words and units (`
 fake time.
 
 There is no CDN and no CSS framework. The style sheet is `wwwroot/css/app.css`, with one theme (see "How it looks,
-and why"); the one thing the page loads from elsewhere is its two faces, from Google Fonts, and it reads in the
-fallbacks without them.
+and why"), and the page's two faces are files of its own (`wwwroot/fonts`): the page itself loads nothing from
+another site (`PageFilesTests`).
 
 The site is static and expects to be served from the root of its host (`<base href="/">`); the host must serve
 `.wasm` files as `application/wasm`.

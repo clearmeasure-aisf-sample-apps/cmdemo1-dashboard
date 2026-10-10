@@ -125,7 +125,7 @@
                     {
                         <span class="chip">@tier</span>
                     }
-                    <EnvironmentLinks Links="environment.Info.Links" Environment="@environment.Name" />
+                    <EnvironmentLinks Links="environment.Info.Links" Pages="environment.Info.Pages" Environment="@environment.Name" />
                     @* What is being deployed to the environment, first, then a deployment freeze and the last deployment that
                        ended: there only with the deployments file, and while it names any. *@
                     <DeploymentMarks Marks="deploying" Activity="monitor.EnvironmentActivity(environment.Name, deploying, Time.GetUtcNow(), Zone)"

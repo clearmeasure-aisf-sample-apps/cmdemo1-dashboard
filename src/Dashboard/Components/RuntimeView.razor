@@ -168,7 +168,7 @@
         @if (Shown is { } facts)
         {
             <section class="runtime__facts" aria-label="@($"Availability, cost, code and delivery of {facts.Name}")">
-                <EnvironmentLinks Links="facts.Info.Links" Environment="@facts.Name" />
+                <EnvironmentLinks Links="facts.Info.Links" Pages="facts.Info.Pages" Environment="@facts.Name" />
                 @if (Monitor.Delivery is { } delivered && delivered.HealthOf(facts.Name) is { } reports)
                 {
                     <AvailabilityLine Reports="reports" Label="@($"Availability of {facts.Name}")" Changed="delivered.Generated" Zone="Zone" Now="Now" />

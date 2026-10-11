@@ -214,6 +214,27 @@ public class RuntimePayloadBuilderTests
     }
 
     [Fact]
+    public void AContainerAppIsDrawnWithItsAddressAndNeverProbed()
+    {
+        var manifest = Manifest("uat");
+        var app = new RuntimeNode(
+            "ca_scorecard",
+            RuntimeNodeKind.Other,
+            "ca-demo-uat-scorecard",
+            new Uri("https://ca-demo-uat-scorecard.graybush-1.southcentralus.azurecontainerapps.io"),
+            "scorecard");
+
+        var tile = Tile(
+            RuntimePayloadBuilder.Build(manifest with { Nodes = [.. manifest.Nodes, app] }, Uat(), Page, TimeZoneInfo.Utc),
+            "ca_scorecard");
+
+        Assert.Equal(("neutral", "Not probed"), (tile.State, tile.Label));
+        Assert.Equal(
+            new RuntimeTileLine("ca-demo-uat-scorecard.graybush-1.southcentralus.azurecontainerapps.io", "muted"),
+            Assert.Single(tile.Lines));
+    }
+
+    [Fact]
     public void ADatabaseNoCheckedWebAppUsesIsNotProbed()
     {
         var manifest = Manifest("uat") with { Edges = [.. Manifest("uat").Edges.Where(edge => edge.Kind != RuntimeEdgeKind.Sql)] };

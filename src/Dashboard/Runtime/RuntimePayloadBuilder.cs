@@ -281,6 +281,13 @@ public static class RuntimePayloadBuilder
                 "Not checked",
                 "not in topology.json",
                 $"{node.Name}: the topology this page loaded has no such address, so it is not checked. Reload the topology, or deploy the dashboard again."),
+            // A container app the system creates: drawn from the deployment's stack, never probed. It scales to zero, and a
+            // check from this page would start it, and keep it started for as long as the page is open.
+            RuntimeNodeKind.Other when node.Url is not null => NeutralTile(
+                node,
+                "Not probed",
+                node.Url.Host,
+                $"{node.Name} ({node.Url.Host}): the dashboard does not check it. A container app scales to zero, and a check from this page would start it."),
             _ => NeutralTile(node, "Not probed", string.Empty, node.Name),
         };
     }

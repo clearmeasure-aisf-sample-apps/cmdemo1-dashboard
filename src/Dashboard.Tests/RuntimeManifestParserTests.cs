@@ -65,6 +65,23 @@ public class RuntimeManifestParserTests
         Assert.Empty(manifest.Regions);
     }
 
+    [Fact]
+    public void AContainerAppIsAnotherKindWithItsAddressAndItsLink()
+    {
+        var manifest = RuntimeManifestParser.ParseManifest("""
+            { "environment": "tdd", "nodes": [ { "alias": "ca_scorecard", "kind": "containerapp", "deployable": "scorecard",
+                "name": "ca-demo-tdd-scorecard", "url": "https://ca-demo-tdd-scorecard.graybush-1.southcentralus.azurecontainerapps.io",
+                "links": { "site": "https://ca-demo-tdd-scorecard.graybush-1.southcentralus.azurecontainerapps.io" } } ],
+              "edges": [ { "id": "browser-to-ca_scorecard", "from": "browser", "to": "ca_scorecard", "kind": "direct" } ] }
+            """).Value!;
+
+        var node = Assert.Single(manifest.Nodes);
+        Assert.Equal(RuntimeNodeKind.Other, node.Kind);
+        Assert.Equal("ca-demo-tdd-scorecard.graybush-1.southcentralus.azurecontainerapps.io", node.Url?.Host);
+        Assert.Equal(node.Url, node.Links?["site"]);
+        Assert.Equal(RuntimeEdgeKind.Other, Assert.Single(manifest.Edges).Kind);
+    }
+
     [Theory]
     [InlineData("", "The file is empty.")]
     [InlineData("{", "The file is not valid JSON (line 1, position 2).")]

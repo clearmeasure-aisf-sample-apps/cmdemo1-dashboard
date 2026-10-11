@@ -747,8 +747,21 @@ one.
 Its limits. The address is the one the environment's stack reported when the dashboard was last deployed: a
 container app's address changes when the app moves (a placement), and the link is then stale until the dashboard is
 deployed again. A dashboard's deployment reads the stacks of the other environments as its own tier's deploy
-identity, so the dashboard of one tier may show no link for an environment of the other tier; its log says so in one
-line per link it left out. The capability check of the topology (CAP-075) compares nodes and does not look at pages.
+identity, so the dashboard of one tier shows no link for an environment of the other tier (seen on cmdemo1,
+2026-10-10: the prod dashboard had no link for tdd and uat); its log says so in one line per link it left out. The capability check of the topology (CAP-075) compares nodes and does not look at pages.
+
+### The container apps of the system
+
+A container app the system creates has no node in `topology.json` and the page asks it nothing: it scales to zero,
+and a check from an open page would start it and keep it started. It is in the runtime diagram all the same: the
+deployment draws a Container Apps environment under the subscription (named after the part of the apps' addresses the
+platform generates, with its region) and a box per app with its name and address, an arrow from the browser and one to
+the database where the app uses it. In the manifest (`runtime/<env>.json`) a box is a node of kind `containerapp` with
+its `deployable`, `name`, `url` and `links.site`; the page draws it as a neutral tile "Not probed" with the host name,
+and the box leads to the app's address. The deployment's identity reads the stacks of its own tier only; for the other tier's
+environments it reads `containers.json` on the system repository's branch `status`, which workflow `delivery`
+publishes hourly (`scripts/write-containers.ps1`), and without that file those diagrams have no boxes. A box is as
+old as the dashboard's last deployment and, for the other tier, as that file.
 
 ### Every box of the runtime view
 

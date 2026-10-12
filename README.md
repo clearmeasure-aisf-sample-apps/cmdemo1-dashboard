@@ -362,12 +362,14 @@ diagram in place:
 | Front Door to an origin | Solid and green while it carries the traffic, dotted grey while idle, dashed red when the origin is not healthy: a failover is the green line moving from priority 1 to priority 2. |
 | Web app to the database | Green from the web app that serves, dotted from the others. |
 | Number line of a relationship | Calls per minute of the last minute, in a solid frame, as the web apps count them: browser to Front Door (the sum of its origins' requests from Front Door), Front Door to an origin (its requests from Front Door; Front Door's health probes next to the role), web app to database (the SQL commands of its requests, with the background ones next to the role, "app queries · 55 background"; all SQL commands for an app that does not tell them apart), web app to dependency (the web app's outgoing HTTP calls, `http.perMinute`, when the web app has exactly one dependency; a dash, "not counted apart", when it has more, because the app counts them as one number). Next to the number, its trend over the last checks of this page. A dashed frame with "–" where no web app reports a number (no `telemetryPath`, or an app without the endpoint). |
-| Database | The browser cannot ask the database, but a web app's health check connects to it: "Reachable" (healthy) when the health check of a web app that uses it passes, with the queries per minute its web apps' traffic causes (the background ones are in the tooltip); "Not confirmed" (neutral) when none passes, since the web app may be the cause; "Not probed" (neutral) with the Liveness probe, which leaves the database alone. |
+| Database | The browser cannot ask the database, but a web app's health check connects to it: "Reachable" (healthy) when the health check of a web app that uses it passes, with the queries per minute its web apps' traffic causes (the background ones are in the tooltip); "Not confirmed" (neutral) when none passes, since the web app may be the cause. Where no web app tells (none this page checks uses it, or the probe is Liveness, which leaves the database alone) it says what Resource Health said of it (see "Resource Health"), or "Not probed" in a diagram from before the ids. |
 | Dependency (a box outside the subscription) | The browser does not call it; the entry of the web apps' detailed health check that the system names for it says its state. "Reachable" (healthy) when that entry is Healthy on a web app that passes its health check, with the entry's own words as the line ("Chat client is not configured"), or "westus3 reports it degraded" when another web app says otherwise; "Degraded" or "Unhealthy" (drawn as unhealthy) with the entry's words when no web app reaches it; and neutral with the reason otherwise: "Not known" (no web app answers the detailed health check, or it has no entry of that name), "Not confirmed" (the entry is healthy only on a web app that fails its own health check), "Not probed" (the system names no entry for it, or the probe is Liveness, which reads no entries). |
 | Web app to a dependency | Green from the web app that serves, dotted from the others, like the line to the database. |
 | Links | Where the topology has a link (see "Links"): a web app's badge (Live Metrics), its name (the web app in the portal), its version (the release in Octopus Deploy, or else the commit of its build), its requests (Performance) and its errors (Failures); the Front Door endpoint's and the database's name; the numbers on the arrows (Performance, the dependency calls, the requests in Logs). They are real `a` elements: underlined, in the order of the keyboard, each with a title that says where it goes. |
 | A box | Every box leads to what it stands for: its name is a link, and a click anywhere else on the box opens the same address in a new tab (see "Links", "Every box of the runtime view"). The frames too: the subscription, a resource group, the Front Door profile, a plan, a region. A click on a link inside a box (a badge, a number, the mark of a deployment) is that link's own. The box shows the pointer and lights up under it. |
-| Static site | Neutral, "Not probed": the dashboard does not check itself. The static site that serves the page says "This page". |
+| Static site | The static site that serves the page says "This page"; another environment's, which the page does not ask, says what Resource Health said of it, or "Not probed" in a diagram from before the ids. |
+| Container app | The page's own probe of it, once a minute while it shows the diagram (see "The container apps of the system"): "Probing" and "Waking" (drawn as being checked), "Healthy", "Unhealthy", "Responding" (drawn as healthy: it answered, and the page cannot read its health) and "Not responding" (drawn as unreachable), with the HTTP status and latency, or "answered · 85 ms" where the page could not read the answer. Under its host name, for an app `system.json` declares, in words and without a colour, what the pipeline's hourly health report last found there and how long ago ("hourly: healthy, 40 min ago"; "no recent hourly check" when no report of the last two hours asked it), and of the reports of 24 hours and 7 days that asked it, how many found it healthy ("24 h: 23 of 24 · 7 d: 160 of 168"). The tooltip says what the page asked and when, and that the hourly lines are history, not monitoring. An app without a public address says what Resource Health said of it. |
+| Resource | What Azure Resource Health last said of the resources the box stands for, in words and without a colour: "Available", "Degraded", "Unavailable", "Provisioned" (Resource Health does not cover its type: the provisioning state succeeded) or "Not known", and "Resource Health, 40 min ago" (grey after two hours); a box of several says the most urgent word and the count of each ("2 available · 1 provisioned, 40 min ago"). See "Resource Health". |
 | Mark of a deployment | With `system.deploymentsUrl`: a small dot in the corner of the tile of every node whose deployable is being deployed to the shown environment (its web apps, its Front Door endpoint, the dashboard's static site), in the logo's sky blue on a dark disc in a white ring, so it reads on a box of any state. Its shape says the state, its tooltip the sentence, and it is a link to the task in Octopus Deploy where the file gives its address (see "Deployments in flight"). The node keeps its state: a deployment is no state of health. |
 
 A state is never colour alone: the badge has an icon and a word, the regions a word, the lines differ in dash and
@@ -448,9 +450,13 @@ The manifest maps each element's alias to what the browser knows, so the page ne
   `fd_<d>-to-app_<d>_<n>` (kind `origin`, `priority` 1 for a node with the role `primary` and 2 for any other,
   since the deployment does not know how the application's public address routes), or `browser-to-app_<d>_<n>`
   without a public address. It has no relationship to the database.
-- **Kinds**: nodes `person`, `frontdoor`, `webapp`, `sql`, `staticsite`, `dependency`; relationships `public` (the
-  browser to a public address), `origin` (with its `priority`), `sql`, `dashboard`, `dependency`. An unknown kind is
-  drawn and not updated.
+- **Kinds**: nodes `person`, `frontdoor`, `webapp`, `sql`, `staticsite`, `dependency`, `containerapp`, `resource`;
+  relationships `public` (the browser to a public address), `origin` (with its `priority`), `sql`, `dashboard`,
+  `dependency`. An unknown kind is drawn and not updated.
+- **Probes and health** (decision 0038): a `containerapp` node may have `healthPath`, the path the page probes (a
+  plain path, else left out: the page asks the root), and any node may have `ids`, the Azure resource ids it stands
+  for, by which the page finds what Resource Health said of them in `containers.json` (see "Resource Health"). Both
+  are optional: a manifest from before them is drawn as before.
 - **A dependency** (`kind` `dependency`) also has `healthCheck`, the name of the entry of its web apps' detailed
   health check that tells its state (`null` when the system names none), and `dependencyKind`, what it is in the
   system's own words (`external`). It comes from `deployables[].dependencies` of `system.json`, a list of
@@ -752,16 +758,105 @@ identity, so the dashboard of one tier shows no link for an environment of the o
 
 ### The container apps of the system
 
-A container app the system creates has no node in `topology.json` and the page asks it nothing: it scales to zero,
-and a check from an open page would start it and keep it started. It is in the runtime diagram all the same: the
-deployment draws a Container Apps environment under the subscription (named after the part of the apps' addresses the
-platform generates, with its region) and a box per app with its name and address, an arrow from the browser and one to
-the database where the app uses it. In the manifest (`runtime/<env>.json`) a box is a node of kind `containerapp` with
-its `deployable`, `name`, `url` and `links.site`; the page draws it as a neutral tile "Not probed" with the host name,
-and the box leads to the app's address. The deployment's identity reads the stacks of its own tier only; for the other tier's
-environments it reads `containers.json` on the system repository's branch `status`, which workflow `delivery`
-publishes hourly (`scripts/write-containers.ps1`), and without that file those diagrams have no boxes. A box is as
-old as the dashboard's last deployment and, for the other tier, as that file.
+A container app the system creates has no node in `topology.json`, so the health view, which checks every node every
+30 seconds, leaves it alone: it scales to zero, and those checks would keep it started. It is in the runtime diagram:
+the deployment draws a Container Apps environment under the subscription (named after the part of the apps' addresses
+the platform generates, with its region) and a box per app with its name and address, an arrow from the browser and
+one to the database where the app uses it. In the manifest (`runtime/<env>.json`) a box is a node of kind
+`containerapp` with its `deployable`, `name`, `url`, `links.site`, its deployable's `healthPath` (a plain path; left
+out otherwise) and its resource id in `ids` where the groups' list has it; the box leads to the app's address. The
+deployment's identity reads the stacks of its own tier only; for the other tier's environments it reads
+`containers.json` on the system repository's branch `status`, which workflow `delivery` publishes hourly
+(`scripts/write-containers.ps1`), and without that file those diagrams have no boxes. A box is as old as the
+dashboard's last deployment and, for the other tier, as that file.
+
+**The page probes the apps it shows** (decision 0038): while the runtime view shows a diagram and the page is neither
+paused nor hidden, every container app of it with a public address is asked once a minute (each round of checks asks
+the apps whose minute is up; a diagram shown for the first time asks at once). A declared app is asked at its
+`healthPath` with the probe Health check and at its root with Liveness; an app `system.json` does not declare at its
+root. The badge says:
+
+| Badge | Drawn as | When |
+|---|---|---|
+| Probing | being checked | Not asked yet |
+| Waking | being checked | No answer yet, within 90 seconds of the first probe of a run: an app that scaled to zero starts on the first request. A run starts again after five minutes without a probe (the tab was hidden or the view closed) |
+| Healthy, Unhealthy | healthy, unhealthy | The status of its health path (HTTP 200, or another) |
+| Responding | healthy | It answered, and the page cannot tell its health: it asked the root, or the app does not allow this page's origin |
+| Not responding | unreachable | No answer after the 90 seconds, or no answer after it had answered |
+
+The kit's container apps allow every origin to read a GET (a CORS policy of their ingress, with a static deployable,
+as the App Service apps). An app that does not (one the system made itself, or one before its next apply) is asked
+again in `no-cors` mode: the browser then says whether it answered and nothing else, the badge says "Responding" and
+the tooltip says why, and the page asks it that way while it is open (one request a minute). Nothing probes the apps
+while no page shows them, so they still scale to zero; while one does, an app stays awake, with a database its health
+check queries (the probe Liveness asks its root instead).
+
+The pipeline also asks: the hourly runbook "Health report" asks every app of the environment's stack and writes one
+line per app into its log. The workflow that publishes the delivery facts reads those lines and adds, per container
+app, what the runs found (`health.containerApps` of `delivery.json`, see "Availability"), and the box of a declared app
+shows it under the app's address in neutral words, as two lines of its tile, the history under the probe:
+
+> hourly: healthy, 40 min ago
+> 24 h: 23 of 24 · 7 d: 160 of 168
+
+- The first line is the newest result (healthy, unhealthy or unreachable) and how long ago that report ended. It is
+  history, not the app's state now: the box's colour and badge are the page's probe, whatever the result.
+- A result is said while it is at most two hours old: the runbook runs hourly, and the delivery facts are published
+  hourly. Older, or without one, the line says "no recent hourly check", in grey and not in red: a report that
+  stopped is no news about the app.
+- The second line counts, of the reports of 24 hours and of 7 days that asked the app, those that found it healthy;
+  "none" for a time without one, and left out where the file does not count it (a report whose log the workflow has
+  not read yet).
+- Without `health.containerApps` (an older file, an environment whose logs could not be read) the box has its address
+  alone, as before. The diagram has room for both lines (a container app's slot is 106 px high); one rendered before
+  has room for one of the two activity lines after them.
+
+A container app that `infra/own` adds, or one whose address the deployment could not read, is a box of its own among
+the supporting resources (below), without these lines: the hourly report asks the apps of the stack only. The page
+probes it at its address as any other; one without an address says what Resource Health said of it.
+
+### Supporting resources
+
+Everything else the system's resource groups hold is on the diagram too, so that it shows the entire system and not
+only what the registry declares. The deployment lists every group of `azure.resourceGroups`, whatever the environment
+tag (`az resource list` where its identity may; otherwise `resources.<key>` of `containers.json` on branch `status`),
+and places each resource by its tag: the environment's own in a frame "Supporting resources" inside its resource group,
+with one box per type of resource (the vault, the SQL server, Application Insights, the Log Analytics workspace, a
+storage account of `infra/own`, the managed identities as one box "Managed identity (n)" with their names, and any other
+type by the name Azure gives it); another environment's in that environment's diagram; and what no environment tag
+places (no tag, or a tag of no environment of the system) in a frame "In no environment", one box per type, group and
+tag, each saying its group and its tag or that it has none. A container app `system.json` does not declare is a node of
+kind `containerapp` without a `deployable` and without a `healthPath` (its address where it has a public one, which the
+page probes at its root), in its Container Apps environment or in "In no environment". The web apps, plans, static
+sites, the Front Door profile, the container apps and the Container Apps environment of a drawn app are not repeated,
+nor children of a resource or role assignments; in-cluster workloads are not listed. In the manifest a resource box is
+a node of kind `resource` with its `type`, `count`, `names`, `group` (and `environmentTag` in "In no environment"),
+`ids` (the resource ids of its members), and a link to its page in the Azure portal (a group of them leads to the
+resource group). The browser cannot ask them: a box of this kind has a slot of one line under its words (200 by 46
+px, which the manifest's check asks for), where the page says what Resource Health said of its members.
+
+### Resource Health
+
+Workflow `delivery` reads Azure Resource Health for every resource of every group of `azure.resourceGroups`, hourly, as
+the plan identity with Reader (`scripts/write-containers.ps1`: one list of
+`Microsoft.ResourceHealth/availabilityStatuses` per group, paged), and writes each record's `health` into
+`containers.json`: `status` (available, degraded or unavailable), `source` `resourceHealth`, `checkedAt`, and Resource
+Health's own words as `summary`. Where Resource Health has no answer (a type it does not cover, or Unknown) it is the
+provisioning state the group's list gave (`succeeded`, source `provisioningState`), and else `unknown` (source
+`none`). A read that is refused keeps the health published before, with a SKIP line in the workflow's log.
+
+The page reads `containers.json` from the same folder as `delivery.json` (`system.deliveryUrl`, on branch `status`),
+every five minutes while the runtime view shows a box with `ids`, and finds each id's health whatever its case. The
+box (a resource, the database where no web app's health check tells, a static site the page does not ask, a container
+app without an address) keeps its neutral colour and says, in words: "Available", "Degraded", "Unavailable",
+"Provisioned" or "Not known" as its badge, and "Resource Health, 40 min ago" (or "provisioning state, …", "no Resource
+Health, …") as its line, grey once the oldest reading is more than two hours old. A box of several resources has the
+most urgent word as its badge and the count of each word as its line; the tooltip names each resource, what was read
+and when, with Resource Health's words. Until the file has `health` the box says "Not known" and "no Resource Health
+read yet"; a diagram from before the ids shows the box as before.
+
+A dependency a container app declares (`deployables[].dependencies`) is drawn with an arrow from the app's box, as for a
+web app; its state is unknown (the page reads no detailed health check of a container app).
 
 ### Every box of the runtime view
 
@@ -827,8 +922,10 @@ Door down although a node is healthy, or Front Door healthy although no node is)
 address, as in a Kubernetes cluster) is shown as a single node that serves: nothing can take over from it, so the
 banner says "Serves traffic: <node>", "Not serving: <node>" or "Checking <node>", the runtime view's tile "serves
 traffic", "not serving" or "checking", and neither names a primary, a standby, a region or a failover. The states and
-their colours are the same. Where the topology has no Front Door endpoint at all, the page's help texts do not name
-Front Door either.
+their colours are the same.
+
+**No explanatory paragraphs.** The page carries no paragraph that explains itself: what a state, a number or a mark
+means is in the legend, in the hover texts and in this file.
 
 **Summary.** Every tile counts as one node: the Front Door endpoints and the web apps. Unhealthy and Unreachable both
 count as not healthy.
@@ -897,7 +994,7 @@ the dashboard's own are `DashboardInfo` of the topology and `DashboardMonitor.Da
 requests and its choice of environment (`TrafficPlan`) and what it counted (`TrafficCount`),
 the entries of a detailed health check (`HealthDetail`, `HealthDetailText`),
 the delivery facts (`DeliveryReport`, `DeliveryText`) with the hourly health reports (`HealthReports`,
-`AvailabilityText`), the cost (`CostReport`, `CostText`), the deployments in flight (`DeploymentsReport`,
+`AvailabilityText`) and what they found for each container app (`ContainerAppReports`, `HourlyCheckText`), the cost (`CostReport`, `CostText`), the deployments in flight (`DeploymentsReport`,
 `DeploymentMark`, `DeploymentText`) and the links (`LinkSet`, `LinkText`). The runtime view's logic is in `src/Dashboard/Runtime`: reading `runtime/`
 (`RuntimeManifestParser`, `RuntimeLoader`), the update of the diagram (`RuntimePayloadBuilder`) and the view in the
 address (`ViewAddress`). The cluster view's logic is in `src/Dashboard/Cluster`: the two files (`ClusterStatus`,
@@ -1200,19 +1297,23 @@ system (infrastructure and pipeline)", then the others (such as the dashboard). 
 
 The system's pipeline has an hourly runbook "Health report" in Octopus Deploy: per environment it asks every node
 and the public address, and the run fails when one is not healthy. The workflow that publishes the delivery facts
-counts those runs (`scripts/write-delivery.ps1` of the system repository: one read of Octopus per environment), and
-an environment of `delivery.json` then has:
+counts those runs (`scripts/write-delivery.ps1` of the system repository: one read of Octopus per environment, and,
+where the environment has container apps, the log of each run once: what it said is kept in `health-reports.json`
+next to the file), and an environment of `delivery.json` then has:
 
 ```json
 { "name": "prod", "deployables": [ ],
   "health": { "last24Hours": { "reports": 24, "healthy": 23 }, "last7Days": { "reports": 166, "healthy": 164 },
-              "lastFailure": "2026-10-06T16:13:00Z" } }
+              "lastFailure": "2026-10-06T16:13:00Z",
+              "containerApps": [ { "name": "ui", "last": { "result": "healthy", "at": "2026-10-06T21:02:13Z" },
+                                   "last24Hours": { "reports": 24, "healthy": 24 }, "last7Days": { "reports": 166, "healthy": 165 } } ] } }
 ```
 
 | Field | What it is |
 |---|---|
 | `last24Hours`, `last7Days` | `reports`: the health reports of the environment that ended in that time (succeeded, failed or timed out; a cancelled one is in neither number). `healthy`: those of them that succeeded. |
 | `lastFailure` | When the last report that did not succeed ended; `null` when none did in seven days. |
+| `containerApps` | Per container app of the environment, what the reports found for it, read from the line each report writes for it in its log: `name` (the deployable), `last` (`result`: `healthy`, `unhealthy` or `unreachable`; `at`: when that report ended; `null` when no report of seven days asked it), and `last24Hours`, `last7Days` as above but of the reports that asked the app (`null` while the workflow has not read the log of every report of that time). Absent where the environment has no container app; `null` when the logs could not be read. The runtime view shows it on the app's box (see "The container apps of the system"). |
 | `health` itself | `null` or absent when the system has no such runbook or its runs could not be read. |
 
 Under the environment's name in the health view ("Availability") and under the diagram in the runtime view

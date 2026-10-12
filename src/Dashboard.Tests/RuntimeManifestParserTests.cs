@@ -66,7 +66,7 @@ public class RuntimeManifestParserTests
     }
 
     [Fact]
-    public void AContainerAppIsAnotherKindWithItsAddressAndItsLink()
+    public void AContainerAppIsAKindOfItsOwnWithItsAddressAndItsLink()
     {
         var manifest = RuntimeManifestParser.ParseManifest("""
             { "environment": "tdd", "nodes": [ { "alias": "ca_scorecard", "kind": "containerapp", "deployable": "scorecard",
@@ -76,10 +76,62 @@ public class RuntimeManifestParserTests
             """).Value!;
 
         var node = Assert.Single(manifest.Nodes);
-        Assert.Equal(RuntimeNodeKind.Other, node.Kind);
+        Assert.Equal(RuntimeNodeKind.ContainerApp, node.Kind);
+        Assert.Equal("scorecard", node.Deployable);
         Assert.Equal("ca-demo-tdd-scorecard.graybush-1.southcentralus.azurecontainerapps.io", node.Url?.Host);
         Assert.Equal(node.Url, node.Links?["site"]);
         Assert.Equal(RuntimeEdgeKind.Other, Assert.Single(manifest.Edges).Kind);
+    }
+
+    [Fact]
+    public void AResourceTaggedWithSeveralEnvironmentsOrNoneIsReadAsABoxOfNoDeployable()
+    {
+        var manifest = RuntimeManifestParser.ParseManifest("""
+            { "environment": "tdd", "nodes": [
+                { "alias": "res_1", "kind": "resource", "name": "aks-demo", "type": "containerservice/managedClusters", "count": 1,
+                  "names": [ "aks-demo" ], "group": "rg-demo-cluster" },
+                { "alias": "res_2", "kind": "resource", "name": "stdemoold", "group": "rg-demo-nonprod", "environmentTag": "qa,staging" },
+                { "alias": "cax_1", "kind": "containerapp", "name": "ca-factory-gateway", "environmentTag": null } ] }
+            """);
+
+        Assert.True(manifest.IsValid, string.Join(' ', manifest.Errors));
+        Assert.All(manifest.Value!.Nodes, node => Assert.Equal(
+            (node.Name == "ca-factory-gateway" ? RuntimeNodeKind.ContainerApp : RuntimeNodeKind.Resource, (string?)null),
+            (node.Kind, node.Deployable)));
+        Assert.Empty(RuntimePayloadBuilder.Deployables(manifest.Value));
+    }
+
+    [Fact]
+    public void AContainerAppsHealthPathAndABoxsResourceIdsAreRead()
+    {
+        var manifest = RuntimeManifestParser.ParseManifest("""
+            { "environment": "tdd", "nodes": [
+                { "alias": "ca_ui", "kind": "containerapp", "deployable": "ui", "name": "ca-demo-tdd-ui", "url": "https://ca-demo-tdd-ui.example.io",
+                  "healthPath": "/_healthcheck", "ids": [ "/subscriptions/s/resourceGroups/g/providers/Microsoft.App/containerApps/ca-demo-tdd-ui" ] },
+                { "alias": "res_1", "kind": "resource", "name": "Managed identity (2)", "ids": [ " /a ", "", 7, "/b" ] },
+                { "alias": "res_2", "kind": "resource", "name": "kv-demo", "ids": [] } ] }
+            """).Value!;
+
+        Assert.Equal("/_healthcheck", manifest.Nodes[0].HealthPath);
+        Assert.Equal(["/subscriptions/s/resourceGroups/g/providers/Microsoft.App/containerApps/ca-demo-tdd-ui"], manifest.Nodes[0].Ids!);
+        Assert.Equal(["/a", "/b"], manifest.Nodes[1].Ids!);
+        Assert.Null(manifest.Nodes[2].Ids);
+        Assert.Null(manifest.Nodes[1].HealthPath);
+    }
+
+    [Theory]
+    [InlineData("""https://evil.example/x""")]
+    [InlineData("""//evil.example/x""")]
+    [InlineData("""health""")]
+    [InlineData("""/health?x=<script>""")]
+    public void AHealthPathThatIsNoPlainPathIsLeftOutAndTheManifestIsRead(string path)
+    {
+        var manifest = RuntimeManifestParser.ParseManifest($$"""
+            { "environment": "tdd", "nodes": [ { "alias": "ca_ui", "kind": "containerapp", "deployable": "ui", "url": "https://ca.example.io", "healthPath": "{{path}}" } ] }
+            """);
+
+        Assert.True(manifest.IsValid, string.Join(' ', manifest.Errors));
+        Assert.Null(Assert.Single(manifest.Value!.Nodes).HealthPath);
     }
 
     [Theory]

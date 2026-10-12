@@ -26,14 +26,6 @@
         }
         <span class="traffic__status" role="status">@StatusText</span>
     </div>
-    <p class="help">
-        @if (Selected is { } selected)
-        {
-            @($"{TrafficPlan.PerSecond} requests a second for {TrafficPlan.Seconds} s from this browser to {string.Join(", ", selected.Targets)}: ")
-        }
-        the start page and the app's representative reads, so the calls go @Route. The numbers count the last minute
-        and appear with the next check; during the traffic the page checks every @TrafficPlan.CheckEverySeconds s.
-    </p>
 </section>
 
 @code {
@@ -75,11 +67,6 @@
     /// <summary>The page's log of what it observed: a start and an end of the traffic are events.</summary>
     [Parameter]
     public EventLog? Events { get; set; }
-
-    /// <summary>The way a call takes; Front Door is named only where the topology has one somewhere.</summary>
-    private string Route => Monitor.Topology.HasFrontDoor
-        ? "browser, Front Door, the origin that serves, the database"
-        : "browser, the app, the database";
 
     /// <summary>
     /// True from the press until the run is over: while requests are sent, and after that while answers are on

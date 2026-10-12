@@ -30,7 +30,14 @@ public sealed record SystemInfo(
     Uri? DeliveryUrl = null,
     Uri? CostUrl = null,
     DashboardInfo? Dashboard = null,
-    Uri? DeploymentsUrl = null);
+    Uri? DeploymentsUrl = null)
+{
+    /// <summary>
+    /// Where the browser reads what Resource Health said of the system's resources: <c>containers.json</c>, which the
+    /// same workflow publishes next to the delivery facts; null without them.
+    /// </summary>
+    public Uri? ContainersUrl => DeliveryUrl is null ? null : new Uri(DeliveryUrl, "containers.json");
+}
 
 /// <summary>
 /// The dashboard itself as a deployable of the system (<c>system.dashboard</c> of <c>topology.json</c>): this page.

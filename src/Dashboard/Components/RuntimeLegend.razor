@@ -76,11 +76,11 @@
 
     private static readonly (string State, string Text)[] Nodes =
     [
-        ("healthy", "Healthy: HTTP 200 (the database, a dependency: a web app's health check says it is reachable; a container app that answers without telling its health: Responding)"),
-        ("unhealthy", "Unhealthy: answers, not HTTP 200 (a dependency: a web app's health check says it is degraded or unhealthy)"),
-        ("unreachable", "Unreachable: no answer (a container app: Not responding)"),
-        ("checking", "Checking (a container app: Probing, or Waking: no answer yet while it starts from zero, up to 90 seconds)"),
-        ("neutral", "Not asked by the browser: what the pipeline found, in words (a resource: Azure Resource Health, hourly; a container app also shows its hourly health report)"),
+        ("healthy", "Healthy (a container app that cannot tell its health: Responding)"),
+        ("unhealthy", "Unhealthy: answers, not HTTP 200"),
+        ("unreachable", "Unreachable: no answer"),
+        ("checking", "Checking (a container app: Probing or Waking)"),
+        ("neutral", "Not asked by the browser: what the pipeline found"),
     ];
 
     private static readonly (string State, string Text)[] Regions =

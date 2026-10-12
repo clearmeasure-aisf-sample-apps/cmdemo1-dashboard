@@ -14,7 +14,8 @@ public sealed record RuntimeParseResult<T>(T? Value, IReadOnlyList<string> Error
 /// rendered (<c>deploy-staticwebapp.ps1</c>). Required: the index's environments with their name, manifest and SVG;
 /// the manifest's nodes with alias and kind, the regions with alias, the relationships with id. Unknown fields and
 /// kinds are kept apart, not refused: a newer diagram still shows. Optional: the frames (with alias), and the
-/// <c>links</c> of a node, a region or a frame, of which only absolute https addresses are kept.
+/// <c>links</c> of a node, a region or a frame, of which only absolute https addresses are kept; a node's
+/// <c>healthPath</c> (a plain path, else left out) and its <c>ids</c> (the strings of the list).
 /// </summary>
 public static class RuntimeManifestParser
 {
@@ -106,7 +107,9 @@ public static class RuntimeManifestParser
                     Text(element, "regionAlias"),
                     Text(element, "healthCheck"),
                     Text(element, "dependencyKind"),
-                    Links(element));
+                    Links(element),
+                    HealthPath(element),
+                    Ids(element));
             });
             var regions = ReadArray(root, "regions", errors, (element, path) =>
             {
@@ -276,6 +279,38 @@ public static class RuntimeManifestParser
         return found.Count == 0 ? null : new Health.LinkSet(found);
     }
 
+    /// <summary>The longest health path kept, and the most ids of one box.</summary>
+    private const int LongestPath = 200;
+    private const int MostIds = 200;
+
+    /// <summary>
+    /// A node's health path: a path of letters, digits and <c>/ . _ ~ -</c> that starts with a slash. Anything else is
+    /// left out, never an error: the page then asks the app's root.
+    /// </summary>
+    private static string? HealthPath(JsonElement parent) =>
+        Text(parent, "healthPath") is { Length: <= LongestPath } path && path[0] == '/' && !path.StartsWith("//", StringComparison.Ordinal)
+            && path.All(character => char.IsAsciiLetterOrDigit(character) || "/._~-".Contains(character, StringComparison.Ordinal))
+            ? path
+            : null;
+
+    /// <summary>A node's resource ids: the strings of its list that are not empty; null without one.</summary>
+    private static List<string>? Ids(JsonElement parent)
+    {
+        if (!parent.TryGetProperty("ids", out var array) || array.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var ids = array.EnumerateArray()
+            .Where(id => id.ValueKind == JsonValueKind.String)
+            .Select(id => id.GetString()?.Trim())
+            .Where(id => !string.IsNullOrEmpty(id))
+            .Select(id => id!)
+            .Take(MostIds)
+            .ToList();
+        return ids.Count == 0 ? null : ids;
+    }
+
     private static RuntimeNodeKind NodeKind(string? kind) => kind?.ToLowerInvariant() switch
     {
         "person" => RuntimeNodeKind.Person,
@@ -284,6 +319,8 @@ public static class RuntimeManifestParser
         "sql" => RuntimeNodeKind.Sql,
         "staticsite" => RuntimeNodeKind.StaticSite,
         "dependency" => RuntimeNodeKind.Dependency,
+        "containerapp" => RuntimeNodeKind.ContainerApp,
+        "resource" => RuntimeNodeKind.Resource,
         _ => RuntimeNodeKind.Other,
     };
 

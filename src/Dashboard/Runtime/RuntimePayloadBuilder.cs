@@ -16,7 +16,11 @@ namespace Dashboard.Runtime;
 /// its deployable (a node of the manifest outside the subscription) takes its state from the entry the manifest names.
 /// A deployment in flight (<see cref="DeploymentMark"/>) marks every node of its deployable, by the deployable the
 /// manifest names for the node; and what the system's deployments file says about that deployable in words
-/// (<see cref="DeploymentActivity.OfNode"/>) follows the node's own lines.
+/// (<see cref="DeploymentActivity.OfNode"/>) follows the node's own lines. A container app's box has the page's own
+/// probe of it (<see cref="ContainerAppProbe"/>) and, under its address, what the pipeline's hourly health report last
+/// found there (<see cref="HourlyCheckText"/>). A box the browser cannot ask (a resource, and the database or a static
+/// site where nothing else tells) says what Resource Health last said of it (<see cref="ResourceHealthText"/>), in
+/// neutral words.
 /// </summary>
 public static class RuntimePayloadBuilder
 {
@@ -50,16 +54,28 @@ public static class RuntimePayloadBuilder
     /// The activity lines of a deployable in the environment (<see cref="DeploymentActivity.OfNode"/>), by its name;
     /// null without the file.
     /// </param>
+    /// <param name="delivery">
+    /// The delivery facts, with what the hourly health reports found for each container app; null without the file.
+    /// </param>
+    /// <param name="now">The moment of the update, for the age of a report; null leaves the reports out.</param>
+    /// <param name="containerApps">What the page's probes saw of a container app; null before any probe.</param>
+    /// <param name="resources">What Resource Health said of the system's resources; null without it.</param>
     public static RuntimePayload Build(
         RuntimeManifest manifest,
         EnvironmentStatus? environment,
         Uri? page,
         TimeZoneInfo zone,
         IReadOnlyList<DeploymentMark>? deployments = null,
-        Func<string, IReadOnlyList<ActivityLine>>? activity = null)
+        Func<string, IReadOnlyList<ActivityLine>>? activity = null,
+        DeliveryReport? delivery = null,
+        DateTimeOffset? now = null,
+        Func<ContainerAppTarget, ContainerAppStatus?>? containerApps = null,
+        ResourceHealthReport? resources = null)
     {
         ArgumentNullException.ThrowIfNull(manifest);
         ArgumentNullException.ThrowIfNull(zone);
+        var hourly = now is null ? null : delivery?.ContainerAppsOf(manifest.Environment);
+        var health = new HealthSource(resources, now, zone);
         var entries = Index(environment);
         var byAlias = new Dictionary<string, Entry>(StringComparer.Ordinal);
         foreach (var node in manifest.Nodes)
@@ -76,9 +92,11 @@ public static class RuntimePayloadBuilder
                 Deploying(
                     node.Kind switch
                     {
-                        RuntimeNodeKind.Sql => DatabaseTile(node, Clients(manifest, node, RuntimeEdgeKind.Sql, byAlias), zone, environment?.Info.Links),
+                        RuntimeNodeKind.Sql => DatabaseTile(node, Clients(manifest, node, RuntimeEdgeKind.Sql, byAlias), zone, environment?.Info.Links, health),
                         RuntimeNodeKind.Dependency => DependencyTile(node, Clients(manifest, node, RuntimeEdgeKind.Dependency, byAlias), zone),
-                        _ => Tile(node, byAlias.GetValueOrDefault(node.Alias), environment, page, zone),
+                        RuntimeNodeKind.ContainerApp => ContainerAppTile(node, containerApps, hourly, now, zone, health),
+                        RuntimeNodeKind.Resource => health.Tile(node, string.Empty) ?? NeutralTile(node, "Not probed", string.Empty, node.Name),
+                        _ => Tile(node, byAlias.GetValueOrDefault(node.Alias), environment, page, zone, health),
                     },
                     node,
                     deployments,
@@ -246,7 +264,26 @@ public static class RuntimePayloadBuilder
             : entries.FirstOrDefault(entry => entry.Target.Kind == kind && entry.Target.Url == node.Url);
     }
 
-    private static RuntimeTile Tile(RuntimeNode node, Entry? entry, EnvironmentStatus? environment, Uri? page, TimeZoneInfo zone)
+    /// <summary>Resource Health as the tiles take it: what it said of the resources a box stands for.</summary>
+    private sealed record HealthSource(ResourceHealthReport? Report, DateTimeOffset? Now, TimeZoneInfo Zone)
+    {
+        /// <summary>
+        /// The tile of a box from Resource Health, neutral, with why nothing else tells first in its tooltip; null for a
+        /// box without ids (a manifest from before them).
+        /// </summary>
+        public RuntimeTile? Tile(RuntimeNode node, string why)
+        {
+            if (ResourceHealthText.Of(node.Ids, Report, Now, Zone) is not { } words)
+            {
+                return null;
+            }
+
+            var title = why.Length > 0 ? $"{node.Name}: {why}\n{words.Title}" : $"{node.Name}\n{words.Title}";
+            return new RuntimeTile(node.Alias, Neutral, words.Label, null, [new RuntimeTileLine(words.Line, words.Tone)], null, title);
+        }
+    }
+
+    private static RuntimeTile Tile(RuntimeNode node, Entry? entry, EnvironmentStatus? environment, Uri? page, TimeZoneInfo zone, HealthSource health)
     {
         // The site that serves this page says so, also where the topology lists it as a node: it answers, or nobody
         // would be reading this.
@@ -266,7 +303,7 @@ public static class RuntimePayloadBuilder
 
         return node.Kind switch
         {
-            RuntimeNodeKind.StaticSite => NeutralTile(
+            RuntimeNodeKind.StaticSite => health.Tile(node, $"the dashboard of this environment{(node.Url is null ? string.Empty : $" ({node.Url.Host})")}. This page does not check it.") ?? NeutralTile(
                 node,
                 "Not probed",
                 node.Url is null ? "its address is not in this deployment" : node.Url.Host,
@@ -281,15 +318,77 @@ public static class RuntimePayloadBuilder
                 "Not checked",
                 "not in topology.json",
                 $"{node.Name}: the topology this page loaded has no such address, so it is not checked. Reload the topology, or deploy the dashboard again."),
-            // A container app the system creates: drawn from the deployment's stack, never probed. It scales to zero, and a
-            // check from this page would start it, and keep it started for as long as the page is open.
-            RuntimeNodeKind.Other when node.Url is not null => NeutralTile(
-                node,
-                "Not probed",
-                node.Url.Host,
-                $"{node.Name} ({node.Url.Host}): the dashboard does not check it. A container app scales to zero, and a check from this page would start it."),
-            _ => NeutralTile(node, "Not probed", string.Empty, node.Name),
+            // A kind this page does not know, with an address: drawn with it, never probed.
+            RuntimeNodeKind.Other when node.Url is not null => NeutralTile(node, "Not probed", node.Url.Host, $"{node.Name} ({node.Url.Host}): the dashboard does not check it."),
+            _ => health.Tile(node, string.Empty) ?? NeutralTile(node, "Not probed", string.Empty, node.Name),
         };
+    }
+
+    /// <summary>The container app a node is, as the page probes it; null for another node, and for one without an address.</summary>
+    public static ContainerAppTarget? ContainerTarget(RuntimeNode node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        return node.Kind == RuntimeNodeKind.ContainerApp && node.Url is { } url
+            ? new ContainerAppTarget(url, node.Deployable is null ? null : node.HealthPath)
+            : null;
+    }
+
+    /// <summary>What the page probes and reads for a diagram: its container apps, and Resource Health where a box shows it.</summary>
+    public static RuntimeWatch Watch(RuntimeManifest manifest)
+    {
+        ArgumentNullException.ThrowIfNull(manifest);
+        return new RuntimeWatch(
+            [.. manifest.Nodes.Select(ContainerTarget).OfType<ContainerAppTarget>().Distinct()],
+            manifest.Nodes.Any(node => node.Ids is { Count: > 0 }));
+    }
+
+    /// <summary>The state word of a container app's probe: the colours of the other states, none of its own.</summary>
+    public static string StateOf(ContainerAppState state) => state switch
+    {
+        ContainerAppState.Healthy or ContainerAppState.Responding => Healthy,
+        ContainerAppState.Unhealthy => Unhealthy,
+        ContainerAppState.NotResponding => Unreachable,
+        _ => Checking,
+    };
+
+    /// <summary>
+    /// A container app: the page's own probe (<see cref="ContainerAppProbe"/>), once a minute while the page shows it,
+    /// is its state; "Waking" is drawn as a check in progress. Under its address, where the delivery facts say what the
+    /// pipeline's hourly health report found for an app <c>system.json</c> declares (the report asks no other), the
+    /// result of the last two hours and when, or that there is none, and the counts of 24 hours and 7 days, in neutral
+    /// words. An app without an address the browser can ask says what Resource Health said of it.
+    /// </summary>
+    /// <param name="hourly">What the reports found for the environment's container apps; null without it.</param>
+    private static RuntimeTile ContainerAppTile(
+        RuntimeNode node,
+        Func<ContainerAppTarget, ContainerAppStatus?>? probes,
+        IReadOnlyList<ContainerAppReports>? hourly,
+        DateTimeOffset? now,
+        TimeZoneInfo zone,
+        HealthSource health)
+    {
+        if (ContainerTarget(node) is not { } target)
+        {
+            const string Why = "a container app without a public address this page knows: the browser cannot ask it.";
+            return health.Tile(node, Why) ?? NeutralTile(node, "No address", "no public address known", $"{node.Name}: {Why}");
+        }
+
+        var status = probes?.Invoke(target) ?? ContainerAppStatus.NotYet;
+        var lines = new List<RuntimeTileLine> { new(target.Url.Host, "muted") };
+        var title = ContainerAppText.Title(node.Name, target, status, zone);
+        if (node.Deployable is not null && hourly is not null && now is { } moment)
+        {
+            var reports = hourly.FirstOrDefault(entry => string.Equals(entry.Name, node.Deployable, StringComparison.OrdinalIgnoreCase));
+            lines.Add(new RuntimeTileLine(HourlyCheckText.Result(reports, moment), HourlyCheckText.RecentResult(reports, moment) is null ? "muted" : "plain"));
+            if (HourlyCheckText.Counts(reports) is { } counts)
+            {
+                lines.Add(new RuntimeTileLine(counts, "muted"));
+            }
+
+            title = $"{title}\n{HourlyCheckText.Title(reports, moment, zone)}";
+        }
+
+        return new RuntimeTile(node.Alias, StateOf(status.State), ContainerAppText.Label(status.State), ContainerAppText.Facts(status), lines, null, title);
     }
 
     /// <summary>The checked web apps with a relationship of that kind to the node (the database, a dependency).</summary>
@@ -400,20 +499,18 @@ public static class RuntimePayloadBuilder
     /// <summary>
     /// The database from the web apps' health checks, which connect to it: one that passes says the database answered.
     /// One that fails does not say it did not, since the web app itself may be the cause; the liveness probe leaves the
-    /// database alone.
+    /// database alone. Where no web app tells (none this page checks uses it, or the probe is Liveness), what Resource
+    /// Health said of it.
     /// </summary>
-    private static RuntimeTile DatabaseTile(RuntimeNode node, List<Entry> clients, TimeZoneInfo zone, LinkSet? links) =>
-        DatabaseTile(node, clients, zone) with { NameLink = RuntimeLink.To(links?[LinkSet.Database], LinkText.For(LinkSet.Database, node.Name)) };
+    private static RuntimeTile DatabaseTile(RuntimeNode node, List<Entry> clients, TimeZoneInfo zone, LinkSet? links, HealthSource health) =>
+        DatabaseTile(node, clients, zone, health) with { NameLink = RuntimeLink.To(links?[LinkSet.Database], LinkText.For(LinkSet.Database, node.Name)) };
 
-    private static RuntimeTile DatabaseTile(RuntimeNode node, List<Entry> clients, TimeZoneInfo zone)
+    private static RuntimeTile DatabaseTile(RuntimeNode node, List<Entry> clients, TimeZoneInfo zone, HealthSource health)
     {
         if (clients.Count == 0)
         {
-            return NeutralTile(
-                node,
-                "Not probed",
-                "not probed from the browser",
-                $"{node.Name}: the database takes no call from a browser, and this page checks no web app that uses it.");
+            const string Why = "the database takes no call from a browser, and this page checks no web app that uses it.";
+            return health.Tile(node, Why) ?? NeutralTile(node, "Not probed", "not probed from the browser", $"{node.Name}: {Why}");
         }
 
         var passed = clients.Where(entry => entry.Target.Last is { State: HealthState.Healthy, Probe: ProbeKind.Health }).ToList();
@@ -443,11 +540,8 @@ public static class RuntimePayloadBuilder
 
         if (clients.All(entry => entry.Target.Last is { Probe: ProbeKind.Liveness }))
         {
-            return NeutralTile(
-                node,
-                "Not probed",
-                "probe Liveness leaves it alone",
-                $"{node.Name}: the probe is Liveness, which does not connect to the database. Choose Health check to see whether it answers.");
+            const string Why = "the probe is Liveness, which does not connect to the database. Choose Health check to see whether it answers.";
+            return health.Tile(node, Why) ?? NeutralTile(node, "Not probed", "probe Liveness leaves it alone", $"{node.Name}: {Why}");
         }
 
         if (clients.Any(entry => entry.Target.State == HealthState.Pending))

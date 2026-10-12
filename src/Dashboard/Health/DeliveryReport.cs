@@ -37,6 +37,12 @@ public sealed record DeliveryReport(DateTimeOffset? Generated, IReadOnlyList<Del
     public HealthReports? HealthOf(string environment) =>
         Environments.FirstOrDefault(entry => string.Equals(entry.Name, environment, StringComparison.OrdinalIgnoreCase))?.Health;
 
+    /// <summary>
+    /// What the hourly health reports found for the container apps of an environment; null when the file does not say
+    /// (a file from before it did, or one whose system could not read the reports' logs).
+    /// </summary>
+    public IReadOnlyList<ContainerAppReports>? ContainerAppsOf(string environment) => HealthOf(environment)?.ContainerApps;
+
     /// <summary>The name of the entry of the system project itself.</summary>
     public const string SystemName = "system";
 
@@ -88,13 +94,17 @@ public sealed record DeliveryEnvironment(string Name, IReadOnlyList<DeliveryEntr
 /// <param name="Last24Hours">The reports of the last 24 hours.</param>
 /// <param name="Last7Days">The reports of the last seven days.</param>
 /// <param name="LastFailure">When the last report that failed ended; null when none did in seven days.</param>
-public sealed record HealthReports(HealthWindow? Last24Hours, HealthWindow? Last7Days, DateTimeOffset? LastFailure)
+/// <param name="ContainerApps">
+/// What the reports found for each container app of the environment (<c>containerApps</c>); null when the file does
+/// not say, also where the environment has no container app.
+/// </param>
+public sealed record HealthReports(HealthWindow? Last24Hours, HealthWindow? Last7Days, DateTimeOffset? LastFailure, IReadOnlyList<ContainerAppReports>? ContainerApps = null)
 {
     internal static HealthReports? Read(JsonElement? section)
     {
         var day = HealthWindow.Read(JsonRead.Section(section, "last24Hours"));
         var week = HealthWindow.Read(JsonRead.Section(section, "last7Days"));
-        return day is null && week is null ? null : new HealthReports(day, week, JsonRead.Time(section, "lastFailure"));
+        return day is null && week is null ? null : new HealthReports(day, week, JsonRead.Time(section, "lastFailure"), ContainerAppReports.ReadAll(section));
     }
 }
 

@@ -38,6 +38,19 @@ public enum RuntimeNodeKind
     /// subscription: the browser cannot ask it, and a web app's detailed health check tells its state.
     /// </summary>
     Dependency,
+
+    /// <summary>
+    /// A container app the system creates, or one its resource groups hold: the page probes its public address while
+    /// it shows the diagram (<see cref="Health.ContainerAppProbe"/>), and its box also says what the pipeline's hourly
+    /// health report last found there.
+    /// </summary>
+    ContainerApp,
+
+    /// <summary>
+    /// A box of the system's other resources (the vault, the SQL server, the identities): the browser cannot ask it,
+    /// so its box says what Azure Resource Health last said of the resources it stands for (<see cref="RuntimeNode.Ids"/>).
+    /// </summary>
+    Resource,
 }
 
 public enum RuntimeEdgeKind
@@ -90,6 +103,14 @@ public sealed record RuntimeManifest(
 /// <param name="Links">
 /// Where the node's name leads when the topology has no link for it (<see cref="RuntimeBoxLink"/>); null without one.
 /// </param>
+/// <param name="HealthPath">
+/// For a container app <c>system.json</c> declares: the health path of its deployable, which the page probes; null for
+/// any other node, and for an app nobody declared (the page then asks its root).
+/// </param>
+/// <param name="Ids">
+/// The Azure resource ids the box stands for, from the resource groups' listing, by which the page finds what Resource
+/// Health said of them; null in a manifest from before the ids, and where the listing has none.
+/// </param>
 public sealed record RuntimeNode(
     string Alias,
     RuntimeNodeKind Kind,
@@ -101,7 +122,9 @@ public sealed record RuntimeNode(
     string? RegionAlias = null,
     string? HealthCheck = null,
     string? DependencyKind = null,
-    Health.LinkSet? Links = null);
+    Health.LinkSet? Links = null,
+    string? HealthPath = null,
+    IReadOnlyList<string>? Ids = null);
 
 /// <param name="Alias">The region boundary's alias.</param>
 /// <param name="Name">The Azure region.</param>

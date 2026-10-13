@@ -44,7 +44,8 @@ For each environment (tdd, uat, prod) and each deployable in it, the health view
 - where the topology has a link for it, every number and name leads to its place in the Azure portal or in Octopus
   Deploy; in the runtime view every box leads to what it stands for, by a click anywhere on it (see "Links");
 - which region is expected to serve the traffic, a "Failed over to <region>" banner when the primary is not healthy
-  but a standby is, and whether the Front Door endpoint agrees;
+  but a standby is, and whether the Front Door endpoint agrees; for several primary nodes behind a Front Door
+  endpoint, every healthy one ("Front Door rotates over 11 regions: all healthy");
 - the version the last deployment pinned in Git next to the versions the nodes run ("Pinned 2.4.7. In sync: all 2
   nodes run 2.4.7." or "Differs: eastus2 runs 2.4.6."), with a link to the Octopus Deploy project that deploys the
   deployable and to the history of the pins on GitHub;
@@ -190,7 +191,7 @@ topology" is pressed. The deployment writes the real file; the build does not kn
 | `nodes[].url` | yes, an absolute http(s) address | Error. |
 | `nodes[].name` | no | The host of `url`. |
 | `nodes[].region` | no | The tile is titled with the node's name. |
-| `nodes[].role` | no | `primary` for the first node of the deployable, `standby` for the others. |
+| `nodes[].role` | no | `primary` for the first node of the deployable, `standby` for the others. More than one `primary` behind a `frontDoor` is a rotation (see "Expected to serve traffic"). |
 | `nodes[].links` | no | The node's numbers and its name are plain text. Keys: `portal`, `liveMetrics`, `performance`, `failures`, `dependencies`. |
 | `cluster` | no, may be `null`; an object | No cluster view: no tab, and nothing is read (see "The cluster view"). |
 | `cluster.name` | no | The view is titled "Cluster", and the links' titles do not name the cluster. |
@@ -360,8 +361,8 @@ diagram in place:
 | Element | What it shows |
 |---|---|
 | Web app, Front Door endpoint | The box's colour and border by state (Healthy: the navy box in a green border; Unhealthy: a red wash in a dashed red border; Unreachable: the line colour in a dotted border; Checking: dashed), and a tile: the state's badge with its word, HTTP status and latency, the version, the last 30 checks. A web app also shows its version next to the pinned one ("pinned 2.4.21: in sync", "differs from pinned 2.4.21"), its own numbers where it reports them ("12 req/min · p95 85 ms" with the trend of the requests, "0 errors · 0 exceptions/min", "CPU 3.2 % · 412 MB · 2 in flight" with the trend of the CPU, "up 2 h" or "restarted 3 min ago") and its role ("primary: serves traffic", "standby: ready, no traffic"; the only node of a deployable without a Front Door endpoint has no role: "serves traffic", "not serving"), and last, where it answers a detailed health check, one small mark per entry with the summary in words ("8 checks healthy", "LlmGateway degraded", "2 of 8 checks not healthy"; see "Health checks, entry by entry"); the endpoint shows where it routes ("routes to eastus2 (failed over)") and whether it agrees with the web apps. |
-| Region of web apps | A mark with words: "serving traffic" (green frame), "standby: ready" (dashed frame), "not serving" (dashed red frame), by the same serving decision as the health view's banner. A region of the database and the static sites has a note in slate, in italics ("database: reachable; static sites: not probed"). |
-| Front Door to an origin | Solid and green while it carries the traffic, dotted grey while idle, dashed red when the origin is not healthy: a failover is the green line moving from priority 1 to priority 2. |
+| Region of web apps | A mark with words: "serving traffic" (green frame), "standby: ready" (dashed frame), "not serving" (dashed red frame), by the same serving decision as the health view's banner. In a rotation every region with a healthy primary is "serving traffic". A region of the database and the static sites has a note in slate, in italics ("database: reachable; static sites: not probed"). |
+| Front Door to an origin | Solid and green while it carries the traffic, dotted grey while idle, dashed red when the origin is not healthy: a failover is the green line moving from priority 1 to priority 2. In a rotation the line to every healthy primary is green ("in the rotation, while healthy"), and the Front Door's box says "rotates over 3 regions" or "rotates over 2 of 3 regions". |
 | Web app to the database | Green from the web app that serves, dotted from the others. |
 | Number line of a relationship | Calls per minute of the last minute, in a solid frame, as the web apps count them: browser to Front Door (the sum of its origins' requests from Front Door), Front Door to an origin (its requests from Front Door; Front Door's health probes next to the role), web app to database (the SQL commands of its requests, with the background ones next to the role, "app queries · 55 background"; all SQL commands for an app that does not tell them apart), web app to dependency (the web app's outgoing HTTP calls, `http.perMinute`, when the web app has exactly one dependency; a dash, "not counted apart", when it has more, because the app counts them as one number). Next to the number, its trend over the last checks of this page. A dashed frame with "–" where no web app reports a number (no `telemetryPath`, or an app without the endpoint). |
 | Database | The browser cannot ask the database, but a web app's health check connects to it: "Reachable" (healthy) when the health check of a web app that uses it passes, with the queries per minute its web apps' traffic causes (the background ones are in the tooltip); "Not confirmed" (neutral) when none passes, since the web app may be the cause. Where no web app tells (none this page checks uses it, or the probe is Liveness, which leaves the database alone) it says what Resource Health said of it (see "Resource Health"), or "Not probed" in a diagram from before the ids. |
@@ -1065,6 +1066,15 @@ the deployable has failed over, and the banner says to which region and why. Whe
 serve. The Front Door endpoint agrees when it is healthy exactly when a node is; a disagreement is flagged (Front
 Door down although a node is healthy, or Front Door healthy although no node is).
 
+**A rotation.** A deployable is read as a rotation when it has a Front Door endpoint (`frontDoor`) and more than one
+node with the role `primary`: the Front Door rotates over the primary nodes, so every healthy one serves. Each of
+them carries "serves traffic", and a primary that is not healthy is "not serving". The banner counts them: "Front
+Door rotates over 11 regions: all healthy", "Front Door rotates over 10 of 11 regions: wus3 is not healthy" (it names
+up to three, then "and 2 more"), "No region is healthy". It is decided when every primary is checked. A standby in a
+rotation stands by while any primary is healthy; the first healthy standby serves only when no primary is, and that
+is the failover. The Front Door endpoint agrees when it is healthy exactly when a node that serves is. Several
+primary nodes without a Front Door endpoint are no rotation: the first healthy one is named, as above.
+
 **A single node.** A deployable without a Front Door endpoint and with exactly one node (one app at one public
 address, as in a Kubernetes cluster) is shown as a single node that serves: nothing can take over from it, so the
 banner says "Serves traffic: <node>", "Not serving: <node>" or "Checking <node>", the runtime view's tile "serves
@@ -1336,7 +1346,7 @@ the one before (`EventDetector`); nothing comes from a server's log, and a reloa
 | Health check | An entry of a web app's detailed health check has another state than in the last answer that had entries (so a check that read none, or the probe Liveness, hides no change); at the first answer, and for an entry the answer before did not have, only when it is not healthy. With the entry's own words. Its level is the entry's new state: Healthy good news, Degraded a warning, Unhealthy a problem. An entry that is gone is no event, and neither is the same state in other words. It follows the node's own state change of the same check, which it explains. | "ui: LlmGateway Healthy → Degraded: Chat client answered slowly: 4.2 s", "ui: DataAccess Unhealthy at the first check: Database connection failed" |
 | Restart | A web app's `uptimeSeconds` went down, or (without it) its `startedAt` is later. Compared with its last reading, also across checks it did not answer. | "ui restarted, up 12 s" |
 | Deployment | A web app reports another version. Not for a Front Door endpoint, which answers for whichever node served. | "ui: 2.4.14 → 2.4.15, deployed" |
-| Serving region | At the end of a round, the node expected to serve changed: a failover, a failback, nothing serves, serves again. | "Failover: westus3 → eastus2. Primary westus3 is unreachable; eastus2 is expected to serve traffic." |
+| Serving region | At the end of a round, the node expected to serve changed: a failover, a failback, nothing serves, serves again. In a rotation, a primary that left the rotation or is back in it, one event per node; "failover" is only the move from the primaries to a standby. | "Failover: westus3 → eastus2. Primary westus3 is unreachable; eastus2 is expected to serve traffic."; "eastus2 left the rotation: 10 of 11 regions serve traffic."; "eastus2 is back in the rotation: 11 of 11 regions serve traffic."; "Failover: the rotation → japaneast. No primary node is healthy; japaneast is expected to serve traffic." |
 | Pin | The version pinned in Git changed between two readings of `versions.json`, or of the deployable's own file (`pinUrl`). | "ui: pinned 2.4.14 → 2.4.15 in Git" |
 | Traffic | The traffic button was started, or its run ended: stopped or ran out, and no answer is on its way any more. | "Traffic started: 2 requests a second for 60 s to ui at cmdemo2-uat-def456.z01.azurefd.net" |
 | Cluster | Only with `cluster` in the topology, between two readings of its files and never at the first: the status file stopped answering or answers again; the collector stopped writing (the file became stale) or writes again; a node is no longer ready or is ready again; per pod one event a round at most: its restart count rose, or else it became unhealthy, or else it is ready again; Azure's verdict on the AKS service or its power state changed. A round names ten pods and counts the rest. | "ui in cmdemo3-tdd restarted (7 restarts): CrashLoopBackOff", "Node aks-…000000 is not ready", "The cluster's status file stopped answering: no answer within 10 s", "Azure's verdict on the AKS service: Available → Degraded" |

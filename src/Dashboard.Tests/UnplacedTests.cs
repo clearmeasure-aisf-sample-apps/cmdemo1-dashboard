@@ -148,7 +148,9 @@ public class UnplacedTests
 
         var watch = RuntimePayloadBuilder.Watch(bare with { Unplaced = [new RuntimeUnplaced("acrdemo1", Ids: [RegistryId])] });
         Assert.True(watch.ResourceHealth);
-        Assert.Empty(watch.Apps);
+        Assert.Equal(
+            ["ca-cmdemo1-uat-ui.example.southcentralus.azurecontainerapps.io", "ca-cmdemo1-uat-aisf.example.southcentralus.azurecontainerapps.io"],
+            watch.Apps.Select(app => app.Url.Host));
     }
 
     [Theory]

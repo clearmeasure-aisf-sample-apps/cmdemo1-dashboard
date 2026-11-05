@@ -22,18 +22,22 @@ public class RuntimeBoxLinkTests
     public void TheSampleManifestListsEveryFrameThatIsNoRegionWithItsLink()
     {
         var manifest = Sample("uat");
+        var frames = manifest.Frames!;
 
         Assert.Equal(
-            [("sub", "subscription"), ("rg_edge", "resourceGroup"), ("afd", "frontDoorProfile"), ("rg_tier", "resourceGroup"), ("plan_standby", "plan"), ("plan_primary", "plan")],
-            manifest.Frames!.Select(frame => (frame.Alias, frame.Kind)));
-        Assert.Equal($"{Portal}/overview", manifest.Frames![0].Links![LinkSet.Portal]!.AbsoluteUri);
-        Assert.Equal($"{Portal}/resourceGroups/rg-cmdemo2-edge/providers/Microsoft.Cdn/profiles/afd-cmdemo2/overview", manifest.Frames[2].Links![LinkSet.Portal]!.AbsoluteUri);
-        Assert.Equal($"{Portal}/resourceGroups/rg-cmdemo2-nonprod/providers/Microsoft.Web/serverfarms/asp-cmdemo2-uat-eastus2/overview", manifest.Frames[4].Links![LinkSet.Portal]!.AbsoluteUri);
-        Assert.All(manifest.Regions, region => Assert.Contains("/blade/HubsExtension/ArgQueryBlade/query/", region.Links![RuntimeBoxLink.Resources]!.AbsoluteUri, StringComparison.Ordinal));
-        Assert.Contains(Uri.EscapeDataString("location =~ \"eastus2\""), manifest.Regions[0].Links![RuntimeBoxLink.Resources]!.AbsoluteUri, StringComparison.Ordinal);
-        Assert.Equal("https://cmdemo2-uat-def456.z01.azurefd.net/", manifest.Nodes[0].Links![RuntimeBoxLink.Site]!.AbsoluteUri);
+            [("sub", "subscription"), ("rg_tier", "resourceGroup"), ("cae", "containerAppsEnvironment")],
+            frames.Select(frame => (frame.Alias, frame.Kind)));
+        Assert.DoesNotContain(frames, frame => frame.Kind == "plan");
+        Assert.Equal($"{Portal}/overview", frames[0].Links![LinkSet.Portal]!.AbsoluteUri);
+        Assert.Equal($"{Portal}/resourceGroups/rg-cmdemo1-nonprod/overview", frames[1].Links![LinkSet.Portal]!.AbsoluteUri);
         Assert.Equal(
-            $"{Portal}/resourceGroups/rg-cmdemo2-nonprod/providers/Microsoft.Web/staticSites/swa-cmdemo2-uat-dashboard/overview",
+            $"{Portal}/resourceGroups/rg-cmdemo1-nonprod/providers/Microsoft.App/managedEnvironments/cae-cmdemo1-uat/overview",
+            frames[2].Links![LinkSet.Portal]!.AbsoluteUri);
+        Assert.All(manifest.Regions, region => Assert.Contains("/blade/HubsExtension/ArgQueryBlade/query/", region.Links![RuntimeBoxLink.Resources]!.AbsoluteUri, StringComparison.Ordinal));
+        Assert.Contains(Uri.EscapeDataString("location =~ \"centralus\""), manifest.Regions[0].Links![RuntimeBoxLink.Resources]!.AbsoluteUri, StringComparison.Ordinal);
+        Assert.Equal("https://ca-cmdemo1-uat-ui.example.southcentralus.azurecontainerapps.io/", manifest.Nodes[0].Links![RuntimeBoxLink.Site]!.AbsoluteUri);
+        Assert.Equal(
+            $"{Portal}/resourceGroups/rg-cmdemo1-nonprod/providers/Microsoft.Web/staticSites/swa-cmdemo1-uat-dashboard/overview",
             manifest.Nodes.Single(node => node.Kind == RuntimeNodeKind.StaticSite).Links![LinkSet.Portal]!.AbsoluteUri);
     }
 
@@ -71,16 +75,16 @@ public class RuntimeBoxLinkTests
         var payload = Payload(Sample("uat"));
         var names = payload.Names!.ToDictionary(name => name.Alias, name => name.NameLink.Title);
 
-        Assert.Equal("Browser: cmdemo2-uat-def456.z01.azurefd.net, as a browser opens it (opens in a new tab)", names["browser"]);
+        Assert.Equal("Browser: ca-cmdemo1-uat-ui.example.southcentralus.azurecontainerapps.io, as a browser opens it (opens in a new tab)", names["browser"]);
         Assert.Equal(LinkText.Portal("The Azure subscription in the Azure portal"), names["sub"]);
-        Assert.Equal(LinkText.Portal("The resource group rg-cmdemo2-edge in the Azure portal"), names["rg_edge"]);
-        Assert.Equal(LinkText.Portal("The Front Door profile afd-cmdemo2 in the Azure portal"), names["afd"]);
-        Assert.Equal(LinkText.Portal("The App Service plan asp-cmdemo2-tdd in the Azure portal"), names["plan_primary"]);
+        Assert.Equal(LinkText.Portal("The resource group rg-cmdemo1-nonprod in the Azure portal"), names["rg_tier"]);
+        Assert.Equal(LinkText.Portal("cae-cmdemo1-uat in the Azure portal"), names["cae"]);
+        Assert.DoesNotContain(names, name => name.Value.Contains("App Service", StringComparison.Ordinal));
         Assert.Equal(
-            LinkText.Portal("The resources in westus3, a query in Azure Resource Graph Explorer"),
-            payload.Regions.Single(region => region.Alias == "region_primary").NameLink!.Title);
+            LinkText.Portal("The resources in centralus, a query in Azure Resource Graph Explorer"),
+            payload.Regions.Single(region => region.Alias == "region_data").NameLink!.Title);
         Assert.Equal(
-            LinkText.Portal("The Static Web App swa-cmdemo2-uat-dashboard in the Azure portal"),
+            LinkText.Portal("The Static Web App swa-cmdemo1-uat-dashboard in the Azure portal"),
             payload.Nodes.Single(tile => tile.Alias == "swa_dashboard").NameLink!.Title);
     }
 

@@ -13,10 +13,10 @@ public class ViewLinksTests
 
     private static readonly RuntimeManifest Sample = RuntimeManifestParser.ParseManifest(RuntimeManifestParserTests.Sample("uat.json")).Value!;
 
-    /// <summary>The sample manifest of uat with the architecture of ui on both of its web apps.</summary>
+    /// <summary>The shipped manifest of uat with the architecture of each container app.</summary>
     private static readonly RuntimeManifest WithArchitecture = Sample with
     {
-        Nodes = [.. Sample.Nodes.Select(node => node.Kind == RuntimeNodeKind.WebApp ? node with { Architecture = new Uri(Base) } : node)],
+        Nodes = [.. Sample.Nodes.Select(node => node.Kind == RuntimeNodeKind.ContainerApp ? node with { Architecture = new Uri(Base) } : node)],
     };
 
     private static EnvironmentStatus Uat() => new(SampleTopology.Environments.Single(environment => environment.Name == "uat"));
@@ -29,13 +29,13 @@ public class ViewLinksTests
     {
         Assert.Empty(RuntimeZoom.Boxes(Sample, database: false));
         Assert.Equal(
-            [("sqldb", "Database sqldb-cmdemo2-uat: open its tables")],
+            [("sqldb", "Database sqldb-cmdemo1-uat: open its tables")],
             RuntimeZoom.Boxes(Sample, database: true));
         Assert.Equal(
-            ["sqldb", "app_ui_standby", "app_ui_primary"],
+            ["sqldb", "ca_ui", "ca_aisf"],
             RuntimeZoom.Boxes(WithArchitecture, database: true).Select(box => box.Alias));
         Assert.Equal(
-            ["app_ui_standby", "app_ui_primary"],
+            ["ca_ui", "ca_aisf"],
             RuntimeZoom.Boxes(WithArchitecture, database: false).Select(box => box.Alias));
     }
 
@@ -49,14 +49,12 @@ public class ViewLinksTests
         var payload = RuntimeZoom.WithoutNameLinks(built, zoomable);
 
         Assert.Equal(
-            ["fd_ui", "swa_dashboard"],
+            ["swa_dashboard"],
             payload.Nodes.Where(tile => tile.NameLink is not null).Select(tile => tile.Alias));
         Assert.All(payload.Nodes.Where(tile => tile.NameLink is not null), tile => Assert.Equal(built.Nodes.Single(before => before.Alias == tile.Alias).NameLink, tile.NameLink));
 
-        // The other links of a box that zooms are its own still, and so are the frames' and the regions' names.
-        var primary = payload.Nodes.Single(tile => tile.Alias == "app_ui_primary");
-        Assert.Equal(built.Nodes.Single(tile => tile.Alias == "app_ui_primary").Link, primary.Link);
-        Assert.NotNull(primary.Link);
+        // A container app's name was its address; zooming takes that link off the box. The static site keeps its portal link.
+        Assert.Null(payload.Nodes.Single(tile => tile.Alias == "ca_ui").NameLink);
         Assert.Equal(built.Names, payload.Names);
         Assert.Equal(built.Regions, payload.Regions);
     }
@@ -113,8 +111,21 @@ public class ViewLinksTests
     [Fact]
     public void TheApplicationViewOfSeveralNodesNamesEachAndTakesThePortalFromTheTopology()
     {
-        var uat = Uat();
-        var boxes = ApplicationText.Boxes(WithArchitecture, "ui");
+        var manifest = new RuntimeManifest(
+            "uat",
+            [
+                new RuntimeNode("ca_api", RuntimeNodeKind.ContainerApp, "ca-api", new Uri("https://ca-api.example.io"), "ui", Architecture: new Uri(Base)),
+                new RuntimeNode("ca_ui", RuntimeNodeKind.ContainerApp, "ca-ui", new Uri("https://ca-ui.example.io"), "ui", "primary", Architecture: new Uri(Base)),
+            ],
+            [],
+            []);
+        var uat = new EnvironmentStatus(TopologyParser.Parse("""
+            { "environments": [ { "name": "uat", "deployables": [ { "name": "ui", "nodes": [
+                { "name": "ca-ui", "role": "primary", "url": "https://ca-ui.example.io", "links": { "portal": "https://portal.example.net/#ca-ui" } },
+                { "name": "ca-api", "url": "https://ca-api.example.io", "links": { "portal": "https://portal.example.net/#ca-api" } }
+            ] } ] } ] }
+            """).Topology!.Environments[0]);
+        var boxes = ApplicationText.Boxes(manifest, "ui");
         var nodes = uat.Deployables.Single(deployable => deployable.Info.Name == "ui").Nodes;
 
         var links = ApplicationText.Links(boxes, uat);

@@ -16,29 +16,33 @@ public class RuntimeManifestParserTests
     }
 
     [Fact]
-    public void TheSampleManifestOfUatNamesEveryNodeRegionAndRelationship()
+    public void TheSampleManifestOfUatNamesTheUiContainerAppAsTheOnlySqlUser()
     {
         var manifest = RuntimeManifestParser.ParseManifest(Sample("uat.json")).Value!;
 
         Assert.Equal("uat", manifest.Environment);
         Assert.Equal(
-            ["browser", "fd_ui", "app_ui_standby", "app_ui_primary", "sqldb", "swa_dashboard"],
+            ["browser", "ca_ui", "ca_aisf", "sqldb", "swa_dashboard"],
             manifest.Nodes.Select(node => node.Alias));
         Assert.Equal(
-            [RuntimeNodeKind.Person, RuntimeNodeKind.FrontDoor, RuntimeNodeKind.WebApp, RuntimeNodeKind.WebApp, RuntimeNodeKind.Sql, RuntimeNodeKind.StaticSite],
+            [RuntimeNodeKind.Person, RuntimeNodeKind.ContainerApp, RuntimeNodeKind.ContainerApp, RuntimeNodeKind.Sql, RuntimeNodeKind.StaticSite],
             manifest.Nodes.Select(node => node.Kind));
-        var primary = manifest.Nodes.Single(node => node.Alias == "app_ui_primary");
+        Assert.DoesNotContain(manifest.Nodes, node => node.Kind == RuntimeNodeKind.WebApp);
+        Assert.DoesNotContain(manifest.Frames!, frame => frame.Kind == "plan");
+        var ui = manifest.Nodes.Single(node => node.Alias == "ca_ui");
         Assert.Equal(
-            new RuntimeNode("app_ui_primary", RuntimeNodeKind.WebApp, "app-cmdemo2-uat-ui", new Uri("https://app-cmdemo2-uat-ui.azurewebsites.net"), "ui", "primary", "westus3", "region_primary"),
-            primary);
+            new RuntimeNode("ca_ui", RuntimeNodeKind.ContainerApp, "ca-cmdemo1-uat-ui", new Uri("https://ca-cmdemo1-uat-ui.example.southcentralus.azurecontainerapps.io"), "ui", HealthPath: "/_healthcheck"),
+            ui with { Links = null });
+        Assert.Equal(ui.Url, ui.Links?["site"]);
         Assert.Null(manifest.Nodes.Single(node => node.Alias == "sqldb").Url);
-        Assert.Equal(["region_standby", "region_primary", "region_data"], manifest.Regions.Select(region => region.Alias));
-        Assert.Equal(["data", "static"], manifest.Regions[2].Roles);
+        Assert.Equal(["region_data"], manifest.Regions.Select(region => region.Alias));
+        Assert.Equal(["data", "static"], Assert.Single(manifest.Regions).Roles);
         Assert.Equal(
-            ["browser-to-fd_ui", "fd_ui-to-app_ui_primary", "fd_ui-to-app_ui_standby", "app_ui_primary-to-sqldb", "app_ui_standby-to-sqldb", "browser-to-swa_dashboard"],
+            ["browser-to-ca_ui", "browser-to-ca_aisf", "ca_ui-to-sqldb", "browser-to-swa_dashboard"],
             manifest.Edges.Select(edge => edge.Id));
-        Assert.Equal([null, 1, 2, null, null, null], manifest.Edges.Select(edge => edge.Priority));
-        Assert.Equal(RuntimeEdgeKind.Origin, manifest.Edges[1].Kind);
+        Assert.Equal(RuntimeEdgeKind.Sql, manifest.Edges.Single(edge => edge.Id == "ca_ui-to-sqldb").Kind);
+        Assert.DoesNotContain(manifest.Edges, edge => edge.From == "ca_aisf" && edge.Kind == RuntimeEdgeKind.Sql);
+        Assert.Equal(RuntimeEdgeKind.Other, manifest.Edges.Single(edge => edge.Id == "browser-to-ca_ui").Kind);
     }
 
     [Fact]

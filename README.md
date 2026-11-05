@@ -97,9 +97,10 @@ dotnet run --project src/Dashboard
 ```
 
 Then open http://localhost:5210 (http://localhost:5210/#runtime for the runtime view). The repository ships a sample
-`src/Dashboard/wwwroot/topology.json` and, rendered from it, a sample `src/Dashboard/wwwroot/runtime/` (tdd and uat);
-their hosts do not exist, so every tile and every web app of the diagram shows Unreachable and no pinned version is
-found. Point the sample at real nodes and at a real
+`src/Dashboard/wwwroot/topology.json` and, rendered from it, a sample `src/Dashboard/wwwroot/runtime/` (tdd and uat)
+for cmdemo1 with no App Service: the health view has no web app tiles, and the runtime diagram is the ui container
+app connected to Azure SQL, with aisf drawn and not connected. Their hosts do not exist, so the container app shows
+Not responding once the page has asked it, and no pinned version is found. Point the sample at real nodes and at a real
 system repository to see them (and allow `http://localhost:5210` in the nodes' CORS settings, see below). The sample
 names no cluster, so it has no Cluster tab: a topology takes absolute addresses only, and the sample would have none
 to give for the cluster's two files. To see the view, add a `cluster` to the sample with the addresses of a real

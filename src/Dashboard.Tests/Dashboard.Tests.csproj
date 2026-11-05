@@ -32,6 +32,13 @@
     <None Include="..\Dashboard\wwwroot\runtime\*.json;..\Dashboard\wwwroot\runtime\*.svg" Link="runtime.sample\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The multi-region web app diagram the kit's sample used to ship. cmdemo1's shipped sample has no App
+       Service; these files keep the Front Door and web app checks. -->
+  <ItemGroup>
+    <None Include="Fixtures\webapp\topology.json" Link="webapp.topology.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Fixtures\webapp\runtime\*.json;Fixtures\webapp\runtime\*.svg" Link="webapp.sample\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- The cluster view's two files, as their producers write them. The app ships no sample of them: the sample
        topology names no cluster, since a topology takes absolute addresses only. -->
   <ItemGroup>

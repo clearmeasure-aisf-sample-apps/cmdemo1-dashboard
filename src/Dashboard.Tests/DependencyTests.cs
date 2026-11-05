@@ -4,8 +4,8 @@ namespace Dashboard.Tests;
 
 /// <summary>
 /// The marks of a detailed health check on a web app's tile, and the dependencies outside the subscription, which take
-/// their state from those checks: the sample diagram of uat with one or two dependencies added, as the deployment
-/// writes them for a deployable with <c>dependencies</c>.
+/// their state from those checks: the multi-region web app diagram of uat with one or two dependencies added, as the
+/// deployment writes them for a deployable with <c>dependencies</c>. cmdemo1's shipped diagram has no web app.
 /// </summary>
 public class DependencyTests
 {
@@ -15,11 +15,11 @@ public class DependencyTests
     private const string Payments = "dep_ui_Payment_API";
 
     private static readonly Topology SampleTopology =
-        TopologyParser.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "topology.sample.json"))).Topology!;
+        TopologyParser.Parse(WebAppDiagram.Topology).Topology!;
 
     private static readonly string[] WebApps = ["app_ui_primary", "app_ui_standby"];
 
-    private static readonly RuntimeManifest Sample = RuntimeManifestParser.ParseManifest(RuntimeManifestParserTests.Sample("uat.json")).Value!;
+    private static readonly RuntimeManifest Sample = RuntimeManifestParser.ParseManifest(WebAppDiagram.Sample("uat.json")).Value!;
 
     /// <summary>The sample manifest of uat with the dependencies of ui: a node each, and a relationship from each web app.</summary>
     private static RuntimeManifest Manifest(params (string Alias, string Name, string? HealthCheck)[] dependencies) => Sample with
@@ -350,5 +350,15 @@ public class DependencyTests
         Assert.Equal("idle", Edge(payload, $"{Gateway}-to-app_ui_primary").State);
         Assert.Equal("active", Edge(payload, $"{Gateway}-to-app_ui_standby").State);
         Assert.Equal("Reachable", Tile(payload, Gateway).Label);
+    }
+
+    [Fact]
+    public void TheShippedDiagramHasNoWebAppAndNoDependency()
+    {
+        var manifest = RuntimeManifestParser.ParseManifest(RuntimeManifestParserTests.Sample("uat.json")).Value!;
+
+        Assert.DoesNotContain(manifest.Nodes, node => node.Kind is RuntimeNodeKind.WebApp or RuntimeNodeKind.Dependency);
+        Assert.DoesNotContain(manifest.Edges, edge => edge.Kind == RuntimeEdgeKind.Dependency);
+        Assert.Equal(["ca_ui"], manifest.Edges.Where(edge => edge.Kind == RuntimeEdgeKind.Sql).Select(edge => edge.From));
     }
 }

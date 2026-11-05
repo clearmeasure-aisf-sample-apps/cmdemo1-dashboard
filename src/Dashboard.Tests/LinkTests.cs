@@ -80,20 +80,14 @@ public class LinkTests
     {
         var topology = TopologyParser.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "topology.sample.json"))).Topology!;
         var uat = topology.Environments.Single(environment => environment.Name == "uat");
-        var node = uat.Deployables[0].Nodes[1];
-        const string Group = "https://portal.azure.com/#@00000000-0000-0000-0000-000000000000/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cmdemo2-nonprod";
+        const string Group = "https://portal.azure.com/#@00000000-0000-0000-0000-000000000000/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cmdemo1-nonprod";
 
-        Assert.Equal($"{Group}/providers/Microsoft.Web/sites/app-cmdemo2-uat-ui-eastus2/appServices", node.Links![LinkSet.Portal]!.AbsoluteUri);
-        Assert.Equal($"{Group}/providers/microsoft.insights/components/appi-cmdemo2-uat/quickPulse", node.Links[LinkSet.LiveMetrics]!.AbsoluteUri);
-        Assert.Equal($"{Group}/providers/microsoft.insights/components/appi-cmdemo2-uat/performance", node.Links[LinkSet.Performance]!.AbsoluteUri);
-        Assert.Equal($"{Group}/providers/microsoft.insights/components/appi-cmdemo2-uat/failures", node.Links[LinkSet.Failures]!.AbsoluteUri);
-        Assert.Contains("/blade/Microsoft_Azure_Monitoring_Logs/LogsBlade/resourceId/%2Fsubscriptions%2F", node.Links[LinkSet.Dependencies]!.AbsoluteUri, StringComparison.Ordinal);
-        Assert.EndsWith("/timespan/PT1H", node.Links[LinkSet.Dependencies]!.AbsoluteUri, StringComparison.Ordinal);
-        Assert.Equal($"{Group}/providers/Microsoft.Sql/servers/sql-cmdemo2-uat-def45/databases/sqldb-cmdemo2-uat/overview", uat.Links![LinkSet.Database]!.AbsoluteUri);
+        Assert.Empty(uat.Deployables);
+        Assert.Equal($"{Group}/providers/Microsoft.Sql/servers/sql-cmdemo1-uat/databases/sqldb-cmdemo1-uat/overview", uat.Links![LinkSet.Database]!.AbsoluteUri);
         Assert.Equal($"{Group}/overview", uat.Links[LinkSet.ResourceGroup]!.AbsoluteUri);
-        Assert.EndsWith("/resourceGroups/rg-cmdemo2-edge/providers/Microsoft.Cdn/profiles/afd-cmdemo2/overview", uat.Deployables[0].Links![LinkSet.FrontDoor]!.AbsoluteUri, StringComparison.Ordinal);
-        Assert.Equal("/_build", uat.Deployables[0].BuildPath);
-        Assert.Equal("/_telemetry", uat.Deployables[0].TelemetryPath);
+        Assert.Equal($"{Group}/providers/microsoft.insights/components/appi-cmdemo1-uat/overview", uat.Links[LinkSet.ApplicationInsights]!.AbsoluteUri);
+        Assert.Equal($"{Group}/providers/microsoft.insights/components/appi-cmdemo1-uat/applicationMap", uat.Links[LinkSet.ApplicationMap]!.AbsoluteUri);
+        Assert.Equal(["Factory", "Scorecard"], uat.Pages!.Select(page => page.Name));
     }
 
     [Fact]

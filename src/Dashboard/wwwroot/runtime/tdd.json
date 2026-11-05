@@ -8,33 +8,38 @@
       "kind": "person",
       "name": "Browser",
       "links": {
-        "site": "https://cmdemo2-tdd-abc123.z01.azurefd.net"
+        "site": "https://ca-cmdemo1-tdd-ui.example.southcentralus.azurecontainerapps.io"
       }
     },
     {
-      "alias": "fd_ui",
-      "qualifiedName": "sub.rg_edge.afd.fd_ui",
-      "kind": "frontdoor",
+      "alias": "ca_ui",
+      "qualifiedName": "sub.cae.ca_ui",
+      "kind": "containerapp",
       "deployable": "ui",
-      "name": "cmdemo2-tdd-ui",
-      "url": "https://cmdemo2-tdd-abc123.z01.azurefd.net"
+      "name": "ca-cmdemo1-tdd-ui",
+      "url": "https://ca-cmdemo1-tdd-ui.example.southcentralus.azurecontainerapps.io",
+      "healthPath": "/_healthcheck",
+      "links": {
+        "site": "https://ca-cmdemo1-tdd-ui.example.southcentralus.azurecontainerapps.io"
+      }
     },
     {
-      "alias": "app_ui_primary",
-      "qualifiedName": "sub.rg_tier.region_primary.plan_primary.app_ui_primary",
-      "kind": "webapp",
-      "deployable": "ui",
-      "name": "app-cmdemo2-tdd-ui",
-      "role": "primary",
-      "region": "westus3",
-      "regionAlias": "region_primary",
-      "url": "https://app-cmdemo2-tdd-ui.azurewebsites.net"
+      "alias": "ca_aisf",
+      "qualifiedName": "sub.cae.ca_aisf",
+      "kind": "containerapp",
+      "deployable": "aisf",
+      "name": "ca-cmdemo1-tdd-aisf",
+      "url": "https://ca-cmdemo1-tdd-aisf.example.southcentralus.azurecontainerapps.io",
+      "healthPath": "/health",
+      "links": {
+        "site": "https://ca-cmdemo1-tdd-aisf.example.southcentralus.azurecontainerapps.io"
+      }
     },
     {
       "alias": "sqldb",
       "qualifiedName": "sub.rg_tier.region_data.sqldb",
       "kind": "sql",
-      "name": "sqldb-cmdemo2-tdd",
+      "name": "sqldb-cmdemo1-tdd",
       "region": "centralus",
       "regionAlias": "region_data",
       "url": null
@@ -44,27 +49,16 @@
       "qualifiedName": "sub.rg_tier.region_data.swa_dashboard",
       "kind": "staticsite",
       "deployable": "dashboard",
-      "name": "swa-cmdemo2-tdd-dashboard",
+      "name": "swa-cmdemo1-tdd-dashboard",
       "region": "centralus",
       "regionAlias": "region_data",
       "url": "http://localhost:5210",
       "links": {
-        "portal": "https://portal.azure.com/#@00000000-0000-0000-0000-000000000000/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cmdemo2-nonprod/providers/Microsoft.Web/staticSites/swa-cmdemo2-tdd-dashboard/overview"
+        "portal": "https://portal.azure.com/#@00000000-0000-0000-0000-000000000000/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cmdemo1-nonprod/providers/Microsoft.Web/staticSites/swa-cmdemo1-tdd-dashboard/overview"
       }
     }
   ],
   "regions": [
-    {
-      "alias": "region_primary",
-      "qualifiedName": "sub.rg_tier.region_primary",
-      "name": "westus3",
-      "roles": [
-        "primary"
-      ],
-      "links": {
-        "resources": "https://portal.azure.com/#@00000000-0000-0000-0000-000000000000/blade/HubsExtension/ArgQueryBlade/query/resources%0A%7C%20where%20subscriptionId%20%3D%3D%20%2200000000-0000-0000-0000-000000000000%22%20and%20resourceGroup%20%3D~%20%22rg-cmdemo2-nonprod%22%20and%20location%20%3D~%20%22westus3%22%0A%7C%20project%20name%2C%20type%2C%20location%2C%20id%0A%7C%20order%20by%20type%20asc%2C%20name%20asc"
-      }
-    },
     {
       "alias": "region_data",
       "qualifiedName": "sub.rg_tier.region_data",
@@ -74,7 +68,7 @@
         "static"
       ],
       "links": {
-        "resources": "https://portal.azure.com/#@00000000-0000-0000-0000-000000000000/blade/HubsExtension/ArgQueryBlade/query/resources%0A%7C%20where%20subscriptionId%20%3D%3D%20%2200000000-0000-0000-0000-000000000000%22%20and%20resourceGroup%20%3D~%20%22rg-cmdemo2-nonprod%22%20and%20location%20%3D~%20%22centralus%22%0A%7C%20project%20name%2C%20type%2C%20location%2C%20id%0A%7C%20order%20by%20type%20asc%2C%20name%20asc"
+        "resources": "https://portal.azure.com/#@00000000-0000-0000-0000-000000000000/blade/HubsExtension/ArgQueryBlade/query/resources%0A%7C%20where%20subscriptionId%20%3D%3D%20%2200000000-0000-0000-0000-000000000000%22%20and%20resourceGroup%20%3D~%20%22rg-cmdemo1-nonprod%22%20and%20location%20%3D~%20%22centralus%22%0A%7C%20project%20name%2C%20type%2C%20location%2C%20id%0A%7C%20order%20by%20type%20asc%2C%20name%20asc"
       }
     }
   ],
@@ -89,59 +83,40 @@
       }
     },
     {
-      "alias": "rg_edge",
-      "qualifiedName": "sub.rg_edge",
-      "kind": "resourceGroup",
-      "name": "rg-cmdemo2-edge",
-      "links": {
-        "portal": "https://portal.azure.com/#@00000000-0000-0000-0000-000000000000/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cmdemo2-edge/overview"
-      }
-    },
-    {
-      "alias": "afd",
-      "qualifiedName": "sub.rg_edge.afd",
-      "kind": "frontDoorProfile",
-      "name": "afd-cmdemo2",
-      "links": {
-        "portal": "https://portal.azure.com/#@00000000-0000-0000-0000-000000000000/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cmdemo2-edge/providers/Microsoft.Cdn/profiles/afd-cmdemo2/overview"
-      }
-    },
-    {
       "alias": "rg_tier",
       "qualifiedName": "sub.rg_tier",
       "kind": "resourceGroup",
-      "name": "rg-cmdemo2-nonprod",
+      "name": "rg-cmdemo1-nonprod",
       "links": {
-        "portal": "https://portal.azure.com/#@00000000-0000-0000-0000-000000000000/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cmdemo2-nonprod/overview"
+        "portal": "https://portal.azure.com/#@00000000-0000-0000-0000-000000000000/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cmdemo1-nonprod/overview"
       }
     },
     {
-      "alias": "plan_primary",
-      "qualifiedName": "sub.rg_tier.region_primary.plan_primary",
-      "kind": "plan",
-      "name": "asp-cmdemo2-tdd",
+      "alias": "cae",
+      "qualifiedName": "sub.cae",
+      "kind": "containerAppsEnvironment",
+      "name": "cae-cmdemo1-tdd",
       "links": {
-        "portal": "https://portal.azure.com/#@00000000-0000-0000-0000-000000000000/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cmdemo2-nonprod/providers/Microsoft.Web/serverfarms/asp-cmdemo2-tdd/overview"
+        "portal": "https://portal.azure.com/#@00000000-0000-0000-0000-000000000000/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cmdemo1-nonprod/providers/Microsoft.App/managedEnvironments/cae-cmdemo1-tdd/overview"
       }
     }
   ],
   "edges": [
     {
-      "id": "browser-to-fd_ui",
+      "id": "browser-to-ca_ui",
       "from": "browser",
-      "to": "fd_ui",
-      "kind": "public"
+      "to": "ca_ui",
+      "kind": "direct"
     },
     {
-      "id": "fd_ui-to-app_ui_primary",
-      "from": "fd_ui",
-      "to": "app_ui_primary",
-      "kind": "origin",
-      "priority": 1
+      "id": "browser-to-ca_aisf",
+      "from": "browser",
+      "to": "ca_aisf",
+      "kind": "direct"
     },
     {
-      "id": "app_ui_primary-to-sqldb",
-      "from": "app_ui_primary",
+      "id": "ca_ui-to-sqldb",
+      "from": "ca_ui",
       "to": "sqldb",
       "kind": "sql"
     },

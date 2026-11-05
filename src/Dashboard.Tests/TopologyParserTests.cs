@@ -26,48 +26,34 @@ public class TopologyParserTests
 
         Assert.Equal(
             new SystemInfo(
-                "cmdemo2",
-                "CM demo 2 multi-region",
-                new Uri("https://github.com/example-org/cmdemo2-system"),
-                new Uri("https://raw.githubusercontent.com/example-org/cmdemo2-system/status/delivery.json"),
-                new Uri("https://raw.githubusercontent.com/example-org/cmdemo2-system/status/cost.json"),
-                DeploymentsUrl: new Uri("https://raw.githubusercontent.com/example-org/cmdemo2-system/deployments/deployments.json")),
+                "cmdemo1",
+                "Clear Measure work orders demo 1",
+                new Uri("https://github.com/example-org/cmdemo1-system"),
+                new Uri("https://raw.githubusercontent.com/example-org/cmdemo1-system/status/delivery.json"),
+                new Uri("https://raw.githubusercontent.com/example-org/cmdemo1-system/status/cost.json"),
+                DeploymentsUrl: new Uri("https://raw.githubusercontent.com/example-org/cmdemo1-system/deployments/deployments.json")),
             topology.System);
         Assert.Equal(new DateTimeOffset(2026, 10, 4, 22, 0, 0, TimeSpan.Zero), topology.Generated);
         Assert.Equal(["tdd", "uat"], topology.Environments.Select(environment => environment.Name));
         Assert.All(topology.Environments, environment => Assert.Equal("nonprod", environment.Tier));
+        Assert.All(topology.Environments, environment => Assert.Empty(environment.Deployables));
+        Assert.False(topology.HasFrontDoor);
 
-        var tdd = Assert.Single(topology.Environments[0].Deployables);
-        Assert.Equal("ui", tdd.Name);
-        Assert.Equal(new Uri("https://cmdemo2-tdd-abc123.z01.azurefd.net"), tdd.FrontDoor);
-        Assert.Equal("/_healthcheck", tdd.HealthPath);
-        Assert.Equal("/alive", tdd.AlivePath);
-        Assert.Equal("/_version", tdd.VersionPath);
-        Assert.Equal(
-            new NodeInfo("app-cmdemo2-tdd-ui", "westus3", "primary", new Uri("https://app-cmdemo2-tdd-ui.azurewebsites.net")),
-            Assert.Single(tdd.Nodes) with { Links = null });
-
-        var uat = Assert.Single(topology.Environments[1].Deployables);
-        Assert.Equal(["westus3", "eastus2"], uat.Nodes.Select(node => node.Region));
-        Assert.Equal(["primary", "standby"], uat.Nodes.Select(node => node.Role));
-        Assert.True(uat.Nodes[0].IsPrimary);
-        Assert.False(uat.Nodes[1].IsPrimary);
-
-        // Where the versions pinned in Git are read, and the links into GitHub and Octopus Deploy.
+        // Where the versions pinned in Git are read. The container apps are not nodes of the topology: the health
+        // view does not probe them, and the runtime diagram is where ui meets SQL.
         Assert.Equal(
             [
-                "https://raw.githubusercontent.com/example-org/cmdemo2-system/main/environments/tdd/versions.json",
-                "https://raw.githubusercontent.com/example-org/cmdemo2-system/main/environments/uat/versions.json",
+                "https://raw.githubusercontent.com/example-org/cmdemo1-system/main/environments/tdd/versions.json",
+                "https://raw.githubusercontent.com/example-org/cmdemo1-system/main/environments/uat/versions.json",
             ],
             topology.Environments.Select(environment => environment.VersionsUrl?.AbsoluteUri));
         Assert.Equal(
             [
-                "https://github.com/example-org/cmdemo2-system/commits/main/environments/tdd/versions.json",
-                "https://github.com/example-org/cmdemo2-system/commits/main/environments/uat/versions.json",
+                "https://github.com/example-org/cmdemo1-system/commits/main/environments/tdd/versions.json",
+                "https://github.com/example-org/cmdemo1-system/commits/main/environments/uat/versions.json",
             ],
             topology.Environments.Select(environment => environment.VersionsHistoryUrl?.AbsoluteUri));
-        Assert.Equal("https://example.octopus.app/app#/Spaces-1/projects/cmdemo2-ui", tdd.ProjectUrl?.AbsoluteUri);
-        Assert.Equal(tdd.ProjectUrl, uat.ProjectUrl);
+        Assert.Equal(["Factory", "Scorecard"], topology.Environments[0].Pages!.Select(page => page.Name));
     }
 
     [Theory]
@@ -211,7 +197,7 @@ public class TopologyParserTests
     {
         const string Node = """ "nodes": [ { "url": "https://a.example.net" } ] """;
 
-        Assert.True(Valid(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "topology.sample.json"))).HasFrontDoor);
+        Assert.False(Valid(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "topology.sample.json"))).HasFrontDoor);
         Assert.True(Valid($$"""
             { "environments": [ { "name": "tdd", "deployables": [ { {{Node}} } ] },
                                 { "name": "uat", "deployables": [ { "frontDoor": "https://fd.example.net", {{Node}} } ] } ] }

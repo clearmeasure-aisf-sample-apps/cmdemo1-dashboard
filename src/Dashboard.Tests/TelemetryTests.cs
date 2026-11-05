@@ -183,11 +183,11 @@ public class TelemetryTests
     }
 
     private static RuntimeManifest Manifest() =>
-        RuntimeManifestParser.ParseManifest(RuntimeManifestParserTests.Sample("uat.json")).Value!;
+        RuntimeManifestParser.ParseManifest(WebAppDiagram.Sample("uat.json")).Value!;
 
     private static EnvironmentStatus Uat(TelemetrySnapshot? primary, TelemetrySnapshot? standby)
     {
-        var topology = TopologyParser.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "topology.sample.json"))).Topology!;
+        var topology = TopologyParser.Parse(WebAppDiagram.Topology).Topology!;
         var uat = new EnvironmentStatus(topology.Environments.Single(environment => environment.Name == "uat"));
         var ui = uat.Deployables[0];
         ui.FrontDoor!.Record(new ProbeResult(HealthState.Healthy, 200, 40, Now, "2.4.21"));
@@ -311,6 +311,25 @@ public class TelemetryTests
         var edge = Edge(RuntimePayloadBuilder.Build(Manifest(), uat, Page, TimeZoneInfo.Utc), "app_ui_primary-to-sqldb");
         Assert.Equal("40", edge.Number);
         Assert.Equal(trend.Points, edge.Trend!.Points);
+    }
+
+    [Fact]
+    public void TheUiContainerAppShowsNoSqlCountBecauseThePageDoesNotAskItForTelemetry()
+    {
+        var manifest = RuntimeManifestParser.ParseManifest(RuntimeManifestParserTests.Sample("uat.json")).Value!;
+        var payload = RuntimePayloadBuilder.Build(
+            manifest,
+            null,
+            Page,
+            TimeZoneInfo.Utc,
+            containerApps: _ => new ContainerAppStatus(ContainerAppState.Healthy, new ContainerAppAnswer("/_healthcheck", true, 200, false, 40, Now)));
+        var sql = payload.Edges.Single(edge => edge.Id == "ca_ui-to-sqldb");
+
+        Assert.Equal(RuntimePayloadBuilder.NoNumber, sql.Number);
+        Assert.Null(sql.Text);
+        Assert.Null(sql.Trend);
+        Assert.Contains("does not count a container app's SQL commands", sql.Title, StringComparison.Ordinal);
+        Assert.DoesNotContain(manifest.Edges, edge => edge.From == "ca_aisf" && edge.Kind == RuntimeEdgeKind.Sql);
     }
 
     private static (string?, string?, string?) Triple(RuntimeEdgeMark mark) => (mark.Number, mark.Unit, mark.Text);

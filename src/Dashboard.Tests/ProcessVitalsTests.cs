@@ -141,4 +141,22 @@ public class ProcessVitalsTests
             Assert.Empty(target.Samples);
         });
     }
+
+    [Fact]
+    public void AContainerAppTileDoesNotShowProcessVitals()
+    {
+        var manifest = new RuntimeManifest(
+            "uat",
+            [new RuntimeNode("ca_ui", RuntimeNodeKind.ContainerApp, "ca-ui", new Uri("https://ca-ui.example.io"), "ui", HealthPath: "/_healthcheck")],
+            [],
+            []);
+        var tile = RuntimePayloadBuilder.Build(
+            manifest,
+            null,
+            null,
+            TimeZoneInfo.Utc,
+            containerApps: _ => new ContainerAppStatus(ContainerAppState.Healthy, new ContainerAppAnswer("/_healthcheck", true, 200, false, 40, Now))).Nodes.Single();
+
+        Assert.DoesNotContain(tile.Lines, line => line.Text.Contains("CPU", StringComparison.Ordinal) || line.Text.Contains("req/min", StringComparison.Ordinal));
+    }
 }

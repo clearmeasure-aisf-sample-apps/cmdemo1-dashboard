@@ -22,8 +22,8 @@ public class CostTests
 
         var uat = Report.Find("UAT")!;
         Assert.Equal(new CostAmounts(1.52, 9.8, 11.02), uat.Amounts);
-        Assert.Equal([new CostService("Azure App Service", 6.1)], uat.TopServices);
-        Assert.Equal([new CostService("SQL Database", 0.97), new CostService("Azure App Service", 0.62)], Report.Find("tdd")!.TopServices);
+        Assert.Equal([new CostService("Azure Container Apps", 6.1)], uat.TopServices);
+        Assert.Equal([new CostService("SQL Database", 0.97), new CostService("Azure Container Apps", 0.62)], Report.Find("tdd")!.TopServices);
         Assert.Null(Report.Find("prod"));
     }
 
@@ -162,7 +162,7 @@ public class CostTests
     [Fact]
     public void TheServicesThatCostMostAreListedWithTheirAmounts()
     {
-        Assert.Equal("Most this month: SQL Database $0.97, Azure App Service $0.62", CostText.Services(Report.Find("tdd")!.TopServices, Report, Now));
+        Assert.Equal("Most this month: SQL Database $0.97, Azure Container Apps $0.62", CostText.Services(Report.Find("tdd")!.TopServices, Report, Now));
         Assert.Equal("Most in October: Azure Front Door Service $8.11", CostText.Services(Report.Shared!.TopServices, Report, Now.AddMonths(1)));
         Assert.Equal("Most this month: SQL Database —", CostText.Services([new CostService("SQL Database", null)], Report, Now));
         Assert.Null(CostText.Services(Report.Find("retired")!.TopServices, Report, Now));

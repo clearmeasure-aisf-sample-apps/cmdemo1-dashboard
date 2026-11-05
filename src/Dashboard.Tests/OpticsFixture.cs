@@ -72,8 +72,8 @@ internal static class Optics
         { "generated": "2026-10-04T05:00:00Z", "currency": "USD", "asOf": "2026-10-03",
           "system": { "yesterday": 3.41, "last7Days": 22.1, "monthToDate": 1204.8 },
           "environments": [
-            { "name": "tdd", "yesterday": 0.0, "last7Days": 1.5, "monthToDate": 1.59, "topServices": [ { "name": "SQL Database", "monthToDate": 0.97 }, { "name": "Azure App Service", "monthToDate": 0.62 } ] },
-            { "name": "uat", "yesterday": 1.52, "last7Days": 9.8, "monthToDate": 11.02, "topServices": [ { "name": "Azure App Service", "monthToDate": 6.1 } ] },
+            { "name": "tdd", "yesterday": 0.0, "last7Days": 1.5, "monthToDate": 1.59, "topServices": [ { "name": "SQL Database", "monthToDate": 0.97 }, { "name": "Azure Container Apps", "monthToDate": 0.62 } ] },
+            { "name": "uat", "yesterday": 1.52, "last7Days": 9.8, "monthToDate": 11.02, "topServices": [ { "name": "Azure Container Apps", "monthToDate": 6.1 } ] },
             { "name": "retired", "yesterday": null, "last7Days": 0.2, "monthToDate": 0.2, "topServices": [ ] },
             { "name": "shared", "yesterday": 1.1, "last7Days": 7.7, "monthToDate": 8.2, "topServices": [ { "name": "Azure Front Door Service", "monthToDate": 8.11 } ] } ] }
         """;

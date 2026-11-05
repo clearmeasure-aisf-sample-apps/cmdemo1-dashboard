@@ -8,10 +8,10 @@ public class RuntimePayloadBuilderTests
     private static readonly Uri Page = new("http://localhost:5210/");
 
     private static readonly Topology SampleTopology =
-        TopologyParser.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "topology.sample.json"))).Topology!;
+        TopologyParser.Parse(WebAppDiagram.Topology).Topology!;
 
     private static RuntimeManifest Manifest(string environment) =>
-        RuntimeManifestParser.ParseManifest(RuntimeManifestParserTests.Sample($"{environment}.json")).Value!;
+        RuntimeManifestParser.ParseManifest(WebAppDiagram.Sample($"{environment}.json")).Value!;
 
     private static EnvironmentStatus Environment(string name) =>
         new(SampleTopology.Environments.Single(environment => environment.Name == name));
@@ -906,5 +906,74 @@ public class RuntimePayloadBuilderTests
         Assert.Equal("muted", sql.GetProperty("lines")[0].GetProperty("tone").GetString());
         var edge = root.GetProperty("edges")[0];
         Assert.Equal(["id", "state", "number", "unit", "title"], edge.EnumerateObject().Select(property => property.Name));
+    }
+
+    private static RuntimeManifest Shipped(string environment) =>
+        RuntimeManifestParser.ParseManifest(RuntimeManifestParserTests.Sample($"{environment}.json")).Value!;
+
+    private static ContainerAppStatus HealthOf(ContainerAppState state, int? status = 200) =>
+        new(state, new ContainerAppAnswer(status is null ? "/" : "/_healthcheck", status is not null, status, false, status is null ? null : 40, Now));
+
+    [Fact]
+    public void AHealthyUiContainerAppIsTheOnlyAppThatSaysTheDatabaseIsReachable()
+    {
+        var manifest = Shipped("uat");
+        var payload = RuntimePayloadBuilder.Build(manifest, null, Page, TimeZoneInfo.Utc, containerApps: _ => HealthOf(ContainerAppState.Healthy));
+
+        var database = Tile(payload, "sqldb");
+        Assert.Equal(("healthy", "Reachable"), (database.State, database.Label));
+        Assert.Equal(new RuntimeTileLine("health check of ca-cmdemo1-uat-ui passed", "ok"), Assert.Single(database.Lines));
+        Assert.Contains("the health check of ca-cmdemo1-uat-ui connected to it (last 22:00:00)", database.Title, StringComparison.Ordinal);
+        Assert.DoesNotContain("web app", database.Title, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("active", Edge(payload, "ca_ui-to-sqldb"));
+        Assert.Equal(RuntimePayloadBuilder.NoNumber, payload.Edges.Single(edge => edge.Id == "ca_ui-to-sqldb").Number);
+        Assert.Contains("does not count a container app's SQL commands", payload.Edges.Single(edge => edge.Id == "ca_ui-to-sqldb").Title, StringComparison.Ordinal);
+        Assert.DoesNotContain(manifest.Edges, edge => edge.From == "ca_aisf" && edge.Kind == RuntimeEdgeKind.Sql);
+        Assert.Equal("database: reachable; static sites: not probed", payload.Regions.Single(region => region.Alias == "region_data").Label);
+    }
+
+    [Fact]
+    public void BeforeTheContainerAppIsProbedTheDatabaseIsWaiting()
+    {
+        var payload = RuntimePayloadBuilder.Build(Shipped("tdd"), null, Page, TimeZoneInfo.Utc);
+        var database = Tile(payload, "sqldb");
+
+        Assert.Equal(("checking", "Checking"), (database.State, database.Label));
+        Assert.Equal(new RuntimeTileLine("waiting for the health checks", "muted"), Assert.Single(database.Lines));
+        Assert.Contains("container apps that use it", database.Title, StringComparison.Ordinal);
+        Assert.Equal("checking", Edge(payload, "ca_ui-to-sqldb"));
+    }
+
+    [Fact]
+    public void AnUnhealthyContainerAppDoesNotCallTheDatabaseDown()
+    {
+        var payload = RuntimePayloadBuilder.Build(Shipped("uat"), null, Page, TimeZoneInfo.Utc, containerApps: _ => HealthOf(ContainerAppState.Unhealthy, 503));
+
+        var database = Tile(payload, "sqldb");
+        Assert.Equal(("neutral", "Not confirmed"), (database.State, database.Label));
+        Assert.Equal("idle", Edge(payload, "ca_ui-to-sqldb"));
+        Assert.Contains("no container app that uses it passes its health check", database.Title, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TwoHealthyContainerAppsBothCountTowardTheDatabase()
+    {
+        var ui = new RuntimeNode("ca_ui", RuntimeNodeKind.ContainerApp, "ca-ui", new Uri("https://ca-ui.example.io"), "ui", HealthPath: "/_healthcheck");
+        var worker = new RuntimeNode("ca_worker", RuntimeNodeKind.ContainerApp, "ca-worker", new Uri("https://ca-worker.example.io"), "worker", HealthPath: "/health");
+        var idle = new RuntimeNode("ca_aisf", RuntimeNodeKind.ContainerApp, "ca-aisf", new Uri("https://ca-aisf.example.io"), "aisf", HealthPath: "/health");
+        var manifest = new RuntimeManifest(
+            "uat",
+            [ui, worker, idle, new RuntimeNode("sqldb", RuntimeNodeKind.Sql, "sqldb-uat")],
+            [],
+            [
+                new RuntimeEdge("ca_ui-to-sqldb", "ca_ui", "sqldb", RuntimeEdgeKind.Sql),
+                new RuntimeEdge("ca_worker-to-sqldb", "ca_worker", "sqldb", RuntimeEdgeKind.Sql),
+            ]);
+
+        var database = Tile(RuntimePayloadBuilder.Build(manifest, null, Page, TimeZoneInfo.Utc, containerApps: _ => HealthOf(ContainerAppState.Healthy)), "sqldb");
+
+        Assert.Equal(new RuntimeTileLine("health checks of 2 container apps passed", "ok"), Assert.Single(database.Lines));
+        Assert.Contains("ca-ui, ca-worker", database.Title, StringComparison.Ordinal);
+        Assert.DoesNotContain("ca-aisf", database.Title, StringComparison.Ordinal);
     }
 }

@@ -212,7 +212,7 @@ public static class CostText
     public static string Date(DateOnly day) => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     /// <summary>
-    /// <c>Most this month: Azure App Service $6.10, SQL Database $2.00</c>; null when the file names no service.
+    /// <c>Most this month: Azure Container Apps $6.10, SQL Database $2.00</c>; null when the file names no service.
     /// </summary>
     public static string? Services(IReadOnlyList<CostService>? services, CostReport report, DateTimeOffset now)
     {

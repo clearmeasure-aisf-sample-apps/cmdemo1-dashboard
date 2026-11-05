@@ -8,9 +8,10 @@ namespace Dashboard.Runtime;
 /// comparison the health view shows, mapped onto the diagram's elements by the manifest. A node of the manifest is
 /// matched with a target of the monitor by its address (web app, Front Door endpoint), within the environment of the
 /// same name; a node the monitor does not check is drawn neutral, with the reason in words. The database takes no call
-/// from a browser: it is drawn reachable when the health check of a web app that uses it passes. The numbers on the
+/// from a browser: it is drawn reachable when the health check of a web app that uses it passes, or, where no web app
+/// uses it, when the health check of a container app that uses it passes. The numbers on the
 /// relationships are the web apps' own counts of the last minute (<see cref="TelemetrySnapshot"/>); a dash where a web
-/// app reports none. A web app's tile also shows its process's vitals and, next to the numbers, their trend over the
+/// app reports none. A container app's arrow to the database carries no count: the page does not ask it for telemetry. A web app's tile also shows its process's vitals and, next to the numbers, their trend over the
 /// last checks; where the topology has a link for a number or a name, the payload carries it. Where a web app
 /// answers its detailed health check (<see cref="HealthDetail"/>), its tile has one mark per entry, and a dependency of
 /// its deployable (a node of the manifest outside the subscription) takes its state from the entry the manifest names.
@@ -77,6 +78,7 @@ public static class RuntimePayloadBuilder
         ArgumentNullException.ThrowIfNull(zone);
         var hourly = now is null ? null : delivery?.ContainerAppsOf(manifest.Environment);
         var health = new HealthSource(resources, now, zone);
+        var probed = Probes(manifest, containerApps);
         var entries = Index(environment);
         var byAlias = new Dictionary<string, Entry>(StringComparer.Ordinal);
         foreach (var node in manifest.Nodes)
@@ -93,7 +95,7 @@ public static class RuntimePayloadBuilder
                 Deploying(
                     node.Kind switch
                     {
-                        RuntimeNodeKind.Sql => DatabaseTile(node, Clients(manifest, node, RuntimeEdgeKind.Sql, byAlias), zone, environment?.Info.Links, health),
+                        RuntimeNodeKind.Sql => DatabaseTile(node, Clients(manifest, node, RuntimeEdgeKind.Sql, byAlias), ContainerSqlApps(manifest, node, probed), zone, environment?.Info.Links, health),
                         RuntimeNodeKind.Dependency => DependencyTile(node, Clients(manifest, node, RuntimeEdgeKind.Dependency, byAlias), zone),
                         RuntimeNodeKind.ContainerApp => ContainerAppTile(node, containerApps, hourly, now, zone, health),
                         RuntimeNodeKind.Resource => health.Tile(node, string.Empty) ?? NeutralTile(node, "Not probed", string.Empty, node.Name),
@@ -111,7 +113,7 @@ public static class RuntimePayloadBuilder
         var regions = manifest.Regions
             .Select(region => Region(region, manifest, byAlias, reachable.Contains(region.Alias)) with { NameLink = RuntimeBoxLink.Of(region) })
             .ToList();
-        var edges = manifest.Edges.Select(edge => Edge(edge, manifest, byAlias)).ToList();
+        var edges = manifest.Edges.Select(edge => Edge(edge, manifest, byAlias, probed)).ToList();
         return new RuntimePayload(tiles, regions, edges, Names(manifest));
     }
 
@@ -394,6 +396,37 @@ public static class RuntimePayloadBuilder
         return new RuntimeTile(node.Alias, StateOf(status.State), ContainerAppText.Label(status.State), ContainerAppText.Facts(status), lines, null, title);
     }
 
+    /// <summary>What the page's probes last saw of each container app, by the node's alias.</summary>
+    private static Dictionary<string, ContainerAppStatus> Probes(RuntimeManifest manifest, Func<ContainerAppTarget, ContainerAppStatus?>? probes)
+    {
+        var seen = new Dictionary<string, ContainerAppStatus>(StringComparer.Ordinal);
+        if (probes is null)
+        {
+            return seen;
+        }
+
+        foreach (var node in manifest.Nodes)
+        {
+            if (ContainerTarget(node) is { } target && probes(target) is { } status)
+            {
+                seen[node.Alias] = status;
+            }
+        }
+
+        return seen;
+    }
+
+    /// <summary>A container app with a SQL relationship to the database, and the probe of it when the page has one.</summary>
+    private readonly record struct ContainerSqlApp(RuntimeNode App, ContainerAppStatus? Status);
+
+    /// <summary>The container apps with a SQL relationship to the database. A web app's relationship is not one of these.</summary>
+    private static List<ContainerSqlApp> ContainerSqlApps(RuntimeManifest manifest, RuntimeNode database, Dictionary<string, ContainerAppStatus> probed) =>
+        [.. manifest.Edges
+            .Where(edge => edge.Kind == RuntimeEdgeKind.Sql && edge.To == database.Alias)
+            .Select(edge => manifest.Nodes.FirstOrDefault(node => node.Alias == edge.From && node.Kind == RuntimeNodeKind.ContainerApp))
+            .OfType<RuntimeNode>()
+            .Select(app => new ContainerSqlApp(app, probed.GetValueOrDefault(app.Alias)))];
+
     /// <summary>The checked web apps with a relationship of that kind to the node (the database, a dependency).</summary>
     private static List<Entry> Clients(RuntimeManifest manifest, RuntimeNode node, RuntimeEdgeKind kind, Dictionary<string, Entry> byAlias) =>
         [.. manifest.Edges
@@ -500,20 +533,22 @@ public static class RuntimePayloadBuilder
     }
 
     /// <summary>
-    /// The database from the web apps' health checks, which connect to it: one that passes says the database answered.
-    /// One that fails does not say it did not, since the web app itself may be the cause; the liveness probe leaves the
-    /// database alone. Where no web app tells (none this page checks uses it, or the probe is Liveness), what Resource
-    /// Health said of it.
+    /// The database from the health checks of the apps that connect to it: one that passes says the database answered.
+    /// One that fails does not say it did not, since the app itself may be the cause; the liveness probe leaves the
+    /// database alone. A web app's check is the one the health view reads. Where no web app uses the database, a
+    /// container app's own probe does: its health path queries the database, and the page asks that path while the
+    /// diagram is open. Where nothing tells, what Resource Health said of it.
     /// </summary>
-    private static RuntimeTile DatabaseTile(RuntimeNode node, List<Entry> clients, TimeZoneInfo zone, LinkSet? links, HealthSource health) =>
-        DatabaseTile(node, clients, zone, health) with { NameLink = RuntimeLink.To(links?[LinkSet.Database], LinkText.For(LinkSet.Database, node.Name)) };
+    private static RuntimeTile DatabaseTile(RuntimeNode node, List<Entry> clients, List<ContainerSqlApp> containerApps, TimeZoneInfo zone, LinkSet? links, HealthSource health) =>
+        DatabaseTile(node, clients, containerApps, zone, health) with { NameLink = RuntimeLink.To(links?[LinkSet.Database], LinkText.For(LinkSet.Database, node.Name)) };
 
-    private static RuntimeTile DatabaseTile(RuntimeNode node, List<Entry> clients, TimeZoneInfo zone, HealthSource health)
+    private static RuntimeTile DatabaseTile(RuntimeNode node, List<Entry> clients, List<ContainerSqlApp> containerApps, TimeZoneInfo zone, HealthSource health)
     {
         if (clients.Count == 0)
         {
-            const string Why = "the database takes no call from a browser, and this page checks no web app that uses it.";
-            return health.Tile(node, Why) ?? NeutralTile(node, "Not probed", "not probed from the browser", $"{node.Name}: {Why}");
+            return containerApps.Count == 0
+                ? DatabaseUnprobed(node, health)
+                : DatabaseFromContainerApps(node, containerApps, zone, health);
         }
 
         var passed = clients.Where(entry => entry.Target.Last is { State: HealthState.Healthy, Probe: ProbeKind.Health }).ToList();
@@ -561,6 +596,65 @@ public static class RuntimePayloadBuilder
 
     private static RuntimeTile NeutralTile(RuntimeNode node, string label, string line, string title) =>
         new(node.Alias, Neutral, label, null, line.Length > 0 ? [new RuntimeTileLine(line, "muted")] : [], null, title);
+
+    /// <summary>No app this page checks uses the database.</summary>
+    private static RuntimeTile DatabaseUnprobed(RuntimeNode node, HealthSource health)
+    {
+        const string Why = "the database takes no call from a browser, and this page checks no web app that uses it.";
+        return health.Tile(node, Why) ?? NeutralTile(node, "Not probed", "not probed from the browser", $"{node.Name}: {Why}");
+    }
+
+    /// <summary>
+    /// The database from the container apps that use it. A healthy health-path probe connected to it. An app that has
+    /// not been asked yet, or is still waking, leaves the database waiting. An answer that is not a health check
+    /// (Liveness, or an app that refuses this page's origin) leaves it alone. A failed check does not call the
+    /// database down: the app itself may be the cause.
+    /// </summary>
+    private static RuntimeTile DatabaseFromContainerApps(RuntimeNode node, List<ContainerSqlApp> apps, TimeZoneInfo zone, HealthSource health)
+    {
+        var passed = apps.Where(app => app.Status is { State: ContainerAppState.Healthy, Last: not null }).ToList();
+        if (passed.Count > 0)
+        {
+            var names = string.Join(", ", passed.Select(app => app.App.Name));
+            var latest = passed.Max(app => app.Status!.Last!.CheckedAt);
+            var line = passed.Count == 1
+                ? $"health check of {passed[0].App.Name} passed"
+                : string.Create(CultureInfo.InvariantCulture, $"health checks of {passed.Count} container apps passed");
+            return new RuntimeTile(
+                node.Alias,
+                Healthy,
+                "Reachable",
+                null,
+                [new RuntimeTileLine(line, "ok")],
+                null,
+                $"{node.Name}: reachable. The database takes no call from a browser; the health check of {names} connected to it (last {TimeText.Clock(latest, zone)}).");
+        }
+
+        if (apps.Any(app => app.Status is null or { State: ContainerAppState.Probing or ContainerAppState.Waking }))
+        {
+            return new RuntimeTile(
+                node.Alias,
+                Checking,
+                "Checking",
+                null,
+                [new RuntimeTileLine("waiting for the health checks", "muted")],
+                null,
+                $"{node.Name}: waiting for the health checks of the container apps that use it.");
+        }
+
+        if (apps.All(app => app.Status!.State == ContainerAppState.Responding))
+        {
+            var who = apps.Count == 1 ? "the container app that uses it" : "the container apps that use it";
+            var why = $"{who} answered without a health check (the probe was Liveness, or the app does not allow this page's origin), so this page cannot tell whether the database answers.";
+            return health.Tile(node, why) ?? NeutralTile(node, "Not probed", "health check not read", $"{node.Name}: {why}");
+        }
+
+        return NeutralTile(
+            node,
+            "Not confirmed",
+            "no health check of its apps passes",
+            $"{node.Name}: no container app that uses it passes its health check, so this page cannot tell whether it answers: the database or the app may be the cause.");
+    }
 
     private static RuntimeTile WebAppTile(RuntimeNode node, Entry entry, EnvironmentStatus environment, TimeZoneInfo zone)
     {
@@ -866,7 +960,7 @@ public static class RuntimePayloadBuilder
             : new RuntimeRegionMark(alias, "down", "not serving");
     }
 
-    private static RuntimeEdgeMark Edge(RuntimeEdge edge, RuntimeManifest manifest, Dictionary<string, Entry> byAlias)
+    private static RuntimeEdgeMark Edge(RuntimeEdge edge, RuntimeManifest manifest, Dictionary<string, Entry> byAlias, Dictionary<string, ContainerAppStatus> probed)
     {
         var from = byAlias.GetValueOrDefault(edge.From);
         var to = byAlias.GetValueOrDefault(edge.To);
@@ -897,6 +991,11 @@ public static class RuntimePayloadBuilder
 
             case RuntimeEdgeKind.Sql:
             {
+                if (from is null && manifest.Nodes.FirstOrDefault(node => node.Alias == edge.From) is { Kind: RuntimeNodeKind.ContainerApp } app)
+                {
+                    return ContainerSqlEdge(edge, probed.GetValueOrDefault(app.Alias));
+                }
+
                 // A web app that is down sends no queries: the database is not the reason, so the line is idle.
                 var carries = from is null ? Neutral : Carries(from);
                 var state = carries == "down" ? "idle" : carries;
@@ -1010,6 +1109,34 @@ public static class RuntimePayloadBuilder
             ? (NoNumber, "Calls per minute: the web app reports none.", null)
             : (Number(own.Direct), "Calls per minute: counted by the web app.", Trends.Direct(direct));
     }
+
+    /// <summary>
+    /// A container app's arrow to the database. The page does not ask the app for its call counts, so the number is a
+    /// dash. A healthy health check carries the arrow; an app that is down sends nothing, and the database is not why.
+    /// </summary>
+    private static RuntimeEdgeMark ContainerSqlEdge(RuntimeEdge edge, ContainerAppStatus? status)
+    {
+        var (state, words) = status is null ? (Checking, "Being checked.") : SqlWords(status.State);
+        return new RuntimeEdgeMark(
+            edge.Id,
+            state,
+            NoNumber,
+            CallsUnit,
+            null,
+            $"{edge.From} to the database. {words} Queries per minute: this page does not count a container app's SQL commands.");
+    }
+
+    /// <summary>The words of a container app's SQL arrow, one arm per state so a new state fails the build.</summary>
+    private static (string State, string Words) SqlWords(ContainerAppState state) => state switch
+    {
+        ContainerAppState.Healthy => ("active", "Carries the traffic."),
+        ContainerAppState.Unhealthy => ("idle", "Idle: no traffic expected."),
+        ContainerAppState.NotResponding => ("idle", "Idle: no traffic expected."),
+        ContainerAppState.Probing => (Checking, "Being checked."),
+        ContainerAppState.Waking => (Checking, "Being checked."),
+        ContainerAppState.Responding => (Neutral, "Not checked."),
+        _ => throw new ArgumentOutOfRangeException(nameof(state), state, null),
+    };
 
     /// <summary>Whether the traffic of a node's deployable goes through this node, by the serving decision.</summary>
     private static string Carries(Entry entry) =>

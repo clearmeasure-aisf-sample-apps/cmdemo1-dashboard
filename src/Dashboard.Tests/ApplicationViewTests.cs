@@ -32,10 +32,10 @@ public class ApplicationViewTests
 
     private static readonly RuntimeManifest Sample = RuntimeManifestParser.ParseManifest(RuntimeManifestParserTests.Sample("uat.json")).Value!;
 
-    /// <summary>The sample manifest of uat with the architecture of ui on both of its web apps, as the deployment writes it.</summary>
+    /// <summary>The shipped manifest of uat with the architecture of each container app, as the deployment writes it.</summary>
     private static readonly RuntimeManifest WithArchitecture = Sample with
     {
-        Nodes = [.. Sample.Nodes.Select(node => node.Kind == RuntimeNodeKind.WebApp ? node with { Architecture = new Uri(Base) } : node)],
+        Nodes = [.. Sample.Nodes.Select(node => node.Kind == RuntimeNodeKind.ContainerApp ? node with { Architecture = new Uri(Base) } : node)],
     };
 
     private static RuntimeNode Node(string node) =>
@@ -101,9 +101,9 @@ public class ApplicationViewTests
     {
         var boxes = ApplicationText.Boxes(WithArchitecture, "UI");
 
-        Assert.Equal(["app_ui_primary", "app_ui_standby"], boxes.Select(box => box.Alias));
+        Assert.Equal(["ca_ui"], boxes.Select(box => box.Alias));
         Assert.Equal("Application ui: open its assemblies", ApplicationText.BoxLabel(boxes[0]));
-        Assert.Equal(["app_ui_standby", "app_ui_primary"], ApplicationText.Boxes(WithArchitecture).Select(box => box.Alias));
+        Assert.Equal(["ca_ui", "ca_aisf"], ApplicationText.Boxes(WithArchitecture).Select(box => box.Alias));
     }
 
     [Theory]
@@ -201,14 +201,17 @@ public class ApplicationViewTests
         Assert.Null(ApplicationText.Version(boxes, uat));
         Assert.Null(ApplicationText.Version(boxes, null));
 
+        // The container app is not a node of the topology, so the view shows the pin until a node at its address reports.
         uat.Record(PinnedVersions.Parse("""{ "ui": "1.0.40" }"""));
         Assert.Equal(new ApplicationVersion("1.0.40", Runs: false), ApplicationText.Version(boxes, uat));
 
-        uat.Deployables[0].Nodes.Single(node => !node.IsPrimary).Record(Answer("1.0.41"));
-        Assert.Equal(new ApplicationVersion("1.0.41", Runs: true), ApplicationText.Version(boxes, uat));
-
-        uat.Deployables[0].Nodes.Single(node => node.IsPrimary).Record(Answer("1.0.42"));
-        Assert.Equal(new ApplicationVersion("1.0.42", Runs: true), ApplicationText.Version(boxes, uat));
+        var running = new EnvironmentStatus(TopologyParser.Parse($$"""
+            { "environments": [ { "name": "uat", "deployables": [ { "name": "ui", "nodes": [
+                { "name": "ca-ui", "role": "primary", "url": "{{boxes[0].Url}}" } ] } ] } ] }
+            """).Topology!.Environments[0]);
+        running.Record(PinnedVersions.Parse("""{ "ui": "1.0.40" }"""));
+        running.Deployables[0].Nodes[0].Record(Answer("1.0.42"));
+        Assert.Equal(new ApplicationVersion("1.0.42", Runs: true), ApplicationText.Version(boxes, running));
     }
 
     [Fact]

@@ -14,7 +14,7 @@
         {
             <DeliveryCard @key="entry.Name" Entry="entry" Environment="@Environment.Name" First="@Monitor.FirstEnvironment"
                           Context="@DeliveryText.Context(entry.Name, Environment.Name)" IdPrefix="@($"{IdPrefix}-other-{index++}")"
-                          Zone="Zone" Now="Now" Changed="Monitor.Delivery?.Generated" />
+                          Zone="Zone" Now="Now" Changed="Monitor.Delivery?.Generated" Carries="@WorkItemsText.Carries(Monitor.WorkItems, entry.Version)" />
         }
     </div>
 }

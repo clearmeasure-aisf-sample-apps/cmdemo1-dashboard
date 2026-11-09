@@ -1,0 +1,245 @@
+{
+  "generatedAt": "2026-11-09T22:00:00Z",
+  "scope": {
+    "repo": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system",
+    "project": 679,
+    "rules": "A bot may take an item from Todo. Done means the release is deployed to prod."
+  },
+  "stats": {
+    "wipByColumn": {
+      "Todo": 1,
+      "In Progress": 1,
+      "Technical Design": 1,
+      "Development": 2,
+      "Functional Testing": 1,
+      "Release Queue": 1
+    },
+    "cycleTimeHours": { "median": 18.5, "p85": 72, "n": 11 },
+    "leadTimeHours": { "median": 26, "p85": 96, "n": 9 },
+    "perWeek": [
+      { "weekStart": "2026-10-19", "merged": 2, "deployedProd": 1 },
+      { "weekStart": "2026-10-26", "merged": 4, "deployedProd": 2 },
+      { "weekStart": "2026-11-02", "merged": 3, "deployedProd": 3 },
+      { "weekStart": "2026-11-09", "merged": 5, "deployedProd": 2 }
+    ],
+    "rework": { "ftFailures": 2, "reverts": 1, "rate": 0.125 },
+    "cost": {
+      "totalUsd": 18,
+      "note": "Cursor agent usage for these items, last 30 days"
+    }
+  },
+  "items": [
+    {
+      "number": 501,
+      "title": "Let a bot take the next work item",
+      "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/501",
+      "state": "New",
+      "column": "Todo",
+      "columnHistory": [{ "column": "Todo", "enteredAt": "2026-11-09T20:00:00Z" }],
+      "assignee": null,
+      "agent": null,
+      "cursorSessions": [],
+      "prs": [],
+      "releaseCandidate": null,
+      "environments": { "tdd": null, "uat": null, "prod": null },
+      "costUsd": null
+    },
+    {
+      "number": 498,
+      "title": "Publish workitems.json from the board",
+      "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/498",
+      "state": "Active",
+      "column": "In Progress",
+      "columnHistory": [
+        { "column": "Todo", "enteredAt": "2026-11-08T12:00:00Z" },
+        { "column": "In Progress", "enteredAt": "2026-11-09T16:00:00Z" }
+      ],
+      "assignee": "board-bot",
+      "agent": "board-bot",
+      "cursorSessions": ["https://cursor.com/agents/bc-sample-board"],
+      "prs": [],
+      "releaseCandidate": null,
+      "environments": {},
+      "costUsd": 1.2
+    },
+    {
+      "number": 490,
+      "title": "Decide the work item contract",
+      "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/490",
+      "state": "Active",
+      "column": "Technical Design",
+      "columnHistory": [{ "column": "Technical Design", "enteredAt": "2026-11-09T14:00:00Z" }],
+      "agent": "design-bot",
+      "cursorSessions": ["https://cursor.com/agents/bc-sample-design"],
+      "prs": [],
+      "releaseCandidate": null,
+      "environments": { "tdd": null, "uat": null, "prod": null },
+      "costUsd": 0.8
+    },
+    {
+      "number": 476,
+      "title": "Add the Work items view to the dashboard",
+      "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/476",
+      "state": "Active",
+      "column": "Development",
+      "columnHistory": [{ "column": "Development", "enteredAt": "2026-11-09T11:00:00Z" }],
+      "assignee": "dashboard-bot",
+      "agent": "dashboard-bot",
+      "cursorSessions": ["https://cursor.com/agents/bc-sample-dashboard"],
+      "prs": [
+        {
+          "number": 188,
+          "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-dashboard/pull/188",
+          "state": "open",
+          "mergedAt": null,
+          "mergeSha": null
+        }
+      ],
+      "releaseCandidate": null,
+      "environments": { "tdd": null, "uat": null, "prod": null },
+      "costUsd": 4.5
+    },
+    {
+      "number": 458,
+      "title": "Keep a failed release on the board",
+      "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/458",
+      "state": "Active",
+      "column": "development",
+      "columnHistory": [
+        { "column": "Functional Testing", "enteredAt": "2026-11-08T09:00:00Z" },
+        { "column": "Development", "enteredAt": "2026-11-09T09:00:00Z" }
+      ],
+      "assignee": "cm-ai-ops",
+      "agent": "dashboard-bot",
+      "cursorSessions": ["https://cursor.com/agents/bc-sample-rework"],
+      "prs": [
+        {
+          "number": 174,
+          "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-dashboard/pull/174",
+          "state": "closed",
+          "mergedAt": null,
+          "mergeSha": null
+        }
+      ],
+      "releaseCandidate": null,
+      "environments": {},
+      "costUsd": 0.4
+    },
+    {
+      "number": 470,
+      "title": "Show which release an environment carries",
+      "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/470",
+      "state": "Active",
+      "column": "Functional Testing",
+      "columnHistory": [{ "column": "Functional Testing", "enteredAt": "2026-11-09T18:30:00Z" }],
+      "agent": "delivery-bot",
+      "cursorSessions": ["https://cursor.com/agents/bc-sample-delivery"],
+      "prs": [
+        {
+          "number": 181,
+          "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-dashboard/pull/181",
+          "state": "merged",
+          "mergedAt": "2026-11-09T17:40:00Z",
+          "mergeSha": "a1b2c3d4e5f6789012345678abcdef9012345678"
+        }
+      ],
+      "releaseCandidate": { "version": "2.4.88", "createdAt": "2026-11-09T17:50:00Z" },
+      "environments": {
+        "tdd": { "version": "2.4.88", "deployedAt": "2026-11-09T18:12:00Z" },
+        "uat": null,
+        "prod": null
+      },
+      "costUsd": 2.1
+    },
+    {
+      "number": 462,
+      "title": "Draw the runtime diagram from the manifest",
+      "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/462",
+      "state": "Active",
+      "column": "Release Queue",
+      "columnHistory": [{ "column": "Release Queue", "enteredAt": "2026-11-08T15:00:00Z" }],
+      "agent": "runtime-bot",
+      "cursorSessions": [
+        "https://cursor.com/agents/bc-sample-runtime",
+        "https://cursor.com/agents/bc-sample-runtime-2"
+      ],
+      "prs": [
+        {
+          "number": 164,
+          "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-dashboard/pull/164",
+          "state": "merged",
+          "mergedAt": "2026-11-08T11:20:00Z",
+          "mergeSha": "bbccddeeff0011223344556677889900aabbccdd"
+        }
+      ],
+      "releaseCandidate": { "version": "2.4.86+bbccdd", "createdAt": "2026-11-08T12:00:00Z" },
+      "environments": {
+        "tdd": { "version": "2.4.86", "deployedAt": "2026-11-08T13:00:00Z" },
+        "uat": { "version": "2.4.86", "deployedAt": "2026-11-08T16:10:00Z" },
+        "prod": null
+      },
+      "costUsd": 3.4
+    },
+    {
+      "number": 455,
+      "title": "Show the cluster the system runs in",
+      "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/455",
+      "state": "Closed",
+      "column": "Done",
+      "columnHistory": [
+        { "column": "Development", "enteredAt": "2026-11-05T10:00:00Z" },
+        { "column": "Done", "enteredAt": "2026-11-07T18:00:00Z" }
+      ],
+      "agent": "cluster-bot",
+      "cursorSessions": ["https://cursor.com/agents/bc-sample-cluster"],
+      "prs": [
+        {
+          "number": 151,
+          "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-dashboard/pull/151",
+          "state": "merged",
+          "mergedAt": "2026-11-07T15:00:00Z",
+          "mergeSha": "00112233445566778899aabbccddeeff00112233"
+        }
+      ],
+      "releaseCandidate": { "version": "2.4.80", "createdAt": "2026-11-07T15:30:00Z" },
+      "environments": {
+        "tdd": { "version": "2.4.80", "deployedAt": "2026-11-07T16:00:00Z" },
+        "uat": { "version": "2.4.80", "deployedAt": "2026-11-07T17:00:00Z" },
+        "prod": { "version": "2.4.80", "deployedAt": "2026-11-07T18:00:00Z" }
+      },
+      "costUsd": 4.4
+    },
+    {
+      "number": 440,
+      "title": "Show what the system cost in Azure",
+      "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/440",
+      "state": "Closed",
+      "column": "Done",
+      "columnHistory": [{ "column": "Done", "enteredAt": "2026-10-28T12:00:00Z" }],
+      "agent": "cost-bot",
+      "cursorSessions": ["https://cursor.com/agents/bc-sample-cost"],
+      "prs": [
+        {
+          "number": 120,
+          "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-dashboard/pull/120",
+          "state": "merged",
+          "mergedAt": "2026-10-28T09:00:00Z",
+          "mergeSha": "ffeeddccbbaa99887766554433221100ffeeddcc"
+        }
+      ],
+      "releaseCandidate": { "version": "2.4.70", "createdAt": "2026-10-28T09:30:00Z" },
+      "environments": {
+        "tdd": { "version": "2.4.70", "deployedAt": "2026-10-28T10:00:00Z" },
+        "uat": { "version": "2.4.70", "deployedAt": "2026-10-28T11:00:00Z" },
+        "prod": { "version": "2.4.70", "deployedAt": "2026-10-28T12:00:00Z" }
+      },
+      "costUsd": 1.2
+    }
+  ],
+  "releases": [
+    { "version": "2.4.88", "sha": "a1b2c3d4e5f6789012345678abcdef9012345678", "items": [470] },
+    { "version": "2.4.86", "sha": "bbccddeeff0011223344556677889900aabbccdd", "items": [462, 458] },
+    { "version": "2.4.80", "sha": "00112233445566778899aabbccddeeff00112233", "items": [455] },
+    { "version": "2.4.70", "sha": "ffeeddccbbaa99887766554433221100ffeeddcc", "items": [440] }
+  ]
+}

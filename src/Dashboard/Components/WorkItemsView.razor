@@ -1,0 +1,151 @@
+@* The work items view: what the system's bots are handling, from workitems.json next to the delivery facts. Read only.
+   Every word is decided in WorkItemsText; this places it. *@
+@{
+    var report = Monitor.WorkItems;
+    var availability = WorkItemsText.Availability(Monitor.Topology.System.WorkItemsUrl is not null, Monitor.WorkItemsAsked, report);
+}
+<section class="work" aria-labelledby="work-title">
+    <header class="work__header">
+        <h2 id="work-title">Work items</h2>
+        @if (report?.GeneratedAt is { } generated)
+        {
+            <p class="work__as-of">
+                as of <time datetime="@TimeText.Iso(generated)" title="@TimeText.DateAndTime(generated, Zone)">@TimeText.DateAndTime(generated, Zone)</time>
+            </p>
+        }
+        @if (report is not null && WorkItemsText.Scope(report.Scope) is { } scope)
+        {
+            <p class="work__scope">
+                @if (scope.Url is { } url && scope.Label is { } linked)
+                {
+                    <a href="@url.AbsoluteUri" target="_blank" rel="noopener" title="@scope.Title">@linked</a>
+                }
+                else if (scope.Label is { } label)
+                {
+                    <span>@label</span>
+                }
+                @if (scope.Project is { } project)
+                {
+                    <span>project @project</span>
+                }
+            </p>
+        }
+    </header>
+
+    @if (availability != WorkItemsAvailability.Ready || report is null)
+    {
+        <p class="empty" role="status">@WorkItemsText.Unavailable(availability)</p>
+    }
+    else
+    {
+        @if (report.Scope?.Rules is { } rules)
+        {
+            <p class="work__rules">@rules</p>
+        }
+
+        var chart = WorkItemsText.Chart(report.Stats.PerWeek);
+        <section class="work__stats" aria-label="Work item statistics">
+            <article class="card work-stat work-stat--wip">
+                <h3 class="tile__label">In progress</h3>
+                <ul class="work__wip">
+                    @foreach (var column in WorkItemsText.Wip(report))
+                    {
+                        <li><span class="work__wip-count">@column.Count</span> @column.Column</li>
+                    }
+                </ul>
+            </article>
+            <article class="card work-stat">
+                <h3 class="tile__label" title="From the start of the work to done">Cycle time</h3>
+                <p>@WorkItemsText.Duration(report.Stats.CycleTimeHours)</p>
+            </article>
+            <article class="card work-stat">
+                <h3 class="tile__label" title="From when the item was opened to done">Lead time</h3>
+                <p>@WorkItemsText.Duration(report.Stats.LeadTimeHours)</p>
+            </article>
+            <article class="card work-stat">
+                <h3 class="tile__label">Per week</h3>
+                @if (chart is null)
+                {
+                    <p>@WorkItemsText.NotMetered</p>
+                }
+                else
+                {
+                    var width = chart.Bars.Count * 14;
+                    <svg class="weeks" viewBox="0 0 @Pixel(width) @Pixel(WorkItemsText.ChartHeight)" width="@Pixel(width * 3)" height="@Pixel(WorkItemsText.ChartHeight * 1.4)" role="img" aria-label="@chart.Title" focusable="false">
+                        <title>@chart.Title</title>
+                        @for (var index = 0; index < chart.Bars.Count; index++)
+                        {
+                            var bar = chart.Bars[index];
+                            var x = index * 14;
+                            var merged = WorkItemsText.BarHeight(bar.Merged, chart.Scale);
+                            var deployed = WorkItemsText.BarHeight(bar.DeployedProd, chart.Scale);
+                            <rect class="weeks__merged" x="@Pixel(x)" y="@Pixel(WorkItemsText.ChartHeight - merged)" width="5" height="@Pixel(merged)">
+                                <title>@bar.Title</title>
+                            </rect>
+                            <rect class="weeks__deployed" x="@Pixel(x + 6)" y="@Pixel(WorkItemsText.ChartHeight - deployed)" width="5" height="@Pixel(deployed)">
+                                <title>@bar.Title</title>
+                            </rect>
+                        }
+                    </svg>
+                    <p class="weeks__legend">
+                        <span class="weeks__key weeks__key--merged">Merged</span>
+                        <span class="weeks__key weeks__key--deployed">Deployed to prod</span>
+                    </p>
+                    <p class="work-stat__latest">@WorkItemsText.LatestWeek(chart)</p>
+                }
+            </article>
+            <article class="card work-stat">
+                <h3 class="tile__label" title="Functional-test failures and reverts">Rework</h3>
+                <p>@WorkItemsText.Rework(report.Stats.Rework)</p>
+            </article>
+            <article class="card work-stat">
+                <h3 class="tile__label">Cursor agent cost</h3>
+                <p>@WorkItemsText.Cost(report.Stats.Cost, report.Items.Count)</p>
+            </article>
+        </section>
+
+        @if (report.Items.Count == 0)
+        {
+            <p class="empty">@WorkItemsText.None</p>
+        }
+        else
+        {
+            var active = WorkItemsText.Active(report.Items);
+            if (active.Count == 0)
+            {
+                <p class="empty">@WorkItemsText.NoActive</p>
+            }
+
+            @foreach (var group in active)
+            {
+                var id = WorkItemsText.ColumnId(group.Column);
+                <section class="work-column" aria-labelledby="@id">
+                    <h3 id="@id">@group.Column <span class="work__count">@group.Items.Count</span></h3>
+                    <WorkItemTable Items="group.Items" Caption="@group.Column" Now="Now" />
+                </section>
+            }
+
+            var done = WorkItemsText.RecentlyDone(report.Items);
+            if (done.Count > 0)
+            {
+                <section class="work-column" aria-labelledby="work-col-done">
+                    <h3 id="work-col-done">Recently done <span class="work__count">@done.Count</span></h3>
+                    <WorkItemTable Items="done" Caption="Recently done" Now="Now" />
+                </section>
+            }
+        }
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public DashboardMonitor Monitor { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public TimeZoneInfo Zone { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public DateTimeOffset Now { get; set; }
+
+    private static string Pixel(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+}

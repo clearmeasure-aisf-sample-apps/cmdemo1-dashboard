@@ -23,12 +23,14 @@
     <Using Include="Dashboard.Cluster" />
     <Using Include="Dashboard.Health" />
     <Using Include="Dashboard.Runtime" />
+    <Using Include="Dashboard.Work" />
     <Using Include="Xunit" />
   </ItemGroup>
 
   <!-- The samples the app ships with: tests read them, so the samples always match the contract. -->
   <ItemGroup>
     <None Include="..\Dashboard\wwwroot\topology.json" Link="topology.sample.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Dashboard\wwwroot\samples\workitems.json" Link="workitems.sample.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\Dashboard\wwwroot\runtime\*.json;..\Dashboard\wwwroot\runtime\*.svg" Link="runtime.sample\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

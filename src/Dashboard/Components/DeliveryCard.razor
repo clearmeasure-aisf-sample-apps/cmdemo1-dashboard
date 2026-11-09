@@ -99,6 +99,11 @@
             </div>
         }
     </dl>
+    @* The work items this release carries, from workitems.json. There only when that file names the release. *@
+    @if (Carries is { } carries)
+    {
+        <p class="card__carries">@carries</p>
+    }
 </section>
 
 @code {
@@ -129,4 +134,8 @@
 
     [Parameter, EditorRequired]
     public DateTimeOffset Now { get; set; }
+
+    /// <summary>The work items this release carries, <c>carries #12, #15</c>; null when none are known.</summary>
+    [Parameter]
+    public string? Carries { get; set; }
 }

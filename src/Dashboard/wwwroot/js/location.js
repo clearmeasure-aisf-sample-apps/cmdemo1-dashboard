@@ -1,5 +1,5 @@
 // The view in the address: #runtime or #runtime/<environment> opens the runtime view, #cluster the cluster view (where
-// the topology has a cluster), anything else the health view. #runtime/<environment>/database is the runtime view
+// the topology has a cluster), #work-items the work items view, anything else the health view. #runtime/<environment>/database is the runtime view
 // zoomed into the environment's database, #runtime/<environment>/app/<deployable> the same zoomed into the box of
 // that deployable.
 // The page replaces the hash as the viewer switches (no history entry per click) and follows a hash typed or linked.

@@ -1,3 +1,4 @@
+using Dashboard.Work;
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
 
 namespace Dashboard.Health;
@@ -204,6 +205,10 @@ public sealed class NodeProber(HttpClient http, TimeProvider time)
     /// <summary>The system's delivery facts (<see cref="DeliveryReport"/>), from the address the topology gives.</summary>
     public Task<DeliveryReport?> ReadDeliveryAsync(Uri address, CancellationToken cancellationToken) =>
         ReadAsync(address, DeliveryReport.Parse, cancellationToken);
+
+    /// <summary>The work items the system's bots are handling (<see cref="WorkItemsReport"/>), from <c>workitems.json</c>.</summary>
+    public Task<WorkItemsReport?> ReadWorkItemsAsync(Uri address, CancellationToken cancellationToken) =>
+        ReadAsync(address, WorkItemsReport.Parse, cancellationToken);
 
     /// <summary>What the system cost in Azure (<see cref="CostReport"/>), from the address the topology gives.</summary>
     public Task<CostReport?> ReadCostAsync(Uri address, CancellationToken cancellationToken) =>

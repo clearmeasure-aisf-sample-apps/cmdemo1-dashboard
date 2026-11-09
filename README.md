@@ -104,7 +104,12 @@ Not responding once the page has asked it, and no pinned version is found. Point
 system repository to see them (and allow `http://localhost:5210` in the nodes' CORS settings, see below). The sample
 names no cluster, so it has no Cluster tab: a topology takes absolute addresses only, and the sample would have none
 to give for the cluster's two files. To see the view, add a `cluster` to the sample with the addresses of a real
-cluster's files, or of two files a local server serves (the tests' copies are `src/Dashboard.Tests/Samples/`).
+cluster's files, or of two files a local server serves (the tests' copies are `src/Dashboard.Tests/Samples/`). The
+Work items tab is always there (`#work-items`). It reads `workitems.json` from beside `delivery.json`. The sample
+topology points at example-org, which does not publish that file, so the view says it is not there yet. A sample of
+the file is served at `/samples/workitems.json`. To see it, set the sample's `deliveryUrl` to
+`http://localhost:5210/samples/delivery.json`: the page asks for `workitems.json` in that same folder. No
+`delivery.json` has to be there for the work items view; one is needed only to see a Delivery card's "carries" line.
 
 ```
 dotnet build -c Release     # warnings are errors
@@ -1451,6 +1456,58 @@ facts as of the last change". Entries of the file that belong to no deployable o
 own after the environment's deployables: first the one named `system`, the system project itself, labelled "the
 system (infrastructure and pipeline)", then the others (such as the dashboard). The last failover test of the system
 (`failover`: environment, when, the seconds until the standby answered) is a line above the events.
+
+When the work items file names the release the card shows (`releases` of `workitems.json`, matched on the version,
+ignoring `+` build metadata), the card adds one line: "carries #12, #15", the work item numbers in that release,
+lowest first. No line when the file is not there, or the release carries none.
+
+## Work items
+
+The Work items view (`#work-items`) shows which work items the system's bots are handling. It is read-only. With
+`system.deliveryUrl`, the page reads `workitems.json` from the same folder, on the same round as the delivery facts
+and then every five minutes:
+
+`https://raw.githubusercontent.com/<githubOrg>/<repository>/status/workitems.json`
+
+A workflow of the system repository publishes the file to its branch `status`. Until it has, the address answers 404
+and the view says the file is not published yet. A reading that fails later keeps the last good one. A topology
+without `deliveryUrl` has nowhere to read the file, and the view says so. The view does not change the health summary.
+
+```json
+{ "generatedAt": "2026-11-09T22:00:00Z",
+  "scope": { "repo": "https://github.com/org/cmdemo1-system", "project": 679, "rules": "A bot may take an item from Todo." },
+  "stats": {
+    "wipByColumn": { "Todo": 1, "In Progress": 1, "Development": 2 },
+    "cycleTimeHours": { "median": 18.5, "p85": 72, "n": 11 },
+    "leadTimeHours": { "median": 26, "p85": 96, "n": 9 },
+    "perWeek": [ { "weekStart": "2026-11-09", "merged": 5, "deployedProd": 2 } ],
+    "rework": { "ftFailures": 2, "reverts": 1, "rate": 0.125 },
+    "cost": { "totalUsd": 18, "note": "Cursor agent usage for these items, last 30 days" } },
+  "items": [ { "number": 470, "title": "Show which release an environment carries", "url": "https://...",
+    "state": "Active", "column": "Functional Testing",
+    "columnHistory": [ { "column": "Functional Testing", "enteredAt": "2026-11-09T18:30:00Z" } ],
+    "assignee": "cm-ai-ops", "agent": "delivery-bot",
+    "cursorSessions": [ "https://cursor.com/agents/bc-sample-delivery" ],
+    "prs": [ { "number": 181, "url": "https://...", "state": "merged", "mergedAt": "2026-11-09T17:40:00Z", "mergeSha": "<sha>" } ],
+    "releaseCandidate": { "version": "2.4.88", "createdAt": "2026-11-09T17:50:00Z" },
+    "environments": { "tdd": { "version": "2.4.88", "deployedAt": "2026-11-09T18:12:00Z" }, "uat": null, "prod": null },
+    "costUsd": 2.1 } ],
+  "releases": [ { "version": "2.4.88", "sha": "<sha>", "items": [470] } ] }
+```
+
+Every part is optional. A part that is missing, null, or of another type is left out; an item with no number, title,
+address and column is left out; an address that is not absolute http or https is not linked. `generated` is read when
+`generatedAt` is absent. `rate` from 0 to 1 is a fraction (0.125 is 12.5 %); a larger number is shown as given.
+`cost.totalUsd` null is "n/a", with `note` when the file gives one. Per item in the strip is that total divided by
+how many items the file lists. A column other than Todo, In Progress, Technical Design, Development, Functional
+Testing, Release Queue and Done is still shown, and is not treated as done.
+
+The view has: the counts of work in progress per column; cycle time and lead time (median, p85, how many); a chart of
+pull requests merged and items deployed to prod per week; the rework rate; the Cursor agent cost. Then the items that
+are not done, grouped by column, each with its issue, the bot handling it, its Cursor session, its pull request and
+that pull request's state, its release candidate (an Octopus release, `2.4.<build>`) and a badge per environment it
+is deployed to (tdd, uat, prod). Done items follow, the one that arrived there last first. A sample file ships at
+`src/Dashboard/wwwroot/samples/workitems.json`.
 
 ## Availability
 

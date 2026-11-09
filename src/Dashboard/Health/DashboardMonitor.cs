@@ -1,4 +1,5 @@
 using Dashboard.Cluster;
+using Dashboard.Work;
 
 namespace Dashboard.Health;
 
@@ -28,6 +29,7 @@ public sealed class DashboardMonitor
     private IReadOnlyList<ContainerAppProbe> _watched = [];
     private bool _resourceHealthWanted;
     private DateTimeOffset? _deliveryReadAt;
+    private DateTimeOffset? _workItemsReadAt;
     private DateTimeOffset? _costReadAt;
     private DateTimeOffset? _deploymentsReadAt;
     private DateTimeOffset? _dashboardBuildAskedAt;
@@ -95,6 +97,16 @@ public sealed class DashboardMonitor
     /// never read. A reading that fails keeps the last good one: the file says when it was generated.
     /// </summary>
     public DeliveryReport? Delivery { get; private set; }
+
+    /// <summary>
+    /// The work items the system's bots are handling, as last read; null when the topology names no delivery file
+    /// (there is then no <c>workitems.json</c> next to it), the file was never read, or it is not there yet. A reading
+    /// that fails keeps the last good one.
+    /// </summary>
+    public WorkItemsReport? WorkItems { get; private set; }
+
+    /// <summary>True after a read of the work items was attempted, so the view can tell "loading" from "not published".</summary>
+    public bool WorkItemsAsked { get; private set; }
 
     /// <summary>
     /// What the system cost in Azure, as last read; null when the topology names no <c>costUrl</c> or the file was
@@ -196,8 +208,9 @@ public sealed class DashboardMonitor
     /// timeout delays neither the others nor their display. The pinned versions are read at the same time, once per
     /// environment, and once per deployable that has a pin of its own (<c>pinUrl</c>); with the probe Health check, a
     /// node whose deployable names a <c>healthDetailPath</c> is also asked for the entries of its health check. A file that cannot be read is a
-    /// result like any other and fails no check. So are the delivery facts, every <see cref="DeliveryInterval"/>, the
-    /// cost, every <see cref="CostInterval"/>, the deployments in flight, every <see cref="DeploymentsInterval"/>, the
+    /// result like any other and fails no check. So are the delivery facts and the work items, every
+    /// <see cref="DeliveryInterval"/>, the cost, every <see cref="CostInterval"/>, the deployments in flight, every
+    /// <see cref="DeploymentsInterval"/>, the
     /// dashboard's own build facts, once, and the two files of the cluster view, every round, where the topology names
     /// a cluster. The container apps the runtime view shows are probed when their interval is due, and Resource Health
     /// is read every <see cref="DeliveryInterval"/> while a box shows it (<see cref="Watch"/>).
@@ -215,6 +228,7 @@ public sealed class DashboardMonitor
         var containerApps = _watched.Where(app => app.IsDue(started)).Select(app => ProbeContainerAppAsync(app, probe, started, cancellationToken)).ToList();
         await Task.WhenAll(checks.Concat(readings).Concat(pins).Concat(containerApps)
             .Append(ReadDeliveryAsync(cancellationToken))
+            .Append(ReadWorkItemsAsync(cancellationToken))
             .Append(ReadCostAsync(cancellationToken))
             .Append(ReadDeploymentsAsync(cancellationToken))
             .Append(ReadDashboardBuildAsync(cancellationToken))
@@ -302,6 +316,28 @@ public sealed class DashboardMonitor
         if (await _prober.ReadDeliveryAsync(address, cancellationToken) is { } report)
         {
             Delivery = report;
+            Changed?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// Reads <c>workitems.json</c> from beside the delivery facts. A reading that fails keeps the last good one, and
+    /// the view says the file is not published until the first one succeeds.
+    /// </summary>
+    private async Task ReadWorkItemsAsync(CancellationToken cancellationToken)
+    {
+        var now = _time.GetUtcNow();
+        if (Topology.System.WorkItemsUrl is not { } address || (_workItemsReadAt is { } last && now - last < DeliveryInterval))
+        {
+            return;
+        }
+
+        _workItemsReadAt = now;
+        var report = await _prober.ReadWorkItemsAsync(address, cancellationToken);
+        WorkItemsAsked = true;
+        if (report is not null)
+        {
+            WorkItems = report;
             Changed?.Invoke();
         }
     }

@@ -1516,13 +1516,13 @@ and lead time of items that reached Done, merges and production deploys per week
 
 On All, bot and team are compared where either side has a cycle time or a week. A team item is a short row: the issue,
 its pull request, and the environments it is deployed to. A bot item opens to the factory detail that the file can
-answer: the column timeline, every Cursor session, every pull request with its checks, merge time and merge SHA, the
-release candidate and the tdd, uat and prod deploy times, rework, cost, and the bot's status or blocker. The bot
-filter also shows time per column (`timePerColumnHours`), throughput per bot (`throughput`: `agent`, `merged`,
-`deployedProd`) and merge-to-prod (`mergeToProdHours`). Those three are counted from the bot items when the file does
-not give them. A pull request's checks are `checks.result` (`passed`, `failed`, `pending`, or the file's word) and
-`checks.url`, or a string `checks` / `checksResult`. The blocker is `blocker.text`, `blocker.url` and `blocker.at`,
-or a `status` string.
+answer: the column timeline (`columnHistory` `enteredAt`, `leftAt`, `hours`), every Cursor session, every pull
+request with its checks (`checks`: `success`, `failure`, `pending`, or an object `checks.result`), merge time and
+merge SHA, the release candidate and the tdd, uat and prod deploy times, rework (`ftFailures` and `reverts` on the
+item, or the older `rework` object), cost, and `latestStatusComment` (`url`, `at`, `kind` of `status` or `blocker`).
+The bot filter also shows time per column (`hoursByColumn`, or the older `timePerColumnHours`), throughput per bot
+(`throughputByAgent`, a count of items that reached Done, or the older `throughput` list) and merge-to-prod
+(`mergeToProdHours`). Those three are counted from the bot items when the file does not give them.
 
 ## Availability
 

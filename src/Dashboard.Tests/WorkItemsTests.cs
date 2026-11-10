@@ -331,4 +331,51 @@ public class WorkItemsTests
         Assert.Contains("Bot", WorkItemsText.Comparison(report)!.BotCycle is not null ? "Bot" : string.Empty, StringComparison.Ordinal);
         Assert.Equal(WorkWorker.Team, WorkItemsText.Select(report.Items, WorkAudience.Team)[0].Worker);
     }
+
+    [Fact]
+    public void TheFeedSampleUsesThePublishedNames()
+    {
+        var feed = WorkItemsReport.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "feed-workitems.json")))!;
+        var bot = feed.Items.Single(item => item.Number == 1565);
+        var failed = feed.Items.Single(item => item.Number == 852);
+
+        Assert.Equal("clearmeasure-aisf-sample-apps/cmdemo1-workorders", feed.Scope!.Repo);
+        Assert.Contains("worker", feed.Scope.Rules, StringComparison.Ordinal);
+        Assert.Equal(2.1, feed.BotStats!.TimePerColumnHours!["Done"].Median);
+        Assert.Equal("Done", WorkBotText.Longest(WorkBotText.ColumnWaits(feed.BotStats, feed.Items, Now))!.Column);
+        Assert.Equal("cm-ai-ops-bot: 1 done", WorkBotText.ThroughputLine(Assert.Single(feed.BotStats.Throughput!)));
+        Assert.Equal(4.8, feed.BotStats.MergeToProdHours!.Median);
+        Assert.Equal(WorkWorker.Bot, bot.Worker);
+        Assert.Equal(0, bot.Rework!.FtFailures);
+        Assert.Equal(0, bot.Rework.Reverts);
+        Assert.Equal(1, failed.Rework!.FtFailures);
+        Assert.Equal("passed", Assert.Single(bot.PullRequests).Checks);
+        Assert.Equal("status", bot.Blocker!.Kind);
+        Assert.Equal(new DateTimeOffset(2026, 11, 9, 23, 4, 14, TimeSpan.Zero), bot.Environments.Tdd!.DeployedAt);
+        Assert.Equal("2.4.2060", bot.Environments.Tdd.Version);
+        Assert.Equal(
+            ["In Progress · 6 min", "Technical Design · 12 min", "Development · 0 s", "Functional Testing · 30 min", "Release Queue · 84 min so far"],
+            WorkBotText.Timeline(bot, Now).Select(WorkBotText.Stay));
+        Assert.Equal(WorkWorker.Team, feed.Items.Single(item => item.Number == 1543).Worker);
+    }
+
+    [Fact]
+    public async Task ThePublishedWorkItemsFileParses()
+    {
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        using var response = await http.GetAsync(new Uri("https://raw.githubusercontent.com/clearmeasure-aisf-sample-apps/cmdemo1-system/status/workitems.json"));
+        response.EnsureSuccessStatusCode();
+        var feed = WorkItemsReport.Parse(await response.Content.ReadAsStringAsync())!;
+
+        Assert.True(feed.Items.Count > 100);
+        Assert.Contains(feed.Items, item => item.Worker == WorkWorker.Bot);
+        Assert.Contains(feed.Items, item => item.Worker == WorkWorker.Team);
+        Assert.NotNull(feed.BotStats!.TimePerColumnHours);
+        Assert.NotEmpty(feed.BotStats.Throughput!);
+        Assert.All(feed.BotStats.Throughput!, row => Assert.NotNull(row.Done));
+        Assert.NotNull(feed.BotStats.MergeToProdHours);
+        Assert.Contains(feed.Items, item => item.PullRequests.Any(pull => pull.Checks is not null));
+        Assert.Contains(feed.Items, item => item.ColumnHistory.Any(visit => visit.Hours is not null));
+        Assert.Contains(feed.Items, item => item.Blocker?.Kind is "status" or "blocker");
+    }
 }

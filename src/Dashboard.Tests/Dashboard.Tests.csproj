@@ -31,6 +31,7 @@
   <ItemGroup>
     <None Include="..\Dashboard\wwwroot\topology.json" Link="topology.sample.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\Dashboard\wwwroot\samples\workitems.json" Link="workitems.sample.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Fixtures\feed-workitems.json" Link="feed-workitems.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\Dashboard\wwwroot\runtime\*.json;..\Dashboard\wwwroot\runtime\*.svg" Link="runtime.sample\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

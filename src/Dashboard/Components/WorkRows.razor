@@ -96,7 +96,7 @@
                                 }
                             </div>
                         }
-                        @if (item.Rework is { } rework && WorkItemsText.Rework(rework) is { } reworkText && reworkText != WorkItemsText.NotMetered)
+                        @if (item.Rework is { } rework && (rework.FtFailures > 0 || rework.Reverts > 0 || rework.Rate is not null) && WorkItemsText.Rework(rework) is { } reworkText && reworkText != WorkItemsText.NotMetered)
                         {
                             <div>
                                 <h4 class="tile__label">Rework</h4>
@@ -113,7 +113,7 @@
                         @if (item.Blocker is { } blocker)
                         {
                             <div>
-                                <h4 class="tile__label">Status</h4>
+                                <h4 class="tile__label">@WorkBotText.NoteHeading(blocker)</h4>
                                 <p>
                                     @if (blocker.Url is { } url)
                                     {

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Dashboard.Health;
 
 namespace Dashboard.Work;
@@ -99,10 +100,18 @@ public static class WorkBotText
     public static string ThroughputLine(WorkThroughput row)
     {
         ArgumentNullException.ThrowIfNull(row);
+        if (row.Done is { } done && row.Merged is null && row.DeployedProd is null)
+        {
+            return done == 1 ? $"{row.Agent}: 1 done" : string.Create(CultureInfo.InvariantCulture, $"{row.Agent}: {done} done");
+        }
+
         var merged = row.Merged ?? 0;
         var deployed = row.DeployedProd ?? 0;
         return $"{row.Agent}: {merged} merged, {deployed} deployed to prod";
     }
+
+    public static string NoteHeading(WorkNote note) =>
+        string.Equals(note.Kind, "blocker", StringComparison.OrdinalIgnoreCase) ? "Blocker" : "Status";
 
     /// <summary>Merge to production. The file's <c>mergeToProdHours</c> wins; otherwise merged-at against the prod deployment.</summary>
     public static WorkDuration? MergeToProd(WorkItemsStats? published, IReadOnlyList<WorkItem> items)
@@ -147,7 +156,12 @@ public static class WorkBotText
             var visit = visits[index];
             TimeSpan? spent = null;
             var open = false;
-            if (visit.EnteredAt is { } entered)
+            if (visit.Hours is { } hours)
+            {
+                spent = TimeSpan.FromHours(hours);
+                open = visit.LeftAt is null;
+            }
+            else if (visit.EnteredAt is { } entered)
             {
                 DateTimeOffset? end = index + 1 < visits.Count ? visits[index + 1].EnteredAt : null;
                 if (end is null && visit.Column is { } column && WorkColumns.Same(item.Column, column))

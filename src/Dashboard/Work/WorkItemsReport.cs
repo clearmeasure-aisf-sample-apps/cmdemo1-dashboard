@@ -73,8 +73,25 @@ public sealed record WorkItemsScope(string? Repo, int? Project, string? Rules)
 {
     internal static WorkItemsScope? Read(JsonElement? section)
     {
-        var scope = new WorkItemsScope(JsonRead.Text(section, "repo"), JsonRead.Count(section, "project"), JsonRead.Text(section, "rules"));
+        var scope = new WorkItemsScope(JsonRead.Text(section, "repo"), JsonRead.Count(section, "project"), ReadRules(section));
         return scope == new WorkItemsScope(null, null, null) ? null : scope;
+    }
+
+    /// <summary>A string, or the sentences of an array joined. The feed publishes an array.</summary>
+    private static string? ReadRules(JsonElement? section)
+    {
+        if (JsonRead.Text(section, "rules") is { } text)
+        {
+            return text;
+        }
+
+        var lines = JsonRead.Items(section, "rules")
+            .Where(item => item.ValueKind == JsonValueKind.String)
+            .Select(item => item.GetString()?.Trim())
+            .Where(line => !string.IsNullOrEmpty(line))
+            .Cast<string>()
+            .ToList();
+        return lines.Count == 0 ? null : string.Join(" ", lines);
     }
 }
 
@@ -148,7 +165,7 @@ public sealed record WorkItemsStats(
             return Empty;
         }
 
-        var throughput = JsonRead.Items(section, "throughput").Select(WorkThroughput.Read).OfType<WorkThroughput>().ToList();
+        var throughput = ReadThroughput(section);
         return new WorkItemsStats(
             Counts(section, "wipByColumn"),
             WorkDuration.Read(JsonRead.Section(section, "cycleTimeHours")),
@@ -157,13 +174,37 @@ public sealed record WorkItemsStats(
             WorkRework.Read(JsonRead.Section(section, "rework")),
             WorkCost.Read(JsonRead.Section(section, "cost")),
             ColumnTimes(section),
-            throughput.Count == 0 ? null : throughput,
+            throughput,
             WorkDuration.Read(JsonRead.Section(section, "mergeToProdHours")));
     }
 
+    private static List<WorkThroughput>? ReadThroughput(JsonElement? section)
+    {
+        if (JsonRead.Section(section, "throughputByAgent") is { } agents)
+        {
+            var rows = new List<WorkThroughput>();
+            foreach (var property in agents.EnumerateObject())
+            {
+                if (JsonRead.Count(agents, property.Name) is { } done && !string.IsNullOrWhiteSpace(property.Name))
+                {
+                    rows.Add(new WorkThroughput(property.Name.Trim(), null, null, done));
+                }
+            }
+
+            if (rows.Count > 0)
+            {
+                return [.. rows.OrderByDescending(row => row.Done ?? 0).ThenBy(row => row.Agent, StringComparer.OrdinalIgnoreCase)];
+            }
+        }
+
+        var listed = JsonRead.Items(section, "throughput").Select(WorkThroughput.Read).OfType<WorkThroughput>().ToList();
+        return listed.Count == 0 ? null : listed;
+    }
+
+    /// <summary><c>hoursByColumn</c> is the median hours per column. <c>timePerColumnHours</c> is the older object of durations.</summary>
     private static Dictionary<string, WorkDuration>? ColumnTimes(JsonElement? parent)
     {
-        if (JsonRead.Section(parent, "timePerColumnHours") is not { } section)
+        if ((JsonRead.Section(parent, "hoursByColumn") ?? JsonRead.Section(parent, "timePerColumnHours")) is not { } section)
         {
             return null;
         }
@@ -278,7 +319,8 @@ public enum WorkAudience
 /// <param name="Agent">The bot's name. <c>unnamed</c> when the file counts the work and does not name the bot.</param>
 /// <param name="Merged">Pull requests that merged.</param>
 /// <param name="DeployedProd">Items that reached production.</param>
-public sealed record WorkThroughput(string Agent, int? Merged, int? DeployedProd)
+/// <param name="Done">Items that reached Done, from <c>throughputByAgent</c>. Null for the older merged and deployed counts.</param>
+public sealed record WorkThroughput(string Agent, int? Merged, int? DeployedProd, int? Done = null)
 {
     internal static WorkThroughput? Read(JsonElement element)
     {
@@ -295,7 +337,8 @@ public sealed record WorkThroughput(string Agent, int? Merged, int? DeployedProd
 }
 
 /// <summary>A short note the bot left: its latest status, or the comment that says what blocked it.</summary>
-public sealed record WorkNote(string? Text, Uri? Url, DateTimeOffset? At)
+/// <param name="Kind"><c>status</c> or <c>blocker</c> when the feed says which. Null for an older note.</param>
+public sealed record WorkNote(string? Text, Uri? Url, DateTimeOffset? At, string? Kind = null)
 {
     internal static WorkNote? Read(JsonElement? section)
     {
@@ -363,7 +406,7 @@ public sealed record WorkItem(
             WorkItemEnvironments.Read(JsonRead.Section(element, "environments")),
             JsonRead.Number(element, "costUsd"),
             ReadWorker(element),
-            WorkRework.Read(JsonRead.Section(element, "rework")),
+            ItemRework(element),
             Note(element));
         return item.Number is null && item.Title is null && item.Url is null && item.Column is null ? null : item;
     }
@@ -389,16 +432,51 @@ public sealed record WorkItem(
         _ => WorkWorker.Unknown,
     };
 
+    /// <summary><c>ftFailures</c> and <c>reverts</c> on the item. The older <c>rework</c> object is used when those are absent.</summary>
+    private static WorkRework? ItemRework(JsonElement element)
+    {
+        var failures = JsonRead.Count(element, "ftFailures");
+        var reverts = JsonRead.Count(element, "reverts");
+        return failures is not null || reverts is not null
+            ? new WorkRework(failures, reverts, null)
+            : WorkRework.Read(JsonRead.Section(element, "rework"));
+    }
+
     private static WorkNote? Note(JsonElement element) =>
-        WorkNote.Read(JsonRead.Section(element, "blocker"))
+        StatusComment(JsonRead.Section(element, "latestStatusComment"))
+        ?? WorkNote.Read(JsonRead.Section(element, "blocker"))
         ?? WorkNote.Read(JsonRead.Section(element, "comment"))
         ?? (JsonRead.Text(element, "status") is { } status
             ? new WorkNote(status, JsonRead.Address(element, "statusUrl"), JsonRead.Time(element, "statusAt"))
             : null);
+
+    /// <summary><c>latestStatusComment</c>: a link, when it was written, and whether it is a status or a blocker.</summary>
+    private static WorkNote? StatusComment(JsonElement? section)
+    {
+        var kind = JsonRead.Text(section, "kind");
+        var url = JsonRead.Address(section, "url");
+        var at = JsonRead.Time(section, "at");
+        var text = JsonRead.Text(section, "text");
+        if (kind is null && url is null && at is null && text is null)
+        {
+            return null;
+        }
+
+        var label = kind?.ToLowerInvariant() switch
+        {
+            "blocker" => "Blocker",
+            "status" => "Status",
+            null => text,
+            _ => kind,
+        };
+        return new WorkNote(text ?? label, url, at, kind);
+    }
 }
 
 /// <summary>When an item entered a column.</summary>
-public sealed record ColumnVisit(string? Column, DateTimeOffset? EnteredAt)
+/// <param name="LeftAt">When the item left the column. Null while it is still there.</param>
+/// <param name="Hours">How long it spent there, including up to the run while it is still there.</param>
+public sealed record ColumnVisit(string? Column, DateTimeOffset? EnteredAt, DateTimeOffset? LeftAt = null, double? Hours = null)
 {
     internal static ColumnVisit? Read(JsonElement element)
     {
@@ -407,8 +485,12 @@ public sealed record ColumnVisit(string? Column, DateTimeOffset? EnteredAt)
             return null;
         }
 
-        var visit = new ColumnVisit(JsonRead.Text(element, "column"), JsonRead.Time(element, "enteredAt"));
-        return visit.Column is null && visit.EnteredAt is null ? null : visit;
+        var visit = new ColumnVisit(
+            JsonRead.Text(element, "column"),
+            JsonRead.Time(element, "enteredAt"),
+            JsonRead.Time(element, "leftAt"),
+            JsonRead.Number(element, "hours"));
+        return visit.Column is null && visit.EnteredAt is null && visit.LeftAt is null && visit.Hours is null ? null : visit;
     }
 }
 

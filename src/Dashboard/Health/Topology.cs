@@ -37,6 +37,12 @@ public sealed record SystemInfo(
     /// same workflow publishes next to the delivery facts; null without them.
     /// </summary>
     public Uri? ContainersUrl => DeliveryUrl is null ? null : new Uri(DeliveryUrl, "containers.json");
+
+    /// <summary>
+    /// Where the browser reads the work items the system's bots are handling: <c>workitems.json</c>, published next
+    /// to the delivery facts; null without them. The work items view is empty until that file is there.
+    /// </summary>
+    public Uri? WorkItemsUrl => DeliveryUrl is null ? null : new Uri(DeliveryUrl, "workitems.json");
 }
 
 /// <summary>

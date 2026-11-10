@@ -14,7 +14,7 @@
         }
         @if (delivery is not null)
         {
-            <DeliveryCard Entry="delivery" Environment="@Environment.Name" First="@Monitor.FirstEnvironment" Context="@context" IdPrefix="@IdPrefix" Zone="Zone" Now="Now" Changed="Monitor.Delivery?.Generated" />
+            <DeliveryCard Entry="delivery" Environment="@Environment.Name" First="@Monitor.FirstEnvironment" Context="@context" IdPrefix="@IdPrefix" Zone="Zone" Now="Now" Changed="Monitor.Delivery?.Generated" Carries="@WorkItemsText.Carries(Monitor.WorkItems, delivery.Version)" />
         }
     </div>
 }

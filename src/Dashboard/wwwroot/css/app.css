@@ -1370,7 +1370,7 @@ main {
   opacity: 0.7;
 }
 
-/* ---------- Views: Health and Runtime ---------- */
+/* ---------- Views: Health, Runtime, Cluster, Work items ---------- */
 
 .views {
   display: flex;
@@ -2424,6 +2424,266 @@ main {
   font-size: 0.9rem;
   font-weight: 700;
   white-space: nowrap;
+}
+
+/* ---------- Work items ---------- */
+
+.work {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.work__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 1rem;
+}
+
+.work__as-of,
+.work__scope,
+.work__rules {
+  color: var(--ink-secondary);
+  font-size: 0.88rem;
+}
+
+.work__scope {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.9rem;
+}
+
+.work__rules {
+  margin-top: -0.4rem;
+}
+
+.work__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 0.6rem;
+}
+
+.work-stat {
+  gap: 0.45rem;
+}
+
+.work-stat--wip {
+  grid-column: 1 / -1;
+}
+
+.work-stat p {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.work__wip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1.1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work__wip li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 9rem;
+}
+
+.work__wip-count {
+  color: var(--ink);
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.work-stat__latest {
+  color: var(--ink-secondary);
+  font-size: 0.82rem;
+}
+
+.weeks {
+  display: block;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.weeks__merged {
+  fill: var(--series-1);
+}
+
+.weeks__deployed {
+  fill: var(--series-3);
+}
+
+.weeks__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.9rem;
+  color: var(--ink-secondary);
+  font-size: 0.82rem;
+}
+
+.weeks__key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.weeks__key::before {
+  content: "";
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 2px;
+  background: var(--series-1);
+}
+
+.weeks__key--deployed::before {
+  background: var(--series-3);
+}
+
+.work-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.work__count {
+  color: var(--ink-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.work__issue {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  white-space: normal;
+}
+
+.work__title {
+  font-weight: 400;
+}
+
+.work__stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+}
+
+.work__pull {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.4rem;
+}
+
+.grid--work td {
+  white-space: normal;
+}
+
+.grid--work .grid__number {
+  white-space: nowrap;
+}
+
+/* The work items a release carries, under the delivery facts. Words only: it is not a state of the deployment. */
+.card__carries {
+  color: var(--ink-secondary);
+  font-size: 0.82rem;
+}
+
+.work__filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip--bot {
+  border-color: var(--cm-sky);
+  color: var(--ink);
+}
+
+.chip--team {
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+
+.work-compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 0.8rem 1.2rem;
+}
+
+.work-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.9rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.work-line__issue {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.55rem;
+  min-width: min(100%, 18rem);
+}
+
+.work-line__rest {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.45rem;
+}
+
+.work-bot > summary {
+  cursor: pointer;
+}
+
+.work-bot > summary::marker {
+  color: var(--ink-secondary);
+}
+
+.work-detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 0.7rem 1rem;
+  margin: 0.35rem 0 0.2rem;
+  padding: 0.7rem 0.8rem 0.8rem 1.4rem;
+  border-left: 3px solid var(--cm-sky);
+}
+
+.work-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-timeline li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.6rem;
 }
 
 /* ---------- Messages ---------- */

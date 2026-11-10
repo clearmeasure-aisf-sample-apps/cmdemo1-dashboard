@@ -81,8 +81,8 @@
 </header>
 
 @* Renderings of one monitor: the checks, the interval and the probe above apply to all. The address keeps the
-   choice (#runtime, #runtime/<environment>, #runtime/<environment>/database, #runtime/<environment>/app/<deployable>, #cluster), so a link opens the view. The cluster view is there only for a
-   topology with a cluster. *@
+   choice (#runtime, #runtime/<environment>, #runtime/<environment>/database, #runtime/<environment>/app/<deployable>, #cluster, #work-items), so a link opens the view. The cluster view is there only for a
+   topology with a cluster. The work items view is always there: its file may not be published yet. *@
 <nav class="views" aria-label="Views">
     <button type="button" class="views__tab" aria-current="@(View == DashboardView.Health ? "page" : null)"
             @onclick="() => ShowAsync(ViewAddress.Health)">Health</button>
@@ -93,6 +93,8 @@
         <button type="button" class="views__tab" aria-current="@(View == DashboardView.Cluster ? "page" : null)"
                 @onclick="() => ShowAsync(ViewAddress.Cluster)">Cluster</button>
     }
+    <button type="button" class="views__tab" aria-current="@(View == DashboardView.WorkItems ? "page" : null)"
+            @onclick="() => ShowAsync(new ViewAddress(DashboardView.WorkItems, Audience: _workAudience))">Work items</button>
 </nav>
 
 <main>
@@ -106,6 +108,10 @@
     else if (_monitor is { Cluster: { } cluster } clusterMonitor && View == DashboardView.Cluster)
     {
         <ClusterView Cluster="cluster" Environments="clusterMonitor.Topology.Environments" Zone="Zone" Now="Time.GetUtcNow()" />
+    }
+    else if (_monitor is { } workMonitor && View == DashboardView.WorkItems)
+    {
+        <WorkItemsView Monitor="workMonitor" Audience="@_address.Audience" AudienceChanged="OnWorkAudienceChangedAsync" Zone="Zone" Now="Time.GetUtcNow()" />
     }
     else if (_monitor is { } monitor)
     {
@@ -248,6 +254,7 @@
     private DotNetObjectReference<App>? _self;
     private ViewAddress _address = ViewAddress.Health;
     private string? _runtimeEnvironment;
+    private WorkAudience _workAudience = WorkAudience.All;
     private bool _trafficRunning;
 
     private TimeZoneInfo Zone => Time.LocalTimeZone;
@@ -353,6 +360,11 @@
         {
             _runtimeEnvironment = environment;
         }
+
+        if (address.View == DashboardView.WorkItems)
+        {
+            _workAudience = address.Audience;
+        }
     }
 
     /// <summary>
@@ -370,6 +382,10 @@
 
     private Task OnRuntimeEnvironmentChangedAsync(string environment) =>
         ShowAsync(new ViewAddress(DashboardView.Runtime, environment));
+
+    /// <summary>The work items filter, kept in the address so a link opens All, bot, or team.</summary>
+    private Task OnWorkAudienceChangedAsync(WorkAudience audience) =>
+        ShowAsync(new ViewAddress(DashboardView.WorkItems, Audience: audience));
 
     /// <summary>
     /// The runtime view zooms into the environment's database, or back out: a step of the history. An address that

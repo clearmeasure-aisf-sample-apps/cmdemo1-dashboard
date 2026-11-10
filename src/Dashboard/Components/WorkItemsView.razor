@@ -1,0 +1,216 @@
+@* The work items view: bot work and team work, from workitems.json next to the delivery facts. Read only.
+   The filter is the address (#work-items, #work-items/bot, #work-items/team). Every word is decided in C#; this places it. *@
+@{
+    var report = Monitor.WorkItems;
+    var availability = WorkItemsText.Availability(Monitor.Topology.System.WorkItemsUrl is not null, Monitor.WorkItemsAsked, report);
+}
+<section class="work" aria-labelledby="work-title">
+    <header class="work__header">
+        <h2 id="work-title">Work items</h2>
+        @if (report?.GeneratedAt is { } generated)
+        {
+            <p class="work__as-of">
+                as of <time datetime="@TimeText.Iso(generated)" title="@TimeText.DateAndTime(generated, Zone)">@TimeText.DateAndTime(generated, Zone)</time>
+            </p>
+        }
+        @if (report is not null && WorkItemsText.Scope(report.Scope) is { } scope)
+        {
+            <p class="work__scope">
+                @if (scope.Url is { } url && scope.Label is { } linked)
+                {
+                    <a href="@url.AbsoluteUri" target="_blank" rel="noopener" title="@scope.Title">@linked</a>
+                }
+                else if (scope.Label is { } label)
+                {
+                    <span>@label</span>
+                }
+                @if (scope.Project is { } project)
+                {
+                    <span>project @project</span>
+                }
+            </p>
+        }
+    </header>
+
+    @if (availability != WorkItemsAvailability.Ready || report is null)
+    {
+        <p class="empty" role="status">@WorkItemsText.Unavailable(availability)</p>
+    }
+    else
+    {
+        var shown = WorkItemsText.Select(report.Items, Audience);
+        var stats = WorkItemsText.Slice(report, Audience);
+        var chart = WorkItemsText.Chart(stats.PerWeek);
+        var comparison = Audience == WorkAudience.All ? WorkItemsText.Comparison(report) : null;
+        var waits = Audience == WorkAudience.Bot ? WorkBotText.ColumnWaits(report.BotStats, shown, Now) : [];
+        var throughput = Audience == WorkAudience.Bot ? WorkBotText.Throughput(report.BotStats, shown) : [];
+        var mergeToProd = Audience == WorkAudience.Bot ? WorkBotText.MergeToProd(report.BotStats, shown) : null;
+
+        @if (report.Scope?.Rules is { } rules)
+        {
+            <p class="work__rules">@rules</p>
+        }
+
+        <div class="work__filter" role="group" aria-label="Whose work">
+            @foreach (var audience in Audiences)
+            {
+                var count = WorkItemsText.Select(report.Items, audience).Count;
+                <button type="button" class="button @(Audience == audience ? "button--selected" : null)" aria-pressed="@(Audience == audience ? "true" : "false")"
+                        @onclick="() => AudienceChanged.InvokeAsync(audience)">
+                    @WorkItemsText.AudienceLabel(audience) <span class="work__count">@count</span>
+                </button>
+            }
+        </div>
+
+        <section class="work__stats" aria-label="Work item statistics">
+            <article class="card work-stat work-stat--wip">
+                <h3 class="tile__label">In progress</h3>
+                <ul class="work__wip">
+                    @foreach (var column in WorkItemsText.Wip(stats, shown))
+                    {
+                        <li><span class="work__wip-count">@column.Count</span> @column.Column</li>
+                    }
+                </ul>
+            </article>
+            <article class="card work-stat">
+                <h3 class="tile__label" title="From the start of the work to done">Cycle time</h3>
+                <p>@WorkItemsText.Duration(stats.CycleTimeHours)</p>
+            </article>
+            <article class="card work-stat">
+                <h3 class="tile__label" title="From when the item was opened to done">Lead time</h3>
+                <p>@WorkItemsText.Duration(stats.LeadTimeHours)</p>
+            </article>
+            <article class="card work-stat">
+                <h3 class="tile__label">Per week</h3>
+                @if (chart is null)
+                {
+                    <p>@WorkItemsText.NotMetered</p>
+                }
+                else
+                {
+                    <WeekChart Chart="chart" />
+                    <p class="work-stat__latest">@WorkItemsText.LatestWeek(chart)</p>
+                }
+            </article>
+            <article class="card work-stat">
+                <h3 class="tile__label" title="Functional-test failures and reverts">Rework</h3>
+                <p>@WorkItemsText.Rework(stats.Rework)</p>
+            </article>
+            <article class="card work-stat">
+                <h3 class="tile__label">Cursor agent cost</h3>
+                <p>@WorkItemsText.Cost(stats.Cost, shown.Count)</p>
+            </article>
+            @if (comparison is { } split)
+            {
+                <article class="card work-stat work-stat--wip">
+                    <h3 class="tile__label">Bot and team</h3>
+                    <div class="work-compare">
+                        <div>
+                            <h4 class="tile__label">Bot</h4>
+                            <p>Cycle @WorkItemsText.Duration(split.BotCycle)</p>
+                            @if (split.BotWeeks is { } botWeeks)
+                            {
+                                <WeekChart Chart="botWeeks" />
+                                <p class="work-stat__latest">@WorkItemsText.LatestWeek(botWeeks)</p>
+                            }
+                        </div>
+                        <div>
+                            <h4 class="tile__label">Team</h4>
+                            <p>Cycle @WorkItemsText.Duration(split.TeamCycle)</p>
+                            @if (split.TeamWeeks is { } teamWeeks)
+                            {
+                                <WeekChart Chart="teamWeeks" />
+                                <p class="work-stat__latest">@WorkItemsText.LatestWeek(teamWeeks)</p>
+                            }
+                        </div>
+                    </div>
+                </article>
+            }
+            @if (waits.Count > 0)
+            {
+                <article class="card work-stat">
+                    <h3 class="tile__label">Time in column</h3>
+                    @if (WorkBotText.Longest(waits) is { } longest)
+                    {
+                        <p>Longest wait: @longest.Column, @WorkItemsText.Duration(longest.Duration)</p>
+                    }
+                    <ul class="work-timeline">
+                        @foreach (var wait in waits)
+                        {
+                            <li>@wait.Column · @WorkItemsText.Duration(wait.Duration)</li>
+                        }
+                    </ul>
+                </article>
+            }
+            @if (throughput.Count > 0)
+            {
+                <article class="card work-stat">
+                    <h3 class="tile__label">Throughput</h3>
+                    <ul class="work-timeline">
+                        @foreach (var row in throughput)
+                        {
+                            <li>@WorkBotText.ThroughputLine(row)</li>
+                        }
+                    </ul>
+                </article>
+            }
+            @if (mergeToProd is not null)
+            {
+                <article class="card work-stat">
+                    <h3 class="tile__label" title="From the pull request merging to the production deployment">Merge to prod</h3>
+                    <p>@WorkItemsText.Duration(mergeToProd)</p>
+                </article>
+            }
+        </section>
+
+        @if (shown.Count == 0)
+        {
+            <p class="empty">@WorkItemsText.NoneOf(Audience)</p>
+        }
+        else
+        {
+            var active = WorkItemsText.Active(shown);
+            if (active.Count == 0)
+            {
+                <p class="empty">@WorkItemsText.NoActive</p>
+            }
+
+            @foreach (var group in active)
+            {
+                var id = WorkItemsText.ColumnId(group.Column);
+                <section class="work-column" aria-labelledby="@id">
+                    <h3 id="@id">@group.Column <span class="work__count">@group.Items.Count</span></h3>
+                    <WorkRows Items="group.Items" Zone="Zone" Now="Now" />
+                </section>
+            }
+
+            var done = WorkItemsText.RecentlyDone(shown);
+            if (done.Count > 0)
+            {
+                <section class="work-column" aria-labelledby="work-col-done">
+                    <h3 id="work-col-done">Recently done <span class="work__count">@done.Count</span></h3>
+                    <WorkRows Items="done" Zone="Zone" Now="Now" />
+                </section>
+            }
+        }
+    }
+</section>
+
+@code {
+    private static readonly WorkAudience[] Audiences = [WorkAudience.All, WorkAudience.Bot, WorkAudience.Team];
+
+    [Parameter, EditorRequired]
+    public DashboardMonitor Monitor { get; set; } = default!;
+
+    [Parameter]
+    public WorkAudience Audience { get; set; } = WorkAudience.All;
+
+    [Parameter]
+    public EventCallback<WorkAudience> AudienceChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public TimeZoneInfo Zone { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public DateTimeOffset Now { get; set; }
+}

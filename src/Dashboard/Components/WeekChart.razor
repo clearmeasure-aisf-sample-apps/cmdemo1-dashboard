@@ -1,0 +1,31 @@
+@* The merged and deployed-to-prod bars for one slice. The words of the chart are on the chart itself. *@
+@{
+    var width = Chart.Bars.Count * 14;
+}
+<svg class="weeks" viewBox="0 0 @Pixel(width) @Pixel(WorkItemsText.ChartHeight)" width="@Pixel(width * 3)" height="@Pixel(WorkItemsText.ChartHeight * 1.4)" role="img" aria-label="@Chart.Title" focusable="false">
+    <title>@Chart.Title</title>
+    @for (var index = 0; index < Chart.Bars.Count; index++)
+    {
+        var bar = Chart.Bars[index];
+        var x = index * 14;
+        var merged = WorkItemsText.BarHeight(bar.Merged, Chart.Scale);
+        var deployed = WorkItemsText.BarHeight(bar.DeployedProd, Chart.Scale);
+        <rect class="weeks__merged" x="@Pixel(x)" y="@Pixel(WorkItemsText.ChartHeight - merged)" width="5" height="@Pixel(merged)">
+            <title>@bar.Title</title>
+        </rect>
+        <rect class="weeks__deployed" x="@Pixel(x + 6)" y="@Pixel(WorkItemsText.ChartHeight - deployed)" width="5" height="@Pixel(deployed)">
+            <title>@bar.Title</title>
+        </rect>
+    }
+</svg>
+<p class="weeks__legend">
+    <span class="weeks__key weeks__key--merged">Merged</span>
+    <span class="weeks__key weeks__key--deployed">Deployed to prod</span>
+</p>
+
+@code {
+    [Parameter, EditorRequired]
+    public WorkWeekChart Chart { get; set; } = default!;
+
+    private static string Pixel(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+}

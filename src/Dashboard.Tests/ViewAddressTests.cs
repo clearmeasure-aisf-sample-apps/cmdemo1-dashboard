@@ -18,6 +18,11 @@ public class ViewAddressTests
     [InlineData("Cluster/", DashboardView.Cluster, null)]
     [InlineData("#cluster/nodes", DashboardView.Cluster, null)]
     [InlineData("clusters", DashboardView.Health, null)]
+    [InlineData("work-items", DashboardView.WorkItems, null)]
+    [InlineData("#work-items", DashboardView.WorkItems, null)]
+    [InlineData("Work-Items/", DashboardView.WorkItems, null)]
+    [InlineData("#work-items/board", DashboardView.WorkItems, null)]
+    [InlineData("workitems", DashboardView.Health, null)]
     public void TheHashNamesTheView(string? hash, DashboardView view, string? environment)
     {
         Assert.Equal(new ViewAddress(view, environment), ViewAddress.Parse(hash));
@@ -54,7 +59,14 @@ public class ViewAddressTests
         Assert.Equal("runtime", new ViewAddress(DashboardView.Runtime).ToHash());
         Assert.Equal("runtime/uat", new ViewAddress(DashboardView.Runtime, "uat").ToHash());
         Assert.Equal("cluster", ViewAddress.Cluster.ToHash());
+        Assert.Equal("work-items", ViewAddress.WorkItems.ToHash());
+        Assert.Equal("work-items/bot", new ViewAddress(DashboardView.WorkItems, Audience: WorkAudience.Bot).ToHash());
+        Assert.Equal("work-items/team", new ViewAddress(DashboardView.WorkItems, Audience: WorkAudience.Team).ToHash());
         Assert.Equal(ViewAddress.Cluster, ViewAddress.Parse(ViewAddress.Cluster.ToHash()));
+        Assert.Equal(ViewAddress.WorkItems, ViewAddress.Parse(ViewAddress.WorkItems.ToHash()));
+        Assert.Equal(WorkAudience.Bot, ViewAddress.Parse("#work-items/bot").Audience);
+        Assert.Equal(WorkAudience.Team, ViewAddress.Parse("Work-Items/team/").Audience);
+        Assert.Equal(new ViewAddress(DashboardView.WorkItems, Audience: WorkAudience.Bot), ViewAddress.Parse(new ViewAddress(DashboardView.WorkItems, Audience: WorkAudience.Bot).ToHash()));
         Assert.Equal(new ViewAddress(DashboardView.Runtime, "uat"), ViewAddress.Parse(new ViewAddress(DashboardView.Runtime, "uat").ToHash()));
     }
 }

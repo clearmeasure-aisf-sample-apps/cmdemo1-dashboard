@@ -1,3 +1,5 @@
+using Dashboard.Work;
+
 namespace Dashboard.Runtime;
 
 public enum DashboardView
@@ -10,30 +12,38 @@ public enum DashboardView
 
     /// <summary>The cluster the system runs in: the AKS service, its nodes and its pods. Only for a topology with a cluster.</summary>
     Cluster,
+
+    /// <summary>The work items the system's bots are handling. The view is there even before its file is published.</summary>
+    WorkItems,
 }
 
 /// <summary>
 /// The view in the page's address (its hash, without <c>#</c>): <c>runtime</c> or <c>runtime/&lt;environment&gt;</c> is the
 /// runtime view, <c>runtime/&lt;environment&gt;/database</c> the database view of that environment (the runtime view,
 /// zoomed into its database), <c>runtime/&lt;environment&gt;/app/&lt;deployable&gt;</c> the application view of that
-/// deployable there (the runtime view, zoomed into one of its boxes), <c>cluster</c> the cluster view, anything else
-/// the health view. A link with the hash opens that view.
+/// deployable there (the runtime view, zoomed into one of its boxes), <c>cluster</c> the cluster view,
+/// <c>work-items</c> the work items view, <c>work-items/bot</c> and <c>work-items/team</c> that view filtered to bot
+/// or team work, anything else the health view. A link with the hash opens that view.
 /// </summary>
 /// <param name="Database">The runtime view shows the environment's database view; only with an environment.</param>
 /// <param name="Application">
 /// The deployable whose application view the runtime view shows; only with an environment, and only a name of
 /// letters, digits, <c>-</c> and <c>_</c> (<see cref="ApplicationText.IsName"/>).
 /// </param>
-public sealed record ViewAddress(DashboardView View, string? Environment = null, bool Database = false, string? Application = null)
+/// <param name="Audience">Which work the work items view shows. All unless the hash says bot or team.</param>
+public sealed record ViewAddress(DashboardView View, string? Environment = null, bool Database = false, string? Application = null, WorkAudience Audience = WorkAudience.All)
 {
     private const string RuntimeName = "runtime";
     private const string ClusterName = "cluster";
+    private const string WorkItemsName = "work-items";
     private const string DatabaseName = "database";
     private const string ApplicationName = "app";
 
     public static ViewAddress Health { get; } = new(DashboardView.Health);
 
     public static ViewAddress Cluster { get; } = new(DashboardView.Cluster);
+
+    public static ViewAddress WorkItems { get; } = new(DashboardView.WorkItems);
 
     public static ViewAddress Parse(string? hash)
     {
@@ -43,6 +53,13 @@ public sealed record ViewAddress(DashboardView View, string? Environment = null,
         if (string.Equals(head, ClusterName, StringComparison.OrdinalIgnoreCase))
         {
             return Cluster;
+        }
+
+        if (string.Equals(head, WorkItemsName, StringComparison.OrdinalIgnoreCase))
+        {
+            var rest = slash < 0 ? string.Empty : text[(slash + 1)..].Trim('/');
+            var segment = rest.Split('/', 2)[0];
+            return new ViewAddress(DashboardView.WorkItems, Audience: WorkItemsText.AudienceOf(segment));
         }
 
         if (!string.Equals(head, RuntimeName, StringComparison.OrdinalIgnoreCase))
@@ -85,6 +102,10 @@ public sealed record ViewAddress(DashboardView View, string? Environment = null,
         DashboardView.Runtime when Environment is { } environment => $"{RuntimeName}/{environment}",
         DashboardView.Runtime => RuntimeName,
         DashboardView.Cluster => ClusterName,
-        _ => string.Empty,
+        DashboardView.WorkItems when Audience == WorkAudience.Bot => $"{WorkItemsName}/bot",
+        DashboardView.WorkItems when Audience == WorkAudience.Team => $"{WorkItemsName}/team",
+        DashboardView.WorkItems => WorkItemsName,
+        DashboardView.Health => string.Empty,
+        _ => throw new ArgumentOutOfRangeException(nameof(View), View, "A view has no address."),
     };
 }

@@ -17,13 +17,22 @@ public class WorkItemsTests
             new WorkScopeLine("clearmeasure-aisf-sample-apps/cmdemo1-system", new Uri("https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system"), "679"),
             WorkItemsText.Scope(Sample.Scope));
 
-        Assert.Equal([1, 1, 1, 2, 1, 1], WorkItemsText.Wip(Sample).Select(column => column.Count));
+        Assert.Equal([1, 1, 1, 3, 1, 1], WorkItemsText.Wip(Sample).Select(column => column.Count));
         Assert.Equal(WorkColumns.Active, WorkItemsText.Wip(Sample).Select(column => column.Column));
         Assert.Equal(
             ["Todo", "In Progress", "Technical Design", "Development", "Functional Testing", "Release Queue"],
             WorkItemsText.Active(Sample.Items).Select(group => group.Column));
-        Assert.Equal([476, 458], WorkItemsText.Active(Sample.Items).Single(group => group.Column == WorkColumns.Development).Items.Select(item => item.Number));
-        Assert.Equal([455, 440], WorkItemsText.RecentlyDone(Sample.Items).Select(item => item.Number));
+        Assert.Equal([476, 458, 512], WorkItemsText.Active(Sample.Items).Single(group => group.Column == WorkColumns.Development).Items.Select(item => item.Number));
+        Assert.Equal([455, 421, 440], WorkItemsText.RecentlyDone(Sample.Items).Select(item => item.Number));
+        Assert.Equal(WorkWorker.Team, Sample.Items.Single(item => item.Number == 501).Worker);
+        Assert.Equal(WorkWorker.Bot, Sample.Items.Single(item => item.Number == 476).Worker);
+        Assert.Equal("failed", Sample.Items.Single(item => item.Number == 458).PullRequests[0].Checks);
+        Assert.Equal("Functional tests failed on the release build", Sample.Items.Single(item => item.Number == 458).Blocker!.Text);
+        Assert.Equal(8, WorkItemsText.Select(Sample.Items, WorkAudience.Bot).Count);
+        Assert.Equal(3, WorkItemsText.Select(Sample.Items, WorkAudience.Team).Count);
+        Assert.Equal("median 14 h · p85 2 d · 8 items", WorkItemsText.Duration(Sample.BotStats!.CycleTimeHours));
+        Assert.Equal("Functional Testing", WorkBotText.Longest(WorkBotText.ColumnWaits(Sample.BotStats, WorkItemsText.Select(Sample.Items, WorkAudience.Bot), Now))!.Column);
+        Assert.NotNull(WorkItemsText.Comparison(Sample));
 
         var queued = Sample.Items.Single(item => item.Number == 462);
         Assert.Equal("2.4.86", queued.ReleaseCandidate!.Version);
@@ -48,7 +57,7 @@ public class WorkItemsTests
         Assert.Equal("n/a", WorkItemsText.Duration(null));
         Assert.Equal("n/a", WorkItemsText.Rework(null));
         Assert.Equal(
-            "$2.00 per item · $18.00 total · Cursor agent usage for these items, last 30 days",
+            "$1.64 per item · $18.00 total · Cursor agent usage for these items, last 30 days",
             WorkItemsText.Cost(Sample.Stats.Cost, Sample.Items.Count));
         Assert.Equal("n/a", WorkItemsText.ItemCost(Sample.Items.Single(item => item.Number == 501).CostUsd));
         Assert.Equal("$4.50", WorkItemsText.ItemCost(4.5));
@@ -277,5 +286,49 @@ public class WorkItemsTests
         Assert.Null(monitor.WorkItems);
         Assert.DoesNotContain(handler.Requests, request => request.RequestUri!.AbsolutePath.EndsWith(WorkItemsReport.FileName, StringComparison.Ordinal));
         Assert.Equal(WorkItemsAvailability.NoAddress, WorkItemsText.Availability(monitor.Topology.System.WorkItemsUrl is not null, monitor.WorkItemsAsked, monitor.WorkItems));
+    }
+
+    [Fact]
+    public void AnOlderFileWithoutASplitStaysOneBoard()
+    {
+        var report = WorkItemsReport.Parse("""{ "stats": { "cycleTimeHours": { "median": 5, "n": 1 } }, "items": [ { "number": 1, "column": "Todo", "title": "Old" } ] }""")!;
+
+        Assert.Equal(5, report.Stats.CycleTimeHours!.Median);
+        Assert.Null(report.BotStats);
+        Assert.Null(report.TeamStats);
+        Assert.Equal(WorkWorker.Unknown, Assert.Single(report.Items).Worker);
+        Assert.Null(WorkItemsText.Comparison(report));
+        Assert.Equal("No bot work items.", WorkItemsText.NoneOf(WorkAudience.Bot));
+    }
+
+    [Fact]
+    public void AMissingSliceIsCountedFromTheItems()
+    {
+        var report = WorkItemsReport.Parse("""
+            { "items": [
+                { "number": 1, "worker": "bot", "agent": "alpha", "column": "Done",
+                  "columnHistory": [
+                    { "column": "In Progress", "enteredAt": "2026-11-08T00:00:00Z" },
+                    { "column": "Development", "enteredAt": "2026-11-08T12:00:00Z" },
+                    { "column": "Done", "enteredAt": "2026-11-09T00:00:00Z" } ],
+                  "prs": [ { "number": 9, "state": "merged", "mergedAt": "2026-11-09T00:00:00Z", "mergeSha": "abcdef1234567890", "checks": "success" } ],
+                  "environments": { "prod": { "version": "2.4.1", "deployedAt": "2026-11-09T06:00:00Z" } },
+                  "rework": { "ftFailures": 1, "reverts": 0 }, "costUsd": 2 },
+                { "number": 2, "worker": "team", "column": "Todo", "title": "A person", "assignee": "pat.morgan" } ] }
+            """)!;
+        var bot = WorkItemsText.Select(report.Items, WorkAudience.Bot);
+        var slice = WorkItemsText.Slice(report, WorkAudience.Bot);
+
+        Assert.Null(report.BotStats);
+        Assert.Equal(24, slice.CycleTimeHours!.Median);
+        Assert.Equal(0, slice.WipByColumn["In Progress"]);
+        Assert.Equal("passed", Assert.Single(Assert.Single(bot).PullRequests).Checks);
+        Assert.Equal(["In Progress · 12 h", "Development · 12 h", "Done · 22 h so far"], WorkBotText.Timeline(Assert.Single(bot), Now).Select(WorkBotText.Stay));
+        Assert.Equal("Done", WorkBotText.Longest(WorkBotText.ColumnWaits(null, bot, Now))!.Column);
+        Assert.Equal("alpha: 1 merged, 1 deployed to prod", WorkBotText.ThroughputLine(Assert.Single(WorkBotText.Throughput(null, bot))));
+        Assert.Equal(6, WorkBotText.MergeToProd(null, bot)!.Median);
+        Assert.Equal("#9 · merged · checks passed · merged 22 h ago · abcdef1", WorkBotText.PullLine(Assert.Single(bot[0].PullRequests), Now));
+        Assert.Contains("Bot", WorkItemsText.Comparison(report)!.BotCycle is not null ? "Bot" : string.Empty, StringComparison.Ordinal);
+        Assert.Equal(WorkWorker.Team, WorkItemsText.Select(report.Items, WorkAudience.Team)[0].Worker);
     }
 }

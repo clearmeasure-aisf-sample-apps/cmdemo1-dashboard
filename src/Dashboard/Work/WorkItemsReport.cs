@@ -13,12 +13,16 @@ namespace Dashboard.Work;
 /// <param name="Stats">The counts across the items. An empty file still has stats: every part of them may be empty.</param>
 /// <param name="Items">The work items, in the file's order.</param>
 /// <param name="Releases">The Octopus releases and the work items each one carries.</param>
+/// <param name="BotStats">The same counts for bot work only; null when the file does not split them out.</param>
+/// <param name="TeamStats">The same counts for team work only; null when the file does not split them out.</param>
 public sealed record WorkItemsReport(
     DateTimeOffset? GeneratedAt,
     WorkItemsScope? Scope,
     WorkItemsStats Stats,
     IReadOnlyList<WorkItem> Items,
-    IReadOnlyList<WorkRelease> Releases)
+    IReadOnlyList<WorkRelease> Releases,
+    WorkItemsStats? BotStats = null,
+    WorkItemsStats? TeamStats = null)
 {
     /// <summary>The file's name, next to <c>delivery.json</c> on the system repository's <c>status</c> branch.</summary>
     public const string FileName = "workitems.json";
@@ -43,12 +47,16 @@ public sealed record WorkItemsReport(
                 return null;
             }
 
+            var stats = JsonRead.Section(root, "stats");
+            var (all, bot, team) = WorkItemsStats.ReadSet(stats);
             return new WorkItemsReport(
                 JsonRead.Time(root, "generatedAt") ?? JsonRead.Time(root, "generated"),
                 WorkItemsScope.Read(JsonRead.Section(root, "scope")),
-                WorkItemsStats.Read(JsonRead.Section(root, "stats")),
+                all,
                 [.. JsonRead.Items(root, "items").Select(WorkItem.Read).OfType<WorkItem>()],
-                [.. JsonRead.Items(root, "releases").Select(WorkRelease.Read).OfType<WorkRelease>()]);
+                [.. JsonRead.Items(root, "releases").Select(WorkRelease.Read).OfType<WorkRelease>()],
+                bot,
+                team);
         }
         catch (JsonException)
         {
@@ -77,26 +85,110 @@ public sealed record WorkItemsScope(string? Repo, int? Project, string? Rules)
 /// <param name="PerWeek">One entry per week, oldest first: how many items merged, and how many of those reached prod.</param>
 /// <param name="Rework">Functional-test failures, reverts, and the rate of either.</param>
 /// <param name="Cost">What the Cursor agents cost for these items; null when the file does not say.</param>
+/// <param name="TimePerColumnHours">How long bot items wait in each column. Null when the file does not say.</param>
+/// <param name="Throughput">How much each bot identity finished. Null when the file does not say.</param>
+/// <param name="MergeToProdHours">From a pull request merging to the production deployment. Null when the file does not say.</param>
 public sealed record WorkItemsStats(
     IReadOnlyDictionary<string, int> WipByColumn,
     WorkDuration? CycleTimeHours,
     WorkDuration? LeadTimeHours,
     IReadOnlyList<WorkWeek> PerWeek,
     WorkRework? Rework,
-    WorkCost? Cost)
+    WorkCost? Cost,
+    IReadOnlyDictionary<string, WorkDuration>? TimePerColumnHours = null,
+    IReadOnlyList<WorkThroughput>? Throughput = null,
+    WorkDuration? MergeToProdHours = null)
 {
     public static WorkItemsStats Empty { get; } = new(new Dictionary<string, int>(), null, null, [], null, null);
 
-    internal static WorkItemsStats Read(JsonElement? section) =>
-        section is null
-            ? Empty
-            : new WorkItemsStats(
-                Counts(section, "wipByColumn"),
-                WorkDuration.Read(JsonRead.Section(section, "cycleTimeHours")),
-                WorkDuration.Read(JsonRead.Section(section, "leadTimeHours")),
-                [.. JsonRead.Items(section, "perWeek").Select(WorkWeek.Read).OfType<WorkWeek>()],
-                WorkRework.Read(JsonRead.Section(section, "rework")),
-                WorkCost.Read(JsonRead.Section(section, "cost")));
+    /// <summary>True when the object carries any count. An empty object is treated as absent, so the page can compute the split from the items.</summary>
+    public bool HasAny =>
+        WipByColumn.Count > 0 || CycleTimeHours is not null || LeadTimeHours is not null || PerWeek.Count > 0
+        || Rework is not null || Cost is not null || TimePerColumnHours is { Count: > 0 } || Throughput is { Count: > 0 }
+        || MergeToProdHours is not null;
+
+    /// <summary>
+    /// <paramref name="section"/> is <c>stats</c>. <c>stats.all</c> is the whole board, and the same fields written
+    /// beside it (the older shape) are that same board. <c>stats.bot</c> and <c>stats.team</c> are the split; null
+    /// when that object is missing or empty.
+    /// </summary>
+    internal static (WorkItemsStats All, WorkItemsStats? Bot, WorkItemsStats? Team) ReadSet(JsonElement? section)
+    {
+        if (section is null)
+        {
+            return (Empty, null, null);
+        }
+
+        var legacy = Read(section);
+        var nested = JsonRead.Section(section, "all");
+        var all = nested is null ? legacy : Read(nested);
+        if (!all.HasAny && legacy.HasAny)
+        {
+            all = legacy;
+        }
+
+        return (all, Split(JsonRead.Section(section, "bot")), Split(JsonRead.Section(section, "team")));
+    }
+
+    private static WorkItemsStats? Split(JsonElement? section)
+    {
+        if (section is null)
+        {
+            return null;
+        }
+
+        var stats = Read(section);
+        return stats.HasAny ? stats : null;
+    }
+
+    internal static WorkItemsStats Read(JsonElement? section)
+    {
+        if (section is null)
+        {
+            return Empty;
+        }
+
+        var throughput = JsonRead.Items(section, "throughput").Select(WorkThroughput.Read).OfType<WorkThroughput>().ToList();
+        return new WorkItemsStats(
+            Counts(section, "wipByColumn"),
+            WorkDuration.Read(JsonRead.Section(section, "cycleTimeHours")),
+            WorkDuration.Read(JsonRead.Section(section, "leadTimeHours")),
+            [.. JsonRead.Items(section, "perWeek").Select(WorkWeek.Read).OfType<WorkWeek>()],
+            WorkRework.Read(JsonRead.Section(section, "rework")),
+            WorkCost.Read(JsonRead.Section(section, "cost")),
+            ColumnTimes(section),
+            throughput.Count == 0 ? null : throughput,
+            WorkDuration.Read(JsonRead.Section(section, "mergeToProdHours")));
+    }
+
+    private static Dictionary<string, WorkDuration>? ColumnTimes(JsonElement? parent)
+    {
+        if (JsonRead.Section(parent, "timePerColumnHours") is not { } section)
+        {
+            return null;
+        }
+
+        var times = new Dictionary<string, WorkDuration>(StringComparer.OrdinalIgnoreCase);
+        foreach (var property in section.EnumerateObject())
+        {
+            if (string.IsNullOrWhiteSpace(property.Name))
+            {
+                continue;
+            }
+
+            var duration = property.Value.ValueKind == JsonValueKind.Object
+                ? WorkDuration.Read(property.Value)
+                : property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetDouble(out var hours) && double.IsFinite(hours) && hours >= 0
+                    ? new WorkDuration(hours, null, null)
+                    : null;
+            if (duration is not null)
+            {
+                times[property.Name.Trim()] = duration;
+            }
+        }
+
+        return times.Count == 0 ? null : times;
+    }
 
     private static Dictionary<string, int> Counts(JsonElement? parent, string name)
     {
@@ -166,6 +258,54 @@ public sealed record WorkCost(double? TotalUsd, string? Note)
     }
 }
 
+/// <summary>Who is doing the work. Unknown when the file does not say: the item stays in All and in neither filter.</summary>
+public enum WorkWorker
+{
+    Unknown,
+    Bot,
+    Team,
+}
+
+/// <summary>Whose work a filter shows. All is the whole file.</summary>
+public enum WorkAudience
+{
+    All,
+    Bot,
+    Team,
+}
+
+/// <summary>How much one bot identity finished.</summary>
+/// <param name="Agent">The bot's name. <c>unnamed</c> when the file counts the work and does not name the bot.</param>
+/// <param name="Merged">Pull requests that merged.</param>
+/// <param name="DeployedProd">Items that reached production.</param>
+public sealed record WorkThroughput(string Agent, int? Merged, int? DeployedProd)
+{
+    internal static WorkThroughput? Read(JsonElement element)
+    {
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        var name = JsonRead.Text(element, "agent") ?? JsonRead.Text(element, "name") ?? JsonRead.Text(element, "identity");
+        var merged = JsonRead.Count(element, "merged");
+        var deployed = JsonRead.Count(element, "deployedProd");
+        return name is null && merged is null && deployed is null ? null : new WorkThroughput(name ?? "unnamed", merged, deployed);
+    }
+}
+
+/// <summary>A short note the bot left: its latest status, or the comment that says what blocked it.</summary>
+public sealed record WorkNote(string? Text, Uri? Url, DateTimeOffset? At)
+{
+    internal static WorkNote? Read(JsonElement? section)
+    {
+        var text = JsonRead.Text(section, "text") ?? JsonRead.Text(section, "comment") ?? JsonRead.Text(section, "summary");
+        var url = JsonRead.Address(section, "url");
+        var at = JsonRead.Time(section, "at");
+        return text is null && url is null && at is null ? null : new WorkNote(text, url, at);
+    }
+}
+
 /// <summary>One work item on the board.</summary>
 /// <param name="Number">Its number on the board; null when the file does not give one.</param>
 /// <param name="Title">Its title.</param>
@@ -180,6 +320,9 @@ public sealed record WorkCost(double? TotalUsd, string? Note)
 /// <param name="ReleaseCandidate">The Octopus release cut for it (<c>2.4.&lt;build&gt;</c>); null when none has been.</param>
 /// <param name="Environments">Where that work is deployed. A missing environment has not got it.</param>
 /// <param name="CostUsd">What the Cursor agent cost for this item, in US dollars; null when it was not metered.</param>
+/// <param name="Worker">Bot or team. Unknown when the file does not say.</param>
+/// <param name="Rework">Functional-test failures and reverts of this item; null when the file does not say.</param>
+/// <param name="Blocker">The bot's latest status, or the comment that says what blocked it; null when the file does not say.</param>
 public sealed record WorkItem(
     int? Number,
     string? Title,
@@ -193,7 +336,10 @@ public sealed record WorkItem(
     IReadOnlyList<WorkPullRequest> PullRequests,
     ReleaseCandidate? ReleaseCandidate,
     WorkItemEnvironments Environments,
-    double? CostUsd)
+    double? CostUsd,
+    WorkWorker Worker = WorkWorker.Unknown,
+    WorkRework? Rework = null,
+    WorkNote? Blocker = null)
 {
     internal static WorkItem? Read(JsonElement element)
     {
@@ -215,7 +361,10 @@ public sealed record WorkItem(
             [.. JsonRead.Items(element, "prs").Select(WorkPullRequest.Read).OfType<WorkPullRequest>()],
             ReleaseCandidate.Read(JsonRead.Section(element, "releaseCandidate")),
             WorkItemEnvironments.Read(JsonRead.Section(element, "environments")),
-            JsonRead.Number(element, "costUsd"));
+            JsonRead.Number(element, "costUsd"),
+            ReadWorker(element),
+            WorkRework.Read(JsonRead.Section(element, "rework")),
+            Note(element));
         return item.Number is null && item.Title is null && item.Url is null && item.Column is null ? null : item;
     }
 
@@ -232,6 +381,20 @@ public sealed record WorkItem(
 
         return addresses;
     }
+
+    private static WorkWorker ReadWorker(JsonElement element) => JsonRead.Text(element, "worker")?.ToLowerInvariant() switch
+    {
+        "bot" => WorkWorker.Bot,
+        "team" => WorkWorker.Team,
+        _ => WorkWorker.Unknown,
+    };
+
+    private static WorkNote? Note(JsonElement element) =>
+        WorkNote.Read(JsonRead.Section(element, "blocker"))
+        ?? WorkNote.Read(JsonRead.Section(element, "comment"))
+        ?? (JsonRead.Text(element, "status") is { } status
+            ? new WorkNote(status, JsonRead.Address(element, "statusUrl"), JsonRead.Time(element, "statusAt"))
+            : null);
 }
 
 /// <summary>When an item entered a column.</summary>
@@ -250,7 +413,9 @@ public sealed record ColumnVisit(string? Column, DateTimeOffset? EnteredAt)
 }
 
 /// <summary>A pull request opened for a work item.</summary>
-public sealed record WorkPullRequest(int? Number, Uri? Url, string? State, DateTimeOffset? MergedAt, string? MergeSha)
+/// <param name="Checks">What the pull request's checks concluded: <c>passed</c>, <c>failed</c>, <c>pending</c>, or the file's own word.</param>
+/// <param name="ChecksUrl">The checks page, when the file gives one.</param>
+public sealed record WorkPullRequest(int? Number, Uri? Url, string? State, DateTimeOffset? MergedAt, string? MergeSha, string? Checks = null, Uri? ChecksUrl = null)
 {
     internal static WorkPullRequest? Read(JsonElement element)
     {
@@ -259,14 +424,37 @@ public sealed record WorkPullRequest(int? Number, Uri? Url, string? State, DateT
             return null;
         }
 
+        var (checks, checksUrl) = ChecksOf(element);
         var pull = new WorkPullRequest(
             JsonRead.Count(element, "number"),
             JsonRead.Address(element, "url"),
             JsonRead.Text(element, "state"),
             JsonRead.Time(element, "mergedAt"),
-            JsonRead.Text(element, "mergeSha"));
-        return pull.Number is null && pull.Url is null && pull.State is null ? null : pull;
+            JsonRead.Text(element, "mergeSha"),
+            checks,
+            checksUrl);
+        return pull.Number is null && pull.Url is null && pull.State is null && pull.Checks is null && pull.ChecksUrl is null ? null : pull;
     }
+
+    private static (string? Result, Uri? Url) ChecksOf(JsonElement element)
+    {
+        if (JsonRead.Section(element, "checks") is { } section)
+        {
+            var word = JsonRead.Text(section, "result") ?? JsonRead.Text(section, "state") ?? JsonRead.Text(section, "conclusion");
+            return (CheckWord(word), JsonRead.Address(section, "url"));
+        }
+
+        return (CheckWord(JsonRead.Text(element, "checks") ?? JsonRead.Text(element, "checksResult")), JsonRead.Address(element, "checksUrl"));
+    }
+
+    private static string? CheckWord(string? word) => word?.ToLowerInvariant() switch
+    {
+        null => null,
+        "success" or "succeeded" or "pass" or "passed" => "passed",
+        "failure" or "failed" or "fail" => "failed",
+        "pending" or "queued" or "in_progress" or "in progress" => "pending",
+        _ => word!.Trim(),
+    };
 }
 
 /// <summary>The Octopus release cut for an item, <c>2.4.&lt;build&gt;</c>, and when it was created.</summary>

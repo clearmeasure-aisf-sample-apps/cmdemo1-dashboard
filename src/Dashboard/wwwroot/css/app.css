@@ -2596,6 +2596,96 @@ main {
   font-size: 0.82rem;
 }
 
+.work__filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip--bot {
+  border-color: var(--cm-sky);
+  color: var(--ink);
+}
+
+.chip--team {
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+
+.work-compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 0.8rem 1.2rem;
+}
+
+.work-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.9rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.work-line__issue {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.55rem;
+  min-width: min(100%, 18rem);
+}
+
+.work-line__rest {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.45rem;
+}
+
+.work-bot > summary {
+  cursor: pointer;
+}
+
+.work-bot > summary::marker {
+  color: var(--ink-secondary);
+}
+
+.work-detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 0.7rem 1rem;
+  margin: 0.35rem 0 0.2rem;
+  padding: 0.7rem 0.8rem 0.8rem 1.4rem;
+  border-left: 3px solid var(--cm-sky);
+}
+
+.work-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-timeline li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.6rem;
+}
+
 /* ---------- Messages ---------- */
 
 .empty {

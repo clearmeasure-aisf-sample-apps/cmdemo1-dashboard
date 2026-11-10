@@ -1,0 +1,220 @@
+@* One column of work. A team item is a short row: the issue, its pull request, and where it is deployed. A bot item
+   opens to the factory detail. The column itself is the heading above this list. *@
+<ul class="work-list">
+    @foreach (var item in Items)
+    {
+        <li @key="@($"{item.Number}:{item.Title}:{item.Worker}")">
+            @if (item.Worker == WorkWorker.Bot)
+            {
+                <details class="work-bot">
+                    <summary class="work-line">
+                        <span class="work-line__issue">
+                            <span class="chip chip--bot">bot</span>
+                            <DeepLink Href="item.Url" Title="@WorkItemsText.IssueTitle(item)">@WorkItemsText.Number(item)</DeepLink>
+                            @if (item.Title is { } title)
+                            {
+                                <span class="work__title">@title</span>
+                            }
+                        </span>
+                        <span>@WorkItemsText.Agent(item)</span>
+                        <span class="work-line__rest">@SummaryPulls(item)</span>
+                    </summary>
+                    <div class="work-detail">
+                        @{
+                            var stays = WorkBotText.Timeline(item, Now);
+                        }
+                        @if (stays.Count > 0)
+                        {
+                            <div>
+                                <h4 class="tile__label">Columns</h4>
+                                <ol class="work-timeline">
+                                    @foreach (var stay in stays)
+                                    {
+                                        <li>
+                                            <span>@WorkBotText.Stay(stay)</span>
+                                            @if (stay.EnteredAt is { } entered)
+                                            {
+                                                <time class="grid__minor" datetime="@TimeText.Iso(entered)" title="@TimeText.DateAndTime(entered, Zone)">@TimeText.Ago(entered, Now)</time>
+                                            }
+                                        </li>
+                                    }
+                                </ol>
+                            </div>
+                        }
+                        @if (item.CursorSessions.Count > 0)
+                        {
+                            <div>
+                                <h4 class="tile__label">Cursor sessions</h4>
+                                <span class="work__stack">
+                                    @foreach (var entry in Sessions(item))
+                                    {
+                                        <DeepLink Href="entry.Href" Title="@WorkItemsText.SessionTitle(entry.Index, item.CursorSessions.Count)">@WorkItemsText.SessionLabel(entry.Index, item.CursorSessions.Count)</DeepLink>
+                                    }
+                                </span>
+                            </div>
+                        }
+                        @if (item.PullRequests.Count > 0)
+                        {
+                            <div>
+                                <h4 class="tile__label">Pull requests</h4>
+                                <ul class="work-timeline">
+                                    @foreach (var pull in item.PullRequests)
+                                    {
+                                        <li>
+                                            <DeepLink Href="pull.Url" Title="@WorkItemsText.PullTitle(pull)">@WorkBotText.PullLine(pull, Now)</DeepLink>
+                                            @if (pull.ChecksUrl is { } checks)
+                                            {
+                                                <a href="@checks.AbsoluteUri" target="_blank" rel="noopener" title="@($"Checks{LinkText.GitHubSuffix}")">checks</a>
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                        @if (item.ReleaseCandidate is { } candidate || WorkItemsText.Places(item).Count > 0)
+                        {
+                            <div>
+                                <h4 class="tile__label">Release</h4>
+                                @if (item.ReleaseCandidate?.Version is { } version)
+                                {
+                                    <p title="@WorkItemsText.CandidateTitle(item.ReleaseCandidate!, Now)">@version</p>
+                                }
+                                @if (WorkItemsText.Places(item) is { Count: > 0 } places)
+                                {
+                                    <ul class="work-timeline">
+                                        @foreach (var place in places)
+                                        {
+                                            <li>
+                                                <span class="chip chip--serving">@WorkItemsText.PlaceLabel(place)</span>
+                                                @if (place.DeployedAt is { } deployed)
+                                                {
+                                                    <time datetime="@TimeText.Iso(deployed)" title="@TimeText.DateAndTime(deployed, Zone)">@TimeText.Ago(deployed, Now)</time>
+                                                }
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </div>
+                        }
+                        @if (item.Rework is { } rework && WorkItemsText.Rework(rework) is { } reworkText && reworkText != WorkItemsText.NotMetered)
+                        {
+                            <div>
+                                <h4 class="tile__label">Rework</h4>
+                                <p>@reworkText</p>
+                            </div>
+                        }
+                        @if (item.CostUsd is not null)
+                        {
+                            <div>
+                                <h4 class="tile__label">Cost</h4>
+                                <p>@WorkItemsText.ItemCost(item.CostUsd)</p>
+                            </div>
+                        }
+                        @if (item.Blocker is { } blocker)
+                        {
+                            <div>
+                                <h4 class="tile__label">Status</h4>
+                                <p>
+                                    @if (blocker.Url is { } url)
+                                    {
+                                        <a href="@url.AbsoluteUri" target="_blank" rel="noopener" title="@((blocker.Text ?? "Status") + LinkText.GitHubSuffix)">@(blocker.Text ?? "Status")</a>
+                                    }
+                                    else
+                                    {
+                                        @(blocker.Text ?? "Status")
+                                    }
+                                    @if (blocker.At is { } at)
+                                    {
+                                        <time datetime="@TimeText.Iso(at)" title="@TimeText.DateAndTime(at, Zone)">@TimeText.Ago(at, Now)</time>
+                                    }
+                                </p>
+                            </div>
+                        }
+                    </div>
+                </details>
+            }
+            else
+            {
+                <div class="work-line">
+                    <span class="work-line__issue">
+                        @if (WorkItemsText.WorkerLabel(item.Worker) is { } who)
+                        {
+                            <span class="chip chip--team">@who</span>
+                        }
+                        <DeepLink Href="item.Url" Title="@WorkItemsText.IssueTitle(item)">@WorkItemsText.Number(item)</DeepLink>
+                        @if (item.Title is { } title)
+                        {
+                            <span class="work__title">@title</span>
+                        }
+                    </span>
+                    <span class="work-line__rest">
+                        @if (item.PullRequests.Count == 0)
+                        {
+                            <span class="grid__minor">@WorkItemsText.Missing</span>
+                        }
+                        else
+                        {
+                            @foreach (var pull in item.PullRequests)
+                            {
+                                <DeepLink Href="pull.Url" Title="@WorkItemsText.PullTitle(pull)">@WorkItemsText.PullLabel(pull)</DeepLink>
+                                @if (pull.State is { } state)
+                                {
+                                    <span class="chip @(WorkItemsText.IsMerged(state) ? "chip--serving" : null)">@state</span>
+                                }
+                            }
+                        }
+                    </span>
+                    @{
+                        var places = WorkItemsText.Places(item);
+                    }
+                    @if (places.Count == 0)
+                    {
+                        <span class="grid__minor">@WorkItemsText.Missing</span>
+                    }
+                    else
+                    {
+                        <span class="grid__chips">
+                            @foreach (var place in places)
+                            {
+                                <span class="chip chip--serving" title="@WorkItemsText.PlaceTitle(place, Now)">@WorkItemsText.PlaceLabel(place)</span>
+                            }
+                        </span>
+                    }
+                </div>
+            }
+        </li>
+    }
+</ul>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<WorkItem> Items { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public TimeZoneInfo Zone { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public DateTimeOffset Now { get; set; }
+
+    private static IEnumerable<(Uri Href, int Index)> Sessions(WorkItem item)
+    {
+        for (var index = 0; index < item.CursorSessions.Count; index++)
+        {
+            yield return (item.CursorSessions[index], index + 1);
+        }
+    }
+
+    private static string SummaryPulls(WorkItem item)
+    {
+        if (item.PullRequests.Count == 0)
+        {
+            return WorkItemsText.Missing;
+        }
+
+        return string.Join(", ", item.PullRequests.Select(pull =>
+        {
+            var label = WorkItemsText.PullLabel(pull);
+            return pull.State is { } state ? $"{label} {state}" : label;
+        }));
+    }
+}

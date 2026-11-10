@@ -94,7 +94,7 @@
                 @onclick="() => ShowAsync(ViewAddress.Cluster)">Cluster</button>
     }
     <button type="button" class="views__tab" aria-current="@(View == DashboardView.WorkItems ? "page" : null)"
-            @onclick="() => ShowAsync(ViewAddress.WorkItems)">Work items</button>
+            @onclick="() => ShowAsync(new ViewAddress(DashboardView.WorkItems, Audience: _workAudience))">Work items</button>
 </nav>
 
 <main>
@@ -111,7 +111,7 @@
     }
     else if (_monitor is { } workMonitor && View == DashboardView.WorkItems)
     {
-        <WorkItemsView Monitor="workMonitor" Zone="Zone" Now="Time.GetUtcNow()" />
+        <WorkItemsView Monitor="workMonitor" Audience="@_address.Audience" AudienceChanged="OnWorkAudienceChangedAsync" Zone="Zone" Now="Time.GetUtcNow()" />
     }
     else if (_monitor is { } monitor)
     {
@@ -254,6 +254,7 @@
     private DotNetObjectReference<App>? _self;
     private ViewAddress _address = ViewAddress.Health;
     private string? _runtimeEnvironment;
+    private WorkAudience _workAudience = WorkAudience.All;
     private bool _trafficRunning;
 
     private TimeZoneInfo Zone => Time.LocalTimeZone;
@@ -359,6 +360,11 @@
         {
             _runtimeEnvironment = environment;
         }
+
+        if (address.View == DashboardView.WorkItems)
+        {
+            _workAudience = address.Audience;
+        }
     }
 
     /// <summary>
@@ -376,6 +382,10 @@
 
     private Task OnRuntimeEnvironmentChangedAsync(string environment) =>
         ShowAsync(new ViewAddress(DashboardView.Runtime, environment));
+
+    /// <summary>The work items filter, kept in the address so a link opens All, bot, or team.</summary>
+    private Task OnWorkAudienceChangedAsync(WorkAudience audience) =>
+        ShowAsync(new ViewAddress(DashboardView.WorkItems, Audience: audience));
 
     /// <summary>
     /// The runtime view zooms into the environment's database, or back out: a step of the history. An address that

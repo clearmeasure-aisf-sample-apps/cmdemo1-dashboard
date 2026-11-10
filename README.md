@@ -1504,10 +1504,25 @@ Testing, Release Queue and Done is still shown, and is not treated as done.
 
 The view has: the counts of work in progress per column; cycle time and lead time (median, p85, how many); a chart of
 pull requests merged and items deployed to prod per week; the rework rate; the Cursor agent cost. Then the items that
-are not done, grouped by column, each with its issue, the bot handling it, its Cursor session, its pull request and
-that pull request's state, its release candidate (an Octopus release, `2.4.<build>`) and a badge per environment it
-is deployed to (tdd, uat, prod). Done items follow, the one that arrived there last first. A sample file ships at
+are not done, grouped by column. Done items follow, the one that arrived there last first. A sample file ships at
 `src/Dashboard/wwwroot/samples/workitems.json`.
+
+Each item may say `worker`: `bot` or `team`. The address keeps the filter: `#work-items` is all of them,
+`#work-items/bot` the bots, `#work-items/team` the team. The stats strip follows the filter. `stats.all`, `stats.bot`
+and `stats.team` are the three slices; the same fields written directly under `stats` are `stats.all` (the older
+shape). A slice the file leaves out is counted from the items where the items can answer it (work in progress, cycle
+and lead time of items that reached Done, merges and production deploys per week, rework, cost). An item with no
+`worker` stays in All only.
+
+On All, bot and team are compared where either side has a cycle time or a week. A team item is a short row: the issue,
+its pull request, and the environments it is deployed to. A bot item opens to the factory detail that the file can
+answer: the column timeline, every Cursor session, every pull request with its checks, merge time and merge SHA, the
+release candidate and the tdd, uat and prod deploy times, rework, cost, and the bot's status or blocker. The bot
+filter also shows time per column (`timePerColumnHours`), throughput per bot (`throughput`: `agent`, `merged`,
+`deployedProd`) and merge-to-prod (`mergeToProdHours`). Those three are counted from the bot items when the file does
+not give them. A pull request's checks are `checks.result` (`passed`, `failed`, `pending`, or the file's word) and
+`checks.url`, or a string `checks` / `checksResult`. The blocker is `blocker.text`, `blocker.url` and `blocker.at`,
+or a `status` string.
 
 ## Availability
 

@@ -60,8 +60,13 @@ public class ViewAddressTests
         Assert.Equal("runtime/uat", new ViewAddress(DashboardView.Runtime, "uat").ToHash());
         Assert.Equal("cluster", ViewAddress.Cluster.ToHash());
         Assert.Equal("work-items", ViewAddress.WorkItems.ToHash());
+        Assert.Equal("work-items/bot", new ViewAddress(DashboardView.WorkItems, Audience: WorkAudience.Bot).ToHash());
+        Assert.Equal("work-items/team", new ViewAddress(DashboardView.WorkItems, Audience: WorkAudience.Team).ToHash());
         Assert.Equal(ViewAddress.Cluster, ViewAddress.Parse(ViewAddress.Cluster.ToHash()));
         Assert.Equal(ViewAddress.WorkItems, ViewAddress.Parse(ViewAddress.WorkItems.ToHash()));
+        Assert.Equal(WorkAudience.Bot, ViewAddress.Parse("#work-items/bot").Audience);
+        Assert.Equal(WorkAudience.Team, ViewAddress.Parse("Work-Items/team/").Audience);
+        Assert.Equal(new ViewAddress(DashboardView.WorkItems, Audience: WorkAudience.Bot), ViewAddress.Parse(new ViewAddress(DashboardView.WorkItems, Audience: WorkAudience.Bot).ToHash()));
         Assert.Equal(new ViewAddress(DashboardView.Runtime, "uat"), ViewAddress.Parse(new ViewAddress(DashboardView.Runtime, "uat").ToHash()));
     }
 }

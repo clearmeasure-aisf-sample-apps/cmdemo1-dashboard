@@ -44,6 +44,9 @@ public sealed record WorkWeekChart(IReadOnlyList<WorkWeekBar> Bars, int Scale, s
 /// <summary>Where an item is deployed, in environment order, for the badges. An environment that has not got it is absent.</summary>
 public sealed record WorkPlace(string Name, string? Version, DateTimeOffset? DeployedAt);
 
+/// <summary>Bot beside team on the All strip. A side is null when that slice does not say.</summary>
+public sealed record WorkComparison(WorkDuration? BotCycle, WorkDuration? TeamCycle, WorkWeekChart? BotWeeks, WorkWeekChart? TeamWeeks);
+
 /// <summary>The work items file in the words of the page. The view only places them.</summary>
 public static class WorkItemsText
 {
@@ -81,16 +84,114 @@ public static class WorkItemsText
         _ => throw new ArgumentOutOfRangeException(nameof(availability), availability, "A work items state has no sentence."),
     };
 
-    /// <summary>Work in progress, one count per column, the board's columns first. Done is not work in progress.</summary>
-    public static IReadOnlyList<WorkWip> Wip(WorkItemsReport report)
+    public static string AudienceLabel(WorkAudience audience) => audience switch
+    {
+        WorkAudience.All => "All",
+        WorkAudience.Bot => "Bot",
+        WorkAudience.Team => "Team",
+        _ => throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no name."),
+    };
+
+    /// <summary>The first segment after <c>work-items</c> in the address: <c>bot</c>, <c>team</c>, or anything else for all.</summary>
+    public static WorkAudience AudienceOf(string? segment) => segment?.Trim().ToLowerInvariant() switch
+    {
+        "bot" => WorkAudience.Bot,
+        "team" => WorkAudience.Team,
+        _ => WorkAudience.All,
+    };
+
+    public static string AudienceHash(WorkAudience audience) => audience switch
+    {
+        WorkAudience.Bot => "bot",
+        WorkAudience.Team => "team",
+        WorkAudience.All => string.Empty,
+        _ => throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no address."),
+    };
+
+    /// <summary>The items of one filter, in the file's order. An item with no worker is only in All.</summary>
+    public static IReadOnlyList<WorkItem> Select(IReadOnlyList<WorkItem> items, WorkAudience audience)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        return audience switch
+        {
+            WorkAudience.Bot => [.. items.Where(item => item.Worker == WorkWorker.Bot)],
+            WorkAudience.Team => [.. items.Where(item => item.Worker == WorkWorker.Team)],
+            WorkAudience.All => items,
+            _ => throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no items."),
+        };
+    }
+
+    public static string NoneOf(WorkAudience audience) => audience switch
+    {
+        WorkAudience.Bot => "No bot work items.",
+        WorkAudience.Team => "No team work items.",
+        WorkAudience.All => None,
+        _ => throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no empty state."),
+    };
+
+    public static string? WorkerLabel(WorkWorker worker) => worker switch
+    {
+        WorkWorker.Bot => "bot",
+        WorkWorker.Team => "team",
+        WorkWorker.Unknown => null,
+        _ => throw new ArgumentOutOfRangeException(nameof(worker), worker, "A worker has no name."),
+    };
+
+    /// <summary>
+    /// The stats strip for a filter. All is the file's board (<c>stats.all</c>, or the older top-level fields). Bot
+    /// and team use the file's slice when it has one, and otherwise what the items themselves can answer.
+    /// </summary>
+    public static WorkItemsStats Slice(WorkItemsReport report, WorkAudience audience)
     {
         ArgumentNullException.ThrowIfNull(report);
-        var counts = report.Stats.WipByColumn;
+        var published = audience switch
+        {
+            WorkAudience.Bot => report.BotStats,
+            WorkAudience.Team => report.TeamStats,
+            WorkAudience.All => report.Stats,
+            _ => throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no stats."),
+        };
+        return published ?? (audience == WorkAudience.All ? report.Stats : WorkBotText.FromItems(Select(report.Items, audience)));
+    }
+
+    /// <summary>
+    /// Bot beside team, for the All strip: cycle time and the latest week. Null when the file has no split and no
+    /// item says who did the work, or when neither side has a cycle time or a week.
+    /// </summary>
+    public static WorkComparison? Comparison(WorkItemsReport report)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+        if (report.BotStats is null && report.TeamStats is null && report.Items.All(item => item.Worker == WorkWorker.Unknown))
+        {
+            return null;
+        }
+
+        var bot = report.BotStats ?? WorkBotText.FromItems(Select(report.Items, WorkAudience.Bot));
+        var team = report.TeamStats ?? WorkBotText.FromItems(Select(report.Items, WorkAudience.Team));
+        var botWeeks = Chart(bot.PerWeek);
+        var teamWeeks = Chart(team.PerWeek);
+        if (bot.CycleTimeHours is null && team.CycleTimeHours is null && botWeeks is null && teamWeeks is null)
+        {
+            return null;
+        }
+
+        return new WorkComparison(bot.CycleTimeHours, team.CycleTimeHours, botWeeks, teamWeeks);
+    }
+
+    /// <summary>Work in progress, one count per column, the board's columns first. Done is not work in progress.</summary>
+    public static IReadOnlyList<WorkWip> Wip(WorkItemsReport report) => Wip(report.Stats, report.Items);
+
+    /// <summary>Work in progress for one slice. The file's counts win; without them the items are counted.</summary>
+    public static IReadOnlyList<WorkWip> Wip(WorkItemsStats stats, IReadOnlyList<WorkItem> items)
+    {
+        ArgumentNullException.ThrowIfNull(stats);
+        ArgumentNullException.ThrowIfNull(items);
+        var counts = stats.WipByColumn;
         var fromFile = counts.Count > 0;
         var rows = new List<WorkWip>();
         foreach (var column in WorkColumns.Active)
         {
-            rows.Add(new WorkWip(column, fromFile ? CountOf(counts, column) : report.Items.Count(item => WorkColumns.Same(item.Column, column))));
+            rows.Add(new WorkWip(column, fromFile ? CountOf(counts, column) : items.Count(item => WorkColumns.Same(item.Column, column))));
         }
 
         if (fromFile)
@@ -102,7 +203,7 @@ public static class WorkItemsText
         }
         else
         {
-            foreach (var extra in report.Items
+            foreach (var extra in items
                 .Where(item => !WorkColumns.IsKnown(item.Column))
                 .GroupBy(item => WorkColumns.Canonical(item.Column), StringComparer.OrdinalIgnoreCase)
                 .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase))

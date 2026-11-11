@@ -32,10 +32,10 @@ public class ViewLinksTests
             [("sqldb", "Database sqldb-cmdemo1-uat: open its tables")],
             RuntimeZoom.Boxes(Sample, database: true));
         Assert.Equal(
-            ["sqldb", "ca_ui", "ca_aisf"],
+            ["sqldb", "ca_ui"],
             RuntimeZoom.Boxes(WithArchitecture, database: true).Select(box => box.Alias));
         Assert.Equal(
-            ["ca_ui", "ca_aisf"],
+            ["ca_ui"],
             RuntimeZoom.Boxes(WithArchitecture, database: false).Select(box => box.Alias));
     }
 

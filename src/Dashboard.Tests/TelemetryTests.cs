@@ -329,7 +329,7 @@ public class TelemetryTests
         Assert.Null(sql.Text);
         Assert.Null(sql.Trend);
         Assert.Contains("does not count a container app's SQL commands", sql.Title, StringComparison.Ordinal);
-        Assert.DoesNotContain(manifest.Edges, edge => edge.From == "ca_aisf" && edge.Kind == RuntimeEdgeKind.Sql);
+        Assert.DoesNotContain(manifest.Nodes, node => node.Deployable is "aisf" or "fworker");
     }
 
     private static (string?, string?, string?) Triple(RuntimeEdgeMark mark) => (mark.Number, mark.Unit, mark.Text);

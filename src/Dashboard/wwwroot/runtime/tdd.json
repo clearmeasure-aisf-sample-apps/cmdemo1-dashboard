@@ -24,18 +24,6 @@
       }
     },
     {
-      "alias": "ca_aisf",
-      "qualifiedName": "sub.cae.ca_aisf",
-      "kind": "containerapp",
-      "deployable": "aisf",
-      "name": "ca-cmdemo1-tdd-aisf",
-      "url": "https://ca-cmdemo1-tdd-aisf.example.southcentralus.azurecontainerapps.io",
-      "healthPath": "/health",
-      "links": {
-        "site": "https://ca-cmdemo1-tdd-aisf.example.southcentralus.azurecontainerapps.io"
-      }
-    },
-    {
       "alias": "sqldb",
       "qualifiedName": "sub.rg_tier.region_data.sqldb",
       "kind": "sql",
@@ -106,12 +94,6 @@
       "id": "browser-to-ca_ui",
       "from": "browser",
       "to": "ca_ui",
-      "kind": "direct"
-    },
-    {
-      "id": "browser-to-ca_aisf",
-      "from": "browser",
-      "to": "ca_aisf",
       "kind": "direct"
     },
     {

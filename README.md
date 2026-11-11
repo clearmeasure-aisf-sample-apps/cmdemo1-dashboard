@@ -98,8 +98,8 @@ dotnet run --project src/Dashboard
 
 Then open http://localhost:5210 (http://localhost:5210/#runtime for the runtime view). The repository ships a sample
 `src/Dashboard/wwwroot/topology.json` and, rendered from it, a sample `src/Dashboard/wwwroot/runtime/` (tdd and uat)
-for cmdemo1 with no App Service: the health view has no web app tiles, and the runtime diagram is the ui container
-app connected to Azure SQL, with aisf drawn and not connected. Their hosts do not exist, so the container app shows
+for cmdemo1 with no App Service: the health view has a tile for the ui container app in each environment, and the
+runtime diagram is that ui app connected to Azure SQL. Their hosts do not exist, so the container app shows
 Not responding once the page has asked it, and no pinned version is found. Point the sample at real nodes and at a real
 system repository to see them (and allow `http://localhost:5210` in the nodes' CORS settings, see below). The sample
 names no cluster, so it has no Cluster tab: a topology takes absolute addresses only, and the sample would have none
@@ -377,7 +377,7 @@ diagram in place:
 | Links | Where the topology has a link (see "Links"): a web app's badge (Live Metrics), its name (the web app in the portal), its version (the release in Octopus Deploy, or else the commit of its build), its requests (Performance) and its errors (Failures); the Front Door endpoint's and the database's name; the numbers on the arrows (Performance, the dependency calls, the requests in Logs). They are real `a` elements: underlined, in the order of the keyboard, each with a title that says where it goes. The name of a box that zooms into a view is no link: the view's heading row has that link (see "A box"). |
 | A box | Every box leads to what it stands for: its name is a link, and a click anywhere else on the box opens the same address in a new tab (see "Links", "Every box of the runtime view"). The frames too: the subscription, a resource group, the Front Door profile, a plan, a region. A click on a link inside a box (a badge, a number, the mark of a deployment) is that link's own. The box shows the pointer and lights up under it. Some boxes lead into the page instead: the database's, where the deployment recorded its schema (see "The database view"), and a web app's or a container app's, where the manifest names its deployable's `architecture` (see "The application view"). The whole of such a box zooms, its name too: a click on the name opens no new tab. The name is plain text there, not a link, so the box is one control. The link the name was is in the heading row of the view. The badge, the version, the numbers and the mark of a deployment keep their links. |
 | Static site | The static site that serves the page says "This page"; another environment's, which the page does not ask, says what Resource Health said of it, or "Not probed" in a diagram from before the ids. |
-| Container app | The page's own probe of it, once a minute while it shows the diagram (see "The container apps of the system"): "Probing" and "Waking" (drawn as being checked), "Healthy", "Unhealthy", "Responding" (drawn as healthy: it answered, and the page cannot read its health) and "Not responding" (drawn as unreachable), with the HTTP status and latency, or "answered · 85 ms" where the page could not read the answer. Under its host name, for an app `system.json` declares, in words and without a colour, what the pipeline's hourly health report last found there and how long ago ("hourly: healthy, 40 min ago"; "no recent hourly check" when no report of the last two hours asked it), and of the reports of 24 hours and 7 days that asked it, how many found it healthy ("24 h: 23 of 24 · 7 d: 160 of 168"). The tooltip says what the page asked and when, and that the hourly lines are history, not monitoring. An app without a public address says what Resource Health said of it. |
+| Container app | The page's own probe of it at `/_healthcheck`, once a minute while it shows the diagram (see "The container apps of the system"): "Probing" and "Waking" (drawn as being checked), "Healthy" (2xx with a healthy payload), "Unhealthy" (5xx or a 2xx without a healthy payload), "Responding" (drawn as healthy: CORS hid the answer) and "Not responding" (drawn as unreachable: no answer, or HTTP 404 including Azure's unavailable page), with the HTTP status and latency, or "answered · 85 ms" where the page could not read the answer. Under its host name, for an app `system.json` declares, in words and without a colour, what the pipeline's hourly health report last found there and how long ago ("hourly: healthy, 40 min ago"; "no recent hourly check" when no report of the last two hours asked it), and of the reports of 24 hours and 7 days that asked it, how many found it healthy ("24 h: 23 of 24 · 7 d: 160 of 168"). The tooltip says what the page asked and when, and that the hourly lines are history, not monitoring. An app without a public address says what Resource Health said of it. |
 | Resource | What Azure Resource Health last said of the resources the box stands for, in words and without a colour: "Available", "Degraded", "Unavailable", "Provisioned" (Resource Health does not cover its type: the provisioning state succeeded) or "Not known", and "Resource Health, 40 min ago" (grey after two hours); a box of several says the most urgent word and the count of each ("2 available · 1 provisioned, 40 min ago"). See "Resource Health". |
 | Mark of a deployment | With `system.deploymentsUrl`: a small dot in the corner of the tile of every node whose deployable is being deployed to the shown environment (its web apps, its Front Door endpoint, the dashboard's static site), in the logo's sky blue on a dark disc in a white ring, so it reads on a box of any state. Its shape says the state, its tooltip the sentence, and it is a link to the task in Octopus Deploy where the file gives its address (see "Deployments in flight"). The node keeps its state: a deployment is no state of health. |
 
@@ -904,24 +904,25 @@ dashboard's last deployment and, for the other tier, as that file.
 
 **The page probes the apps it shows** (decision 0038): while the runtime view shows a diagram and the page is neither
 paused nor hidden, every container app of it with a public address is asked once a minute (each round of checks asks
-the apps whose minute is up; a diagram shown for the first time asks at once). A declared app is asked at its
-`healthPath` with the probe Health check and at its root with Liveness; an app `system.json` does not declare at its
-root. The badge says:
+the apps whose minute is up; a diagram shown for the first time asks at once). Every app is asked at its
+`healthPath` (or `/_healthcheck` when none is named), never at the root page. The detail view reads
+`/_healthcheck/detailed` from the topology's deployable. The badge says:
 
 | Badge | Drawn as | When |
 |---|---|---|
 | Probing | being checked | Not asked yet |
 | Waking | being checked | No answer yet, within 90 seconds of the first probe of a run: an app that scaled to zero starts on the first request. A run starts again after five minutes without a probe (the tab was hidden or the view closed) |
-| Healthy, Unhealthy | healthy, unhealthy | The status of its health path (HTTP 200, or another) |
-| Responding | healthy | It answered, and the page cannot tell its health: it asked the root, or the app does not allow this page's origin |
-| Not responding | unreachable | No answer after the 90 seconds, or no answer after it had answered |
+| Healthy | healthy | The health path answered 2xx with a healthy payload |
+| Unhealthy | unhealthy | The health path answered 5xx, or 2xx without a healthy payload |
+| Responding | healthy | It answered, and the page cannot tell its health: the app does not allow this page's origin (CORS) |
+| Not responding | unreachable | No answer after the 90 seconds, or no answer after it had answered; or HTTP 404 (including Azure's "Container App - Unavailable" page for a deleted app) |
 
 The kit's container apps allow every origin to read a GET (a CORS policy of their ingress, with a static deployable,
 as the App Service apps). An app that does not (one the system made itself, or one before its next apply) is asked
 again in `no-cors` mode: the browser then says whether it answered and nothing else, the badge says "Responding" and
 the tooltip says why, and the page asks it that way while it is open (one request a minute). Nothing probes the apps
 while no page shows them, so they still scale to zero; while one does, an app stays awake, with a database its health
-check queries (the probe Liveness asks its root instead).
+check queries.
 
 The pipeline also asks: the hourly runbook "Health report" asks every app of the environment's stack and writes one
 line per app into its log. The workflow that publishes the delivery facts reads those lines and adds, per container

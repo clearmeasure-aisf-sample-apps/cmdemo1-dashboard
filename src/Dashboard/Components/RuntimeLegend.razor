@@ -77,8 +77,8 @@
     private static readonly (string State, string Text)[] Nodes =
     [
         ("healthy", "Healthy (a container app that cannot tell its health: Responding)"),
-        ("unhealthy", "Unhealthy: answers, not HTTP 200"),
-        ("unreachable", "Unreachable: no answer"),
+        ("unhealthy", "Unhealthy: 5xx, or 2xx without a healthy payload"),
+        ("unreachable", "Unreachable: no answer, or HTTP 404 at the health path"),
         ("checking", "Checking (a container app: Probing or Waking)"),
         ("neutral", "Not asked by the browser: what the pipeline found"),
     ];

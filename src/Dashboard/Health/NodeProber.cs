@@ -59,9 +59,9 @@ public sealed class NodeProber(HttpClient http, TimeProvider time)
         new(HealthState.Unreachable, StatusCode: null, LatencyMs: null, checkedAt, Detail: detail);
 
     /// <summary>
-    /// Asks a container app (<see cref="ContainerAppProbe"/>): its health path with the probe Health check, its root
-    /// otherwise. An answer the browser may not read (the app does not allow this page's origin) is asked again
-    /// without reading it, so an app that answers is told from one that does not; with
+    /// Asks a container app (<see cref="ContainerAppProbe"/>) at its health path (<c>/_healthcheck</c> by default),
+    /// never the root page. An answer the browser may not read (the app does not allow this page's origin) is asked
+    /// again without reading it, so an app that answers is told from one that does not; with
     /// <paramref name="corsRefused"/> it is asked that way at once, one request per probe. Never throws for a failing
     /// app: no answer is an answer without a status. Only the caller's cancellation throws.
     /// </summary>
@@ -82,8 +82,17 @@ public sealed class NodeProber(HttpClient http, TimeProvider time)
                 try
                 {
                     using var request = NewRequest(address);
-                    using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, linked.Token);
-                    return new ContainerAppAnswer(path, readsHealth, (int)response.StatusCode, false, Elapsed(started), checkedAt);
+                    using var response = await http.SendAsync(request, linked.Token);
+                    var status = (int)response.StatusCode;
+                    var body = await response.Content.ReadAsStringAsync(linked.Token);
+                    return new ContainerAppAnswer(
+                        path,
+                        readsHealth,
+                        status,
+                        false,
+                        Elapsed(started),
+                        checkedAt,
+                        HealthyPayload: ContainerAppProbe.IsHealthyPayload(status, body));
                 }
                 catch (HttpRequestException)
                 {

@@ -103,7 +103,7 @@ public class ApplicationViewTests
 
         Assert.Equal(["ca_ui"], boxes.Select(box => box.Alias));
         Assert.Equal("Application ui: open its assemblies", ApplicationText.BoxLabel(boxes[0]));
-        Assert.Equal(["ca_ui", "ca_aisf"], ApplicationText.Boxes(WithArchitecture).Select(box => box.Alias));
+        Assert.Equal(["ca_ui"], ApplicationText.Boxes(WithArchitecture).Select(box => box.Alias));
     }
 
     [Theory]

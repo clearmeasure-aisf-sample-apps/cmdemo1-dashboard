@@ -36,11 +36,18 @@ public class TopologyParserTests
         Assert.Equal(new DateTimeOffset(2026, 10, 4, 22, 0, 0, TimeSpan.Zero), topology.Generated);
         Assert.Equal(["tdd", "uat"], topology.Environments.Select(environment => environment.Name));
         Assert.All(topology.Environments, environment => Assert.Equal("nonprod", environment.Tier));
-        Assert.All(topology.Environments, environment => Assert.Empty(environment.Deployables));
+        Assert.All(topology.Environments, environment =>
+        {
+            var ui = Assert.Single(environment.Deployables);
+            Assert.Equal("ui", ui.Name);
+            Assert.Equal("/_healthcheck", ui.HealthPath);
+            Assert.Equal("/_healthcheck/detailed", ui.HealthDetailPath);
+            Assert.Equal($"ca-cmdemo1-{environment.Name}-ui", Assert.Single(ui.Nodes).Name);
+        });
         Assert.False(topology.HasFrontDoor);
 
-        // Where the versions pinned in Git are read. The container apps are not nodes of the topology: the health
-        // view does not probe them, and the runtime diagram is where ui meets SQL.
+        // Where the versions pinned in Git are read. The health view tiles come from deployables; the runtime
+        // diagram is where ui meets SQL.
         Assert.Equal(
             [
                 "https://raw.githubusercontent.com/example-org/cmdemo1-system/main/environments/tdd/versions.json",
@@ -53,7 +60,15 @@ public class TopologyParserTests
                 "https://github.com/example-org/cmdemo1-system/commits/main/environments/uat/versions.json",
             ],
             topology.Environments.Select(environment => environment.VersionsHistoryUrl?.AbsoluteUri));
-        Assert.Equal(["Factory", "Scorecard"], topology.Environments[0].Pages!.Select(page => page.Name));
+        Assert.Equal(["Scorecard"], topology.Environments[0].Pages!.Select(page => page.Name));
+    }
+
+    [Fact]
+    public void AnEmptyDeployablesListIsStillValid()
+    {
+        var topology = Valid("""{ "environments": [ { "name": "tdd", "deployables": [] }, { "name": "uat" } ] }""");
+
+        Assert.All(topology.Environments, environment => Assert.Empty(environment.Deployables));
     }
 
     [Theory]

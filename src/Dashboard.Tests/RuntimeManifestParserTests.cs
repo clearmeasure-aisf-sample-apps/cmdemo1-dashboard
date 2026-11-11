@@ -22,12 +22,13 @@ public class RuntimeManifestParserTests
 
         Assert.Equal("uat", manifest.Environment);
         Assert.Equal(
-            ["browser", "ca_ui", "ca_aisf", "sqldb", "swa_dashboard"],
+            ["browser", "ca_ui", "sqldb", "swa_dashboard"],
             manifest.Nodes.Select(node => node.Alias));
         Assert.Equal(
-            [RuntimeNodeKind.Person, RuntimeNodeKind.ContainerApp, RuntimeNodeKind.ContainerApp, RuntimeNodeKind.Sql, RuntimeNodeKind.StaticSite],
+            [RuntimeNodeKind.Person, RuntimeNodeKind.ContainerApp, RuntimeNodeKind.Sql, RuntimeNodeKind.StaticSite],
             manifest.Nodes.Select(node => node.Kind));
         Assert.DoesNotContain(manifest.Nodes, node => node.Kind == RuntimeNodeKind.WebApp);
+        Assert.DoesNotContain(manifest.Nodes, node => node.Alias.Contains("aisf", StringComparison.Ordinal) || node.Deployable is "aisf" or "fworker");
         Assert.DoesNotContain(manifest.Frames!, frame => frame.Kind == "plan");
         var ui = manifest.Nodes.Single(node => node.Alias == "ca_ui");
         Assert.Equal(
@@ -38,10 +39,10 @@ public class RuntimeManifestParserTests
         Assert.Equal(["region_data"], manifest.Regions.Select(region => region.Alias));
         Assert.Equal(["data", "static"], Assert.Single(manifest.Regions).Roles);
         Assert.Equal(
-            ["browser-to-ca_ui", "browser-to-ca_aisf", "ca_ui-to-sqldb", "browser-to-swa_dashboard"],
+            ["browser-to-ca_ui", "ca_ui-to-sqldb", "browser-to-swa_dashboard"],
             manifest.Edges.Select(edge => edge.Id));
         Assert.Equal(RuntimeEdgeKind.Sql, manifest.Edges.Single(edge => edge.Id == "ca_ui-to-sqldb").Kind);
-        Assert.DoesNotContain(manifest.Edges, edge => edge.From == "ca_aisf" && edge.Kind == RuntimeEdgeKind.Sql);
+        Assert.DoesNotContain(manifest.Edges, edge => edge.Id.Contains("aisf", StringComparison.Ordinal) || edge.To.Contains("aisf", StringComparison.Ordinal));
         Assert.Equal(RuntimeEdgeKind.Other, manifest.Edges.Single(edge => edge.Id == "browser-to-ca_ui").Kind);
     }
 

@@ -178,10 +178,14 @@ public static class WorkItemsText
         return new WorkComparison(bot.CycleTimeHours, team.CycleTimeHours, botWeeks, teamWeeks);
     }
 
-    /// <summary>Work in progress, one count per column, the board's columns first. Done is not work in progress.</summary>
+    /// <summary>Work in progress, one count per board column. Done is not work in progress.</summary>
     public static IReadOnlyList<WorkWip> Wip(WorkItemsReport report) => Wip(report.Stats, report.Items);
 
-    /// <summary>Work in progress for one slice. The file's counts win; without them the items are counted.</summary>
+    /// <summary>
+    /// Work in progress for one slice. The file's counts win for the board's columns; without them the items are
+    /// counted. A name that is not one of those columns is not a board column: its items are counted under
+    /// <see cref="WorkColumns.Unplaced"/>.
+    /// </summary>
     public static IReadOnlyList<WorkWip> Wip(WorkItemsStats stats, IReadOnlyList<WorkItem> items)
     {
         ArgumentNullException.ThrowIfNull(stats);
@@ -194,28 +198,21 @@ public static class WorkItemsText
             rows.Add(new WorkWip(column, fromFile ? CountOf(counts, column) : items.Count(item => WorkColumns.Same(item.Column, column))));
         }
 
-        if (fromFile)
+        var unplaced = fromFile
+            ? counts.Where(pair => !WorkColumns.IsKnown(pair.Key)).Sum(pair => pair.Value)
+            : items.Count(item => !WorkColumns.IsKnown(item.Column) && !WorkColumns.IsDone(item.Column));
+        if (unplaced > 0)
         {
-            foreach (var extra in counts.Keys.Where(key => !WorkColumns.IsKnown(key)).Order(StringComparer.OrdinalIgnoreCase))
-            {
-                rows.Add(new WorkWip(extra, counts[extra]));
-            }
-        }
-        else
-        {
-            foreach (var extra in items
-                .Where(item => !WorkColumns.IsKnown(item.Column))
-                .GroupBy(item => WorkColumns.Canonical(item.Column), StringComparer.OrdinalIgnoreCase)
-                .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase))
-            {
-                rows.Add(new WorkWip(extra.Key, extra.Count()));
-            }
+            rows.Add(new WorkWip(WorkColumns.Unplaced, unplaced));
         }
 
         return rows;
     }
 
-    /// <summary>The columns that hold work now, in board order, then any column the file invented. Done is not among them.</summary>
+    /// <summary>
+    /// The board's columns that hold work now, in order, then <see cref="WorkColumns.Unplaced"/> for any item whose
+    /// column is blank or not one of those. Done is not among them.
+    /// </summary>
     public static IReadOnlyList<WorkColumnGroup> Active(IReadOnlyList<WorkItem> items)
     {
         ArgumentNullException.ThrowIfNull(items);
@@ -229,12 +226,10 @@ public static class WorkItemsText
             }
         }
 
-        foreach (var extra in items
-            .Where(item => !WorkColumns.IsKnown(item.Column))
-            .GroupBy(item => WorkColumns.Canonical(item.Column), StringComparer.OrdinalIgnoreCase)
-            .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase))
+        var unplaced = items.Where(item => !WorkColumns.IsKnown(item.Column) && !WorkColumns.IsDone(item.Column)).ToList();
+        if (unplaced.Count > 0)
         {
-            groups.Add(new WorkColumnGroup(extra.Key, extra.ToList()));
+            groups.Add(new WorkColumnGroup(WorkColumns.Unplaced, unplaced));
         }
 
         return groups;

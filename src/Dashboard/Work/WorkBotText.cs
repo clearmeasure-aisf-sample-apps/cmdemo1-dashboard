@@ -233,10 +233,10 @@ public static class WorkBotText
             counts[column] = items.Count(item => WorkColumns.Same(item.Column, column));
         }
 
-        foreach (var extra in items.Where(item => !WorkColumns.IsKnown(item.Column)))
+        var unplaced = items.Count(item => !WorkColumns.IsKnown(item.Column) && !WorkColumns.IsDone(item.Column));
+        if (unplaced > 0)
         {
-            var name = WorkColumns.Canonical(extra.Column);
-            counts[name] = counts.GetValueOrDefault(name) + 1;
+            counts[WorkColumns.Unplaced] = unplaced;
         }
 
         return counts;

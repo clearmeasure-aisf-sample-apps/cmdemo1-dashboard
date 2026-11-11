@@ -1477,15 +1477,15 @@ without `deliveryUrl` has nowhere to read the file, and the view says so. The vi
 { "generatedAt": "2026-11-09T22:00:00Z",
   "scope": { "repo": "https://github.com/org/cmdemo1-system", "project": 679, "rules": "A bot may take an item from Todo." },
   "stats": {
-    "wipByColumn": { "Todo": 1, "In Progress": 1, "Development": 2 },
+    "wipByColumn": { "Todo": 1, "In Progress": 1, "Review": 1, "Merged": 1, "TDD": 1, "UAT": 1 },
     "cycleTimeHours": { "median": 18.5, "p85": 72, "n": 11 },
     "leadTimeHours": { "median": 26, "p85": 96, "n": 9 },
     "perWeek": [ { "weekStart": "2026-11-09", "merged": 5, "deployedProd": 2 } ],
     "rework": { "ftFailures": 2, "reverts": 1, "rate": 0.125 },
     "cost": { "totalUsd": 18, "note": "Cursor agent usage for these items, last 30 days" } },
   "items": [ { "number": 470, "title": "Show which release an environment carries", "url": "https://...",
-    "state": "Active", "column": "Functional Testing",
-    "columnHistory": [ { "column": "Functional Testing", "enteredAt": "2026-11-09T18:30:00Z" } ],
+    "state": "Active", "column": "TDD",
+    "columnHistory": [ { "column": "TDD", "enteredAt": "2026-11-09T18:30:00Z" } ],
     "assignee": "cm-ai-ops", "agent": "delivery-bot",
     "cursorSessions": [ "https://cursor.com/agents/bc-sample-delivery" ],
     "prs": [ { "number": 181, "url": "https://...", "state": "merged", "mergedAt": "2026-11-09T17:40:00Z", "mergeSha": "<sha>" } ],
@@ -1499,8 +1499,9 @@ Every part is optional. A part that is missing, null, or of another type is left
 address and column is left out; an address that is not absolute http or https is not linked. `generated` is read when
 `generatedAt` is absent. `rate` from 0 to 1 is a fraction (0.125 is 12.5 %); a larger number is shown as given.
 `cost.totalUsd` null is "n/a", with `note` when the file gives one. Per item in the strip is that total divided by
-how many items the file lists. A column other than Todo, In Progress, Technical Design, Development, Functional
-Testing, Release Queue and Done is still shown, and is not treated as done.
+how many items the file lists. The board's columns are Todo, In Progress, Review, Merged, TDD, UAT and Done, in that
+order. Done means deployed to prod, or a merged docs-only change. A blank or other column name is shown as Unplaced
+and is not treated as done.
 
 The view has: the counts of work in progress per column; cycle time and lead time (median, p85, how many); a chart of
 pull requests merged and items deployed to prod per week; the rework rate; the Cursor agent cost. Then the items that

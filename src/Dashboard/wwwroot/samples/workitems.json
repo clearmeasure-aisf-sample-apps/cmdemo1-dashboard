@@ -8,11 +8,11 @@
   "stats": {
     "wipByColumn": {
       "Todo": 1,
-      "In Progress": 1,
-      "Technical Design": 1,
-      "Development": 3,
-      "Functional Testing": 1,
-      "Release Queue": 1
+      "In Progress": 2,
+      "Review": 2,
+      "Merged": 1,
+      "TDD": 1,
+      "UAT": 1
     },
     "cycleTimeHours": {
       "median": 18.5,
@@ -58,11 +58,11 @@
     "all": {
       "wipByColumn": {
         "Todo": 1,
-        "In Progress": 1,
-        "Technical Design": 1,
-        "Development": 3,
-        "Functional Testing": 1,
-        "Release Queue": 1
+        "In Progress": 2,
+        "Review": 2,
+        "Merged": 1,
+        "TDD": 1,
+        "UAT": 1
       },
       "cycleTimeHours": {
         "median": 18.5,
@@ -109,11 +109,11 @@
     "bot": {
       "wipByColumn": {
         "Todo": 0,
-        "In Progress": 1,
-        "Technical Design": 1,
-        "Development": 2,
-        "Functional Testing": 1,
-        "Release Queue": 1
+        "In Progress": 2,
+        "Review": 2,
+        "Merged": 0,
+        "TDD": 1,
+        "UAT": 1
       },
       "cycleTimeHours": {
         "median": 14,
@@ -157,17 +157,17 @@
         "note": "Cursor agent usage for these items, last 30 days"
       },
       "timePerColumnHours": {
-        "Development": {
+        "Review": {
           "median": 10,
           "p85": 24,
           "n": 6
         },
-        "Functional Testing": {
+        "TDD": {
           "median": 18,
           "p85": 40,
           "n": 4
         },
-        "Release Queue": {
+        "UAT": {
           "median": 8,
           "p85": 16,
           "n": 3
@@ -209,7 +209,7 @@
     "team": {
       "wipByColumn": {
         "Todo": 1,
-        "Development": 1
+        "Merged": 1
       },
       "cycleTimeHours": {
         "median": 40,
@@ -294,10 +294,10 @@
       "title": "Decide the work item contract",
       "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/490",
       "state": "Active",
-      "column": "Technical Design",
+      "column": "Review",
       "columnHistory": [
         {
-          "column": "Technical Design",
+          "column": "Review",
           "enteredAt": "2026-11-09T14:00:00Z"
         }
       ],
@@ -320,10 +320,10 @@
       "title": "Add the Work items view to the dashboard",
       "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/476",
       "state": "Active",
-      "column": "Development",
+      "column": "Review",
       "columnHistory": [
         {
-          "column": "Development",
+          "column": "Review",
           "enteredAt": "2026-11-09T11:00:00Z"
         }
       ],
@@ -359,14 +359,14 @@
       "title": "Keep a failed release on the board",
       "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/458",
       "state": "Active",
-      "column": "development",
+      "column": "In Progress",
       "columnHistory": [
         {
-          "column": "Functional Testing",
+          "column": "TDD",
           "enteredAt": "2026-11-08T09:00:00Z"
         },
         {
-          "column": "Development",
+          "column": "In Progress",
           "enteredAt": "2026-11-09T09:00:00Z"
         }
       ],
@@ -407,10 +407,10 @@
       "title": "Review the release notes",
       "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/512",
       "state": "Active",
-      "column": "Development",
+      "column": "Merged",
       "columnHistory": [
         {
-          "column": "Development",
+          "column": "Merged",
           "enteredAt": "2026-11-09T08:00:00Z"
         }
       ],
@@ -422,9 +422,9 @@
         {
           "number": 190,
           "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-dashboard/pull/190",
-          "state": "open",
-          "mergedAt": null,
-          "mergeSha": null
+          "state": "merged",
+          "mergedAt": "2026-11-09T08:00:00Z",
+          "mergeSha": "c0ffee1234567890abcdef1234567890abcdef12"
         }
       ],
       "releaseCandidate": null,
@@ -436,10 +436,10 @@
       "title": "Show which release an environment carries",
       "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/470",
       "state": "Active",
-      "column": "Functional Testing",
+      "column": "TDD",
       "columnHistory": [
         {
-          "column": "Functional Testing",
+          "column": "TDD",
           "enteredAt": "2026-11-09T18:30:00Z"
         }
       ],
@@ -480,10 +480,10 @@
       "title": "Draw the runtime diagram from the manifest",
       "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/462",
       "state": "Active",
-      "column": "Release Queue",
+      "column": "UAT",
       "columnHistory": [
         {
-          "column": "Release Queue",
+          "column": "UAT",
           "enteredAt": "2026-11-08T15:00:00Z"
         }
       ],
@@ -531,7 +531,7 @@
       "column": "Done",
       "columnHistory": [
         {
-          "column": "Development",
+          "column": "Merged",
           "enteredAt": "2026-11-05T10:00:00Z"
         },
         {
@@ -585,7 +585,7 @@
       "column": "Done",
       "columnHistory": [
         {
-          "column": "Development",
+          "column": "Merged",
           "enteredAt": "2026-11-01T12:00:00Z"
         },
         {

@@ -1,17 +1,17 @@
 namespace Dashboard.Work;
 
 /// <summary>
-/// The board the work items move across, in the order a reader expects. A column the file names differently is still
-/// shown: it is not dropped, and it is not treated as done.
+/// The board the work items move across, in the order a reader expects. A blank or unknown column is shown as
+/// <see cref="Unplaced"/> with the active ones; it is not treated as done.
 /// </summary>
 public static class WorkColumns
 {
     public const string Todo = "Todo";
     public const string InProgress = "In Progress";
-    public const string TechnicalDesign = "Technical Design";
-    public const string Development = "Development";
-    public const string FunctionalTesting = "Functional Testing";
-    public const string ReleaseQueue = "Release Queue";
+    public const string Review = "Review";
+    public const string Merged = "Merged";
+    public const string Tdd = "TDD";
+    public const string Uat = "UAT";
     public const string Done = "Done";
 
     /// <summary>A column the file left blank: the item is shown, under this name, with the active ones.</summary>
@@ -22,10 +22,10 @@ public static class WorkColumns
     [
         Todo,
         InProgress,
-        TechnicalDesign,
-        Development,
-        FunctionalTesting,
-        ReleaseQueue,
+        Review,
+        Merged,
+        Tdd,
+        Uat,
         Done,
     ];
 

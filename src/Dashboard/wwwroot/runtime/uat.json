@@ -24,18 +24,6 @@
       }
     },
     {
-      "alias": "ca_aisf",
-      "qualifiedName": "sub.cae.ca_aisf",
-      "kind": "containerapp",
-      "deployable": "aisf",
-      "name": "ca-cmdemo1-uat-aisf",
-      "url": "https://ca-cmdemo1-uat-aisf.example.southcentralus.azurecontainerapps.io",
-      "healthPath": "/health",
-      "links": {
-        "site": "https://ca-cmdemo1-uat-aisf.example.southcentralus.azurecontainerapps.io"
-      }
-    },
-    {
       "alias": "sqldb",
       "qualifiedName": "sub.rg_tier.region_data.sqldb",
       "kind": "sql",
@@ -52,7 +40,7 @@
       "name": "swa-cmdemo1-uat-dashboard",
       "region": "centralus",
       "regionAlias": "region_data",
-      "url": null,
+      "url": "http://localhost:5210",
       "links": {
         "portal": "https://portal.azure.com/#@00000000-0000-0000-0000-000000000000/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cmdemo1-nonprod/providers/Microsoft.Web/staticSites/swa-cmdemo1-uat-dashboard/overview"
       }
@@ -106,12 +94,6 @@
       "id": "browser-to-ca_ui",
       "from": "browser",
       "to": "ca_ui",
-      "kind": "direct"
-    },
-    {
-      "id": "browser-to-ca_aisf",
-      "from": "browser",
-      "to": "ca_aisf",
       "kind": "direct"
     },
     {

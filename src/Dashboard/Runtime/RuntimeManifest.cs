@@ -139,7 +139,7 @@ public sealed record RuntimeUnplaced(
 /// </param>
 /// <param name="HealthPath">
 /// For a container app <c>system.json</c> declares: the health path of its deployable, which the page probes; null for
-/// any other node, and for an app nobody declared (the page then asks its root).
+/// any other node, and for an app nobody declared (the page then asks <c>/_healthcheck</c>).
 /// </param>
 /// <param name="Ids">
 /// The Azure resource ids the box stands for, from the resource groups' listing, by which the page finds what Resource

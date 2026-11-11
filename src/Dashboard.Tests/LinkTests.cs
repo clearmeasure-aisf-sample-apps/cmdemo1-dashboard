@@ -82,12 +82,14 @@ public class LinkTests
         var uat = topology.Environments.Single(environment => environment.Name == "uat");
         const string Group = "https://portal.azure.com/#@00000000-0000-0000-0000-000000000000/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cmdemo1-nonprod";
 
-        Assert.Empty(uat.Deployables);
+        Assert.Equal(["ui"], uat.Deployables.Select(deployable => deployable.Name));
+        Assert.Equal("ca-cmdemo1-uat-ui", Assert.Single(uat.Deployables[0].Nodes).Name);
+        Assert.Equal("/_healthcheck/detailed", uat.Deployables[0].HealthDetailPath);
         Assert.Equal($"{Group}/providers/Microsoft.Sql/servers/sql-cmdemo1-uat/databases/sqldb-cmdemo1-uat/overview", uat.Links![LinkSet.Database]!.AbsoluteUri);
         Assert.Equal($"{Group}/overview", uat.Links[LinkSet.ResourceGroup]!.AbsoluteUri);
         Assert.Equal($"{Group}/providers/microsoft.insights/components/appi-cmdemo1-uat/overview", uat.Links[LinkSet.ApplicationInsights]!.AbsoluteUri);
         Assert.Equal($"{Group}/providers/microsoft.insights/components/appi-cmdemo1-uat/applicationMap", uat.Links[LinkSet.ApplicationMap]!.AbsoluteUri);
-        Assert.Equal(["Factory", "Scorecard"], uat.Pages!.Select(page => page.Name));
+        Assert.Equal(["Scorecard"], uat.Pages!.Select(page => page.Name));
     }
 
     [Fact]

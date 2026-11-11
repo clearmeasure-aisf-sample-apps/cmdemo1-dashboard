@@ -22,16 +22,27 @@
       },
       "pages": [
         {
-          "name": "Factory",
-          "url": "https://ca-cmdemo1-tdd-fworker.example.southcentralus.azurecontainerapps.io/dashboard",
-          "deployable": "fworker"
-        },
-        {
           "name": "Scorecard",
           "url": "https://legendary-doodle-8lk2k24.pages.github.io/"
         }
       ],
-      "deployables": []
+      "deployables": [
+        {
+          "name": "ui",
+          "healthPath": "/_healthcheck",
+          "alivePath": "/alive",
+          "versionPath": "/_version",
+          "healthDetailPath": "/_healthcheck/detailed",
+          "nodes": [
+            {
+              "name": "ca-cmdemo1-tdd-ui",
+              "region": "southcentralus",
+              "role": "primary",
+              "url": "https://ca-cmdemo1-tdd-ui.example.southcentralus.azurecontainerapps.io"
+            }
+          ]
+        }
+      ]
     },
     {
       "name": "uat",
@@ -46,16 +57,27 @@
       },
       "pages": [
         {
-          "name": "Factory",
-          "url": "https://ca-cmdemo1-uat-fworker.example.southcentralus.azurecontainerapps.io/dashboard",
-          "deployable": "fworker"
-        },
-        {
           "name": "Scorecard",
           "url": "https://legendary-doodle-8lk2k24.pages.github.io/"
         }
       ],
-      "deployables": []
+      "deployables": [
+        {
+          "name": "ui",
+          "healthPath": "/_healthcheck",
+          "alivePath": "/alive",
+          "versionPath": "/_version",
+          "healthDetailPath": "/_healthcheck/detailed",
+          "nodes": [
+            {
+              "name": "ca-cmdemo1-uat-ui",
+              "region": "southcentralus",
+              "role": "primary",
+              "url": "https://ca-cmdemo1-uat-ui.example.southcentralus.azurecontainerapps.io"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

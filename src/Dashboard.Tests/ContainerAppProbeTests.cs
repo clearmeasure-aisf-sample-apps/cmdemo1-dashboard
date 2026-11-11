@@ -13,9 +13,15 @@ public class ContainerAppProbeTests
 
     private static ContainerAppAnswer NoAnswer(DateTimeOffset at) => new("/_healthcheck", true, null, false, null, at, "No answer within 10 s.");
 
-    private static ContainerAppAnswer Status(int status, DateTimeOffset at, bool readsHealth = true) => new(readsHealth ? "/_healthcheck" : "/", readsHealth, status, false, 85, at);
+    private static ContainerAppAnswer Status(int status, DateTimeOffset at, bool healthyPayload = false) =>
+        new("/_healthcheck", true, status, false, 85, at, HealthyPayload: healthyPayload);
 
-    private static ContainerAppAnswer Unread(DateTimeOffset at) => new("/", false, null, true, 85, at);
+    private static ContainerAppAnswer Unread(DateTimeOffset at) => new("/_healthcheck", true, null, true, 85, at);
+
+    private const string AzureUnavailableHtml = """
+        <!DOCTYPE html><html><head><title>Azure Container App - Unavailable</title></head>
+        <body><h1>Azure Container App - Unavailable</h1></body></html>
+        """;
 
     /// <summary>A probe started and recorded at <paramref name="seconds"/> after the page opened.</summary>
     private static void Probe(ContainerAppProbe probe, int seconds, Func<DateTimeOffset, ContainerAppAnswer> answer)
@@ -63,7 +69,7 @@ public class ContainerAppProbeTests
         var probe = new ContainerAppProbe(Declared);
 
         Probe(probe, 0, NoAnswer);
-        Probe(probe, 60, at => Status(200, at));
+        Probe(probe, 60, at => Status(200, at, healthyPayload: true));
         Assert.Equal(ContainerAppState.Healthy, probe.Status.State);
 
         Probe(probe, 120, at => Status(503, at));
@@ -75,7 +81,7 @@ public class ContainerAppProbeTests
     {
         var probe = new ContainerAppProbe(Declared);
 
-        Probe(probe, 0, at => Status(200, at));
+        Probe(probe, 0, at => Status(200, at, healthyPayload: true));
         Probe(probe, 60, NoAnswer);
 
         Assert.Equal(ContainerAppState.NotResponding, probe.Status.State);
@@ -85,7 +91,7 @@ public class ContainerAppProbeTests
     public void AfterFiveMinutesWithoutAProbeTheAppMayBeAsleepAgainAndIsWakingOnceMore()
     {
         var probe = new ContainerAppProbe(Declared);
-        Probe(probe, 0, at => Status(200, at));
+        Probe(probe, 0, at => Status(200, at, healthyPayload: true));
 
         // The tab was hidden: no probe for six minutes.
         Probe(probe, 360, NoAnswer);
@@ -93,17 +99,61 @@ public class ContainerAppProbeTests
         Assert.Equal(ContainerAppState.Waking, probe.Status.State);
     }
 
-    [Theory]
-    [InlineData(200)]
-    [InlineData(404)]
-    [InlineData(503)]
-    public void AnAnswerToTheRootIsRespondingNeverHealthy(int status)
+    [Fact]
+    public void ADeletedOrUnavailableAppAtTheHealthPathIsNotResponding()
     {
-        var probe = new ContainerAppProbe(Undeclared);
+        var probe = new ContainerAppProbe(Declared);
 
-        Probe(probe, 0, at => Status(status, at, readsHealth: false));
+        Probe(probe, 0, at => Status(404, at));
 
-        Assert.Equal(ContainerAppState.Responding, probe.Status.State);
+        Assert.Equal(ContainerAppState.NotResponding, probe.Status.State);
+        Assert.NotEqual(ContainerAppState.Responding, probe.Status.State);
+        Assert.NotEqual(ContainerAppState.Healthy, probe.Status.State);
+    }
+
+    [Theory]
+    [InlineData(500)]
+    [InlineData(502)]
+    [InlineData(503)]
+    public void AFiveHundredFromTheHealthPathIsUnhealthy(int status)
+    {
+        var probe = new ContainerAppProbe(Declared);
+
+        Probe(probe, 0, at => Status(status, at));
+
+        Assert.Equal(ContainerAppState.Unhealthy, probe.Status.State);
+        Assert.NotEqual(ContainerAppState.Responding, probe.Status.State);
+        Assert.NotEqual(ContainerAppState.Healthy, probe.Status.State);
+    }
+
+    [Theory]
+    [InlineData(200, "Healthy")]
+    [InlineData(204, """{"status":"Healthy"}""")]
+    public void ATwoHundredWithAHealthyPayloadIsHealthy(int status, string body)
+    {
+        Assert.True(ContainerAppProbe.IsHealthyPayload(status, body));
+        var probe = new ContainerAppProbe(Declared);
+
+        Probe(probe, 0, at => Status(status, at, healthyPayload: true));
+
+        Assert.Equal(ContainerAppState.Healthy, probe.Status.State);
+    }
+
+    [Theory]
+    [InlineData(200, "")]
+    [InlineData(200, AzureUnavailableHtml)]
+    [InlineData(200, "Unhealthy")]
+    [InlineData(200, """{"status":"Unhealthy"}""")]
+    [InlineData(404, AzureUnavailableHtml)]
+    public void ATwoHundredWithoutAHealthyPayloadOrAFourHundredFourIsNeverHealthy(int status, string body)
+    {
+        Assert.False(ContainerAppProbe.IsHealthyPayload(status, body));
+        var probe = new ContainerAppProbe(Declared);
+
+        Probe(probe, 0, at => Status(status, at, healthyPayload: false));
+
+        Assert.NotEqual(ContainerAppState.Healthy, probe.Status.State);
+        Assert.NotEqual(ContainerAppState.Responding, probe.Status.State);
     }
 
     [Fact]
@@ -119,24 +169,42 @@ public class ContainerAppProbeTests
     }
 
     [Fact]
-    public void TheHealthPathIsAskedWithTheProbeHealthCheckAndTheRootOtherwise()
+    public void TheHealthPathIsAskedForEveryProbeNeverTheRoot()
     {
         Assert.Equal("/_healthcheck", Declared.PathFor(ProbeKind.Health));
-        Assert.Equal("/", Declared.PathFor(ProbeKind.Liveness));
-        Assert.Equal("/", Undeclared.PathFor(ProbeKind.Health));
-        Assert.False(Undeclared.ReadsHealth(ProbeKind.Health));
+        Assert.Equal("/_healthcheck", Declared.PathFor(ProbeKind.Liveness));
+        Assert.Equal("/_healthcheck", Undeclared.PathFor(ProbeKind.Health));
+        Assert.Equal("/_healthcheck", Undeclared.PathFor(ProbeKind.Liveness));
+        Assert.True(Undeclared.ReadsHealth(ProbeKind.Health));
+        Assert.True(Declared.ReadsHealth(ProbeKind.Liveness));
     }
 
     [Fact]
     public async Task AnAppThatAllowsThePagesOriginIsReadWithOneRequest()
     {
-        var handler = new StubHandler(_ => StubHandler.Answer(HttpStatusCode.OK));
+        var handler = new StubHandler(_ => StubHandler.Answer(HttpStatusCode.OK, "Healthy"));
 
         var answer = await new NodeProber(new HttpClient(handler), _time).ProbeContainerAppAsync(Declared, ProbeKind.Health, false, CancellationToken.None);
 
-        Assert.Equal(("/_healthcheck", true, (int?)200, false), (answer.Path, answer.ReadsHealth, answer.StatusCode, answer.Opaque));
+        Assert.Equal(("/_healthcheck", true, (int?)200, false, true), (answer.Path, answer.ReadsHealth, answer.StatusCode, answer.Opaque, answer.HealthyPayload));
         Assert.Equal([$"{App.AbsoluteUri}_healthcheck"], handler.RequestedUrls);
         Assert.False(Unreadable(handler.Requests[0]));
+    }
+
+    [Fact]
+    public async Task AnUnavailableAzurePageAtTheHealthPathIsNotAHealthyPayload()
+    {
+        var handler = new StubHandler(_ => StubHandler.Answer(HttpStatusCode.NotFound, AzureUnavailableHtml));
+
+        var answer = await new NodeProber(new HttpClient(handler), _time).ProbeContainerAppAsync(Declared, ProbeKind.Health, false, CancellationToken.None);
+        var probe = new ContainerAppProbe(Declared);
+        Probe(probe, 0, _ => answer);
+
+        Assert.Equal(404, answer.StatusCode);
+        Assert.False(answer.HealthyPayload);
+        Assert.Equal(ContainerAppState.NotResponding, probe.Status.State);
+        Assert.Equal([$"{App.AbsoluteUri}_healthcheck"], handler.RequestedUrls);
+        Assert.DoesNotContain(handler.RequestedUrls, url => url.EndsWith('/') && !url.Contains("_healthcheck", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -170,7 +238,7 @@ public class ContainerAppProbeTests
         var answer = await new NodeProber(new HttpClient(handler), _time).ProbeContainerAppAsync(Undeclared, ProbeKind.Health, false, CancellationToken.None);
 
         Assert.False(answer.Answered);
-        Assert.Equal("/", answer.Path);
+        Assert.Equal("/_healthcheck", answer.Path);
         Assert.Contains("no answer", answer.Detail, StringComparison.Ordinal);
     }
 
@@ -203,7 +271,7 @@ public class ContainerAppProbeTests
         "/example-org/demo-system/status/containers.json" => StubHandler.Answer(HttpStatusCode.OK, """
             { "resources": { "nonprod": [ { "id": "/s/kv", "health": { "status": "available", "source": "resourceHealth", "checkedAt": "2026-10-04T21:20:00Z" } } ] } }
             """),
-        _ when IsApp(request) => StubHandler.Answer(HttpStatusCode.OK),
+        _ when IsApp(request) => StubHandler.Answer(HttpStatusCode.OK, "Healthy"),
         _ => StubHandler.Answer(HttpStatusCode.NotFound),
     };
 
@@ -251,7 +319,7 @@ public class ContainerAppProbeTests
     }
 
     [Fact]
-    public async Task WithTheProbeLivenessTheAppIsAskedAtItsRoot()
+    public async Task WithTheProbeLivenessTheAppIsStillAskedAtItsHealthPath()
     {
         var handler = new StubHandler(Answer);
         var monitor = Monitor(handler);
@@ -259,8 +327,9 @@ public class ContainerAppProbeTests
 
         await monitor.CheckAllAsync(ProbeKind.Liveness, CancellationToken.None);
 
-        Assert.Equal("/", handler.Requests.Single(IsApp).RequestUri!.AbsolutePath);
-        Assert.Equal(ContainerAppState.Responding, monitor.ContainerAppStatusOf(Declared)!.State);
+        Assert.Equal("/_healthcheck", handler.Requests.Single(IsApp).RequestUri!.AbsolutePath);
+        Assert.Equal(ContainerAppState.Healthy, monitor.ContainerAppStatusOf(Declared)!.State);
+        Assert.DoesNotContain(handler.Requests, request => request.RequestUri!.AbsolutePath == "/");
     }
 
     [Fact]

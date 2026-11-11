@@ -1,23 +1,27 @@
 using System.Globalization;
+using System.Text.Json;
 
 namespace Dashboard.Health;
 
 /// <summary>
-/// A container app the runtime view draws, as this page probes it: its public address and, for an app
-/// <c>system.json</c> declares, the health path of its deployable. An app nobody declared has none: the page asks its
-/// root, and an answer says that it responds, never that it is healthy.
+/// A container app the runtime view draws, as this page probes it: its public address and the health path of its
+/// deployable (or <see cref="DefaultHealthPath"/> when none is named). The page asks that path, never the root: a
+/// readable healthy answer is Healthy; a 404 (including Azure's deleted-app page) is Not responding; a 5xx is Unhealthy.
 /// </summary>
 public sealed record ContainerAppTarget(Uri Url, string? HealthPath = null)
 {
-    public const string Root = "/";
+    public const string DefaultHealthPath = "/_healthcheck";
 
-    /// <summary>The path a probe asks: the health path with the probe Health check, the root otherwise.</summary>
-    public string PathFor(ProbeKind probe) => ReadsHealth(probe) ? HealthPath! : Root;
+    /// <summary>The path a probe asks: the app's health path, or <see cref="DefaultHealthPath"/>. Never the root.</summary>
+    public string PathFor(ProbeKind _) => EffectiveHealthPath;
 
-    /// <summary>True when a probe of that kind asks the health path, so the status of its answer is the app's health.</summary>
-    public bool ReadsHealth(ProbeKind probe) => probe == ProbeKind.Health && HealthPath is not null;
+    /// <summary>True: every probe of a container app reads its health endpoint, never the root page.</summary>
+    public bool ReadsHealth(ProbeKind _) => EffectiveHealthPath.Length > 0;
 
-    internal string Key => $"{Url.AbsoluteUri}|{HealthPath}";
+    /// <summary>The health path the page asks: the deployable's, or <see cref="DefaultHealthPath"/>.</summary>
+    public string EffectiveHealthPath => HealthPath ?? DefaultHealthPath;
+
+    internal string Key => $"{Url.AbsoluteUri}|{EffectiveHealthPath}";
 }
 
 /// <summary>What the runtime view and the page's checks need to know about the container apps it shows.</summary>
@@ -36,16 +40,16 @@ public enum ContainerAppState
     /// <summary>No answer yet, within <see cref="ContainerAppProbe.Grace"/> of the first probe: an app that scaled to zero starts.</summary>
     Waking,
 
-    /// <summary>It answered, and the page cannot tell its health from the answer.</summary>
+    /// <summary>It answered, and the page cannot tell its health: the app does not allow this page's origin (CORS).</summary>
     Responding,
 
-    /// <summary>Its health path answered HTTP 200.</summary>
+    /// <summary>Its health path answered 2xx with a healthy payload.</summary>
     Healthy,
 
-    /// <summary>Its health path answered another status.</summary>
+    /// <summary>Its health path answered another status, or 2xx without a healthy payload.</summary>
     Unhealthy,
 
-    /// <summary>No answer, after the grace or after it had answered.</summary>
+    /// <summary>No answer, after the grace or after it had answered; or a 404 (the app is gone or unavailable).</summary>
     NotResponding,
 }
 
@@ -60,6 +64,10 @@ public enum ContainerAppState
 /// <param name="LatencyMs">Time to the answer.</param>
 /// <param name="CheckedAt">When the probe started.</param>
 /// <param name="Detail">Why there is no answer.</param>
+/// <param name="HealthyPayload">
+/// True when the readable body is a healthy health-check answer (plain <c>Healthy</c>, or JSON with
+/// <c>status: Healthy</c>).
+/// </param>
 public sealed record ContainerAppAnswer(
     string Path,
     bool ReadsHealth,
@@ -67,7 +75,8 @@ public sealed record ContainerAppAnswer(
     bool Opaque,
     int? LatencyMs,
     DateTimeOffset CheckedAt,
-    string? Detail = null)
+    string? Detail = null,
+    bool HealthyPayload = false)
 {
     public bool Answered => StatusCode is not null || Opaque;
 }
@@ -126,14 +135,52 @@ public sealed class ContainerAppProbe(ContainerAppTarget target)
         _answeredInRun |= answer.Answered;
         var state = answer switch
         {
-            { StatusCode: { } status, ReadsHealth: true } => HealthClassifier.FromStatusCode(status) == HealthState.Healthy
-                ? ContainerAppState.Healthy
-                : ContainerAppState.Unhealthy,
+            { StatusCode: { } status, ReadsHealth: true, HealthyPayload: true } when status is >= 200 and < 300 => ContainerAppState.Healthy,
+            { StatusCode: 404, ReadsHealth: true } => ContainerAppState.NotResponding,
+            { StatusCode: { } status, ReadsHealth: true } when status is >= 500 and < 600 => ContainerAppState.Unhealthy,
+            { StatusCode: { }, ReadsHealth: true } => ContainerAppState.Unhealthy,
             { Answered: true } => ContainerAppState.Responding,
             _ when !_answeredInRun && answer.CheckedAt - (_runStartedAt ?? answer.CheckedAt) < Grace => ContainerAppState.Waking,
             _ => ContainerAppState.NotResponding,
         };
         Status = new ContainerAppStatus(state, answer, Status.CorsRefused || answer.Opaque);
+    }
+
+    /// <summary>
+    /// True when a 2xx health-check body is healthy: the plain word <c>Healthy</c>, or a JSON object whose
+    /// <c>status</c> is <c>Healthy</c>. An HTML error page, an empty body and any other text are not.
+    /// </summary>
+    public static bool IsHealthyPayload(int statusCode, string? body)
+    {
+        if (statusCode is < 200 or >= 300 || string.IsNullOrWhiteSpace(body))
+        {
+            return false;
+        }
+
+        var text = body.Trim();
+        if (text.Equals("Healthy", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (text[0] != '{')
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(text);
+            return document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty("status", out var status)
+                && status.ValueKind == JsonValueKind.String
+                && status.GetString() is { } value
+                && value.Equals("Healthy", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 }
 
@@ -188,9 +235,11 @@ public static class ContainerAppText
             });
             if (last.Answered && !last.ReadsHealth)
             {
-                words.Add(target.HealthPath is null
-                    ? "It names no health path (an app system.json does not declare): the page asks its root, and an answer says it responds, not that it is healthy."
-                    : "The probe Liveness asks its root and leaves its health check (and a database it queries) alone.");
+                words.Add("The page could not classify the answer as a health check.");
+            }
+            else if (last is { StatusCode: 404 })
+            {
+                words.Add("HTTP 404 at the health path (including Azure's \"Container App - Unavailable\" page for a deleted app) means the app is down, not that it is responding.");
             }
         }
 

@@ -521,7 +521,7 @@ public class RuntimePayloadBuilderTests
     }
 
     [Fact]
-    public void AnUndeclaredContainerAppIsAskedAtItsRootAndHasNoHourlyLines()
+    public void AnUndeclaredContainerAppIsAskedAtTheDefaultHealthPathAndHasNoHourlyLines()
     {
         var app = new RuntimeNode("cax_1", RuntimeNodeKind.ContainerApp, "ca-ai-factory", new Uri("https://ca-ai-factory.happyisland-1.southcentralus.azurecontainerapps.io"), HealthPath: "/health");
         ContainerAppTarget? asked = null;
@@ -532,6 +532,7 @@ public class RuntimePayloadBuilderTests
             "cax_1");
 
         Assert.Equal(new ContainerAppTarget(app.Url!), asked);
+        Assert.Equal("/_healthcheck", asked!.PathFor(ProbeKind.Health));
         Assert.Equal([("ca-ai-factory.happyisland-1.southcentralus.azurecontainerapps.io", "muted")], Words(tile));
     }
 
@@ -928,7 +929,7 @@ public class RuntimePayloadBuilderTests
         Assert.Equal("active", Edge(payload, "ca_ui-to-sqldb"));
         Assert.Equal(RuntimePayloadBuilder.NoNumber, payload.Edges.Single(edge => edge.Id == "ca_ui-to-sqldb").Number);
         Assert.Contains("does not count a container app's SQL commands", payload.Edges.Single(edge => edge.Id == "ca_ui-to-sqldb").Title, StringComparison.Ordinal);
-        Assert.DoesNotContain(manifest.Edges, edge => edge.From == "ca_aisf" && edge.Kind == RuntimeEdgeKind.Sql);
+        Assert.DoesNotContain(manifest.Nodes, node => node.Deployable is "aisf" or "fworker");
         Assert.Equal("database: reachable; static sites: not probed", payload.Regions.Single(region => region.Alias == "region_data").Label);
     }
 
@@ -959,8 +960,8 @@ public class RuntimePayloadBuilderTests
     public void TwoHealthyContainerAppsBothCountTowardTheDatabase()
     {
         var ui = new RuntimeNode("ca_ui", RuntimeNodeKind.ContainerApp, "ca-ui", new Uri("https://ca-ui.example.io"), "ui", HealthPath: "/_healthcheck");
-        var worker = new RuntimeNode("ca_worker", RuntimeNodeKind.ContainerApp, "ca-worker", new Uri("https://ca-worker.example.io"), "worker", HealthPath: "/health");
-        var idle = new RuntimeNode("ca_aisf", RuntimeNodeKind.ContainerApp, "ca-aisf", new Uri("https://ca-aisf.example.io"), "aisf", HealthPath: "/health");
+        var worker = new RuntimeNode("ca_worker", RuntimeNodeKind.ContainerApp, "ca-worker", new Uri("https://ca-worker.example.io"), "worker", HealthPath: "/_healthcheck");
+        var idle = new RuntimeNode("ca_other", RuntimeNodeKind.ContainerApp, "ca-other", new Uri("https://ca-other.example.io"), "other", HealthPath: "/_healthcheck");
         var manifest = new RuntimeManifest(
             "uat",
             [ui, worker, idle, new RuntimeNode("sqldb", RuntimeNodeKind.Sql, "sqldb-uat")],
@@ -974,6 +975,6 @@ public class RuntimePayloadBuilderTests
 
         Assert.Equal(new RuntimeTileLine("health checks of 2 container apps passed", "ok"), Assert.Single(database.Lines));
         Assert.Contains("ca-ui, ca-worker", database.Title, StringComparison.Ordinal);
-        Assert.DoesNotContain("ca-aisf", database.Title, StringComparison.Ordinal);
+        Assert.DoesNotContain("ca-other", database.Title, StringComparison.Ordinal);
     }
 }

@@ -8,7 +8,6 @@ title cmdemo1 tdd: ui container app is the only SQL user
 rectangle "Azure subscription" as sub {
   rectangle "cae-cmdemo1-tdd\nContainer Apps environment" as cae {
     rectangle "ca-cmdemo1-tdd-ui\ncontainer app: ui" as ca_ui
-    rectangle "ca-cmdemo1-tdd-aisf\ncontainer app: aisf" as ca_aisf
   }
   rectangle "rg-cmdemo1-nonprod" as rg_tier {
     rectangle "centralus\ndata, static sites" as region_data {
@@ -19,7 +18,6 @@ rectangle "Azure subscription" as sub {
 }
 actor "Browser" as browser
 browser --> ca_ui : public address
-browser --> ca_aisf : public address
 ca_ui --> sqldb : reads and writes
 browser --> swa_dashboard : loads the dashboard
 @enduml

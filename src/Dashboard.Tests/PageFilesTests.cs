@@ -28,6 +28,18 @@ public partial class PageFilesTests
         Assert.Empty(loaded);
     }
 
+    /// <summary>
+    /// The framework's error bar dismiss control is a real button with a name: a decorative × alone is not enough
+    /// for a screen reader, and hiding it with aria-hidden left no way to dismiss the alert from the keyboard.
+    /// </summary>
+    [Fact]
+    public void TheErrorBarDismissControlHasAnAccessibleName()
+    {
+        var text = File.ReadAllText(Path.Combine(Root(), "index.html"));
+        Assert.Contains("""<button type="button" class="dismiss" aria-label="Dismiss">""", text);
+        Assert.DoesNotContain("class=\"dismiss\" aria-hidden=\"true\"", text);
+    }
+
     [Fact]
     public void EveryFaceTheStyleSheetNamesIsAFileOfThePage()
     {

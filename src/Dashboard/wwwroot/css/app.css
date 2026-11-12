@@ -2874,7 +2874,13 @@ main {
   position: absolute;
   top: 0.45rem;
   right: 1rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
   font-size: 1.3rem;
+  line-height: 1;
   cursor: pointer;
 }
 

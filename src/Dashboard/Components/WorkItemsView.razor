@@ -96,10 +96,13 @@
                 <h3 class="tile__label" title="Functional-test failures and reverts">Rework</h3>
                 <p>@WorkItemsText.Rework(stats.Rework)</p>
             </article>
-            <article class="card work-stat">
-                <h3 class="tile__label">Cursor agent cost</h3>
-                <p>@WorkItemsText.Cost(stats.Cost, shown.Count)</p>
-            </article>
+            @if (WorkItemsText.Cost(stats.Cost, shown) is { } cost)
+            {
+                <article class="card work-stat">
+                    <h3 class="tile__label">Cursor agent cost</h3>
+                    <p>@cost</p>
+                </article>
+            }
             @if (comparison is { } split)
             {
                 <article class="card work-stat work-stat--wip">

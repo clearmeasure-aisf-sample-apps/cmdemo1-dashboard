@@ -1,0 +1,186 @@
+# When Build finishes on a cm-ai-ops-bot pull request, nudge the factory bot by
+# removing and re-adding its assignee on each issue the PR closes. That fires the
+# existing issue-assigned listener. Event-driven only: no schedule, no secrets,
+# no comments. Dedupe skips a re-assign within 10 minutes and skips when a Review
+# verdict comment already landed after the PR head commit.
+name: factory-wake
+
+on:
+  workflow_run:
+    workflows: ["Build"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: read
+
+jobs:
+  wake:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Reassign linked issues to wake the factory bot
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          RUN_EVENT: ${{ github.event.workflow_run.event }}
+          RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          set -euo pipefail
+
+          log() { printf '%s\n' "$*"; }
+
+          if [[ "${EVENT_NAME}" != "workflow_run" ]]; then
+            log "decision: skip — event is ${EVENT_NAME}, not workflow_run"
+            exit 0
+          fi
+
+          log "workflow_run id=${RUN_ID} url=${RUN_URL}"
+          log "run event=${RUN_EVENT} conclusion=${RUN_CONCLUSION} head_branch=${HEAD_BRANCH} head_sha=${HEAD_SHA} default_branch=${DEFAULT_BRANCH}"
+
+          if [[ "${RUN_EVENT}" != "pull_request" ]]; then
+            log "decision: skip — run event is '${RUN_EVENT}', want pull_request"
+            exit 0
+          fi
+
+          if [[ "${RUN_CONCLUSION}" != "success" && "${RUN_CONCLUSION}" != "failure" ]]; then
+            log "decision: skip — conclusion is '${RUN_CONCLUSION}', want success or failure"
+            exit 0
+          fi
+
+          if [[ -z "${HEAD_BRANCH}" || "${HEAD_BRANCH}" == "${DEFAULT_BRANCH}" ]]; then
+            log "decision: skip — head branch '${HEAD_BRANCH}' is empty or the default branch"
+            exit 0
+          fi
+
+          OWNER="${REPO%%/*}"
+          NAME="${REPO#*/}"
+
+          # Prefer the commit→pulls association (works without contents:read).
+          PR_JSON="$(gh api "repos/${REPO}/commits/${HEAD_SHA}/pulls" \
+            | jq -c --arg branch "${HEAD_BRANCH}" \
+              '[.[] | select(.state == "open" and .head.ref == $branch)] | first // empty')"
+
+          if [[ -z "${PR_JSON}" || "${PR_JSON}" == "null" || "${PR_JSON}" == "" ]]; then
+            log "decision: skip — no open pull request for head ${HEAD_SHA} on branch ${HEAD_BRANCH}"
+            exit 0
+          fi
+
+          PR_NUMBER="$(jq -r '.number' <<<"${PR_JSON}")"
+          PR_AUTHOR="$(jq -r '.user.login' <<<"${PR_JSON}")"
+          PR_STATE="$(jq -r '.state' <<<"${PR_JSON}")"
+          PR_BODY="$(jq -r '.body // ""' <<<"${PR_JSON}")"
+          log "found PR #${PR_NUMBER} author=${PR_AUTHOR} state=${PR_STATE}"
+
+          if [[ "${PR_STATE}" != "open" ]]; then
+            log "decision: skip — PR #${PR_NUMBER} is not open"
+            exit 0
+          fi
+
+          if [[ "${PR_AUTHOR}" != "cm-ai-ops-bot" ]]; then
+            log "decision: skip — PR #${PR_NUMBER} author is '${PR_AUTHOR}', want cm-ai-ops-bot"
+            exit 0
+          fi
+
+          # Head commit date from the PR commits list (pull-requests:read only).
+          HEAD_DATE="$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/commits" \
+            | jq -r --arg sha "${HEAD_SHA}" \
+              '[.[] | select(.sha == $sha)] | first | .commit.committer.date // .commit.author.date // empty')"
+          if [[ -z "${HEAD_DATE}" ]]; then
+            HEAD_DATE="$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/commits" \
+              --jq '.[-1].commit.committer.date // .[-1].commit.author.date')"
+            log "warning: head sha ${HEAD_SHA} not found in PR commits page; using latest PR commit date ${HEAD_DATE}"
+          else
+            log "PR head commit date=${HEAD_DATE}"
+          fi
+
+          # closingIssuesReferences first; fall back to Closes #N in the body.
+          GQL="$(gh api graphql -f query='
+            query($owner:String!, $name:String!, $number:Int!) {
+              repository(owner:$owner, name:$name) {
+                pullRequest(number:$number) {
+                  body
+                  closingIssuesReferences(first:50) {
+                    nodes { number }
+                  }
+                }
+              }
+            }' -F owner="${OWNER}" -F name="${NAME}" -F number="${PR_NUMBER}")"
+
+          mapfile -t ISSUE_NUMBERS < <(jq -r '
+            .data.repository.pullRequest.closingIssuesReferences.nodes[]?.number
+          ' <<<"${GQL}" | sort -n | uniq)
+
+          if [[ ${#ISSUE_NUMBERS[@]} -eq 0 || -z "${ISSUE_NUMBERS[0]:-}" ]]; then
+            BODY="$(jq -r '.data.repository.pullRequest.body // ""' <<<"${GQL}")"
+            if [[ -z "${BODY}" ]]; then
+              BODY="${PR_BODY}"
+            fi
+            mapfile -t ISSUE_NUMBERS < <(grep -oiE 'closes[[:space:]]+#([0-9]+)' <<<"${BODY}" \
+              | grep -oE '[0-9]+' | sort -n | uniq || true)
+            log "closingIssuesReferences empty; parsed Closes #N from body → ${ISSUE_NUMBERS[*]:-none}"
+          else
+            log "closingIssuesReferences → ${ISSUE_NUMBERS[*]}"
+          fi
+
+          if [[ ${#ISSUE_NUMBERS[@]} -eq 0 || -z "${ISSUE_NUMBERS[0]:-}" ]]; then
+            log "decision: skip — PR #${PR_NUMBER} closes no issues"
+            exit 0
+          fi
+
+          CUTOFF="$(date -u -d '10 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
+          log "assignment dedupe cutoff (UTC)=${CUTOFF}"
+
+          for ISSUE in "${ISSUE_NUMBERS[@]}"; do
+            log "---- issue #${ISSUE} ----"
+
+            RECENT_ASSIGN="$(gh api --paginate "repos/${REPO}/issues/${ISSUE}/timeline" \
+              | jq -r --arg cutoff "${CUTOFF}" '
+                  [.[]
+                    | select(.event == "assigned")
+                    | select(.assignee.login == "cm-ai-ops-bot")
+                    | select(.created_at >= $cutoff)
+                  ] | length')"
+
+            if [[ "${RECENT_ASSIGN}" != "0" ]]; then
+              log "decision: skip #${ISSUE} — cm-ai-ops-bot assigned ${RECENT_ASSIGN} time(s) in the last 10 minutes"
+              continue
+            fi
+
+            VERDICT="$(gh api --paginate "repos/${REPO}/issues/${ISSUE}/comments" \
+              | jq -r --arg since "${HEAD_DATE}" '
+                  [.[]
+                    | select(.created_at > $since)
+                    | select(.body | test("^Review → (Merged|Done|In Progress)"))
+                    | {id, created_at, prefix: (.body | split("\n")[0])}
+                  ]')"
+
+            VERDICT_COUNT="$(jq 'length' <<<"${VERDICT}")"
+            if [[ "${VERDICT_COUNT}" != "0" ]]; then
+              log "decision: skip #${ISSUE} — Review verdict comment after head commit:"
+              jq -r '.[] | "  comment id=\(.id) at \(.created_at): \(.prefix)"' <<<"${VERDICT}"
+              continue
+            fi
+
+            log "decision: wake #${ISSUE} — remove then add cm-ai-ops-bot assignee"
+            CURRENT="$(gh api "repos/${REPO}/issues/${ISSUE}" --jq '[.assignees[].login]')"
+            if jq -e 'index("cm-ai-ops-bot") != null' <<<"${CURRENT}" >/dev/null; then
+              gh api -X DELETE "repos/${REPO}/issues/${ISSUE}/assignees" \
+                -f "assignees[]=cm-ai-ops-bot" >/dev/null
+              log "removed cm-ai-ops-bot from #${ISSUE}"
+            else
+              log "cm-ai-ops-bot was not assigned on #${ISSUE}; adding"
+            fi
+            gh api -X POST "repos/${REPO}/issues/${ISSUE}/assignees" \
+              -f "assignees[]=cm-ai-ops-bot" >/dev/null
+            log "done: #${ISSUE} reassigned to cm-ai-ops-bot"
+          done
+
+          log "factory-wake finished for PR #${PR_NUMBER}"

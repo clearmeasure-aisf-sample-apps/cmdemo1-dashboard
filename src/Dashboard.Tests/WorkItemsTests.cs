@@ -56,9 +56,10 @@ public class WorkItemsTests
         Assert.Equal("2 functional-test failures · 1 revert · 12.5 %", WorkItemsText.Rework(Sample.Stats.Rework));
         Assert.Equal("n/a", WorkItemsText.Duration(null));
         Assert.Equal("n/a", WorkItemsText.Rework(null));
+        Assert.True(WorkItemsText.HasMeteredCost(Sample.Items));
         Assert.Equal(
             "$1.64 per item · $18.00 total · Cursor agent usage for these items, last 30 days",
-            WorkItemsText.Cost(Sample.Stats.Cost, Sample.Items.Count));
+            WorkItemsText.Cost(Sample.Stats.Cost, Sample.Items));
         Assert.Equal("n/a", WorkItemsText.ItemCost(Sample.Items.Single(item => item.Number == 501).CostUsd));
         Assert.Equal("$4.50", WorkItemsText.ItemCost(4.5));
 
@@ -100,7 +101,8 @@ public class WorkItemsTests
         Assert.Empty(report.Items);
         Assert.Empty(report.Releases);
         Assert.DoesNotContain(WorkItemsText.Wip(report), column => column.Count > 0);
-        Assert.Equal("n/a", WorkItemsText.Cost(report.Stats.Cost, 0));
+        Assert.False(WorkItemsText.HasMeteredCost(report.Items));
+        Assert.Null(WorkItemsText.Cost(report.Stats.Cost, report.Items));
         Assert.Null(WorkItemsText.Chart(report.Stats.PerWeek));
         Assert.Equal(WorkItemsText.None, "The work items file lists no items.");
     }
@@ -134,7 +136,8 @@ public class WorkItemsTests
 
         Assert.Equal([3, 0, 1, 0, 0, 0], WorkItemsText.Wip(report).Select(column => column.Count));
         Assert.Equal(1, WorkItemsText.Wip(report).Single(column => column.Column == WorkColumns.Review).Count);
-        Assert.Equal("n/a · not metered", WorkItemsText.Cost(report.Stats.Cost, report.Items.Count));
+        Assert.False(WorkItemsText.HasMeteredCost(report.Items));
+        Assert.Null(WorkItemsText.Cost(report.Stats.Cost, report.Items));
         Assert.Equal("n/a", WorkItemsText.Rework(report.Stats.Rework));
         Assert.Equal("carries #12", WorkItemsText.Carries(report, "2.4.3"));
         Assert.Equal(1, Assert.Single(WorkItemsText.Chart(report.Stats.PerWeek)!.Bars).Merged);
@@ -219,11 +222,33 @@ public class WorkItemsTests
         Assert.Equal(expected, WorkItemsText.Rework(new WorkRework(null, null, rate)));
 
     [Fact]
-    public void CostWithoutATotalSaysSoAndKeepsTheNote()
+    public void WithoutAMeteredItemTheCostTileStaysOff()
     {
-        Assert.Equal("n/a · Cursor spend is not published", WorkItemsText.Cost(new WorkCost(null, "Cursor spend is not published"), 4));
-        Assert.Equal("$18.00 total", WorkItemsText.Cost(new WorkCost(18, null), 0));
+        var report = WorkItemsReport.Parse("""
+            { "stats": { "cost": { "totalUsd": null, "note": "No cost source is connected yet." } },
+              "items": [ { "number": 1, "column": "Todo", "title": "No spend" } ] }
+            """)!;
+
+        Assert.False(WorkItemsText.HasMeteredCost(report.Items));
+        Assert.Null(WorkItemsText.Cost(report.Stats.Cost, report.Items));
+        Assert.Null(WorkItemsText.Cost(new WorkCost(null, "Cursor spend is not published"), report.Items));
+        Assert.Null(WorkItemsText.Cost(new WorkCost(18, null), report.Items));
         Assert.Equal("—", WorkItemsText.Agent(new WorkItem(1, null, null, null, null, [], null, null, [], [], null, WorkItemEnvironments.None, null)));
+    }
+
+    [Fact]
+    public void OneMeteredItemShowsTheCostTileWithTheAmount()
+    {
+        var report = WorkItemsReport.Parse("""
+            { "items": [ { "number": 7, "column": "Todo", "title": "Spend", "costUsd": 4.5 } ] }
+            """)!;
+
+        Assert.True(WorkItemsText.HasMeteredCost(report.Items));
+        Assert.Equal("$4.50 per item · $4.50 total", WorkItemsText.Cost(report.Stats.Cost, report.Items));
+        Assert.Equal(
+            "$4.50 per item · $4.50 total · Cursor agent usage",
+            WorkItemsText.Cost(new WorkCost(4.5, "Cursor agent usage"), report.Items));
+        Assert.Equal("$4.50", WorkItemsText.ItemCost(Assert.Single(report.Items).CostUsd));
     }
 
     [Theory]

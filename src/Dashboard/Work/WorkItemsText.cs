@@ -325,21 +325,33 @@ public static class WorkItemsText
     }
 
     /// <summary>
-    /// <c>$2.00 per item · $18.00 total</c>. Per item is the total divided by how many items the file lists, Done
-    /// included. <see cref="NotMetered"/> when there is no total, followed by the file's note when it gives one.
+    /// True when at least one item carries a metered Cursor agent cost. The cost tile is shown only then: a note
+    /// without a metered amount is not a cost source.
     /// </summary>
-    public static string Cost(WorkCost? cost, int items)
+    public static bool HasMeteredCost(IReadOnlyList<WorkItem> items)
     {
-        if (cost?.TotalUsd is not { } total)
+        ArgumentNullException.ThrowIfNull(items);
+        return items.Any(item => item.CostUsd is not null);
+    }
+
+    /// <summary>
+    /// <c>$2.00 per item · $18.00 total</c> when at least one of <paramref name="items"/> was metered. Null when none
+    /// was: the tile stays off, and a note without a total is not shown as "n/a". Per item is the total divided by how
+    /// many items the filter lists, Done included. The published total wins; without one the metered item amounts are
+    /// summed. The file's note is kept only with a published total.
+    /// </summary>
+    public static string? Cost(WorkCost? cost, IReadOnlyList<WorkItem> items)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        if (!HasMeteredCost(items))
         {
-            return cost?.Note is { } note ? $"{NotMetered} · {note}" : NotMetered;
+            return null;
         }
 
+        var total = cost?.TotalUsd ?? items.Sum(item => item.CostUsd ?? 0);
         var amount = CostText.Money(total, "USD");
-        var text = items > 0
-            ? $"{CostText.Money(total / items, "USD")} per item · {amount} total"
-            : $"{amount} total";
-        return cost.Note is { } why ? $"{text} · {why}" : text;
+        var text = $"{CostText.Money(total / items.Count, "USD")} per item · {amount} total";
+        return cost?.TotalUsd is not null && cost.Note is { } why ? $"{text} · {why}" : text;
     }
 
     /// <summary>What an item's own cost cell says: the amount, or <see cref="NotMetered"/>.</summary>

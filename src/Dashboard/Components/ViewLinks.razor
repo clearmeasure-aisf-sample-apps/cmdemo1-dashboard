@@ -2,7 +2,7 @@
    new tab, as the environment's resource links are. Nothing where the view has none. *@
 @if (Links.Count > 0)
 {
-    <p class="resource-links" aria-label="@Label">
+    <p class="resource-links" role="group" aria-label="@Label">
         @foreach (var link in Links)
         {
             <a href="@link.Href" target="_blank" rel="noopener" referrerpolicy="@(link.NoReferrer ? "no-referrer" : null)" title="@link.Title">@link.Text</a>

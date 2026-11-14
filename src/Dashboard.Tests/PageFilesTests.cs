@@ -28,6 +28,26 @@ public partial class PageFilesTests
         Assert.Empty(loaded);
     }
 
+    /// <summary>
+    /// A new tab must not keep a handle on this window (<c>noopener</c>) and must not receive a Referer from it
+    /// (<c>noreferrer</c>). The brand link is the start page's one <c>target="_blank"</c> anchor.
+    /// </summary>
+    [Fact]
+    public void EveryBlankTargetLinkHasNoopenerAndNoreferrer()
+    {
+        var text = File.ReadAllText(Path.Combine(Root(), "index.html"));
+        var tags = BlankTargetAnchor().Matches(text).Select(match => match.Value).ToArray();
+        Assert.NotEmpty(tags);
+        Assert.All(tags, tag =>
+        {
+            var rel = RelAttribute().Match(tag);
+            Assert.True(rel.Success, $"missing rel on {tag}");
+            var tokens = rel.Groups[1].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            Assert.Contains("noopener", tokens);
+            Assert.Contains("noreferrer", tokens);
+        });
+    }
+
     [Fact]
     public void EveryFaceTheStyleSheetNamesIsAFileOfThePage()
     {
@@ -42,6 +62,12 @@ public partial class PageFilesTests
     // A link (a style sheet, a preconnect, a preload) or a script with an address on another site.
     [GeneratedRegex("""<(?:link|script)\b[^>]*\b(?:href|src)="https?://""")]
     private static partial Regex LoadedFromElsewhere();
+
+    [GeneratedRegex("""<a\b[^>]*\btarget="_blank"[^>]*>""", RegexOptions.IgnoreCase)]
+    private static partial Regex BlankTargetAnchor();
+
+    [GeneratedRegex(@"\brel=""([^""]*)""", RegexOptions.IgnoreCase)]
+    private static partial Regex RelAttribute();
 
     [GeneratedRegex("""url\("\.\./fonts/([^"]+)"\)""")]
     private static partial Regex FontUrl();

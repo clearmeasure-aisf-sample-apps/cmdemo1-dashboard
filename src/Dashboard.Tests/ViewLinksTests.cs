@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace Dashboard.Tests;
 
 /// <summary>
@@ -6,6 +8,9 @@ namespace Dashboard.Tests;
 /// </summary>
 public class ViewLinksTests
 {
+    private static string Component([CallerFilePath] string here = "") =>
+        Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here)!, "..", "Dashboard", "Components", "ViewLinks.razor"));
+
     private const string Base = "https://raw.githubusercontent.com/org/app/architecture/ui";
 
     private static readonly Topology SampleTopology =
@@ -23,6 +28,19 @@ public class ViewLinksTests
 
     private static LinkSet Links(params (string Key, string Address)[] links) =>
         new(links.Select(link => KeyValuePair.Create(link.Key, new Uri(link.Address))));
+
+    /// <summary>
+    /// A labelled wrapper of resource links must be a named group: a bare paragraph is not nameable, so the screen
+    /// reader would announce the links with no name for the set. With no links the wrapper is absent.
+    /// </summary>
+    [Fact]
+    public void TheResourceLinksWrapperIsANamedGroupAndRendersOnlyWhenThereAreLinks()
+    {
+        var text = File.ReadAllText(Component());
+
+        Assert.Contains("""<p class="resource-links" role="group" aria-label="@Label">""", text);
+        Assert.Contains("@if (Links.Count > 0)", text);
+    }
 
     [Fact]
     public void TheBoxesThatZoomAreTheDatabasesWhereItHasAViewAndThoseOfADeployableWithAnArchitecture()

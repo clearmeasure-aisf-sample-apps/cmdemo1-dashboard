@@ -1,7 +1,12 @@
+using System.Runtime.CompilerServices;
+
 namespace Dashboard.Tests;
 
 public class LinkTests
 {
+    private static string EnvironmentLinksComponent([CallerFilePath] string here = "") =>
+        Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here)!, "..", "Dashboard", "Components", "EnvironmentLinks.razor"));
+
     private readonly SignallingTimeProvider _time = new();
 
     private static readonly Topology Parsed = TopologyParser.Parse(Optics.Topology).Topology!;
@@ -29,6 +34,19 @@ public class LinkTests
         var monitor = Optics.Monitor(new StubHandler(respond ?? (request => Optics.Answer(request))), _time, topology: topology);
         await monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
         return RuntimePayloadBuilder.Build(Manifest, monitor.Environments[1], null, TimeZoneInfo.Utc);
+    }
+
+    /// <summary>
+    /// A labelled wrapper of resource links must be a named group: a bare paragraph is not nameable, so the screen
+    /// reader would announce the links with no name for the set. With neither links nor pages the wrapper is absent.
+    /// </summary>
+    [Fact]
+    public void TheEnvironmentResourceLinksWrapperIsANamedGroupAndRendersOnlyWhenThereAreLinksOrPages()
+    {
+        var text = File.ReadAllText(EnvironmentLinksComponent());
+
+        Assert.Contains("""<p class="resource-links" role="group" aria-label="@Label">""", text);
+        Assert.Contains("@if (HasLinks || HasPages)", text);
     }
 
     [Fact]

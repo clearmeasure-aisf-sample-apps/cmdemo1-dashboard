@@ -22,7 +22,8 @@
         }
         else
         {
-            <button type="button" class="button" disabled="@(Selected is null)" title="@ButtonHelp" @onclick="StartAsync">Generate traffic</button>
+            <button type="button" class="button" disabled="@(Selected is null)" title="@ButtonHelp" aria-describedby="traffic-generate-help" @onclick="StartAsync">Generate traffic</button>
+            <span id="traffic-generate-help" class="visually-hidden">@ButtonHelp</span>
         }
         <span class="traffic__status" role="status">@StatusText</span>
     </div>

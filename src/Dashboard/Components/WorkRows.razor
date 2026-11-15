@@ -64,7 +64,9 @@
                                             <DeepLink Href="pull.Url" Title="@WorkItemsText.PullTitle(pull)">@WorkBotText.PullLine(pull, Now)</DeepLink>
                                             @if (pull.ChecksUrl is { } checks)
                                             {
-                                                <a href="@checks.AbsoluteUri" target="_blank" rel="noopener" title="@($"Checks{LinkText.GitHubSuffix}")">checks</a>
+                                                <a href="@checks.AbsoluteUri" target="_blank" rel="noopener"
+                                                   aria-label="@(pull.Number is { } n ? $"checks of pull request #{n} (opens in a new tab)" : "checks (opens in a new tab)")"
+                                                   title="@($"Checks{LinkText.GitHubSuffix}")">checks</a>
                                             }
                                         </li>
                                     }

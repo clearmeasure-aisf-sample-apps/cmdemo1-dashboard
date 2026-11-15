@@ -1,9 +1,13 @@
 using System.Net;
+using System.Runtime.CompilerServices;
 
 namespace Dashboard.Tests;
 
 public class DatabaseViewTests
 {
+    private static string DatabaseViewComponent([CallerFilePath] string here = "") =>
+        Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here)!, "..", "Dashboard", "Components", "DatabaseView.razor"));
+
     private const string ManifestJson = """
         {
           "environment": "tdd",
@@ -296,6 +300,21 @@ public class DatabaseViewTests
             DatabaseText.List(Manifest(), Live()));
         Assert.Equal("1,234", DatabaseText.Number(1234));
         Assert.Equal("–", DatabaseText.Number(null));
+    }
+
+    /// <summary>
+    /// The tables list and the live columns list each scroll sideways inside their own frame: each frame must be a
+    /// named, focusable region so a keyboard user can scroll it and a screen reader announces it. The columns frame
+    /// is present only when a live file names columns.
+    /// </summary>
+    [Fact]
+    public void TheListScrollWrappersAreNamedFocusableRegions()
+    {
+        var text = File.ReadAllText(DatabaseViewComponent());
+
+        Assert.Contains("""<div class="table-scroll" role="region" aria-label="Tables of @manifest.Database" tabindex="0">""", text);
+        Assert.Contains("""<div class="table-scroll" role="region" aria-label="Columns of the tables of @manifest.Database" tabindex="0">""", text);
+        Assert.Contains("live.Tables.Any(table => table.Columns.Count > 0)", text);
     }
 
     [Theory]

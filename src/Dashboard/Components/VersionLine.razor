@@ -30,7 +30,7 @@
             @if (LogsUrl is { } logs)
             {
                 <a href="@logs.AbsoluteUri" target="_blank" rel="noopener"
-                   aria-label="@($"Requests of {DeployableName} in {EnvironmentName} in Application Insights Logs (opens in a new tab)")"
+                   aria-label="@($"Requests in Logs of {DeployableName} in {EnvironmentName}, Application Insights (opens in a new tab)")"
                    title="@LinkText.For(LinkSet.Logs, $"{DeployableName} in {EnvironmentName}")">Requests in Logs</a>
             }
         </p>

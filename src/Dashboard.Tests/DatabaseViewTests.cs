@@ -1,5 +1,6 @@
 using System.Net;
 using System.Runtime.CompilerServices;
+using Dashboard.Components;
 
 namespace Dashboard.Tests;
 
@@ -320,7 +321,7 @@ public class DatabaseViewTests
     /// <summary>
     /// When the database manifest cannot be read, the problem section is an alert. It must take its accessible name
     /// from its heading (as App.razor's topology alert does), with an id unique per environment so two database
-    /// views on one page do not collide.
+    /// views on one page do not collide. The id is a single HTML token even when the environment name has spaces.
     /// </summary>
     [Fact]
     public void TheBrokenManifestAlertIsNamedByItsHeading()
@@ -329,11 +330,12 @@ public class DatabaseViewTests
 
         Assert.Contains("""<section class="problem" role="alert" aria-labelledby="@ProblemId">""", text, StringComparison.Ordinal);
         Assert.Contains("""<h4 id="@ProblemId">The database view of @Environment could not be read</h4>""", text, StringComparison.Ordinal);
-        Assert.Contains("""$"database-problem-{Environment.ToLowerInvariant()}";""", text, StringComparison.Ordinal);
+        Assert.Contains("ProblemId => ProblemIdFor(Environment)", text, StringComparison.Ordinal);
 
-        static string ProblemId(string environment) => $"database-problem-{environment.ToLowerInvariant()}";
-        Assert.Equal("database-problem-tdd", ProblemId("TDD"));
-        Assert.NotEqual(ProblemId("tdd"), ProblemId("uat"));
+        Assert.Equal("database-problem-tdd", DatabaseView.ProblemIdFor("TDD"));
+        Assert.Equal("database-problem-pre-prod", DatabaseView.ProblemIdFor("Pre Prod"));
+        Assert.DoesNotContain(' ', DatabaseView.ProblemIdFor("Pre Prod"));
+        Assert.NotEqual(DatabaseView.ProblemIdFor("tdd"), DatabaseView.ProblemIdFor("uat"));
     }
 
     [Theory]

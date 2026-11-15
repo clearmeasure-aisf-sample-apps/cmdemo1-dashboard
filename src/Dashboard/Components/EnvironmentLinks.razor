@@ -3,7 +3,7 @@
    itself that the topology names for the environment (a deployable's dashboardLink): public pages, in a new tab too. *@
 @if (HasLinks || HasPages)
 {
-    <p class="resource-links" aria-label="@Label">
+    <p class="resource-links" role="group" aria-label="@Label">
         @if (Links is { } links)
         {
             foreach (var (key, text) in Entries)

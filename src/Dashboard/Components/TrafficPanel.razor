@@ -8,7 +8,7 @@
     <div class="controls" role="group" aria-label="Traffic">
         <label class="field">
             <span>Environment</span>
-            <select value="@_environment" disabled="@Running" @onchange="OnEnvironmentChanged">
+            <select value="@_environment" disabled="@Running" title="@(Running ? EnvironmentLockedHelp : null)" @onchange="OnEnvironmentChanged">
                 @foreach (var plan in _plans)
                 {
                     <option value="@plan.Environment">@plan.Environment</option>
@@ -31,6 +31,7 @@
 
 @code {
     private const string ButtonHelp = "Sends representative requests for one minute; press Stop traffic to end sooner";
+    private const string EnvironmentLockedHelp = "Stop traffic to choose another environment";
 
     private readonly CancellationTokenSource _stopping = new();
     private IReadOnlyList<TrafficPlan> _plans = [];

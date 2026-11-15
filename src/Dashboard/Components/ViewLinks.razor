@@ -1,11 +1,12 @@
 @* The links in the heading row of a view a box of the runtime diagram led into: plain links that leave the page, in a
-   new tab, as the environment's resource links are. Nothing where the view has none. *@
+   new tab, as the environment's resource links are. Nothing where the view has none.
+   A visually-hidden span after the visible text tells screen readers the link opens in a new tab. *@
 @if (Links.Count > 0)
 {
     <p class="resource-links" role="group" aria-label="@Label">
         @foreach (var link in Links)
         {
-            <a href="@link.Href" target="_blank" rel="noopener" referrerpolicy="@(link.NoReferrer ? "no-referrer" : null)" title="@link.Title">@link.Text</a>
+            <a href="@link.Href" target="_blank" rel="noopener" referrerpolicy="@(link.NoReferrer ? "no-referrer" : null)" title="@link.Title">@link.Text<span class="visually-hidden"> (opens in a new tab)</span></a>
         }
     </p>
 }

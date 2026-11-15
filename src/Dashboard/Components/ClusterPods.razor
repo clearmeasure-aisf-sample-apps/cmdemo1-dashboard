@@ -7,7 +7,7 @@
         @if (Links?[LinkSet.Workloads] is { } workloads)
         {
             <p class="resource-links">
-                <a href="@workloads.AbsoluteUri" target="_blank" rel="noopener" title="@ClusterText.WorkloadsTitle(Name)">Workloads in the Azure portal</a>
+                <a href="@workloads.AbsoluteUri" target="_blank" rel="noopener" title="@ClusterText.WorkloadsTitle(Name)" aria-label="@($"Workloads in the Azure portal of {Name} (opens in a new tab)")">Workloads in the Azure portal</a>
             </p>
         }
     </header>

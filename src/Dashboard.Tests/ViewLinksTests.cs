@@ -42,6 +42,31 @@ public class ViewLinksTests
         Assert.Contains("@if (Links.Count > 0)", text);
     }
 
+    /// <summary>
+    /// Every resource link opens in a new tab. The title says so, but screen readers do not reliably announce titles,
+    /// so the link's accessible name must include hidden text after the visible text (no aria-label, which would
+    /// replace it).
+    /// </summary>
+    [Fact]
+    public void TheResourceLinkAnnouncesANewTabAfterItsVisibleText()
+    {
+        var text = File.ReadAllText(Component());
+
+        const string Ordered =
+            """@link.Text<span class="visually-hidden"> (opens in a new tab)</span>""";
+        var open = text.IndexOf("<a ", StringComparison.Ordinal);
+        var close = text.IndexOf("</a>", StringComparison.Ordinal);
+        Assert.True(open >= 0 && close > open);
+        var anchor = text[open..(close + "</a>".Length)];
+        Assert.Contains(Ordered, anchor, StringComparison.Ordinal);
+        Assert.Contains("""href="@link.Href""", anchor, StringComparison.Ordinal);
+        Assert.Contains("""target="_blank""", anchor, StringComparison.Ordinal);
+        Assert.Contains("""rel="noopener""", anchor, StringComparison.Ordinal);
+        Assert.Contains("referrerpolicy=\"@(link.NoReferrer ? \"no-referrer\" : null)\"", anchor, StringComparison.Ordinal);
+        Assert.Contains("""title="@link.Title""", anchor, StringComparison.Ordinal);
+        Assert.DoesNotContain("aria-label", anchor, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void TheBoxesThatZoomAreTheDatabasesWhereItHasAViewAndThoseOfADeployableWithAnArchitecture()
     {

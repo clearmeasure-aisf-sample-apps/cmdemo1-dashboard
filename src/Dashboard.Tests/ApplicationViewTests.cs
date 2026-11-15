@@ -1,9 +1,13 @@
 using System.Net;
+using System.Runtime.CompilerServices;
 
 namespace Dashboard.Tests;
 
 public class ApplicationViewTests
 {
+    private static string ApplicationViewComponent([CallerFilePath] string here = "") =>
+        Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here)!, "..", "Dashboard", "Components", "ApplicationView.razor"));
+
     private const string Base = "https://raw.githubusercontent.com/org/app/architecture/ui";
 
     private const string ArchitectureJson = """
@@ -259,6 +263,19 @@ public class ApplicationViewTests
         Assert.False(ApplicationText.IsVersion(version));
         Assert.Null(ApplicationText.File(new Uri(Base), version, "svg"));
         Assert.False(ApplicationRefresh.IsDue(null, version));
+    }
+
+    /// <summary>
+    /// The assemblies list scrolls sideways inside its own frame: that frame must be a named, focusable region so a
+    /// keyboard user can scroll it and a screen reader announces it. The label matches the table's visually-hidden
+    /// caption.
+    /// </summary>
+    [Fact]
+    public void TheAssembliesListScrollWrapperIsANamedFocusableRegion()
+    {
+        var text = File.ReadAllText(ApplicationViewComponent());
+
+        Assert.Contains("""<div class="table-scroll" role="region" aria-label="Assemblies of @Deployable @version.Text" tabindex="0">""", text);
     }
 
     [Fact]

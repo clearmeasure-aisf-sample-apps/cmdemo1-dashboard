@@ -6,6 +6,7 @@ namespace Dashboard.Tests;
 /// The header's system repository link opens in a new tab. The title says so, but screen readers do not reliably
 /// announce titles, so the link's accessible name must include hidden text after the visible slug (no aria-label,
 /// which would replace it). The Interval options spell out "seconds" so screen readers do not announce the letter s.
+/// Last refresh shows the clock; its title carries the full date and time like every other time on the page.
 /// </summary>
 public class AppHeaderTests
 {
@@ -38,5 +39,17 @@ public class AppHeaderTests
 
         Assert.Contains("""<option value="@seconds">@seconds seconds</option>""", text, StringComparison.Ordinal);
         Assert.DoesNotContain("@seconds s<", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheLastRefreshTimeCarriesTheFullDateAndTimeInItsTitle()
+    {
+        var text = File.ReadAllText(AppComponent());
+
+        Assert.Contains(
+            """<time datetime="@TimeText.Iso(refreshed)" title="@TimeText.DateAndTime(refreshed, Zone)">@TimeText.Clock(refreshed, Zone)</time>""",
+            text,
+            StringComparison.Ordinal);
+        Assert.Contains("<span>not yet</span>", text, StringComparison.Ordinal);
     }
 }

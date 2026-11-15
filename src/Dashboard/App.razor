@@ -34,7 +34,7 @@
                     Last refresh:
                     @if (_monitor?.LastRefresh is { } refreshed)
                     {
-                        <time datetime="@TimeText.Iso(refreshed)">@TimeText.Clock(refreshed, Zone)</time>
+                        <time datetime="@TimeText.Iso(refreshed)" title="@TimeText.DateAndTime(refreshed, Zone)">@TimeText.Clock(refreshed, Zone)</time>
                     }
                     else
                     {

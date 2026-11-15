@@ -9,7 +9,8 @@ namespace Dashboard.Tests;
 /// The polling-state span has role="status" so Live / Hidden / Paused changes are announced; Last refresh stays
 /// outside it so every poll is not announced.
 /// Last refresh shows the clock; its title carries the full date and time like every other time on the page.
-/// Reload topology buttons share one label that becomes "Reloading topology…" with aria-busy while loading.
+/// Reload topology buttons share one label that becomes "Reloading topology…" with aria-busy while loading,
+/// and a title that says they re-read the topology while Check now only re-checks health.
 /// Check now has a title that says it checks every node at once without waiting for the interval.
 /// Interval has a title that says how often every node is checked while the checks run.
 /// </summary>
@@ -124,15 +125,23 @@ public class AppHeaderTests
             StringComparison.Ordinal);
 
         const string Controls =
-            """<button type="button" class="button button--quiet" disabled="@_loading" aria-busy="@(_loading ? "true" : null)" @onclick="ReloadTopologyAsync">@ReloadTopologyLabel</button>""";
+            """<button type="button" class="button button--quiet" title="@ReloadTopologyHelp" disabled="@_loading" aria-busy="@(_loading ? "true" : null)" @onclick="ReloadTopologyAsync">@ReloadTopologyLabel</button>""";
         const string Problem =
-            """<button type="button" class="button" disabled="@_loading" aria-busy="@(_loading ? "true" : null)" @onclick="ReloadTopologyAsync">@ReloadTopologyLabel</button>""";
+            """<button type="button" class="button" title="@ReloadTopologyHelp" disabled="@_loading" aria-busy="@(_loading ? "true" : null)" @onclick="ReloadTopologyAsync">@ReloadTopologyLabel</button>""";
 
         Assert.Contains(Controls, text, StringComparison.Ordinal);
         Assert.Contains(Problem, text, StringComparison.Ordinal);
         Assert.Equal(2, CountOccurrences(text, "@ReloadTopologyLabel</button>"));
         Assert.DoesNotContain(">Reload topology</button>", text, StringComparison.Ordinal);
         Assert.DoesNotContain(">Reloading topology…</button>", text, StringComparison.Ordinal);
+
+        const string HelpOpen = "private const string ReloadTopologyHelp =";
+        var help = text.IndexOf(HelpOpen, StringComparison.Ordinal);
+        Assert.True(help >= 0);
+        var end = text.IndexOf(';', help);
+        Assert.True(end > help);
+        var value = text[(help + HelpOpen.Length)..end];
+        Assert.False(string.IsNullOrWhiteSpace(value.Trim().Trim('"', '+')));
     }
 
     private static int CountOccurrences(string text, string value)

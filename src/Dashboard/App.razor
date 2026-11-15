@@ -76,7 +76,7 @@
             </select>
         </label>
         <button type="button" class="button button--quiet" title="@CheckNowHelp" @onclick="CheckNow">Check now</button>
-        <button type="button" class="button button--quiet" disabled="@_loading" aria-busy="@(_loading ? "true" : null)" @onclick="ReloadTopologyAsync">@ReloadTopologyLabel</button>
+        <button type="button" class="button button--quiet" title="@ReloadTopologyHelp" disabled="@_loading" aria-busy="@(_loading ? "true" : null)" @onclick="ReloadTopologyAsync">@ReloadTopologyLabel</button>
     </div>
 </header>
 
@@ -182,7 +182,7 @@
                     <li>@error</li>
                 }
             </ul>
-            <button type="button" class="button" disabled="@_loading" aria-busy="@(_loading ? "true" : null)" @onclick="ReloadTopologyAsync">@ReloadTopologyLabel</button>
+            <button type="button" class="button" title="@ReloadTopologyHelp" disabled="@_loading" aria-busy="@(_loading ? "true" : null)" @onclick="ReloadTopologyAsync">@ReloadTopologyLabel</button>
         </section>
     }
     else
@@ -239,6 +239,9 @@
 
     private const string CheckNowHelp =
         "Check every node now, without waiting for the interval";
+
+    private const string ReloadTopologyHelp =
+        "Reads the system's environments, resources and links again and redraws the views; Check now only re-checks health";
 
     private static readonly int[] IntervalChoices = [10, 30, 60];
     private static readonly TimeSpan DefaultInterval = TimeSpan.FromSeconds(30);

@@ -33,7 +33,7 @@
                             <td>
                                 @if (entry.Site is { } site)
                                 {
-                                    <a class="deep" href="@site.AbsoluteUri" target="_blank" rel="noopener" title="@($"{entry.Name} at {site.Host} (opens in a new tab)")">@site.Host</a>
+                                    <a class="deep" href="@site.AbsoluteUri" target="_blank" rel="noopener" title="@($"{entry.Name} at {site.Host} (opens in a new tab)")">@site.Host<span class="visually-hidden"> (opens in a new tab)</span></a>
                                 }
                             </td>
                         </tr>

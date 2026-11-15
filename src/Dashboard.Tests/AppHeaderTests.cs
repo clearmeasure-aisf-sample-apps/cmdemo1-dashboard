@@ -5,7 +5,7 @@ namespace Dashboard.Tests;
 /// <summary>
 /// The header's system repository link opens in a new tab. The title says so, but screen readers do not reliably
 /// announce titles, so the link's accessible name must include hidden text after the visible slug (no aria-label,
-/// which would replace it).
+/// which would replace it). The Interval options spell out "seconds" so screen readers do not announce the letter s.
 /// </summary>
 public class AppHeaderTests
 {
@@ -29,5 +29,14 @@ public class AppHeaderTests
         Assert.Contains("rel=\"noopener\"", anchor, StringComparison.Ordinal);
         Assert.Contains("title=\"The system repository on GitHub (opens in a new tab)\"", anchor, StringComparison.Ordinal);
         Assert.DoesNotContain("aria-label", anchor, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheIntervalOptionsSpellOutSeconds()
+    {
+        var text = File.ReadAllText(AppComponent());
+
+        Assert.Contains("""<option value="@seconds">@seconds seconds</option>""", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("@seconds s<", text, StringComparison.Ordinal);
     }
 }

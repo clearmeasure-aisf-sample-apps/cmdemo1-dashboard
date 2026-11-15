@@ -42,4 +42,19 @@ public class TrafficPanelTests
             StringComparison.Ordinal);
         Assert.Contains("<span>Environment</span>", text, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void TheStopTrafficButtonExplainsWhatItDoesOnHover()
+    {
+        var text = File.ReadAllText(TrafficPanelComponent());
+        const string Button =
+            """<button type="button" class="button" disabled="@(!_count.Sending)" title="@StopHelp" @onclick="StopAsync">Stop traffic</button>""";
+
+        Assert.Contains(
+            """private const string StopHelp = "Stops sending requests now; answers already on their way still count";""",
+            text,
+            StringComparison.Ordinal);
+        Assert.Contains(Button, text, StringComparison.Ordinal);
+        Assert.DoesNotContain("aria-label", Button, StringComparison.Ordinal);
+    }
 }

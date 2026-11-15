@@ -29,7 +29,7 @@
                 </p>
             }
             <p class="refresh">
-                <span class="polling polling--@PollingState.ToLowerInvariant()">@PollingState</span>
+                <span class="polling polling--@PollingState.ToLowerInvariant()" role="status">@PollingState</span>
                 <span>
                     Last refresh:
                     @if (_monitor?.LastRefresh is { } refreshed)

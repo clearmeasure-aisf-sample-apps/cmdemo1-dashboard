@@ -22,9 +22,29 @@ public class WorkRowsTests
             """"aria-label="@(pull.Number is { } n ? $"checks of pull request #{n} (opens in a new tab)" : "checks (opens in a new tab)")"""",
             text,
             StringComparison.Ordinal);
-        Assert.Contains($">{Visible}</a>", text, StringComparison.Ordinal);
+        Assert.Contains($"""{Visible}</a>""", text, StringComparison.Ordinal);
         Assert.Contains("pull.Number", text, StringComparison.Ordinal);
         Assert.StartsWith(Visible, Name, StringComparison.Ordinal);
+        Assert.EndsWith("(opens in a new tab)", Name, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The blocker status link opens GitHub in a new tab; its accessible name must start with the visible text
+    /// (blocker.Text ?? "Status") and end with "(opens in a new tab)" so screen readers announce that.
+    /// </summary>
+    [Fact]
+    public void TheBlockerLinkNameStartsWithItsVisibleTextAndEndsWithOpensInANewTab()
+    {
+        var text = File.ReadAllText(WorkRowsComponent());
+        const string Visible = "blocker.Text ?? \"Status\"";
+        const string Name = "{blocker.Text ?? \"Status\"} (opens in a new tab)";
+
+        Assert.Contains(
+            """"aria-label="@($"{blocker.Text ?? "Status"} (opens in a new tab)")"""",
+            text,
+            StringComparison.Ordinal);
+        Assert.Contains($"@({Visible})</a>", text, StringComparison.Ordinal);
+        Assert.Contains(Visible, Name, StringComparison.Ordinal);
         Assert.EndsWith("(opens in a new tab)", Name, StringComparison.Ordinal);
     }
 }

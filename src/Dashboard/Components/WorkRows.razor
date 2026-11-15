@@ -119,7 +119,9 @@
                                 <p>
                                     @if (blocker.Url is { } url)
                                     {
-                                        <a href="@url.AbsoluteUri" target="_blank" rel="noopener" title="@((blocker.Text ?? "Status") + LinkText.GitHubSuffix)">@(blocker.Text ?? "Status")</a>
+                                        <a href="@url.AbsoluteUri" target="_blank" rel="noopener"
+                                           aria-label="@($"{blocker.Text ?? "Status"} (opens in a new tab)")"
+                                           title="@((blocker.Text ?? "Status") + LinkText.GitHubSuffix)">@(blocker.Text ?? "Status")</a>
                                     }
                                     else
                                     {

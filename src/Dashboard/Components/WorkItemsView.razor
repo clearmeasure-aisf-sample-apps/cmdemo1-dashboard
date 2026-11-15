@@ -18,7 +18,7 @@
             <p class="work__scope">
                 @if (scope.Url is { } url && scope.Label is { } linked)
                 {
-                    <a href="@url.AbsoluteUri" target="_blank" rel="noopener" title="@scope.Title">@linked</a>
+                    <a href="@url.AbsoluteUri" target="_blank" rel="noopener" title="@scope.Title">@linked<span class="visually-hidden"> (opens in a new tab)</span></a>
                 }
                 else if (scope.Label is { } label)
                 {

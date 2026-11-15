@@ -9,6 +9,7 @@ namespace Dashboard.Tests;
 /// The polling-state span has role="status" so Live / Hidden / Paused changes are announced; Last refresh stays
 /// outside it so every poll is not announced.
 /// Last refresh shows the clock; its title carries the full date and time like every other time on the page.
+/// Reload topology buttons share one label that becomes "Reloading topology…" with aria-busy while loading.
 /// </summary>
 public class AppHeaderTests
 {
@@ -71,5 +72,38 @@ public class AppHeaderTests
             text,
             StringComparison.Ordinal);
         Assert.Contains("<span>not yet</span>", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheReloadTopologyButtonsShareABusyLabelAndAriaBusyWhileLoading()
+    {
+        var text = File.ReadAllText(AppComponent());
+
+        Assert.Contains(
+            """private string ReloadTopologyLabel => _loading ? "Reloading topology…" : "Reload topology";""",
+            text,
+            StringComparison.Ordinal);
+
+        const string Controls =
+            """<button type="button" class="button button--quiet" disabled="@_loading" aria-busy="@(_loading ? "true" : null)" @onclick="ReloadTopologyAsync">@ReloadTopologyLabel</button>""";
+        const string Problem =
+            """<button type="button" class="button" disabled="@_loading" aria-busy="@(_loading ? "true" : null)" @onclick="ReloadTopologyAsync">@ReloadTopologyLabel</button>""";
+
+        Assert.Contains(Controls, text, StringComparison.Ordinal);
+        Assert.Contains(Problem, text, StringComparison.Ordinal);
+        Assert.Equal(2, CountOccurrences(text, "@ReloadTopologyLabel</button>"));
+        Assert.DoesNotContain(">Reload topology</button>", text, StringComparison.Ordinal);
+        Assert.DoesNotContain(">Reloading topology…</button>", text, StringComparison.Ordinal);
+    }
+
+    private static int CountOccurrences(string text, string value)
+    {
+        var count = 0;
+        for (var index = 0; (index = text.IndexOf(value, index, StringComparison.Ordinal)) >= 0; index += value.Length)
+        {
+            count++;
+        }
+
+        return count;
     }
 }

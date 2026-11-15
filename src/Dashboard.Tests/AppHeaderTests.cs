@@ -6,6 +6,8 @@ namespace Dashboard.Tests;
 /// The header's system repository link opens in a new tab. The title says so, but screen readers do not reliably
 /// announce titles, so the link's accessible name must include hidden text after the visible slug (no aria-label,
 /// which would replace it). The Interval options spell out "seconds" so screen readers do not announce the letter s.
+/// The polling-state span has role="status" so Live / Hidden / Paused changes are announced; Last refresh stays
+/// outside it so every poll is not announced.
 /// </summary>
 public class AppHeaderTests
 {
@@ -38,5 +40,23 @@ public class AppHeaderTests
 
         Assert.Contains("""<option value="@seconds">@seconds seconds</option>""", text, StringComparison.Ordinal);
         Assert.DoesNotContain("@seconds s<", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ThePollingStateSpanIsAStatusRegionThatDoesNotIncludeLastRefresh()
+    {
+        var text = File.ReadAllText(AppComponent());
+
+        const string Open = """<span class="polling polling--@PollingState.ToLowerInvariant()" role="status">""";
+        var open = text.IndexOf(Open, StringComparison.Ordinal);
+        Assert.True(open >= 0);
+        var close = text.IndexOf("</span>", open, StringComparison.Ordinal);
+        Assert.True(close > open);
+        var span = text[open..(close + "</span>".Length)];
+        Assert.Contains("role=\"status\"", span, StringComparison.Ordinal);
+        Assert.Contains("class=\"polling polling--@PollingState.ToLowerInvariant()\"", span, StringComparison.Ordinal);
+        Assert.Contains("@PollingState", span, StringComparison.Ordinal);
+        Assert.DoesNotContain("Last refresh", span, StringComparison.Ordinal);
+        Assert.DoesNotContain("<time", span, StringComparison.Ordinal);
     }
 }

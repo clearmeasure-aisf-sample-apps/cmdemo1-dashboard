@@ -18,7 +18,7 @@
         @if (Running)
         {
             @* Once nothing more is sent there is nothing to stop: the panel waits for the answers on their way. *@
-            <button type="button" class="button" disabled="@(!_count.Sending)" @onclick="StopAsync">Stop traffic</button>
+            <button type="button" class="button" disabled="@(!_count.Sending)" title="@StopHelp" @onclick="StopAsync">Stop traffic</button>
         }
         else
         {
@@ -31,6 +31,7 @@
 
 @code {
     private const string ButtonHelp = "Sends representative requests for one minute; press Stop traffic to end sooner";
+    private const string StopHelp = "Stops sending requests now; answers already on their way still count";
     private const string EnvironmentLockedHelp = "Stop traffic to choose another environment";
 
     private readonly CancellationTokenSource _stopping = new();

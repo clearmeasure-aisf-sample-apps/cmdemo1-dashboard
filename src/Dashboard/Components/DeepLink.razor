@@ -1,8 +1,9 @@
 @* A number or a name that leads somewhere when the topology has a link for it, and is plain content when it has none.
-   The link opens a new tab; its title says where it goes and that the destination asks for a sign-in. *@
+   The link opens a new tab; its title says where it goes and that the destination asks for a sign-in.
+   A visually-hidden span after the visible content tells screen readers the link opens in a new tab. *@
 @if (Href is { } address)
 {
-    <a class="deep @Class" href="@address.AbsoluteUri" target="_blank" rel="noopener" title="@Title">@ChildContent</a>
+    <a class="deep @Class" href="@address.AbsoluteUri" target="_blank" rel="noopener" title="@Title">@ChildContent<span class="visually-hidden"> (opens in a new tab)</span></a>
 }
 else
 {

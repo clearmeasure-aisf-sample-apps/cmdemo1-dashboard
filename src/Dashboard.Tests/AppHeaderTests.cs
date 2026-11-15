@@ -9,6 +9,7 @@ namespace Dashboard.Tests;
 /// The polling-state span has role="status" so Live / Hidden / Paused changes are announced; Last refresh stays
 /// outside it so every poll is not announced.
 /// Last refresh shows the clock; its title carries the full date and time like every other time on the page.
+/// Check now has a title that says it checks every node at once without waiting for the interval.
 /// </summary>
 public class AppHeaderTests
 {
@@ -71,5 +72,23 @@ public class AppHeaderTests
             text,
             StringComparison.Ordinal);
         Assert.Contains("<span>not yet</span>", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheCheckNowButtonHasATitleAndKeepsItsVisibleText()
+    {
+        var text = File.ReadAllText(AppComponent());
+
+        const string Button =
+            """<button type="button" class="button button--quiet" title="@CheckNowHelp" @onclick="CheckNow">Check now</button>""";
+        Assert.Contains(Button, text, StringComparison.Ordinal);
+
+        const string HelpOpen = "private const string CheckNowHelp =";
+        var help = text.IndexOf(HelpOpen, StringComparison.Ordinal);
+        Assert.True(help >= 0);
+        var end = text.IndexOf(';', help);
+        Assert.True(end > help);
+        var value = text[(help + HelpOpen.Length)..end];
+        Assert.False(string.IsNullOrWhiteSpace(value.Trim().Trim('"', '+')));
     }
 }

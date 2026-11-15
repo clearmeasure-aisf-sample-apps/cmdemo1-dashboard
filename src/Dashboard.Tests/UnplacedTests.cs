@@ -1,8 +1,13 @@
+using System.Runtime.CompilerServices;
+
 namespace Dashboard.Tests;
 
 /// <summary>The resources in no environment: the manifest's list <c>unplaced</c>, and the rows under the diagram.</summary>
 public class UnplacedTests
 {
+    private static string UnplacedListComponent([CallerFilePath] string here = "") =>
+        Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here)!, "..", "Dashboard", "Components", "UnplacedList.razor"));
+
     private static readonly DateTimeOffset Read = new(2026, 10, 12, 9, 0, 0, TimeSpan.Zero);
 
     private const string RegistryId = "/subscriptions/s/resourceGroups/rg-demo1-prod/providers/Microsoft.ContainerRegistry/registries/acrdemo1";
@@ -14,6 +19,20 @@ public class UnplacedTests
         ResourceHealthReport.Parse($$"""
             { "resources": { "prod": [ { "id": "{{id}}", "health": { "status": "{{status}}", "source": "{{source}}", "checkedAt": "2026-10-12T09:00:00Z" } } ] } }
             """)!;
+
+    /// <summary>
+    /// The table of resources in no environment scrolls sideways inside its own frame: that frame must be a named,
+    /// focusable region so a keyboard user can scroll it and a screen reader announces it. With no rows the list is
+    /// absent, as before.
+    /// </summary>
+    [Fact]
+    public void TheScrollWrapperIsANamedFocusableRegionAndRendersOnlyWhenThereAreRows()
+    {
+        var text = File.ReadAllText(UnplacedListComponent());
+
+        Assert.Contains("""<div class="table-scroll" role="region" aria-label="Resources in no environment" tabindex="0">""", text);
+        Assert.Contains("@if (Rows.Count > 0)", text);
+    }
 
     [Fact]
     public void AnEntryIsReadWithItsWordsItsIdsAndItsLinks()

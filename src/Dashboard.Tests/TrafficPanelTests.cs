@@ -5,6 +5,7 @@ namespace Dashboard.Tests;
 /// <summary>
 /// The Generate traffic button explains itself only in its title, which screen readers do not reliably announce. A
 /// visually-hidden description linked with aria-describedby keeps the visible text as the accessible name.
+/// The Environment select is disabled while traffic runs; its title then says why, and is absent when idle.
 /// </summary>
 public class TrafficPanelTests
 {
@@ -24,5 +25,21 @@ public class TrafficPanelTests
             text,
             StringComparison.Ordinal);
         Assert.DoesNotContain("aria-label", Button, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheEnvironmentSelectExplainsWhyItIsLockedOnlyWhileTrafficRuns()
+    {
+        var text = File.ReadAllText(TrafficPanelComponent());
+
+        Assert.Contains(
+            """private const string EnvironmentLockedHelp = "Stop traffic to choose another environment";""",
+            text,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            """<select value="@_environment" disabled="@Running" title="@(Running ? EnvironmentLockedHelp : null)" @onchange="OnEnvironmentChanged">""",
+            text,
+            StringComparison.Ordinal);
+        Assert.Contains("<span>Environment</span>", text, StringComparison.Ordinal);
     }
 }

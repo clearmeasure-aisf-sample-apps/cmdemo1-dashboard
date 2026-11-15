@@ -20,8 +20,8 @@
     }
     else if (_diagram is { IsValid: false } broken)
     {
-        <section class="problem" role="alert">
-            <h4>The database view of @Environment could not be read</h4>
+        <section class="problem" role="alert" aria-labelledby="@ProblemId">
+            <h4 id="@ProblemId">The database view of @Environment could not be read</h4>
             <ul>
                 @foreach (var error in broken.Errors)
                 {
@@ -142,6 +142,9 @@
 
     [Parameter, EditorRequired]
     public string Environment { get; set; } = default!;
+
+    /// <summary>Names the unreadable-manifest alert from its heading; unique per environment so two views do not collide.</summary>
+    private string ProblemId => $"database-problem-{Environment.ToLowerInvariant()}";
 
     /// <summary>The page checks: it is neither paused nor hidden. Only then is the live file read again.</summary>
     [Parameter]

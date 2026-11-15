@@ -317,6 +317,25 @@ public class DatabaseViewTests
         Assert.Contains("live.Tables.Any(table => table.Columns.Count > 0)", text);
     }
 
+    /// <summary>
+    /// When the database manifest cannot be read, the problem section is an alert. It must take its accessible name
+    /// from its heading (as App.razor's topology alert does), with an id unique per environment so two database
+    /// views on one page do not collide.
+    /// </summary>
+    [Fact]
+    public void TheBrokenManifestAlertIsNamedByItsHeading()
+    {
+        var text = File.ReadAllText(DatabaseViewComponent());
+
+        Assert.Contains("""<section class="problem" role="alert" aria-labelledby="@ProblemId">""", text, StringComparison.Ordinal);
+        Assert.Contains("""<h4 id="@ProblemId">The database view of @Environment could not be read</h4>""", text, StringComparison.Ordinal);
+        Assert.Contains("""$"database-problem-{Environment.ToLowerInvariant()}";""", text, StringComparison.Ordinal);
+
+        static string ProblemId(string environment) => $"database-problem-{environment.ToLowerInvariant()}";
+        Assert.Equal("database-problem-tdd", ProblemId("TDD"));
+        Assert.NotEqual(ProblemId("tdd"), ProblemId("uat"));
+    }
+
     [Theory]
     [InlineData("", "")]
     [InlineData("pk", "primary key")]

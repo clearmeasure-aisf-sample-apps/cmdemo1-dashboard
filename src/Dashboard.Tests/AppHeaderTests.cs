@@ -11,6 +11,7 @@ namespace Dashboard.Tests;
 /// Last refresh shows the clock; its title carries the full date and time like every other time on the page.
 /// Reload topology buttons share one label that becomes "Reloading topology…" with aria-busy while loading.
 /// Check now has a title that says it checks every node at once without waiting for the interval.
+/// Interval has a title that says how often every node is checked while the checks run.
 /// </summary>
 public class AppHeaderTests
 {
@@ -85,6 +86,25 @@ public class AppHeaderTests
         Assert.Contains(Button, text, StringComparison.Ordinal);
 
         const string HelpOpen = "private const string CheckNowHelp =";
+        var help = text.IndexOf(HelpOpen, StringComparison.Ordinal);
+        Assert.True(help >= 0);
+        var end = text.IndexOf(';', help);
+        Assert.True(end > help);
+        var value = text[(help + HelpOpen.Length)..end];
+        Assert.False(string.IsNullOrWhiteSpace(value.Trim().Trim('"', '+')));
+    }
+
+    [Fact]
+    public void TheIntervalSelectHasATitleAndKeepsItsVisibleLabel()
+    {
+        var text = File.ReadAllText(AppComponent());
+
+        const string Select =
+            """<select value="@IntervalSeconds" title="@IntervalHelp" @onchange="OnIntervalChanged">""";
+        Assert.Contains(Select, text, StringComparison.Ordinal);
+        Assert.Contains("<span>Interval</span>", text, StringComparison.Ordinal);
+
+        const string HelpOpen = "private const string IntervalHelp =";
         var help = text.IndexOf(HelpOpen, StringComparison.Ordinal);
         Assert.True(help >= 0);
         var end = text.IndexOf(';', help);

@@ -56,7 +56,7 @@
         </button>
         <label class="field">
             <span>Interval</span>
-            <select value="@IntervalSeconds" @onchange="OnIntervalChanged">
+            <select value="@IntervalSeconds" title="@IntervalHelp" @onchange="OnIntervalChanged">
                 @foreach (var seconds in IntervalChoices)
                 {
                     <option value="@seconds">@seconds seconds</option>
@@ -233,6 +233,9 @@
 
     private const string PauseHelp =
         "Pause stops the periodic checks. Checks also stop while this browser tab is hidden.";
+
+    private const string IntervalHelp =
+        "How often every node is checked while the checks run";
 
     private const string CheckNowHelp =
         "Check every node now, without waiting for the interval";

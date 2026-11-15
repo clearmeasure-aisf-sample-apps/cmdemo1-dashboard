@@ -20,8 +20,8 @@
     }
     else if (_diagram is { IsValid: false } broken)
     {
-        <section class="problem" role="alert">
-            <h4>The database view of @Environment could not be read</h4>
+        <section class="problem" role="alert" aria-labelledby="@ProblemId">
+            <h4 id="@ProblemId">The database view of @Environment could not be read</h4>
             <ul>
                 @foreach (var error in broken.Errors)
                 {
@@ -142,6 +142,20 @@
 
     [Parameter, EditorRequired]
     public string Environment { get; set; } = default!;
+
+    /// <summary>Names the unreadable-manifest alert from its heading; unique per environment so two views do not collide.</summary>
+    private string ProblemId => ProblemIdFor(Environment);
+
+    /// <summary>
+    /// An element id for the unreadable-manifest alert: <c>database-problem-tdd</c>, with spaces and other
+    /// non-id characters turned into hyphens so <c>aria-labelledby</c> stays a single token.
+    /// </summary>
+    public static string ProblemIdFor(string environment)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(environment);
+        var slug = new string(environment.Trim().ToLowerInvariant().Select(character => char.IsAsciiLetterOrDigit(character) ? character : '-').ToArray());
+        return "database-problem-" + string.Join('-', slug.Split('-', StringSplitOptions.RemoveEmptyEntries));
+    }
 
     /// <summary>The page checks: it is neither paused nor hidden. Only then is the live file read again.</summary>
     [Parameter]

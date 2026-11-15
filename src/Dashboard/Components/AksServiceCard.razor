@@ -138,7 +138,7 @@
             }
             @if (Links?[LinkSet.Portal] is { } portal)
             {
-                <a class="cluster-card__link" href="@portal.AbsoluteUri" target="_blank" rel="noopener" title="@ClusterText.PortalTitle(Name)">AKS cluster in the Azure portal</a>
+                <a class="cluster-card__link" href="@portal.AbsoluteUri" target="_blank" rel="noopener" title="@ClusterText.PortalTitle(Name)">AKS cluster in the Azure portal<span class="visually-hidden"> (opens in a new tab)</span></a>
             }
         </p>
     }

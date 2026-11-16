@@ -5,7 +5,8 @@ namespace Dashboard.Tests;
 /// <summary>
 /// The work items board scope link opens in a new tab. The title says so, but screen readers do not reliably
 /// announce titles, so the link's accessible name must include hidden text after the visible label (no aria-label,
-/// which would replace it).
+/// which would replace it). The empty-state messages have role="status" so a filter that leaves nothing to show is
+/// announced.
 /// </summary>
 public class WorkItemsViewTests
 {
@@ -29,5 +30,20 @@ public class WorkItemsViewTests
         Assert.Contains("""rel="noopener" """, anchor, StringComparison.Ordinal);
         Assert.Contains("title=\"@scope.Title\"", anchor, StringComparison.Ordinal);
         Assert.DoesNotContain("aria-label", anchor, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheEmptyStateMessagesAreStatusRegions()
+    {
+        var text = File.ReadAllText(WorkItemsViewComponent());
+
+        Assert.Contains(
+            """<p class="empty" role="status">@WorkItemsText.NoneOf(Audience)</p>""",
+            text,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            """<p class="empty" role="status">@WorkItemsText.NoActive</p>""",
+            text,
+            StringComparison.Ordinal);
     }
 }

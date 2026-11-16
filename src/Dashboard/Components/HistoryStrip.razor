@@ -7,7 +7,9 @@
         var x = slot * (BarWidth + Gap);
         if (index < 0)
         {
-            <rect class="history__bar history__bar--empty" x="@x" y="@(Height - 2)" width="@BarWidth" height="2" rx="1" />
+            <rect class="history__bar history__bar--empty" x="@x" y="@(Height - 2)" width="@BarWidth" height="2" rx="1">
+                <title>No check yet</title>
+            </rect>
         }
         else
         {

@@ -6,6 +6,7 @@ namespace Dashboard.Tests;
 /// The unplaced resources Address link opens in a new tab. The title says so, but screen readers do not reliably
 /// announce titles, so the link's accessible name must include hidden text after the visible host (no aria-label,
 /// which would replace it).
+/// Why and Health headers explain themselves on hover; visible header text stays Why and Health.
 /// </summary>
 public class UnplacedListTests
 {
@@ -30,5 +31,22 @@ public class UnplacedListTests
         Assert.Contains("""class="deep" """, anchor, StringComparison.Ordinal);
         Assert.Contains("title=\"@($\"{entry.Name} at {site.Host} (opens in a new tab)\")\"", anchor, StringComparison.Ordinal);
         Assert.DoesNotContain("aria-label", anchor, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheWhyAndHealthHeadersExplainThemselvesOnHoverAndKeepTheirVisibleText()
+    {
+        var text = File.ReadAllText(UnplacedListComponent());
+
+        Assert.Contains(
+            """<th scope="col" title="Why the resource is not placed on the runtime diagram">Why</th>""",
+            text,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            """<th scope="col" title="The resource health that Azure reports">Health</th>""",
+            text,
+            StringComparison.Ordinal);
+        Assert.Contains(">Why</th>", text, StringComparison.Ordinal);
+        Assert.Contains(">Health</th>", text, StringComparison.Ordinal);
     }
 }

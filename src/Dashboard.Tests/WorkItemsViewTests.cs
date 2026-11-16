@@ -8,6 +8,8 @@ namespace Dashboard.Tests;
 /// which would replace it).
 /// The "Whose work" filter buttons show a bare count; a visually-hidden " work items" after the count makes the
 /// accessible name e.g. "Bot 12 work items" without an aria-label that would replace the visible text.
+/// The empty-state messages have role="status" so a filter that leaves nothing to show is
+/// announced.
 /// </summary>
 public class WorkItemsViewTests
 {
@@ -52,5 +54,20 @@ public class WorkItemsViewTests
             button,
             StringComparison.Ordinal);
         Assert.DoesNotContain("aria-label", button, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheEmptyStateMessagesAreStatusRegions()
+    {
+        var text = File.ReadAllText(WorkItemsViewComponent());
+
+        Assert.Contains(
+            """<p class="empty" role="status">@WorkItemsText.NoneOf(Audience)</p>""",
+            text,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            """<p class="empty" role="status">@WorkItemsText.NoActive</p>""",
+            text,
+            StringComparison.Ordinal);
     }
 }

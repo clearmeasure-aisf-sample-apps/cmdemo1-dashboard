@@ -168,14 +168,14 @@
 
         @if (shown.Count == 0)
         {
-            <p class="empty">@WorkItemsText.NoneOf(Audience)</p>
+            <p class="empty" role="status">@WorkItemsText.NoneOf(Audience)</p>
         }
         else
         {
             var active = WorkItemsText.Active(shown);
             if (active.Count == 0)
             {
-                <p class="empty">@WorkItemsText.NoActive</p>
+                <p class="empty" role="status">@WorkItemsText.NoActive</p>
             }
 
             @foreach (var group in active)

@@ -57,7 +57,7 @@
                 var count = WorkItemsText.Select(report.Items, audience).Count;
                 <button type="button" class="button @(Audience == audience ? "button--selected" : null)" aria-pressed="@(Audience == audience ? "true" : "false")"
                         @onclick="() => AudienceChanged.InvokeAsync(audience)">
-                    @WorkItemsText.AudienceLabel(audience) <span class="work__count">@count</span>
+                    @WorkItemsText.AudienceLabel(audience) <span class="work__count">@count</span><span class="visually-hidden"> work items</span>
                 </button>
             }
         </div>

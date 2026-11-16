@@ -319,6 +319,26 @@ public class DatabaseViewTests
     }
 
     /// <summary>
+    /// The tables-list Columns and Rows headers explain themselves on hover, matching Restarts in the pods table.
+    /// </summary>
+    [Fact]
+    public void TheColumnsAndRowsHeadersExplainThemselvesOnHoverAndKeepTheirVisibleText()
+    {
+        var text = File.ReadAllText(DatabaseViewComponent());
+
+        Assert.Contains(
+            """<th scope="col" class="grid__number" title="How many columns the table has">Columns</th>""",
+            text,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            """<th scope="col" class="grid__number" title="How many rows the table holds">Rows</th>""",
+            text,
+            StringComparison.Ordinal);
+        Assert.Contains(">Columns</th>", text, StringComparison.Ordinal);
+        Assert.Contains(">Rows</th>", text, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// When the database manifest cannot be read, the problem section is an alert. It must take its accessible name
     /// from its heading (as App.razor's topology alert does), with an id unique per environment so two database
     /// views on one page do not collide. The id is a single HTML token even when the environment name has spaces.

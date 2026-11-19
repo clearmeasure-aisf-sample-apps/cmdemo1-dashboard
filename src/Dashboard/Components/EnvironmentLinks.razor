@@ -10,7 +10,7 @@
             {
                 if (links[key] is { } address)
                 {
-                    <a href="@address.AbsoluteUri" target="_blank" rel="noopener" title="@LinkText.For(key, Environment)">@text</a>
+                    <a href="@address.AbsoluteUri" target="_blank" rel="noopener" title="@LinkText.For(key, Environment)">@text<span class="visually-hidden"> (opens in a new tab)</span></a>
                 }
             }
         }
@@ -19,7 +19,7 @@
             @* "own", not "page": @page is a directive of Razor. *@
             foreach (var own in pages)
             {
-                <a class="resource-links__page" href="@own.Url.AbsoluteUri" target="_blank" rel="noopener" title="@own.Title">@own.Name</a>
+                <a class="resource-links__page" href="@own.Url.AbsoluteUri" target="_blank" rel="noopener" title="@own.Title">@own.Name<span class="visually-hidden"> (opens in a new tab)</span></a>
             }
         }
     </p>

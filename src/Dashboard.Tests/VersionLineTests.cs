@@ -8,6 +8,9 @@ namespace Dashboard.Tests;
 /// </summary>
 public class VersionLineTests
 {
+    /// <summary>The words a screen reader hears after the visible text of a link that opens a new tab (#134).</summary>
+    private const string NewTabHint = """<span class="visually-hidden"> (opens in a new tab)</span>""";
+
     private static string VersionLineComponent([CallerFilePath] string here = "") =>
         Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here)!, "..", "Dashboard", "Components", "VersionLine.razor"));
 
@@ -22,7 +25,7 @@ public class VersionLineTests
             """"aria-label="@($"Requests in Logs of {DeployableName} in {EnvironmentName}, Application Insights (opens in a new tab)")"""",
             text,
             StringComparison.Ordinal);
-        Assert.Contains($">{Visible}</a>", text, StringComparison.Ordinal);
+        Assert.Contains($">{Visible}{NewTabHint}</a>", text, StringComparison.Ordinal);
         Assert.StartsWith(Visible, Name, StringComparison.Ordinal);
         Assert.EndsWith("(opens in a new tab)", Name, StringComparison.Ordinal);
     }

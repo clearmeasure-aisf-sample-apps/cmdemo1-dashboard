@@ -19,19 +19,19 @@
             {
                 <a href="@project.AbsoluteUri" target="_blank" rel="noopener"
                    aria-label="@($"Octopus project of {DeployableName} (opens in a new tab)")"
-                   title="@($"The Octopus Deploy project that deploys {DeployableName} (opens in a new tab)")">Octopus project</a>
+                   title="@($"The Octopus Deploy project that deploys {DeployableName} (opens in a new tab)")">Octopus project<span class="visually-hidden"> (opens in a new tab)</span></a>
             }
             @if (HistoryUrl is { } history)
             {
                 <a href="@history.AbsoluteUri" target="_blank" rel="noopener"
                    aria-label="@($"Pin history of {HistoryOf} (opens in a new tab)")"
-                   title="@($"The history of {(HistoryIsOwn ? PinFile : PinnedVersions.FileName)} of {HistoryOf} on GitHub (opens in a new tab)")">Pin history</a>
+                   title="@($"The history of {(HistoryIsOwn ? PinFile : PinnedVersions.FileName)} of {HistoryOf} on GitHub (opens in a new tab)")">Pin history<span class="visually-hidden"> (opens in a new tab)</span></a>
             }
             @if (LogsUrl is { } logs)
             {
                 <a href="@logs.AbsoluteUri" target="_blank" rel="noopener"
                    aria-label="@($"Requests in Logs of {DeployableName} in {EnvironmentName}, Application Insights (opens in a new tab)")"
-                   title="@LinkText.For(LinkSet.Logs, $"{DeployableName} in {EnvironmentName}")">Requests in Logs</a>
+                   title="@LinkText.For(LinkSet.Logs, $"{DeployableName} in {EnvironmentName}")">Requests in Logs<span class="visually-hidden"> (opens in a new tab)</span></a>
             }
         </p>
     }

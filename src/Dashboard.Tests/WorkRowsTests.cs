@@ -8,6 +8,9 @@ namespace Dashboard.Tests;
 /// </summary>
 public class WorkRowsTests
 {
+    /// <summary>The words a screen reader hears after the visible text of a link that opens a new tab (#134).</summary>
+    private const string NewTabHint = """<span class="visually-hidden"> (opens in a new tab)</span>""";
+
     private static string WorkRowsComponent([CallerFilePath] string here = "") =>
         Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here)!, "..", "Dashboard", "Components", "WorkRows.razor"));
 
@@ -22,7 +25,7 @@ public class WorkRowsTests
             """"aria-label="@(pull.Number is { } n ? $"checks of pull request #{n} (opens in a new tab)" : "checks (opens in a new tab)")"""",
             text,
             StringComparison.Ordinal);
-        Assert.Contains($"""{Visible}</a>""", text, StringComparison.Ordinal);
+        Assert.Contains($"""{Visible}{NewTabHint}</a>""", text, StringComparison.Ordinal);
         Assert.Contains("pull.Number", text, StringComparison.Ordinal);
         Assert.StartsWith(Visible, Name, StringComparison.Ordinal);
         Assert.EndsWith("(opens in a new tab)", Name, StringComparison.Ordinal);
@@ -43,7 +46,7 @@ public class WorkRowsTests
             """"aria-label="@($"{blocker.Text ?? "Status"} (opens in a new tab)")"""",
             text,
             StringComparison.Ordinal);
-        Assert.Contains($"@({Visible})</a>", text, StringComparison.Ordinal);
+        Assert.Contains($"@({Visible}){NewTabHint}</a>", text, StringComparison.Ordinal);
         Assert.Contains(Visible, Name, StringComparison.Ordinal);
         Assert.EndsWith("(opens in a new tab)", Name, StringComparison.Ordinal);
     }

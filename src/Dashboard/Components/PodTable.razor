@@ -3,14 +3,14 @@
    against the pod's limit where it has one. *@
 @if (!Group.Found)
 {
-    <p class="empty">The status file lists no namespace <code>@Group.Name</code>.</p>
+    <p class="empty" role="status">The status file lists no namespace <code>@Group.Name</code>.</p>
 }
 else
 {
     <p class="namespace__summary">@ClusterText.Summary(Group)</p>
     @if (Group.Pods.Count == 0)
     {
-        <p class="empty">No pods.</p>
+        <p class="empty" role="status">No pods.</p>
     }
     else
     {

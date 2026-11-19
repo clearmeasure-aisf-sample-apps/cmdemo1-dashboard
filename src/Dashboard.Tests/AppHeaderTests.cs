@@ -83,7 +83,7 @@ public class AppHeaderTests
         var text = File.ReadAllText(AppComponent());
 
         const string Button =
-            """<button type="button" class="button button--quiet" title="@CheckNowHelp" @onclick="CheckNow">Check now</button>""";
+            """<button type="button" class="button button--quiet" title="@CheckNowHelp" aria-describedby="check-now-help" @onclick="CheckNow">Check now</button>""";
         Assert.Contains(Button, text, StringComparison.Ordinal);
 
         const string HelpOpen = "private const string CheckNowHelp =";
@@ -101,7 +101,7 @@ public class AppHeaderTests
         var text = File.ReadAllText(AppComponent());
 
         const string Select =
-            """<select value="@IntervalSeconds" title="@IntervalHelp" @onchange="OnIntervalChanged">""";
+            """<select value="@IntervalSeconds" title="@IntervalHelp" aria-describedby="interval-help" @onchange="OnIntervalChanged">""";
         Assert.Contains(Select, text, StringComparison.Ordinal);
         Assert.Contains("<span>Interval</span>", text, StringComparison.Ordinal);
 
@@ -125,9 +125,9 @@ public class AppHeaderTests
             StringComparison.Ordinal);
 
         const string Controls =
-            """<button type="button" class="button button--quiet" title="@ReloadTopologyHelp" disabled="@_loading" aria-busy="@(_loading ? "true" : null)" @onclick="ReloadTopologyAsync">@ReloadTopologyLabel</button>""";
+            """<button type="button" class="button button--quiet" title="@ReloadTopologyHelp" aria-describedby="reload-topology-help" disabled="@_loading" aria-busy="@(_loading ? "true" : null)" @onclick="ReloadTopologyAsync">@ReloadTopologyLabel</button>""";
         const string Problem =
-            """<button type="button" class="button" title="@ReloadTopologyHelp" disabled="@_loading" aria-busy="@(_loading ? "true" : null)" @onclick="ReloadTopologyAsync">@ReloadTopologyLabel</button>""";
+            """<button type="button" class="button" title="@ReloadTopologyHelp" aria-describedby="reload-topology-help" disabled="@_loading" aria-busy="@(_loading ? "true" : null)" @onclick="ReloadTopologyAsync">@ReloadTopologyLabel</button>""";
 
         Assert.Contains(Controls, text, StringComparison.Ordinal);
         Assert.Contains(Problem, text, StringComparison.Ordinal);

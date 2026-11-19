@@ -56,13 +56,14 @@
         </button>
         <label class="field">
             <span>Interval</span>
-            <select value="@IntervalSeconds" title="@IntervalHelp" @onchange="OnIntervalChanged">
+            <select value="@IntervalSeconds" title="@IntervalHelp" aria-describedby="interval-help" @onchange="OnIntervalChanged">
                 @foreach (var seconds in IntervalChoices)
                 {
                     <option value="@seconds">@seconds seconds</option>
                 }
             </select>
         </label>
+        <span id="interval-help" class="visually-hidden">@IntervalHelp</span>
         @* While generated traffic runs the page checks more often than the interval says: said here, next to it. *@
         @if (TrafficPlan.IntervalNote(_trafficRunning, _poller.Interval) is { } faster)
         {
@@ -70,13 +71,16 @@
         }
         <label class="field">
             <span>Probe</span>
-            <select value="@_probe" title="@ProbeHelp" @onchange="OnProbeChanged">
+            <select value="@_probe" title="@ProbeHelp" aria-describedby="probe-help" @onchange="OnProbeChanged">
                 <option value="@ProbeKind.Health">Health check</option>
                 <option value="@ProbeKind.Liveness">Liveness</option>
             </select>
         </label>
-        <button type="button" class="button button--quiet" title="@CheckNowHelp" @onclick="CheckNow">Check now</button>
-        <button type="button" class="button button--quiet" title="@ReloadTopologyHelp" disabled="@_loading" aria-busy="@(_loading ? "true" : null)" @onclick="ReloadTopologyAsync">@ReloadTopologyLabel</button>
+        <span id="probe-help" class="visually-hidden">@ProbeHelp</span>
+        <button type="button" class="button button--quiet" title="@CheckNowHelp" aria-describedby="check-now-help" @onclick="CheckNow">Check now</button>
+        <span id="check-now-help" class="visually-hidden">@CheckNowHelp</span>
+        <button type="button" class="button button--quiet" title="@ReloadTopologyHelp" aria-describedby="reload-topology-help" disabled="@_loading" aria-busy="@(_loading ? "true" : null)" @onclick="ReloadTopologyAsync">@ReloadTopologyLabel</button>
+        <span id="reload-topology-help" class="visually-hidden">@ReloadTopologyHelp</span>
     </div>
 </header>
 
@@ -182,7 +186,7 @@
                     <li>@error</li>
                 }
             </ul>
-            <button type="button" class="button" title="@ReloadTopologyHelp" disabled="@_loading" aria-busy="@(_loading ? "true" : null)" @onclick="ReloadTopologyAsync">@ReloadTopologyLabel</button>
+            <button type="button" class="button" title="@ReloadTopologyHelp" aria-describedby="reload-topology-help" disabled="@_loading" aria-busy="@(_loading ? "true" : null)" @onclick="ReloadTopologyAsync">@ReloadTopologyLabel</button>
         </section>
     }
     else

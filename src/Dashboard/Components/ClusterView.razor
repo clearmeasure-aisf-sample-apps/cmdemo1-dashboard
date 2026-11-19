@@ -8,7 +8,7 @@
     </header>
     @if (Cluster.Status is null && Cluster.Service is null)
     {
-        <p class="empty">The topology names the cluster without an address to read: neither <code>statusUrl</code> nor <code>serviceUrl</code>.</p>
+        <p class="empty" role="status">The topology names the cluster without an address to read: neither <code>statusUrl</code> nor <code>serviceUrl</code>.</p>
     }
     else
     {

@@ -1,9 +1,10 @@
 using System.Net;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 
 namespace Dashboard.Tests;
 
-public class ApplicationViewTests
+public partial class ApplicationViewTests
 {
     private static string ApplicationViewComponent([CallerFilePath] string here = "") =>
         Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here)!, "..", "Dashboard", "Components", "ApplicationView.razor"));
@@ -277,6 +278,74 @@ public class ApplicationViewTests
 
         Assert.Contains("""<div class="table-scroll" role="region" aria-label="Assemblies of @Deployable @version.Text" tabindex="0">""", text);
     }
+
+    /// <summary>
+    /// The Back button says its other two ways out - Escape, and the browser's Back - in a title, which screen
+    /// readers do not reliably announce. Like the header's controls (see <see cref="HeaderControlHelpTests"/>), it
+    /// names the shortcut with <c>aria-keyshortcuts</c> and points with <c>aria-describedby</c> at a
+    /// visually-hidden span carrying the same words, so the help is announced while the accessible name stays the
+    /// visible text. The title stays for a mouse reader, and <c>@ref="_back"</c> and <c>@onclick="LeaveAsync"</c>
+    /// stay what they were; the section's own Escape handling is untouched.
+    /// </summary>
+    [Fact]
+    public void TheBackButtonNamesTheEscapeShortcutAndIsDescribedByAVisuallyHiddenSpan()
+    {
+        var text = File.ReadAllText(ApplicationViewComponent());
+        var flat = SingleLine().Replace(text, " ");
+
+        const string Button =
+            """<button type="button" class="button" title="Back to the runtime diagram of @Environment (also Escape, and the browser's Back)" aria-keyshortcuts="Escape" aria-describedby="application-back-help" @ref="_back" @onclick="LeaveAsync">Back to the runtime diagram</button>""";
+        const string Span =
+            """<span id="application-back-help" class="visually-hidden">Back to the runtime diagram of @Environment (also Escape, and the browser's Back)</span>""";
+
+        Assert.Contains(Button, flat, StringComparison.Ordinal);
+        Assert.Contains(Span, text, StringComparison.Ordinal);
+
+        // The span stands right after the button it describes, inside the same heading row.
+        Assert.Contains(Button + " " + Span, flat, StringComparison.Ordinal);
+
+        // No aria-label: the button is still named by its visible words.
+        Assert.DoesNotContain("aria-label", Button, StringComparison.Ordinal);
+
+        // The shortcut the button promises is the key the view really answers - the handling itself is unchanged.
+        Assert.Contains("aria-keyshortcuts=\"Escape\"", text, StringComparison.Ordinal);
+        Assert.Contains("if (pressed.Key == \"Escape\")", text, StringComparison.Ordinal);
+
+        // The id is this view's own: the database view describes its Back button with another one, so the two views
+        // never point at the same element, and no element borrows the id twice.
+        Assert.DoesNotContain("database-back-help", text, StringComparison.Ordinal);
+        Assert.Equal(1, CountInApp("id=\"application-back-help\""));
+        Assert.Equal(1, CountInApp("aria-describedby=\"application-back-help\""));
+    }
+
+    /// <summary>The markup of the app: every component, the build's copies under <c>bin</c> and <c>obj</c> left out.</summary>
+    private static IEnumerable<string> AppMarkup() =>
+        Directory.EnumerateFiles(DashboardRoot(), "*.razor", SearchOption.AllDirectories)
+            .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                           && !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal));
+
+    private static string DashboardRoot() => Path.GetDirectoryName(Path.GetDirectoryName(ApplicationViewComponent())!)!;
+
+    /// <summary>How many times <paramref name="value"/> stands in the app's markup - once is the id being unique.</summary>
+    private static int CountInApp(string value)
+    {
+        var count = 0;
+
+        foreach (var file in AppMarkup())
+        {
+            var text = File.ReadAllText(file);
+
+            for (var index = 0; (index = text.IndexOf(value, index, StringComparison.Ordinal)) >= 0; index += value.Length)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex SingleLine();
 
     [Fact]
     public void TheArchitectureOfAVersionIsRead()

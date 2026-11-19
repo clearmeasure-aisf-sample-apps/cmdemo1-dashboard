@@ -11,7 +11,9 @@
 <section class="application @(Entering ? "application--entering" : null)" aria-labelledby="application-title" @ref="_section" @onkeydown="OnKeyDownAsync">
     <header class="application__header">
         <button type="button" class="button" title="Back to the runtime diagram of @Environment (also Escape, and the browser's Back)"
+                aria-keyshortcuts="Escape" aria-describedby="application-back-help"
                 @ref="_back" @onclick="LeaveAsync">Back to the runtime diagram</button>
+        <span id="application-back-help" class="visually-hidden">Back to the runtime diagram of @Environment (also Escape, and the browser's Back)</span>
         <h3 id="application-title">Application @Deployable <span class="chip">@Environment</span></h3>
         <ViewLinks Links="HeadingLinks" Label="@($"{Deployable} in {Environment}, outside this page")" />
     </header>

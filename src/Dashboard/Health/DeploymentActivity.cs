@@ -355,10 +355,16 @@ public static class DeploymentActivity
 
     private static string Names(IReadOnlyList<string> names) => names.Count == 0 ? "the system" : string.Join(", ", names);
 
-    /// <summary>The words cut to what a line of a node holds, with an ellipsis; the tooltip has them in full.</summary>
+    /// <summary>
+    /// The words cut to what a line of a node holds, with an ellipsis; the tooltip has them in full. A
+    /// <paramref name="length"/> below 1 is refused: no line holds nothing, and even an ellipsis alone needs one character.
+    /// </summary>
+    /// <param name="length">How many characters the line holds; at least 1.</param>
+    /// <exception cref="ArgumentOutOfRangeException">When <paramref name="length"/> is below 1.</exception>
     public static string Cut(string text, int length)
     {
         ArgumentNullException.ThrowIfNull(text);
+        ArgumentOutOfRangeException.ThrowIfLessThan(length, 1);
         return text.Length <= length ? text : $"{text[..(length - 1)].TrimEnd()}…";
     }
 }

@@ -66,7 +66,7 @@
                                             {
                                                 <a href="@checks.AbsoluteUri" target="_blank" rel="noopener"
                                                    aria-label="@(pull.Number is { } n ? $"checks of pull request #{n} (opens in a new tab)" : "checks (opens in a new tab)")"
-                                                   title="@($"Checks{LinkText.GitHubSuffix}")">checks</a>
+                                                   title="@($"Checks{LinkText.GitHubSuffix}")">checks<span class="visually-hidden"> (opens in a new tab)</span></a>
                                             }
                                         </li>
                                     }
@@ -121,7 +121,7 @@
                                     {
                                         <a href="@url.AbsoluteUri" target="_blank" rel="noopener"
                                            aria-label="@($"{blocker.Text ?? "Status"} (opens in a new tab)")"
-                                           title="@((blocker.Text ?? "Status") + LinkText.GitHubSuffix)">@(blocker.Text ?? "Status")</a>
+                                           title="@((blocker.Text ?? "Status") + LinkText.GitHubSuffix)">@(blocker.Text ?? "Status")<span class="visually-hidden"> (opens in a new tab)</span></a>
                                     }
                                     else
                                     {

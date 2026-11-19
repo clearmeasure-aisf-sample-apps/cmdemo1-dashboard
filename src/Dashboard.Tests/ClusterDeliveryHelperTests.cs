@@ -236,11 +236,31 @@ public class ClusterDeliveryHelperTests
     }
 
     [Theory]
-    [InlineData(0, "")]
     [InlineData(1, "")]
     [InlineData(36, "")]
     public void NothingToSayIsCutIntoNothing(int length, string expected) => Assert.Equal(expected, DeploymentActivity.Cut(string.Empty, length));
 
     [Fact]
     public void ALineThatIsNotThereIsNotCutAtAll() => Assert.Throws<ArgumentNullException>(() => DeploymentActivity.Cut(null!, 10));
+
+    [Fact]
+    public void OneCharacterIsTheEllipsisAlone() => Assert.Equal("…", DeploymentActivity.Cut("abcdef", 1));
+
+    [Fact]
+    public void ALineGivenTheLengthItItselfHasIsKeptWhole() => Assert.Equal("abcdef", DeploymentActivity.Cut("abcdef", "abcdef".Length));
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void ALineThatHoldsNothingAtAllIsRefused(int length)
+    {
+        var error = Assert.Throws<ArgumentOutOfRangeException>(() => DeploymentActivity.Cut("abc", length));
+
+        Assert.Equal("length", error.ParamName);
+        // A line that is empty is refused for the same reason: there is no length below 1 to cut it to.
+        Assert.Throws<ArgumentOutOfRangeException>(() => DeploymentActivity.Cut(string.Empty, length));
+    }
+
+    [Fact]
+    public void TheSpacesTheCutFallsOnAreTrimmedBeforeTheEllipsis() => Assert.Equal("abc…", DeploymentActivity.Cut("abc   def", 5));
 }

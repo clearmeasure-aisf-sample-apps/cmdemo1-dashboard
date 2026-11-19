@@ -8,7 +8,7 @@
     <div class="controls" role="group" aria-label="Traffic">
         <label class="field">
             <span>Environment</span>
-            <select value="@_environment" disabled="@Running" title="@(Running ? EnvironmentLockedHelp : null)" @onchange="OnEnvironmentChanged">
+            <select value="@_environment" disabled="@Running" title="@(Running ? EnvironmentLockedHelp : null)" aria-describedby="@(Running ? "traffic-environment-locked-help" : null)" @onchange="OnEnvironmentChanged">
                 @foreach (var plan in _plans)
                 {
                     <option value="@plan.Environment">@plan.Environment</option>
@@ -17,8 +17,11 @@
         </label>
         @if (Running)
         {
+            @* The lock is explained only while it is on: the hidden description and the title come and go together. *@
+            <span id="traffic-environment-locked-help" class="visually-hidden">@EnvironmentLockedHelp</span>
             @* Once nothing more is sent there is nothing to stop: the panel waits for the answers on their way. *@
-            <button type="button" class="button" disabled="@(!_count.Sending)" title="@StopHelp" @onclick="StopAsync">Stop traffic</button>
+            <button type="button" class="button" disabled="@(!_count.Sending)" title="@StopHelp" aria-describedby="traffic-stop-help" @onclick="StopAsync">Stop traffic</button>
+            <span id="traffic-stop-help" class="visually-hidden">@StopHelp</span>
         }
         else
         {

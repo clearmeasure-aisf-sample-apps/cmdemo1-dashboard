@@ -6,7 +6,8 @@ namespace Dashboard.Tests;
 /// The header's controls explain themselves in their titles, which screen readers do not reliably announce. Like the
 /// traffic button (see <see cref="TrafficPanelTests"/>), each one is linked with aria-describedby to a
 /// visually-hidden span carrying the same help constant, so the description is announced without changing the
-/// visible text or the accessible name. The titles stay: they are what a mouse reader sees.
+/// visible text or the accessible name. The titles stay: they are what a mouse reader sees. The Pause button is one
+/// of them, although its label changes to Resume: the help is the constant, not the text.
 /// The topology-problem reload button points at the header's span because the header is always rendered, so the id
 /// appears once in the page.
 /// </summary>
@@ -61,6 +62,26 @@ public class HeaderControlHelpTests
             StringComparison.Ordinal);
         Assert.DoesNotContain("aria-label", Button, StringComparison.Ordinal);
         Assert.Equal(1, CountOccurrences(text, "id=\"check-now-help\""));
+    }
+
+    [Fact]
+    public void ThePauseButtonIsDescribedByAVisuallyHiddenHelpSpan()
+    {
+        var text = File.ReadAllText(AppComponent());
+
+        // The title stays: it is what a mouse reader sees. The label changes between Pause and Resume, so the help is
+        // the constant the button names, not its text.
+        const string Button =
+            """<button type="button" class="button" title="@PauseHelp" aria-describedby="pause-help" @onclick="TogglePause">""";
+        Assert.Contains(Button, text, StringComparison.Ordinal);
+        Assert.Contains("""@(_poller.IsPaused ? "Resume" : "Pause")""", text, StringComparison.Ordinal);
+        Assert.Contains(
+            """<span id="pause-help" class="visually-hidden">@PauseHelp</span>""",
+            text,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("aria-label", Button, StringComparison.Ordinal);
+        Assert.Equal(1, CountOccurrences(text, "id=\"pause-help\""));
+        Assert.Equal(1, CountOccurrences(text, "aria-describedby=\"pause-help\""));
     }
 
     [Fact]

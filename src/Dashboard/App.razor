@@ -51,9 +51,10 @@
     </div>
 
     <div class="controls" role="group" aria-label="Checks">
-        <button type="button" class="button" title="@PauseHelp" @onclick="TogglePause">
+        <button type="button" class="button" title="@PauseHelp" aria-describedby="pause-help" @onclick="TogglePause">
             @(_poller.IsPaused ? "Resume" : "Pause")
         </button>
+        <span id="pause-help" class="visually-hidden">@PauseHelp</span>
         <label class="field">
             <span>Interval</span>
             <select value="@IntervalSeconds" title="@IntervalHelp" aria-describedby="interval-help" @onchange="OnIntervalChanged">

@@ -60,7 +60,7 @@
     @if (!Deployable.Targets.Any())
     {
         @* Front Door is named only where the topology has one somewhere: a system without it has nodes only. *@
-        <p class="empty">@(Monitor.Topology.HasFrontDoor
+        <p class="empty" role="status">@(Monitor.Topology.HasFrontDoor
             ? "This deployable has neither a Front Door endpoint nor a node in the topology."
             : "This deployable has no node in the topology.")</p>
     }

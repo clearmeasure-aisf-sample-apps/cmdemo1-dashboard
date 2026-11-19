@@ -117,7 +117,7 @@
     {
         if (monitor.Environments.Count == 0)
         {
-            <p class="empty">The topology has no environments.</p>
+            <p class="empty" role="status">The topology has no environments.</p>
         }
 
         var environmentIndex = 0;
@@ -149,7 +149,7 @@
                 </header>
                 @if (environment.Deployables.Count == 0)
                 {
-                    <p class="empty">This environment has no deployables in the topology.</p>
+                    <p class="empty" role="status">This environment has no deployables in the topology.</p>
                 }
                 @{
                     var deployableIndex = 0;

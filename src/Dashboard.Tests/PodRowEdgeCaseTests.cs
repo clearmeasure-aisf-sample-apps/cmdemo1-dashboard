@@ -1,0 +1,271 @@
+namespace Dashboard.Tests;
+
+/// <summary>
+/// A <see cref="PodRow"/> is the row of a namespace's table: the pod as the file holds it and the state the rule
+/// has landed it on, and nothing else. The row's parts are pinned where the page shows them -
+/// <see cref="NamespaceGroupTests"/> and <see cref="ClusterGroupsTests"/> pin the state a row is worth in a
+/// namespace's counts, its order in the table and its sums, and <see cref="PodStateEdgeCaseTests"/> the state it
+/// carries - and what they leave open is pinned here: the row keeping the very pod and the very state it is given,
+/// the pod as the row holds it when the pod says little, the row that is not there, the row of the pod that is not
+/// there, the two rows that are one while the pod and the state are, the row's words in the order the record says
+/// them, the row falling apart into its parts and coming back together as a copy, and the ends of the state and of
+/// the restart count as the row holds them.
+/// <para>
+/// Nothing here reaches the network or asks a clock what time it is: every pod is one the test builds, and the
+/// moment it says it started is the fixed moment the test's fixture stands on.
+/// </para>
+/// </summary>
+public class PodRowEdgeCaseTests
+{
+    /// <summary>A pod that says as little as the record allows: no workload, no kind, no node, no containers, no
+    /// reason, no start and no measurement, so the row's own words stand on what the test put there alone.</summary>
+    private static ClusterPod Silent(string name) =>
+        new(name, null, null, null, ClusterPod.Running, false, null, null, 0, null, null, ResourceUse.None, ResourceUse.None);
+
+    // ----- the parts the row holds
+
+    /// <summary>The row keeps the very pod and the very state it is given: the pod is the instance the row was
+    /// built with, the same reference and not an equal one, and the state is the one it was told - each of the four
+    /// the page knows, and the fixed facts the fixture pod says are said by the row as well.</summary>
+    [Fact]
+    public void TheRowKeepsTheVeryPodAndTheVeryStateItIsGiven()
+    {
+        var pod = ClusterFixture.Pod("ui", restarts: 3);
+
+        Assert.Same(pod, new PodRow(pod, PodState.Ready).Pod);
+        Assert.NotNull(new PodRow(pod, PodState.Ready).Pod);
+
+        foreach (var state in new[] { PodState.Ready, PodState.Starting, PodState.Unhealthy, PodState.Finished })
+        {
+            Assert.Equal(state, new PodRow(pod, state).State);
+        }
+
+        var row = new PodRow(pod, PodState.Starting);
+        Assert.Equal("ui-0", row.Pod.Name);
+        Assert.Equal("ui", row.Pod.Label);
+        Assert.Equal(ClusterPod.Running, row.Pod.Phase);
+        Assert.True(row.Pod.Ready);
+        Assert.Equal(3, row.Pod.Restarts);
+        Assert.Equal(new ResourceUse(10, 100, 500), row.Pod.Cpu);
+        Assert.Equal(new ResourceUse(100 * 1024 * 1024, 268435456, 536870912), row.Pod.Memory);
+    }
+
+    /// <summary>The pod's own words are the row's words, whatever the pod says: a pod without a workload is the
+    /// row's pod without a workload, and its label is its own name; a pod that calls itself nothing, that names no
+    /// phase and no reason, and that says nothing about its start or its containers is none of that in the row, and
+    /// a pod that says nothing about what it asks for asks for nothing in the row.</summary>
+    [Fact]
+    public void APodThatSaysLittleIsLittleInTheRowToo()
+    {
+        var solo = ClusterFixture.Pod("solo") with { Workload = null };
+        Assert.Equal("solo-0", new PodRow(solo, PodState.Ready).Pod.Label);
+
+        var row = new PodRow(Silent("") with { Phase = "", Reason = "" }, PodState.Unhealthy);
+
+        Assert.Equal("", row.Pod.Name);
+        Assert.Null(row.Pod.Workload);
+        Assert.Null(row.Pod.Kind);
+        Assert.Null(row.Pod.Node);
+        Assert.Equal("", row.Pod.Phase);
+        Assert.False(row.Pod.Ready);
+        Assert.Null(row.Pod.Containers);
+        Assert.Null(row.Pod.ContainersReady);
+        Assert.Equal(0, row.Pod.Restarts);
+        Assert.Equal("", row.Pod.Reason);
+        Assert.Null(row.Pod.StartedAt);
+        Assert.Equal(ResourceUse.None, row.Pod.Cpu);
+        Assert.Equal(ResourceUse.None, row.Pod.Memory);
+    }
+
+    // ----- the row that is not there
+
+    /// <summary>A row that is not there is nothing: the record's default is no row, and a row is never equal to no
+    /// row however the question is asked - the operators, and <c>Equals</c> asked about the no-row - while the row
+    /// that is there is a row to both of them.</summary>
+    [Fact]
+    public void ARowThatIsNotThereIsNoRow()
+    {
+        Assert.Null(default(PodRow));
+
+        PodRow? none = null;
+        var there = new PodRow(Silent("ui-0"), PodState.Ready);
+
+        Assert.False(none == there);
+        Assert.True(none != there);
+        Assert.False(there.Equals(none));
+        Assert.False(there == none);
+        Assert.True(there != none);
+        Assert.True(there is not null);
+    }
+
+    // ----- the pod that is not there
+
+    /// <summary>The row takes the pod it is given on trust and keeps it as it stands: a row of no pod is not
+    /// refused and not a row that is starting - it is a row whose pod is not there, the state it was told kept as
+    /// given, and two such rows are one while the state is, as a row with a pod is none of them.</summary>
+    [Fact]
+    public void ARowOfNoPodKeepsNoPodAndTheStateItWasTold()
+    {
+        var row = new PodRow(null!, PodState.Ready);
+
+        Assert.Null(row.Pod);
+        Assert.Equal(PodState.Ready, row.State);
+        Assert.Equal(row, new PodRow(null!, PodState.Ready));
+        Assert.True(row == new PodRow(null!, PodState.Ready));
+        Assert.Equal(row.GetHashCode(), new PodRow(null!, PodState.Ready).GetHashCode());
+        Assert.False(row.Equals(null));
+        Assert.True(row != new PodRow(null!, PodState.Starting));
+        Assert.True(row != new PodRow(Silent("ui-0"), PodState.Ready));
+    }
+
+    // ----- the row and its equal
+
+    /// <summary>Two rows are one while the pod and the state are - the pod's own equality, which is the equality of
+    /// its parts, and the state's - and a difference in either, the state turned or the pod in any one of its parts
+    /// changed, is another one. The hash code follows the equality, and neither no row nor a word is a row's
+    /// equal.</summary>
+    [Fact]
+    public void TwoRowsAreOneWhileThePodAndTheStateAre()
+    {
+        var one = new PodRow(ClusterFixture.Pod("ui"), PodState.Ready);
+        var two = new PodRow(ClusterFixture.Pod("ui"), PodState.Ready);
+
+        Assert.Equal(one, two);
+        Assert.True(one == two);
+        Assert.True(two == one);
+        Assert.False(one != two);
+        Assert.True(one.Equals((object)two));
+        Assert.True(one.Equals((object)one));
+        Assert.Equal(one.GetHashCode(), two.GetHashCode());
+        Assert.False(one.Equals(null));
+        Assert.False(one.Equals("ui-0"));
+
+        Assert.NotEqual(one, new PodRow(one.Pod, PodState.Starting));
+        Assert.NotEqual(one, new PodRow(one.Pod with { Name = "other-0" }, one.State));
+        Assert.NotEqual(one, new PodRow(one.Pod with { Restarts = 1 }, one.State));
+        Assert.NotEqual(one, new PodRow(one.Pod with { Cpu = ResourceUse.None }, one.State));
+        Assert.Equal(one, new PodRow(one.Pod with { Name = one.Pod.Name, Workload = one.Pod.Workload }, one.State));
+    }
+
+    // ----- the row's own words
+
+    /// <summary>The row says its parts in the order the record declares them - the pod first and the state after,
+    /// each by the word the type says: the pod's own words inside the row's, the parts the pod does not have said
+    /// as the empty word, the pod's label the words it says, and the state's name when the state is one the enum
+    /// names and its number when it is not.</summary>
+    [Fact]
+    public void TheRowSaysItsPodAndItsStateInTheirOrder()
+    {
+        Assert.Equal(
+            "PodRow { Pod = ClusterPod { Name = , Workload = , Kind = , Node = , Phase = Running, " +
+                "Ready = False, Containers = , ContainersReady = , Restarts = 0, Reason = , StartedAt = , " +
+                "Cpu = ResourceUse { Usage = , Requests = , Limits = , Allocatable =  }, " +
+                "Memory = ResourceUse { Usage = , Requests = , Limits = , Allocatable =  }, Label =  }, " +
+                "State = Finished }",
+            new PodRow(Silent(""), PodState.Finished).ToString());
+
+        Assert.Equal(
+            "PodRow { Pod = ClusterPod { Name = ui-0, Workload = ui, Kind = Deployment, Node = " +
+                "aks-system-12148983-vmss000000, Phase = Running, Ready = True, Containers = 1, " +
+                "ContainersReady = 1, Restarts = 0, Reason = , StartedAt = , " +
+                "Cpu = ResourceUse { Usage = 10, Requests = 100, Limits = 500, Allocatable =  }, " +
+                "Memory = ResourceUse { Usage = 104857600, Requests = 268435456, Limits = 536870912, " +
+                "Allocatable =  }, Label = ui }, State = Unhealthy }",
+            new PodRow(ClusterFixture.Pod("ui", started: false), PodState.Unhealthy).ToString());
+
+        Assert.Equal(
+            "PodRow { Pod = ClusterPod { Name = , Workload = , Kind = , Node = , Phase = Running, " +
+                "Ready = False, Containers = , ContainersReady = , Restarts = 0, Reason = , StartedAt = , " +
+                "Cpu = ResourceUse { Usage = , Requests = , Limits = , Allocatable =  }, " +
+                "Memory = ResourceUse { Usage = , Requests = , Limits = , Allocatable =  }, Label =  }, " +
+                "State = 4 }",
+            new PodRow(Silent(""), (PodState)4).ToString());
+    }
+
+    // ----- the row falls apart and is copied
+
+    /// <summary>The row falls apart into the pod and the state it holds - the pod the same instance the row was
+    /// built with - and a copy of the row is the row again: the <c>with</c> that names no part and the <c>with</c>
+    /// that names the part it turns keeps the rest, the same pod inside, and not the same reference.</summary>
+    [Fact]
+    public void TheRowFallsApartIntoItsPartsAndACopyIsTheRowAgain()
+    {
+        var pod = ClusterFixture.Pod("ui");
+        var row = new PodRow(pod, PodState.Ready);
+
+        var (partsPod, partsState) = row;
+        Assert.Same(pod, partsPod);
+        Assert.Equal(PodState.Ready, partsState);
+
+        var copy = row with { };
+        Assert.Equal(row, copy);
+        Assert.NotSame(row, copy);
+        Assert.Same(row.Pod, copy.Pod);
+        Assert.Equal(row.State, copy.State);
+
+        var unchanged = row with { Pod = row.Pod };
+        Assert.Equal(row, unchanged);
+        Assert.NotSame(row, unchanged);
+
+        var turned = row with { State = PodState.Unhealthy };
+        Assert.Equal(PodState.Unhealthy, turned.State);
+        Assert.Same(row.Pod, turned.Pod);
+        Assert.NotEqual(row, turned);
+
+        var repack = row with { Pod = row.Pod, State = row.State };
+        Assert.Equal(row, repack);
+        Assert.NotSame(row, repack);
+    }
+
+    // ----- the ends
+
+    /// <summary>The state the row carries is whatever number it was given: the four the enum names the row holds
+    /// as states, and the numbers the enum does not name - the one before the first, the one after the last, and
+    /// the two ends of the count - the row holds as numbers it keeps apart as the numbers are apart, a row of the
+    /// same nameless number being the row's equal while the pod is.</summary>
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(4)]
+    [InlineData(int.MinValue)]
+    [InlineData(int.MaxValue)]
+    public void AStateTheEnumDoesNotNameIsHeldAsTheNumberItStandsOn(int number)
+    {
+        var row = new PodRow(Silent("ui-0"), (PodState)number);
+
+        Assert.Equal(number, (int)row.State);
+        Assert.False(Enum.IsDefined(row.State));
+        Assert.Equal(row, new PodRow(Silent("ui-0"), (PodState)number));
+        Assert.True(row == new PodRow(Silent("ui-0"), (PodState)number));
+    }
+
+    /// <summary>The restart count the pod says is the row's to hold: the zero the pod that says nothing stands on,
+    /// and the two ends of the count between which no pod of the cluster has ever stood - the row keeps them as
+    /// the counts are apart.</summary>
+    [Fact]
+    public void TheRestartCountStandsInTheRowAtTheEndsOfTheCount()
+    {
+        var zero = new PodRow(Silent("ui-0"), PodState.Ready);
+        var bottom = new PodRow(Silent("ui-0") with { Restarts = int.MinValue }, PodState.Ready);
+        var top = new PodRow(Silent("ui-0") with { Restarts = int.MaxValue }, PodState.Ready);
+
+        Assert.Equal(0, zero.Pod.Restarts);
+        Assert.Equal(int.MinValue, bottom.Pod.Restarts);
+        Assert.Equal(int.MaxValue, top.Pod.Restarts);
+        Assert.NotEqual(zero, bottom);
+        Assert.NotEqual(zero, top);
+        Assert.NotEqual(bottom, top);
+    }
+
+    /// <summary>The moment the pod says it started is the row's to hold as it stands: a start at either end of the
+    /// clock stands in the row as that end, the row never asked how old the pod is.</summary>
+    [Fact]
+    public void AStartAtEitherEndOfTheClockStandsInTheRow()
+    {
+        foreach (var at in new[] { DateTimeOffset.MinValue, DateTimeOffset.MaxValue })
+        {
+            var row = new PodRow(Silent("ui-0") with { StartedAt = at }, PodState.Ready);
+
+            Assert.Equal(at, row.Pod.StartedAt);
+        }
+    }
+}

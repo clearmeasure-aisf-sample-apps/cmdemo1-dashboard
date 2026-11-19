@@ -19,6 +19,12 @@
     <ProjectReference Include="..\Dashboard\Dashboard.csproj" />
   </ItemGroup>
 
+  <!-- JsonRead is internal to the app, and the app declares no InternalsVisibleTo: rather than open the app up, the
+       tests compile that one file themselves, so they read the very source the app runs. -->
+  <ItemGroup>
+    <Compile Include="..\Dashboard\Health\JsonRead.cs" Link="Health\JsonRead.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <Using Include="Dashboard.Cluster" />
     <Using Include="Dashboard.Health" />

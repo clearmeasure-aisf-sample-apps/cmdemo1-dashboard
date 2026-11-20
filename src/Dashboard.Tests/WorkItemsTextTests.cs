@@ -66,7 +66,7 @@ public class WorkItemsTextTests
     [Fact]
     public void AFilterRoundTripsThroughItsAddress()
     {
-        foreach (var audience in new[] { WorkAudience.All, WorkAudience.Bot, WorkAudience.Team })
+        foreach (var audience in Enum.GetValues<WorkAudience>())
         {
             Assert.Equal(audience, WorkItemsText.AudienceOf(WorkItemsText.AudienceHash(audience)));
         }

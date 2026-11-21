@@ -150,7 +150,7 @@ public static class HealthDetailText
         var count = detail.Entries.Count;
         return failing.Count switch
         {
-            0 => count == 1 ? "1 check healthy" : string.Create(CultureInfo.InvariantCulture, $"{count} checks healthy"),
+            0 => Plural.Of(count, "check healthy", "checks healthy"),
             1 => $"{Brief(failing[0].Name, 20)} {Label(failing[0].State).ToLowerInvariant()}",
             _ => string.Create(CultureInfo.InvariantCulture, $"{failing.Count} of {count} checks not healthy"),
         };

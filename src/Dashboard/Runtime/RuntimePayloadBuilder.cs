@@ -792,7 +792,7 @@ public static class RuntimePayloadBuilder
         }
     }
 
-    private static string Errors(int errors) => errors == 1 ? "1 error" : string.Create(CultureInfo.InvariantCulture, $"{errors} errors");
+    private static string Errors(int errors) => Plural.Of(errors, "error");
 
     private static RuntimeTile FrontDoorTile(RuntimeNode node, Entry entry, TimeZoneInfo zone)
     {

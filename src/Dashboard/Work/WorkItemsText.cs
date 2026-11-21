@@ -288,7 +288,7 @@ public static class WorkItemsText
 
         if (duration.N is { } counted)
         {
-            parts.Add(counted == 1 ? "1 item" : string.Create(CultureInfo.InvariantCulture, $"{counted} items"));
+            parts.Add(Plural.Of(counted, "item"));
         }
 
         return parts.Count == 0 ? NotMetered : string.Join(" · ", parts);
@@ -308,12 +308,12 @@ public static class WorkItemsText
         var parts = new List<string>();
         if (rework.FtFailures is { } failures)
         {
-            parts.Add(failures == 1 ? "1 functional-test failure" : string.Create(CultureInfo.InvariantCulture, $"{failures} functional-test failures"));
+            parts.Add(Plural.Of(failures, "functional-test failure"));
         }
 
         if (rework.Reverts is { } reverts)
         {
-            parts.Add(reverts == 1 ? "1 revert" : string.Create(CultureInfo.InvariantCulture, $"{reverts} reverts"));
+            parts.Add(Plural.Of(reverts, "revert"));
         }
 
         if (rework.Rate is { } rate)

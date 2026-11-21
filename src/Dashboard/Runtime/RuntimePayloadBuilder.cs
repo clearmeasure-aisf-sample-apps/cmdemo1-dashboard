@@ -347,13 +347,17 @@ public static class RuntimePayloadBuilder
             || (manifest.Unplaced?.Any(entry => entry.Ids is { Count: > 0 }) ?? false));
     }
 
-    /// <summary>The state word of a container app's probe: the colours of the other states, none of its own.</summary>
+    /// <summary>The state word of a container app's probe, one arm per state so a new state fails the build: the
+    /// colours of the other states, none of its own.</summary>
     public static string StateOf(ContainerAppState state) => state switch
     {
-        ContainerAppState.Healthy or ContainerAppState.Responding => Healthy,
+        ContainerAppState.Probing => Checking,
+        ContainerAppState.Waking => Checking,
+        ContainerAppState.Healthy => Healthy,
+        ContainerAppState.Responding => Healthy,
         ContainerAppState.Unhealthy => Unhealthy,
         ContainerAppState.NotResponding => Unreachable,
-        _ => Checking,
+        _ => throw new ArgumentOutOfRangeException(nameof(state), state, null),
     };
 
     /// <summary>

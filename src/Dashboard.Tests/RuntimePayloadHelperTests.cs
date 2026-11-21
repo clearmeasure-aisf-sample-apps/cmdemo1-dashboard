@@ -102,6 +102,35 @@ public class RuntimePayloadHelperTests
             ["degraded", "failed", "healthy", "unknown"],
             Enum.GetValues<CheckState>().Select(RuntimePayloadBuilder.MarkOf).Order(StringComparer.Ordinal));
 
+    /// <summary>
+    /// Each current state of a container app's probe, pinned to the word <see cref="RuntimePayloadBuilder.StateOf"/>
+    /// gives it: Healthy and Responding give healthy, Unhealthy gives unhealthy, NotResponding gives unreachable, and
+    /// the other states give checking.
+    /// </summary>
+    [Theory]
+    [InlineData(ContainerAppState.Probing, "checking")]
+    [InlineData(ContainerAppState.Waking, "checking")]
+    [InlineData(ContainerAppState.Healthy, "healthy")]
+    [InlineData(ContainerAppState.Responding, "healthy")]
+    [InlineData(ContainerAppState.Unhealthy, "unhealthy")]
+    [InlineData(ContainerAppState.NotResponding, "unreachable")]
+    public void TheWordOfEachStateOfAContainerAppIsPinned(ContainerAppState state, string word) =>
+        Assert.Equal(word, RuntimePayloadBuilder.StateOf(state));
+
+    /// <summary>
+    /// Every state of a container app's probe yields a word that is not empty, and a value outside the enum is no
+    /// state of it: the builder throws, naming the value it was given.
+    /// </summary>
+    [Fact]
+    public void EveryStateOfAContainerAppYieldsAWordAndAValueOutsideTheEnumThrows()
+    {
+        Assert.All(
+            Enum.GetValues<ContainerAppState>(),
+            state => Assert.False(string.IsNullOrWhiteSpace(RuntimePayloadBuilder.StateOf(state))));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => RuntimePayloadBuilder.StateOf((ContainerAppState)999));
+    }
+
     [Fact]
     public void AFailingCheckIsMarkedFailedAndNotWithTheWordOfATile()
     {
@@ -119,6 +148,48 @@ public class RuntimePayloadHelperTests
 
         Assert.Equal(CheckState.Unknown, entry.State);
         Assert.Equal("unknown", RuntimePayloadBuilder.MarkOf(entry.State));
+    }
+
+    // ---------------------------------------------------------------- StateOf
+
+    /// <summary>
+    /// The word each state of a container app's probe carries, one row per state, walked over the enum so a new
+    /// state is pinned the day it is added; the words are the tiles' own, so a state the payload does not know of
+    /// fails the build.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(StatesOfContainerApps))]
+    public void EveryStateOfAContainerAppHasAWordOfItsOwn(ContainerAppState state, string word) =>
+        Assert.Equal(word, RuntimePayloadBuilder.StateOf(state));
+
+    public static IEnumerable<object[]> StatesOfContainerApps()
+    {
+        foreach (var state in Enum.GetValues<ContainerAppState>())
+        {
+            yield return state switch
+            {
+                ContainerAppState.Probing => [state, "checking"],
+                ContainerAppState.Waking => [state, "checking"],
+                ContainerAppState.Healthy => [state, "healthy"],
+                ContainerAppState.Responding => [state, "healthy"],
+                ContainerAppState.Unhealthy => [state, "unhealthy"],
+                ContainerAppState.NotResponding => [state, "unreachable"],
+                _ => throw new ArgumentOutOfRangeException(nameof(state), state, null),
+            };
+        }
+    }
+
+    /// <summary>
+    /// A state the probe cannot record is no state of the enum: the word of it is not a fall-through but an error
+    /// naming the value. <see cref="ContainerAppProbe.Record"/> produces only the enum's own states, so in
+    /// production no undefined state reaches the word.
+    /// </summary>
+    [Fact]
+    public void AnUndefinedStateThrowsWithTheValueItWasGiven()
+    {
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => RuntimePayloadBuilder.StateOf((ContainerAppState)7));
+
+        Assert.Equal((ContainerAppState)7, ex.ActualValue);
     }
 
     // ---------------------------------------------------------------- VersionLink

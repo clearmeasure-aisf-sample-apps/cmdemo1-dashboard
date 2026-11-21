@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 using Dashboard.Health;
 
@@ -260,7 +259,7 @@ public static class ApplicationText
                 : $"Architecture of {deployable} {version}: no assemblies";
         }
 
-        var counted = count == 1 ? "1 assembly" : string.Create(CultureInfo.InvariantCulture, $"{count} assemblies");
+        var counted = Plural.Of(count, "assembly", "assemblies");
         return architecture.Entry is { } entry
             ? $"Assemblies of {deployable} {version}: {counted}, entry {entry}"
             : $"Assemblies of {deployable} {version}: {counted}";

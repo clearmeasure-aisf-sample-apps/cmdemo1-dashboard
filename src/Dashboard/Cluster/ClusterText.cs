@@ -97,8 +97,7 @@ public static class ClusterText
     public static bool IsHigh(double? percent) => percent >= HighPercent;
 
     /// <summary><c>1 restart</c>, <c>7 restarts</c>.</summary>
-    public static string Restarts(int restarts) =>
-        restarts == 1 ? "1 restart" : string.Create(CultureInfo.InvariantCulture, $"{restarts} restarts");
+    public static string Restarts(int restarts) => Plural.Of(restarts, "restart");
 
     /// <summary>How old something is at the moment the facts are of: <c>47 min</c>, <c>3 d</c>; null when the file does not say since when.</summary>
     public static string? Age(DateTimeOffset? since, DateTimeOffset asOf) => since is { } start ? TimeText.Span(asOf - start) : null;
@@ -200,7 +199,7 @@ public static class ClusterText
     {
         ArgumentNullException.ThrowIfNull(groups);
         var count = groups.Platform.Count;
-        var spaces = count == 1 ? "1 namespace" : string.Create(CultureInfo.InvariantCulture, $"{count} namespaces");
+        var spaces = Plural.Of(count, "namespace");
         return $"Platform: {spaces}, {Of(groups.Platform.Sum(space => space.Ready), groups.Platform.Sum(space => space.Total))} pods ready";
     }
 
@@ -219,7 +218,7 @@ public static class ClusterText
         return (pool.Count, pool.Size) switch
         {
             ({ } count, { } size) => string.Create(CultureInfo.InvariantCulture, $"{count} × {size}"),
-            ({ } count, null) => count == 1 ? "1 node" : string.Create(CultureInfo.InvariantCulture, $"{count} nodes"),
+            ({ } count, null) => Plural.Of(count, "node"),
             (null, { } size) => size,
             _ => null,
         };

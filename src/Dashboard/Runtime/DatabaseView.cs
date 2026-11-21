@@ -215,8 +215,7 @@ public static class DatabaseText
     /// A row count as the diagram writes it: <c>1,234 rows</c>, <c>1 row</c>. (In the SVG the space is a no-break
     /// space, which <c>js/database.js</c> reads and writes.)
     /// </summary>
-    public static string Rows(long rows) =>
-        rows == 1 ? "1 row" : string.Create(CultureInfo.InvariantCulture, $"{rows:#,0} rows");
+    public static string Rows(long rows) => Plural.Of(rows, "row");
 
     /// <summary>
     /// A table's alias: <c>t_</c>, the schema, <c>_</c> and the name, with every character outside

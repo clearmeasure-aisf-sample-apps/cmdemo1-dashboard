@@ -348,13 +348,13 @@ public static class DeliveryText
         var parts = new List<string>();
         if (behind.Versions is { } versions && versions > 0)
         {
-            parts.Add(versions == 1 ? "1 version" : string.Create(CultureInfo.InvariantCulture, $"{versions} versions"));
+            parts.Add(Plural.Of(versions, "version"));
         }
 
         if (behind.Days is { } days && Math.Round(days) >= 1)
         {
             var whole = (int)Math.Round(days);
-            parts.Add(whole == 1 ? "1 day" : string.Create(CultureInfo.InvariantCulture, $"{whole} days"));
+            parts.Add(Plural.Of(whole, "day"));
         }
 
         return parts.Count > 0 ? $"{string.Join(", ", parts)} behind {first}" : behind.Days is not null ? $"same as {first}" : null;
@@ -369,7 +369,7 @@ public static class DeliveryText
             return null;
         }
 
-        var deployments = count == 1 ? "1 deployment" : string.Create(CultureInfo.InvariantCulture, $"{count} deployments");
+        var deployments = Plural.Of(count, "deployment");
         return entry.FailedLast7Days switch
         {
             null => deployments,

@@ -102,7 +102,7 @@ public static class WorkBotText
         ArgumentNullException.ThrowIfNull(row);
         if (row.Done is { } done && row.Merged is null && row.DeployedProd is null)
         {
-            return done == 1 ? $"{row.Agent}: 1 done" : string.Create(CultureInfo.InvariantCulture, $"{row.Agent}: {done} done");
+            return $"{row.Agent}: {Plural.Of(done, "done", "done")}";
         }
 
         var merged = row.Merged ?? 0;

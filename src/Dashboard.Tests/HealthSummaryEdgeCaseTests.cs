@@ -28,8 +28,10 @@ namespace Dashboard.Tests;
 /// calls and counted as the call found it, a source that dies mid-walk or refuses the walk outright with its
 /// exception carried out untouched, and a heap that changes under the walk; and the record that the three counts
 /// make - the same counts made twice being one summary, one count moved making another, the same words worded from
-/// different counts not being one summary, and <c>with</c> moving the one count it names and carrying the other two
-/// along out of a copy that is not the summary it was copied from.
+/// different counts not being one summary, <c>with</c> moving the one count it names and carrying the other two
+/// along out of a copy that is not the summary it was copied from, the three counts coming out of the record in
+/// the order they went in, and the record's own words - its three counts, its difference, its level and its
+/// words - in the one string the record says them in.
 /// </para>
 /// <para>
 /// Nothing here reaches the network and nothing asks a clock what time it is: every count and every heap of answers
@@ -351,6 +353,51 @@ public class HealthSummaryEdgeCaseTests
         Assert.Equal(9, original.Total);
         Assert.Equal(6, original.Healthy);
         Assert.Equal(0, original.NotHealthy);
+    }
+
+    /// <summary>The three counts come out of the summary in the order they went in - the total, then the healthy
+    /// count, then the pending count - whether the summary is asked for them at once or one after the other, and
+    /// what came out goes back in the same way: the summary the three numbers fall apart into is the summary they
+    /// were, and the summary of nothing falls apart into nothing and is still that summary.</summary>
+    [Fact]
+    public void TheThreeCountsComeOutOfTheSummaryInTheOrderTheyWentIn()
+    {
+        var (total, healthy, pending) = Summary(7, 5, 2);
+
+        Assert.Equal(7, total);
+        Assert.Equal(5, healthy);
+        Assert.Equal(2, pending);
+        Assert.Equal(Summary(7, 5, 2), Summary(total, healthy, pending));
+
+        var summary = Summary(166, 164, 162);
+        summary.Deconstruct(out var totalOfTheSummary, out var healthyOfTheSummary, out var pendingOfTheSummary);
+
+        Assert.Equal(166, totalOfTheSummary);
+        Assert.Equal(164, healthyOfTheSummary);
+        Assert.Equal(162, pendingOfTheSummary);
+
+        var (nothing, none, notPending) = Summary(0, 0, 0);
+
+        Assert.Equal(0, nothing);
+        Assert.Equal(0, none);
+        Assert.Equal(0, notPending);
+    }
+
+    /// <summary>The summary says its whole self in the one string the record says: the three counts in the order
+    /// the constructor names them, the difference, the level and the words the counts say - and no reader's culture
+    /// turns them: a reader of German is told the same words as the reader of the invariant culture, which is what
+    /// the page may count on when it says the summary it holds rather than the words it draws from one.</summary>
+    [Fact]
+    public void TheSummarySaysItsWholeSelfInTheStringTheRecordSays()
+    {
+        var summary = Summary(7, 5, 2);
+        const string words = "HealthSummary { Total = 7, Healthy = 5, Pending = 2, NotHealthy = 0, Level = Pending, Text = 5 of 7 nodes healthy, 2 being checked }";
+
+        Assert.Equal(words, summary.ToString());
+        Assert.Equal("HealthSummary { Total = 1, Healthy = 1, Pending = 0, NotHealthy = 0, Level = AllHealthy, Text = The only node is healthy }", Summary(1, 1, 0).ToString());
+        Assert.Equal("HealthSummary { Total = 0, Healthy = 0, Pending = 0, NotHealthy = 0, Level = Empty, Text = No nodes in the topology }", Summary(0, 0, 0).ToString());
+
+        ViewerCulture.German(() => Assert.Equal(words, summary.ToString()));
     }
 
     /// <summary>A heap of answers that says, from its own side, how many times it was walked and how many answers it

@@ -79,14 +79,18 @@ public sealed record ClusterStatus(
                 JsonRead.Time(root, "generated"),
                 JsonRead.Count(root, "intervalSeconds"),
                 JsonRead.Text(root, "kubernetesVersion"),
-                [.. JsonRead.Items(root, "nodes").Select(ClusterNode.Read).OfType<ClusterNode>()],
-                [.. JsonRead.Items(root, "namespaces").Select(ClusterNamespace.Read).OfType<ClusterNamespace>()]));
+                ReadAll<ClusterNode>(root, "nodes", ClusterNode.Read),
+                ReadAll<ClusterNamespace>(root, "namespaces", ClusterNamespace.Read)));
         }
         catch (JsonException)
         {
             return new Parsed<ClusterStatus>(null, "the file is not valid JSON");
         }
     }
+
+    internal static IReadOnlyList<T> ReadAll<T>(JsonElement? parent, string name, Func<JsonElement, T?> read)
+        where T : class =>
+        [.. JsonRead.Items(parent, name).Select(read).OfType<T>()];
 
     private static bool HasArray(JsonElement root, string name) =>
         root.TryGetProperty(name, out var array) && array.ValueKind == JsonValueKind.Array;
@@ -174,8 +178,8 @@ public sealed record ClusterNamespace(string Name, IReadOnlyList<ClusterPod> Pod
         JsonRead.Text(element, "name") is { } name
             ? new ClusterNamespace(
                 name,
-                [.. JsonRead.Items(element, "pods").Select(ClusterPod.Read).OfType<ClusterPod>()],
-                [.. JsonRead.Items(element, "volumes").Select(ClusterVolume.Read).OfType<ClusterVolume>()])
+                ClusterStatus.ReadAll<ClusterPod>(element, "pods", ClusterPod.Read),
+                ClusterStatus.ReadAll<ClusterVolume>(element, "volumes", ClusterVolume.Read))
             : null;
 }
 

@@ -323,6 +323,99 @@ public class RuntimeBoxLinkEdgeCaseTests
             LinkOf(RuntimeBoxLink.Of(new RuntimeNode("app_web", RuntimeNodeKind.WebApp, "ca-web", Links: Links((RuntimeBoxLink.Site, new Uri("ftp://files.example.net/pub")))))));
     }
 
+    // ----- What the kind says, and only for the portal -----
+
+    /// <summary>The words a kind has of its own are the portal's alone: a plan, a cluster and a Front Door profile
+    /// that lead to their project, and a Static Web App that leads to its resources or to its site, are said by
+    /// their name as it is drawn, as every element of a kind the words do not know is.</summary>
+    [Fact]
+    public void TheWordsOfAKindAreThePortalsAloneAndTheOtherKeysSayTheName()
+    {
+        Assert.Equal(
+            "The project that deploys asp-cmdemo1 in Octopus Deploy" + OctopusHint,
+            TitleOf(RuntimeBoxLink.Of(new RuntimeFrame("plan_primary", "plan", "asp-cmdemo1", Links((RuntimeBoxLink.Project, Octopus))))));
+        Assert.Equal(
+            "The namespaces of the cluster in the Azure portal: aks-demo is one of them" + PortalHint,
+            TitleOf(RuntimeBoxLink.Of(new RuntimeFrame("cluster", "cluster", "aks-demo", Links((RuntimeBoxLink.Namespaces, Namespaces))))));
+        Assert.Equal(
+            "fd-cmdemo1: demo.example.io, as a browser opens it" + NewTabHint,
+            TitleOf(RuntimeBoxLink.Of(new RuntimeFrame("afd", "frontDoorProfile", "fd-cmdemo1", Links((RuntimeBoxLink.Site, Site))))));
+        Assert.Equal(
+            "The resources in swa-demo, a query in Azure Resource Graph Explorer" + PortalHint,
+            TitleOf(RuntimeBoxLink.Of(new RuntimeNode("swa", RuntimeNodeKind.StaticSite, "swa-demo", Links: Links((RuntimeBoxLink.Resources, Graph))))));
+        Assert.Equal(
+            "swa-demo: demo.example.io, as a browser opens it" + NewTabHint,
+            TitleOf(RuntimeBoxLink.Of(new RuntimeNode("swa", RuntimeNodeKind.StaticSite, "swa-demo", Links: Links((RuntimeBoxLink.Site, Site))))));
+    }
+
+    // ----- The order the links were written in -----
+
+    /// <summary>The order of the six is the read's, not the manifest's: links written with the least specific
+    /// first still lead a frame, a region and a node to the most specific place they have.</summary>
+    [Fact]
+    public void TheOrderTheLinksWereWrittenInIsNotTheOrderTheyAreRead()
+    {
+        var backwards = Links(
+            (RuntimeBoxLink.Site, Site),
+            (RuntimeBoxLink.Project, Octopus),
+            (LinkSet.Workloads, Workloads),
+            (RuntimeBoxLink.Namespaces, Namespaces),
+            (RuntimeBoxLink.Resources, Graph),
+            (LinkSet.Portal, Portal));
+
+        Assert.Equal(Portal.AbsoluteUri, HrefOf(RuntimeBoxLink.Of(new RuntimeFrame("f", "plan", "asp", backwards))));
+        Assert.Equal(Portal.AbsoluteUri, HrefOf(RuntimeBoxLink.Of(new RuntimeRegion("r", "centralus", [], backwards))));
+        Assert.Equal(Portal.AbsoluteUri, HrefOf(RuntimeBoxLink.Of(new RuntimeNode("n", RuntimeNodeKind.Sql, "db", Links: backwards))));
+        Assert.Equal(
+            Graph.AbsoluteUri,
+            HrefOf(RuntimeBoxLink.Of(new RuntimeRegion("r", "centralus", [], Links((RuntimeBoxLink.Site, Site), (RuntimeBoxLink.Resources, Graph))))));
+    }
+
+    // ----- A name said as it is drawn -----
+
+    /// <summary>A name is said exactly as it is drawn: spaces around it are kept, and characters that mean
+    /// something in markup or in a sentence are neither escaped nor dropped - the title is text, and the page that
+    /// shows it does the escaping.</summary>
+    [Theory]
+    [InlineData(" web ")]
+    [InlineData("<b>web</b>")]
+    [InlineData("web & api: \"one\"")]
+    [InlineData("ünïcødé-név")]
+    public void ANameIsSaidExactlyAsItIsDrawn(string name)
+    {
+        Assert.Equal($"{name} in the Azure portal" + PortalHint, TitleOf(RuntimeBoxLink.Of(new RuntimeRegion("r", name, [], Links((LinkSet.Portal, Portal))))));
+        Assert.Equal($"The database {name} in the Azure portal" + PortalHint, TitleOf(RuntimeBoxLink.Of(new RuntimeNode("n", RuntimeNodeKind.Sql, name, Links: Links((LinkSet.Portal, Portal))))));
+        Assert.Equal($"The AKS cluster {name} in the Azure portal" + PortalHint, TitleOf(RuntimeBoxLink.Of(new RuntimeFrame("f", "cluster", name, Links((LinkSet.Portal, Portal))))));
+    }
+
+    // ----- The host of an address that is no name -----
+
+    /// <summary>A browser's box says the host as <c>Uri</c> gives it, also when the host is no name: an IPv4 address
+    /// without its port, an IPv6 address in its brackets, and a host of one label.</summary>
+    [Theory]
+    [InlineData("https://10.0.0.4:8443/health", "https://10.0.0.4:8443/health", "10.0.0.4")]
+    [InlineData("https://[::1]/", "https://[::1]/", "[::1]")]
+    [InlineData("https://localhost", "https://localhost/", "localhost")]
+    public void ABrowsersBoxSaysAHostThatIsNoNameAsUriGivesIt(string address, string href, string host) =>
+        Assert.Equal(
+            (href, $"ca-web: {host}, as a browser opens it" + NewTabHint),
+            LinkOf(RuntimeBoxLink.Of(new RuntimeNode("app_web", RuntimeNodeKind.WebApp, "ca-web", Links: Links((RuntimeBoxLink.Site, new Uri(address)))))));
+
+    // ----- The same box, read twice -----
+
+    /// <summary>The read keeps nothing between calls: the same box read twice gives two links equal in value, and
+    /// the link set it reads is left as it was handed.</summary>
+    [Fact]
+    public void TheSameBoxReadTwiceGivesTheSameLinkAndLeavesItsLinksAsTheyWere()
+    {
+        var links = Links((RuntimeBoxLink.Project, Octopus), (RuntimeBoxLink.Site, Site));
+        var frame = new RuntimeFrame("own_web", "runtime", "web", links);
+
+        Assert.Equal(RuntimeBoxLink.Of(frame), RuntimeBoxLink.Of(frame));
+        Assert.Equal(2, links.Count);
+        Assert.Equal([RuntimeBoxLink.Project, RuntimeBoxLink.Site], links.Keys.Order(StringComparer.Ordinal));
+    }
+
     // ----- The links a test gives a box of the diagram -----
 
     private static LinkSet Links(params (string Key, Uri Address)[] links) =>

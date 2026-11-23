@@ -144,35 +144,46 @@ public static class ApplicationText
 {
     private const int LongestName = 64;
     private const int LongestVersion = 40;
+    private const string NameMarks = "-_";
+    private const string VersionMarks = "._+-";
 
     /// <summary>A deployable's name as the address takes it: letters, digits, <c>-</c> and <c>_</c>.</summary>
-    public static bool IsName(string? deployable) =>
-        deployable is { Length: > 0 and <= LongestName }
-        && deployable.All(character => char.IsAsciiLetterOrDigit(character) || character is '-' or '_');
+    public static bool IsName(string? deployable) => IsWord(deployable, LongestName, NameMarks);
 
     /// <summary>
     /// A version that may name a file: one to forty of letters, digits and <c>. _ + -</c>. The page asks for no file
     /// of any other version.
     /// </summary>
-    public static bool IsVersion(string? version) =>
-        version is { Length: > 0 and <= LongestVersion }
-        && version.All(character => char.IsAsciiLetterOrDigit(character) || character is '.' or '_' or '+' or '-');
+    public static bool IsVersion(string? version) => IsWord(version, LongestVersion, VersionMarks);
+
+    /// <summary>A word of one to <paramref name="longest" /> characters, each an ASCII letter or digit or one of <paramref name="marks" />.</summary>
+    private static bool IsWord(string? text, int longest, string marks) =>
+        text is { Length: > 0 } && text.Length <= longest
+        && text.All(character => char.IsAsciiLetterOrDigit(character) || marks.Contains(character, StringComparison.Ordinal));
 
     /// <summary>
     /// The nodes of the runtime diagram that open an application view: a web app or a container app whose manifest
     /// entry names where its deployable's diagrams are published.
     /// </summary>
-    public static IReadOnlyList<RuntimeNode> Boxes(RuntimeManifest manifest)
-    {
-        ArgumentNullException.ThrowIfNull(manifest);
-        return [.. manifest.Nodes.Where(node => node.Architecture is not null && IsName(node.Deployable))];
-    }
+    public static IReadOnlyList<RuntimeNode> Boxes(RuntimeManifest manifest) => [.. BoxesWhere(manifest, static _ => true)];
 
     /// <summary>The boxes of one deployable, the primary first; none for a deployable without a diagram, and for a name the address refuses.</summary>
     public static IReadOnlyList<RuntimeNode> Boxes(RuntimeManifest manifest, string? deployable) =>
         IsName(deployable)
-            ? [.. Boxes(manifest).Where(node => string.Equals(node.Deployable, deployable, StringComparison.OrdinalIgnoreCase)).OrderBy(node => IsPrimary(node.Role) ? 0 : 1)]
+            ? [.. BoxesWhere(manifest, node => string.Equals(node.Deployable, deployable, StringComparison.OrdinalIgnoreCase)).OrderBy(node => NodeRole.IsPrimary(node.Role) ? 0 : 1)]
             : [];
+
+    /// <summary>
+    /// The one walk over the diagram both views of the boxes take: a node is a box when it has an architecture and a
+    /// name the address takes, and is kept when it also belongs to what the caller asked for - in the diagram's order.
+    /// </summary>
+    private static IEnumerable<RuntimeNode> BoxesWhere(RuntimeManifest manifest, Func<RuntimeNode, bool> belongs)
+    {
+        ArgumentNullException.ThrowIfNull(manifest);
+        return manifest.Nodes.Where(node => IsBox(node) && belongs(node));
+    }
+
+    private static bool IsBox(RuntimeNode node) => node.Architecture is not null && IsName(node.Deployable);
 
     /// <summary>The accessible name of an application's box in the runtime diagram.</summary>
     public static string BoxLabel(RuntimeNode node)
@@ -192,7 +203,7 @@ public static class ApplicationText
         var running = nodes.Where(node => !string.IsNullOrWhiteSpace(node.Version)).ToList();
         if (running.Count > 0)
         {
-            var chosen = running.FirstOrDefault(node => IsPrimary(node.Role), running[0]);
+            var chosen = running.FirstOrDefault(node => NodeRole.IsPrimary(node.Role), running[0]);
             return new ApplicationVersion(chosen.Version!.Trim(), Runs: true);
         }
 
@@ -202,7 +213,10 @@ public static class ApplicationText
     /// <summary>
     /// The version of a deployable in an environment the page checks: what the nodes the diagram draws report (a node
     /// is found by its address, as its tile is), and the pin of the deployable's own file or of <c>versions.json</c>.
+    /// The deployable is the one the first box names; a first box that names none is refused as an argument of
+    /// <paramref name="boxes" />, since no pin can be asked for it.
     /// </summary>
+    /// <param name="boxes">The deployable's boxes, as <see cref="Boxes(RuntimeManifest, string?)"/> returns them.</param>
     public static ApplicationVersion? Version(IReadOnlyList<RuntimeNode> boxes, EnvironmentStatus? environment)
     {
         ArgumentNullException.ThrowIfNull(boxes);
@@ -211,12 +225,24 @@ public static class ApplicationText
             return null;
         }
 
-        var name = boxes[0].Deployable!;
-        var checkedNodes = environment.Deployables.SelectMany(deployable => deployable.Nodes).ToList();
-        var nodes = boxes.Select(box => (box.Role, box.Url is null ? null : checkedNodes.FirstOrDefault(node => node.Url == box.Url)?.Version));
+        var nodes = boxes.Select(box => (box.Role, CheckedNode(environment, box.Url)?.Version));
+        return Version(nodes, PinOf(environment, DeployableOf(boxes)));
+    }
+
+    /// <summary>The deployable the first of the boxes names; a box without one is refused by the argument's name.</summary>
+    private static string DeployableOf(IReadOnlyList<RuntimeNode> boxes) =>
+        boxes[0].Deployable
+        ?? throw new ArgumentException("The first box names no deployable: the boxes are the ones Boxes returns, each of a name the address takes.", nameof(boxes));
+
+    /// <summary>
+    /// The pin of a deployable in an environment: from its own file when the topology names one, else from
+    /// <c>versions.json</c> - asked by the spelling the topology gives the deployable, or by <paramref name="name" />
+    /// when the topology does not know it.
+    /// </summary>
+    private static string? PinOf(EnvironmentStatus environment, string name)
+    {
         var status = environment.Deployables.FirstOrDefault(deployable => string.Equals(deployable.Info.Name, name, StringComparison.OrdinalIgnoreCase));
-        var pinned = status?.Pinned is { } own ? own.Of(status.Info.Name) : environment.Pinned.Of(status?.Info.Name ?? name);
-        return Version(nodes, pinned);
+        return status?.Pinned is { } own ? own.Of(status.Info.Name) : environment.Pinned.Of(status?.Info.Name ?? name);
     }
 
     /// <summary>The line under the heading: <c>Version 1.0.42, as it runs</c>.</summary>
@@ -307,30 +333,59 @@ public static class ApplicationText
     public static IReadOnlyList<ViewLink> Links(IReadOnlyList<RuntimeNode> boxes, EnvironmentStatus? environment)
     {
         ArgumentNullException.ThrowIfNull(boxes);
-        var checkedNodes = environment?.Deployables.SelectMany(deployable => deployable.Nodes).ToList() ?? [];
+        var alone = boxes.Count == 1;
         var links = new List<ViewLink>();
         foreach (var box in boxes)
         {
-            if ((box.Links?[RuntimeBoxLink.Site] ?? box.Url) is { } site && site.Scheme == Uri.UriSchemeHttps)
+            if (SiteOf(box, alone) is { } site)
             {
-                links.Add(new ViewLink(
-                    boxes.Count == 1 ? "Open the app" : $"Open {box.Name}",
-                    site.AbsoluteUri,
-                    $"{box.Name}: {site.Host}, as a browser opens it{RuntimeBoxLink.NewTabSuffix}"));
+                links.Add(site);
             }
 
-            var topology = box.Url is null ? null : checkedNodes.FirstOrDefault(node => node.Url == box.Url)?.Links[LinkSet.Portal];
-            if ((topology ?? box.Links?[LinkSet.Portal]) is { } portal)
+            if (PortalOf(box, CheckedNode(environment, box.Url), alone) is { } portal)
             {
-                links.Add(new ViewLink(
-                    boxes.Count == 1 ? "Open in the Azure portal" : $"{box.Name} in the Azure portal",
-                    portal.AbsoluteUri,
-                    LinkText.Portal($"{box.Name} in the Azure portal")));
+                links.Add(portal);
             }
         }
 
         return links;
     }
+
+    /// <summary>
+    /// The link to where a box's app is: <c>links.site</c>, else the node's <c>url</c> - and only when that one is
+    /// https. Named "Open the app" when the box is <paramref name="alone" /> in its row, else after the box.
+    /// </summary>
+    private static ViewLink? SiteOf(RuntimeNode box, bool alone) =>
+        (box.Links?[RuntimeBoxLink.Site] ?? box.Url) is { } site && site.Scheme == Uri.UriSchemeHttps
+            ? new ViewLink(
+                alone ? "Open the app" : $"Open {box.Name}",
+                site.AbsoluteUri,
+                $"{box.Name}: {site.Host}, as a browser opens it{RuntimeBoxLink.NewTabSuffix}")
+            : null;
+
+    /// <summary>
+    /// The link to a box's page in the Azure portal: <c>links.portal</c> of its <paramref name="node" /> in the
+    /// topology, else of the box. Named "Open in the Azure portal" when the box is <paramref name="alone" /> in its
+    /// row, else after the box.
+    /// </summary>
+    private static ViewLink? PortalOf(RuntimeNode box, TargetStatus? node, bool alone) =>
+        (node?.Links[LinkSet.Portal] ?? box.Links?[LinkSet.Portal]) is { } portal
+            ? new ViewLink(
+                alone ? "Open in the Azure portal" : $"{box.Name} in the Azure portal",
+                portal.AbsoluteUri,
+                LinkText.Portal($"{box.Name} in the Azure portal"))
+            : null;
+
+    /// <summary>
+    /// The node of the environment a box stands for, found by its address as its tile is - the first such node, in
+    /// the order of the topology; null for a box with no address, without an environment, or when no node has it.
+    /// The addresses are compared with <see cref="Uri" /> equality, which ignores the fragment: a box at
+    /// <c>https://x/a#one</c> stands for a node at <c>https://x/a#two</c>.
+    /// </summary>
+    private static TargetStatus? CheckedNode(EnvironmentStatus? environment, Uri? address) =>
+        environment is null || address is null
+            ? null
+            : environment.Deployables.SelectMany(deployable => deployable.Nodes).FirstOrDefault(node => node.Url == address);
 
     /// <summary>"Open the diagram at full size": the image's own address, for a diagram the view fitted to its frame.</summary>
     public static ViewLink DiagramLink(Uri image, string deployable, string version)
@@ -349,8 +404,6 @@ public static class ApplicationText
         ArgumentNullException.ThrowIfNull(package);
         return package.Version is { } version ? $"{package.Name} {version}" : package.Name;
     }
-
-    private static bool IsPrimary(string? role) => string.Equals(role, NodeInfo.PrimaryRole, StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>

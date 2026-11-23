@@ -153,11 +153,10 @@ public sealed record VersionSummary(int EnvironmentsThatDiffer)
 {
     public bool Differs => EnvironmentsThatDiffer > 0;
 
-    /// <summary><c>Versions differ in 1 environment</c>; null when they differ nowhere.</summary>
+    /// <summary><c>Versions differ in 1 environment</c>, counted through <see cref="Plural" />; null when they differ nowhere.</summary>
     public string? Text => EnvironmentsThatDiffer switch
     {
         <= 0 => null,
-        1 => "Versions differ in 1 environment",
-        _ => $"Versions differ in {EnvironmentsThatDiffer} environments",
+        _ => $"Versions differ in {Plural.Of(EnvironmentsThatDiffer, "environment")}",
     };
 }

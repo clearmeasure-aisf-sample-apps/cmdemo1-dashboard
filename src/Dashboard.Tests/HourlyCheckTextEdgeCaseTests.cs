@@ -268,3 +268,36 @@ public class HourlyCheckTextEdgeCaseTests
             StringComparison.Ordinal);
     }
 }
+
+/// <summary>
+/// The tooltip's sentences are named once, at the top of <see cref="HourlyCheckText" />, and
+/// <see cref="HourlyCheckText.Title" /> only chooses which of them are said: no sentence of it is a string literal
+/// in the method's body, so a test that pins the tooltip pins the one template, not a copy of it.
+/// </summary>
+public class HourlyCheckTextTemplateTests
+{
+    [Fact]
+    public void NoSentenceOfTheTooltipIsALiteralInsideTitle()
+    {
+        var body = TitleBody();
+
+        Assert.Contains("HourlyReportWords.Intro", body, StringComparison.Ordinal);
+        var sentences = System.Text.RegularExpressions.Regex.Matches(body, "\"(?:[^\"\\\\]|\\\\.)*\"")
+            .Select(match => match.Value)
+            .Where(literal => literal.Any(char.IsLetter))
+            .ToList();
+        Assert.Empty(sentences);
+    }
+
+    /// <summary>The text of <c>Title</c>, from its declaration to the closing brace at its own indent.</summary>
+    private static string TitleBody([System.Runtime.CompilerServices.CallerFilePath] string here = "")
+    {
+        var source = File.ReadAllText(Path.GetFullPath(
+            Path.Combine(Path.GetDirectoryName(here)!, "..", "Dashboard", "Health", "ContainerAppReports.cs")));
+        var start = source.IndexOf("public static string Title(", StringComparison.Ordinal);
+        Assert.True(start >= 0, "HourlyCheckText.Title was not found where the tooltip is written");
+        var end = source.IndexOf("\n    }\n", start, StringComparison.Ordinal);
+        Assert.True(end > start, "the end of HourlyCheckText.Title was not found");
+        return source[start..end];
+    }
+}

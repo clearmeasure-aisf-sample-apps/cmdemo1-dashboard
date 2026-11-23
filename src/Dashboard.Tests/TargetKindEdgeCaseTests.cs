@@ -36,8 +36,26 @@ public class TargetKindEdgeCaseTests
     /// <summary>The two names, in the order the enum declares them: the public address first, the node behind it.</summary>
     private static readonly string[] Names = ["FrontDoor", "Node"];
 
+    /// <summary>The number each name in <see cref="Names" /> stands on, in the same order.</summary>
+    private static readonly int[] Numbers = [0, 1];
+
     /// <summary>An address no check is made to and no page shows: the one every tile below is built with.</summary>
     private static readonly Uri Url = new("https://app-west.example.net");
+
+    /// <summary>One past the last kind: the number the node steps to that the enum does not name.</summary>
+    private const TargetKind OneAboveTheTwo = (TargetKind)2;
+
+    /// <summary>One below the first kind: the number the public address steps to that the enum does not name.</summary>
+    private const TargetKind OneBelowTheFirst = (TargetKind)(-1);
+
+    /// <summary>The bits of the two kinds combined: a third number, neither kind's.</summary>
+    private const TargetKind BothEndsBits = (TargetKind)3;
+
+    /// <summary>The smallest number an <see cref="int" /> holds, read as a kind the enum does not name.</summary>
+    private const TargetKind LowestNumber = (TargetKind)int.MinValue;
+
+    /// <summary>The largest number an <see cref="int" /> holds, read as a kind the enum does not name.</summary>
+    private const TargetKind HighestNumber = (TargetKind)int.MaxValue;
 
     // ----- the two kinds, as the numbers they are -----
 
@@ -48,15 +66,19 @@ public class TargetKindEdgeCaseTests
     [Fact]
     public void TheTwoTargetKindsAreTheWholeVocabularyInTheirDeclaredOrder()
     {
+        var kinds = Enum.GetValues<TargetKind>();
+
         Assert.Equal(Names, Enum.GetNames<TargetKind>());
-        Assert.Equal([0, 1], Enum.GetValues<TargetKind>().Select(kind => (int)kind));
-        Assert.Equal(2, Enum.GetValues<TargetKind>().Length);
+        Assert.Equal(Numbers, kinds.Select(kind => (int)kind));
+        Assert.Equal(2, kinds.Length);
         Assert.Equal(typeof(int), Enum.GetUnderlyingType(typeof(TargetKind)));
         Assert.False(typeof(TargetKind).IsDefined(typeof(FlagsAttribute), false));
 
         // The list of the values is a fresh array each time it is asked for, and the same two kinds in it.
-        Assert.NotSame(Enum.GetValues<TargetKind>(), Enum.GetValues<TargetKind>());
-        Assert.Equal(Enum.GetValues<TargetKind>(), Enum.GetValues<TargetKind>());
+        var kindsFirstAsk = Enum.GetValues<TargetKind>();
+        var kindsSecondAsk = Enum.GetValues<TargetKind>();
+        Assert.NotSame(kindsFirstAsk, kindsSecondAsk);
+        Assert.Equal(kindsFirstAsk, kindsSecondAsk);
     }
 
     /// <summary>Each kind on its own number and its own word, both ways round: the number is the one the name stands
@@ -87,17 +109,17 @@ public class TargetKindEdgeCaseTests
 
         Assert.True(Enum.IsDefined(TargetKind.FrontDoor));
         Assert.True(Enum.IsDefined(TargetKind.Node));
-        Assert.False(Enum.IsDefined((TargetKind)(-1)));
-        Assert.False(Enum.IsDefined((TargetKind)2));
-        Assert.False(Enum.IsDefined((TargetKind)int.MinValue));
-        Assert.False(Enum.IsDefined((TargetKind)int.MaxValue));
+        Assert.False(Enum.IsDefined(OneBelowTheFirst));
+        Assert.False(Enum.IsDefined(OneAboveTheTwo));
+        Assert.False(Enum.IsDefined(LowestNumber));
+        Assert.False(Enum.IsDefined(HighestNumber));
 
-        Assert.Null(Enum.GetName((TargetKind)2));
-        Assert.Null(Enum.GetName((TargetKind)(-1)));
-        Assert.Equal("2", ((TargetKind)2).ToString());
-        Assert.Equal("-1", ((TargetKind)(-1)).ToString());
-        Assert.Equal("-2147483648", ((TargetKind)int.MinValue).ToString());
-        Assert.Equal("2147483647", ((TargetKind)int.MaxValue).ToString());
+        Assert.Null(Enum.GetName(OneAboveTheTwo));
+        Assert.Null(Enum.GetName(OneBelowTheFirst));
+        Assert.Equal("2", OneAboveTheTwo.ToString());
+        Assert.Equal("-1", OneBelowTheFirst.ToString());
+        Assert.Equal("-2147483648", LowestNumber.ToString());
+        Assert.Equal("2147483647", HighestNumber.ToString());
     }
 
     // ----- the two names, as the words they are: none empty, none another's -----
@@ -163,13 +185,13 @@ public class TargetKindEdgeCaseTests
 
     // ----- the boundary: the kinds combined as numbers -----
 
-    /// <summary>A kind is a choice and not a set: the operators work on the numbers underneath, so the two combine
-    /// into the node - <c>FrontDoor</c> adding nothing, its number being zero - while an intersection of the two lands
-    /// on the public address, the one end neither of them was jointly. An exclusive or of a kind with itself steps
-    /// back to zero, the complement of a kind lands on no kind at all, and one step past either end is a number the
-    /// enum does not name.</summary>
+    /// <summary>The two kinds combined by or and and are one of the two: <c>FrontDoor</c> adds nothing, its number
+    /// being zero, so the or of the two lands on the node and the and on the public address, in either order. The
+    /// other three facts of the boundary - <see cref="AKindCombinedWithANumberOutsideTheTwoIsANumberTheEnumDoesNotName"
+    /// />, <see cref="AnExclusiveOrAndAComplementStepOffTheVocabulary" /> and <see cref="AStepPastEitherEndIsNoKind" />
+    /// - say what the same operators do when they step past the two or off the vocabulary altogether.</summary>
     [Fact]
-    public void TwoTargetKindsCombinedAreAnotherKindOrNoKindAtAll()
+    public void TheTwoKindsCombinedByOrAndAndAreOneOfTheTwo()
     {
         Assert.Equal(TargetKind.Node, TargetKind.FrontDoor | TargetKind.Node);
         Assert.Equal(TargetKind.Node, TargetKind.Node | TargetKind.FrontDoor);
@@ -178,25 +200,55 @@ public class TargetKindEdgeCaseTests
         Assert.Equal(TargetKind.FrontDoor, TargetKind.FrontDoor & TargetKind.Node);
         Assert.Equal(TargetKind.FrontDoor, TargetKind.Node & TargetKind.FrontDoor);
         Assert.Equal(TargetKind.Node, TargetKind.Node & TargetKind.Node);
+    }
 
+    /// <summary>A kind combined with a number the enum does not name - the one above the two and the bits of the two
+    /// together - is a number the enum does not name: the or lands on a third number with no word of the enum on it,
+    /// and reading the bits back one at a time gives the node, the number itself, and the public address neither of
+    /// the two was. The other facts of the boundary - <see cref="TheTwoKindsCombinedByOrAndAndAreOneOfTheTwo" />,
+    /// <see cref="AnExclusiveOrAndAComplementStepOffTheVocabulary" /> and <see cref="AStepPastEitherEndIsNoKind" /> -
+    /// say what the same operators do over the two kinds and past their ends.</summary>
+    [Fact]
+    public void AKindCombinedWithANumberOutsideTheTwoIsANumberTheEnumDoesNotName()
+    {
         // A number the enum does not name combines with a kind it does: the bits land on a third number, and reading
         // them back one at a time gives the node, the number itself, and the public address neither of the two was.
-        Assert.Equal((TargetKind)3, TargetKind.Node | (TargetKind)2);
-        Assert.False(Enum.IsDefined(TargetKind.Node | (TargetKind)2));
-        Assert.Equal(TargetKind.Node, (TargetKind)3 & TargetKind.Node);
-        Assert.Equal((TargetKind)2, (TargetKind)3 & (TargetKind)2);
-        Assert.Equal(TargetKind.FrontDoor, (TargetKind)2 & TargetKind.Node);
+        Assert.Equal(BothEndsBits, TargetKind.Node | OneAboveTheTwo);
+        Assert.False(Enum.IsDefined(TargetKind.Node | OneAboveTheTwo));
+        Assert.Equal(TargetKind.Node, BothEndsBits & TargetKind.Node);
+        Assert.Equal(OneAboveTheTwo, BothEndsBits & OneAboveTheTwo);
+        Assert.Equal(TargetKind.FrontDoor, OneAboveTheTwo & TargetKind.Node);
+    }
 
+    /// <summary>An exclusive or of a kind with itself is zero - the public address, though what it says is the absence
+    /// of any bit - and the complement of a kind steps off the vocabulary: a number the enum does not name, with no
+    /// word of the two for it. The other facts of the boundary - <see cref="TheTwoKindsCombinedByOrAndAndAreOneOfTheTwo" />
+    /// , <see cref="AKindCombinedWithANumberOutsideTheTwoIsANumberTheEnumDoesNotName" /> and
+    /// <see cref="AStepPastEitherEndIsNoKind" /> - say what the same operators do over the two kinds and past their
+    /// ends.</summary>
+    [Fact]
+    public void AnExclusiveOrAndAComplementStepOffTheVocabulary()
+    {
         // An exclusive or of a kind with itself is zero - the public address, though what it says is the absence of any bit.
         Assert.Equal(TargetKind.FrontDoor, TargetKind.Node ^ TargetKind.Node);
         Assert.Equal(TargetKind.Node, TargetKind.FrontDoor ^ TargetKind.Node);
         Assert.Equal((TargetKind)(-2), ~TargetKind.Node);
         Assert.False(Enum.IsDefined(~TargetKind.Node));
+    }
 
+    /// <summary>One step past either end is a number the enum does not name - the node stepping up and the public
+    /// address stepping down - while the step from one kind to the other lands on the other kind: one apart, and not
+    /// one beyond. The other facts of the boundary - <see cref="TheTwoKindsCombinedByOrAndAndAreOneOfTheTwo" />,
+    /// <see cref="AKindCombinedWithANumberOutsideTheTwoIsANumberTheEnumDoesNotName" /> and
+    /// <see cref="AnExclusiveOrAndAComplementStepOffTheVocabulary" /> - say what the same operators do when the
+    /// numbers are combined rather than stepped.</summary>
+    [Fact]
+    public void AStepPastEitherEndIsNoKind()
+    {
         // One past either end, and the step from one kind to the other.
-        Assert.Equal((TargetKind)2, TargetKind.Node + 1);
+        Assert.Equal(OneAboveTheTwo, TargetKind.Node + 1);
         Assert.False(Enum.IsDefined(TargetKind.Node + 1));
-        Assert.Equal((TargetKind)(-1), TargetKind.FrontDoor - 1);
+        Assert.Equal(OneBelowTheFirst, TargetKind.FrontDoor - 1);
         Assert.False(Enum.IsDefined(TargetKind.FrontDoor - 1));
         Assert.Equal(TargetKind.Node, TargetKind.FrontDoor + 1);
         Assert.Equal(TargetKind.FrontDoor, TargetKind.Node - 1);
@@ -276,17 +328,19 @@ public class TargetKindEdgeCaseTests
     public void ANumberOutsideTheTwoIsReadAsAKindThatIsNoKind()
     {
         Assert.True(Enum.TryParse<TargetKind>("2", out var above));
-        Assert.Equal((TargetKind)2, above);
+        Assert.Equal(OneAboveTheTwo, above);
         Assert.False(Enum.IsDefined(above));
         Assert.Null(Enum.GetName(above));
 
         Assert.True(Enum.TryParse<TargetKind>("-1", out var below));
-        Assert.Equal((TargetKind)(-1), below);
+        Assert.Equal(OneBelowTheFirst, below);
         Assert.False(Enum.IsDefined(below));
+        Assert.Null(Enum.GetName(below));
 
         Assert.True(Enum.TryParse<TargetKind>("2147483647", out var top));
-        Assert.Equal((TargetKind)int.MaxValue, top);
+        Assert.Equal(HighestNumber, top);
         Assert.False(Enum.IsDefined(top));
+        Assert.Null(Enum.GetName(top));
 
         Assert.False(Enum.TryParse<TargetKind>("node", out _));
         Assert.True(Enum.TryParse<TargetKind>("node", ignoreCase: true, out var forgiven));
@@ -297,7 +351,7 @@ public class TargetKindEdgeCaseTests
         Assert.Equal(above, forgivenNumber);
         Assert.False(Enum.IsDefined(forgivenNumber));
         Assert.True(Enum.TryParse<TargetKind>("-01", ignoreCase: true, out var cipher));
-        Assert.Equal((TargetKind)(-1), cipher);
+        Assert.Equal(OneBelowTheFirst, cipher);
     }
 
     // ----- the surface the enum declares -----
@@ -329,7 +383,7 @@ public class TargetKindEdgeCaseTests
         var fields = type.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
 
         Assert.Equal(Names, fields.Select(field => field.Name));
-        Assert.Equal([0, 1], fields.Select(field => (int)field.GetRawConstantValue()!));
+        Assert.Equal(Numbers, fields.Select(field => (int)field.GetRawConstantValue()!));
         Assert.All(fields, field =>
         {
             Assert.Equal(type, field.FieldType);
@@ -351,11 +405,11 @@ public class TargetKindEdgeCaseTests
     {
         var address = new TargetStatus(TargetKind.FrontDoor, "Front Door", new Uri("https://demo.azurefd.net"));
         var node = new TargetStatus(TargetKind.Node, "app-west", Url, "westus3", "primary");
-        var outside = new TargetStatus((TargetKind)2, "app-west", Url, "westus3", "primary");
+        var outside = new TargetStatus(OneAboveTheTwo, "app-west", Url, "westus3", "primary");
 
         Assert.Equal(TargetKind.FrontDoor, address.Kind);
         Assert.Equal(TargetKind.Node, node.Kind);
-        Assert.Equal((TargetKind)2, outside.Kind);
+        Assert.Equal(OneAboveTheTwo, outside.Kind);
         Assert.False(Enum.IsDefined(outside.Kind));
         Assert.Equal("2", outside.Kind.ToString());
 
@@ -366,6 +420,31 @@ public class TargetKindEdgeCaseTests
         Assert.Equal(node.Name, outside.Name);
         Assert.Equal(node.Url, outside.Url);
         Assert.Equal(outside.Kind, new TargetStatus(outside.Kind, outside.Name, outside.Url, outside.Region, outside.Role).Kind);
+    }
+
+    /// <summary>The kind a tile is handed is the part of the tile it is: <see cref="TargetStatus.Kind" /> reads it
+    /// back exactly, the named kinds by their names and the kind the enum does not name by its number, and an
+    /// undefined kind stays undefined, saying only the number it stands on. The kind touches nothing else of the
+    /// tile: the name, the address, the region and the role of a tile built with the undefined kind stand where the
+    /// words of a node tile put them, and nowhere else does the kind reach.</summary>
+    [Fact]
+    public void TheKindOfATileReadsBackWhatItWasGivenAndLeavesTheRestUntouched()
+    {
+        var frontDoor = new TargetStatus(TargetKind.FrontDoor, "Front Door", new Uri("https://demo.azurefd.net"));
+        var node = new TargetStatus(TargetKind.Node, "app-west", Url, "westus3", "primary");
+        var undefined = new TargetStatus(OneAboveTheTwo, "app-west", Url, "westus3", "primary");
+
+        Assert.Equal(TargetKind.FrontDoor, frontDoor.Kind);
+        Assert.Equal(TargetKind.Node, node.Kind);
+        Assert.Equal(OneAboveTheTwo, undefined.Kind);
+
+        Assert.False(Enum.IsDefined(undefined.Kind));
+        Assert.Equal("2", undefined.Kind.ToString());
+
+        Assert.Equal(node.Name, undefined.Name);
+        Assert.Equal(node.Url, undefined.Url);
+        Assert.Equal(node.Region, undefined.Region);
+        Assert.Equal(node.Role, undefined.Role);
     }
 
     /// <summary>The kind of a box the topology holds no endpoint for is no kind at all: the runtime view looks for a
@@ -390,8 +469,8 @@ public class TargetKindEdgeCaseTests
 
         // A kind that is absent and a kind that is undefined are two different nothings: the one holds no number at
         // all, the other a number the enum does not name.
-        Assert.Equal((TargetKind)2, absent ?? (TargetKind)2);
-        Assert.False(Enum.IsDefined(absent ?? (TargetKind)2));
+        Assert.Equal(OneAboveTheTwo, absent ?? OneAboveTheTwo);
+        Assert.False(Enum.IsDefined(absent ?? OneAboveTheTwo));
         Assert.False(((TargetKind?)TargetKind.FrontDoor).Equals(absent));
     }
 }

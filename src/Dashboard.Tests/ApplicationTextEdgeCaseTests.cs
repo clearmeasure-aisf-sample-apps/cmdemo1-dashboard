@@ -100,6 +100,31 @@ public class ApplicationTextEdgeCaseTests
         Assert.Null(ApplicationText.File(new Uri(Base), At(41), "svg"));
     }
 
+    /// <summary>The two guards share one decision but keep their own bound and their own marks: a word of forty-one to
+    /// sixty-four letters is a name and no version, the dot and the plus spell a version and no name, and the dash and
+    /// the underscore spell both.</summary>
+    [Theory]
+    [InlineData(41, true, false)]
+    [InlineData(64, true, false)]
+    [InlineData(65, false, false)]
+    public void ANameAndAVersionAreBoundedEachByItsOwnLength(int letters, bool isName, bool isVersion)
+    {
+        Assert.Equal(isName, ApplicationText.IsName(At(letters)));
+        Assert.Equal(isVersion, ApplicationText.IsVersion(At(letters)));
+    }
+
+    /// <summary>The marks of the one guard do not leak into the other.</summary>
+    [Theory]
+    [InlineData("1.0", false, true)]
+    [InlineData("1+0", false, true)]
+    [InlineData("1-0", true, true)]
+    [InlineData("1_0", true, true)]
+    public void ANameAndAVersionAreSpelledEachWithItsOwnMarks(string word, bool isName, bool isVersion)
+    {
+        Assert.Equal(isName, ApplicationText.IsName(word));
+        Assert.Equal(isVersion, ApplicationText.IsVersion(word));
+    }
+
     /// <summary>What is refused although it is spelled like a version: the letters outside the ASCII - an accented
     /// letter, a full-width digit, a superscript, the two letters an English <c>i</c> turns into in Turkish - a space
     /// or a tab or a newline at either end, and the comma, the colon, the slash and the percent sign a hostile address
@@ -207,6 +232,37 @@ public class ApplicationTextEdgeCaseTests
         Assert.Empty(ApplicationText.Boxes(manifest, " "));
         Assert.Empty(ApplicationText.Boxes(manifest, null));
         Assert.Empty(ApplicationText.Boxes(Diagram(), "ui"));
+    }
+
+    /// <summary>The view of one deployable and the view of the whole diagram take one walk and decide a box alike: for
+    /// every deployable on a mixed diagram, asked in any case, the boxes of that deployable are exactly the diagram's
+    /// boxes whose deployable is that name, the primary first and the rest in the diagram's order - no node without an
+    /// architecture or with a name the address refuses slips into the one and not the other.</summary>
+    [Fact]
+    public void TheBoxesOfOneDeployableAreTheDiagramsBoxesOfThatName()
+    {
+        var manifest = Diagram(
+            Box("ca_ui_standby", "ui", "https://ca-ui-2.example.io", "standby"),
+            Box("ca_api", "API", "https://ca-api.example.io"),
+            new RuntimeNode("no_architecture", RuntimeNodeKind.ContainerApp, "ca-x", Deployable: "ui"),
+            Box("ca_refused", "ui/../x"),
+            Box("ca_ui_primary", "UI", "https://ca-ui.example.io", "primary"),
+            Box("ca_api_two", "api", "https://ca-api-2.example.io"));
+        var all = ApplicationText.Boxes(manifest);
+
+        foreach (var deployable in new[] { "ui", "Ui", "api", "API", "worker" })
+        {
+            var expected = all
+                .Where(box => string.Equals(box.Deployable, deployable, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(box => string.Equals(box.Role, "primary", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                .Select(box => box.Alias);
+
+            Assert.Equal(expected, ApplicationText.Boxes(manifest, deployable).Select(box => box.Alias));
+        }
+
+        Assert.Equal(["ca_ui_primary", "ca_ui_standby"], ApplicationText.Boxes(manifest, "ui").Select(box => box.Alias));
+        Assert.Equal(["ca_api", "ca_api_two"], ApplicationText.Boxes(manifest, "api").Select(box => box.Alias));
+        Assert.Empty(ApplicationText.Boxes(manifest, "worker"));
     }
 
     /// <summary>The name of a deployable is matched by its letters without heeding their case - ordinally, so it is
@@ -527,6 +583,29 @@ public class ApplicationTextEdgeCaseTests
         Assert.Equal("boxes", Assert.Throws<ArgumentNullException>(() => ApplicationText.Version(none!, uat)).ParamName);
     }
 
+    /// <summary>The version is asked of the deployable the first box names, so a list whose first box names none -
+    /// which <see cref="ApplicationText.Boxes(RuntimeManifest, string)" /> never returns - is refused by the
+    /// argument's name, not with a dictionary's complaint about a key the call never mentioned. Without an
+    /// environment nothing is asked of the boxes, and nothing is known, as before. The links of the heading row ask
+    /// no deployable of a box: they are written of such a box all the same.</summary>
+    [Fact]
+    public void ABoxWithoutADeployableIsRefusedByTheBoxesName()
+    {
+        var nameless = Box("ca_ui", null, "https://ca-ui.example.io", "primary");
+        var uat = Uat("""{ "environments": [ { "name": "uat", "deployables": [] } ] }""");
+        uat.Record(PinnedVersions.Parse("""{ "ui": "1.0.40" }"""));
+
+        var refused = Assert.Throws<ArgumentException>(() => ApplicationText.Version([nameless], uat));
+
+        Assert.Equal("boxes", refused.ParamName);
+        Assert.Contains("names no deployable", refused.Message, StringComparison.Ordinal);
+        Assert.Null(ApplicationText.Version([nameless], null));
+
+        // Only the first box names the deployable: a later one without a name is asked nothing of it.
+        Assert.Equal(new ApplicationVersion("1.0.40", Runs: false), ApplicationText.Version([Box("ca_api", "ui"), nameless], uat));
+        Assert.Equal(["Open the app"], ApplicationText.Links([nameless], uat).Select(link => link.Text));
+    }
+
     // -------------------------------------------------------------------------------------------- the file of a version
 
     /// <summary>The address of the diagram is the one thing the file is built onto, and it is taken as it stands with
@@ -802,6 +881,55 @@ public class ApplicationTextEdgeCaseTests
         Assert.Equal(
             ["https://portal.example.net/#from-manifest"],
             ApplicationText.Links([Box("ca_ui", "ui", links: Links((LinkSet.Portal, "https://portal.example.net/#from-manifest")))], uat).Select(link => link.Href));
+    }
+
+    /// <summary>The row is said box by box, the app first and its portal after: with two boxes each link names its
+    /// box, and a box with only a portal page says that one alone, in its place.</summary>
+    [Fact]
+    public void SeveralBoxesSayTheirAppThenTheirPortalEachInTurn()
+    {
+        var first = Box("ca_ui", "ui", "https://ca-ui.example.io", "primary", Links((LinkSet.Portal, "https://portal.example.net/#ui")));
+        var second = Box("ca_ui2", "ui", "http://ca-ui2.example.io", links: Links((LinkSet.Portal, "https://portal.example.net/#ui2")));
+        var third = Box("ca_ui3", "ui", "https://ca-ui3.example.io");
+
+        Assert.Equal(
+            [
+                new ViewLink("Open ca_ui", "https://ca-ui.example.io/", "ca_ui: ca-ui.example.io, as a browser opens it (opens in a new tab)"),
+                new ViewLink("ca_ui in the Azure portal", "https://portal.example.net/#ui", LinkText.Portal("ca_ui in the Azure portal")),
+                new ViewLink("ca_ui2 in the Azure portal", "https://portal.example.net/#ui2", LinkText.Portal("ca_ui2 in the Azure portal")),
+                new ViewLink("Open ca_ui3", "https://ca-ui3.example.io/", "ca_ui3: ca-ui3.example.io, as a browser opens it (opens in a new tab)"),
+            ],
+            ApplicationText.Links([first, second, third], null));
+    }
+
+    /// <summary>The version and the portal link find the node a box stands for by one rule: the first node of the
+    /// topology at the box's address, compared as <see cref="Uri" /> equality compares them - the fragment is not
+    /// heeded, so a box at <c>#one</c> stands for a node at <c>#two</c>, and of two nodes at one address the first in
+    /// the topology's order is the one both members speak of.</summary>
+    [Fact]
+    public void TheVersionAndThePortalFindTheSameNodeByOneRule()
+    {
+        var box = Box("ca_ui", "ui", "https://ca-ui.example.io/a#one", "primary");
+        var uat = Uat("""
+            { "environments": [ { "name": "uat", "deployables": [
+                { "name": "ui", "nodes": [
+                    { "name": "ca-ui", "role": "primary", "url": "https://ca-ui.example.io/a#two", "links": { "portal": "https://portal.example.net/#first" } } ] },
+                { "name": "aisf", "nodes": [
+                    { "name": "ca-ui-again", "url": "https://ca-ui.example.io/a", "links": { "portal": "https://portal.example.net/#second" } } ] } ] } ] }
+            """);
+        uat.Deployables[0].Nodes[0].Record(Answer("1.0.1"));
+        uat.Deployables[1].Nodes[0].Record(Answer("9.9.9"));
+
+        Assert.Equal(new ApplicationVersion("1.0.1", Runs: true), ApplicationText.Version([box], uat));
+        Assert.Equal(
+            ["https://ca-ui.example.io/a#one", "https://portal.example.net/#first"],
+            ApplicationText.Links([box], uat).Select(link => link.Href));
+
+        // An address that differs by more than its fragment is another node: neither member finds one.
+        var elsewhere = Box("ca_ui", "ui", "https://ca-ui.example.io/b#one", "primary");
+
+        Assert.Null(ApplicationText.Version([elsewhere], uat));
+        Assert.Equal(["https://ca-ui.example.io/b#one"], ApplicationText.Links([elsewhere], uat).Select(link => link.Href));
     }
 
     /// <summary>Every link of the heading row goes where the reader is told to expect them - the app itself and the

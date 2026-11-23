@@ -15,6 +15,19 @@ internal static class JsonRead
             ? section
             : null;
 
+    /// <summary>
+    /// The record an object stands for, made by <paramref name="read"/> from the text under <paramref name="identity"/>
+    /// and the object itself; null when there is no object or no such text, the one part without which there is no record.
+    /// </summary>
+    public static T? Identified<T>(JsonElement? parent, string identity, Func<string, JsonElement, T> read)
+        where T : class =>
+        parent is { } value && Text(value, identity) is { } key ? read(key, value) : null;
+
+    /// <summary>The record an object stands for, made by <paramref name="read"/>; null when there is no object.</summary>
+    public static T? Present<T>(JsonElement? parent, Func<JsonElement, T> read)
+        where T : class =>
+        parent is { ValueKind: JsonValueKind.Object } value ? read(value) : null;
+
     /// <summary>The elements of the array under <paramref name="name"/>; none when there is no array.</summary>
     public static IEnumerable<JsonElement> Items(JsonElement? parent, string name) =>
         parent is { ValueKind: JsonValueKind.Object } value && value.TryGetProperty(name, out var array) && array.ValueKind == JsonValueKind.Array
@@ -23,8 +36,12 @@ internal static class JsonRead
 
     /// <summary>A number that is not negative; null for anything else.</summary>
     public static double? Number(JsonElement? parent, string name) =>
+        Signed(parent, name) is { } real and >= 0 ? real : null;
+
+    /// <summary>Any finite number, also below zero (such as a refund); null for anything else.</summary>
+    public static double? Signed(JsonElement? parent, string name) =>
         parent is { ValueKind: JsonValueKind.Object } value && value.TryGetProperty(name, out var number) && number.ValueKind == JsonValueKind.Number
-            && number.TryGetDouble(out var real) && double.IsFinite(real) && real >= 0
+            && number.TryGetDouble(out var real) && double.IsFinite(real)
             ? real
             : null;
 

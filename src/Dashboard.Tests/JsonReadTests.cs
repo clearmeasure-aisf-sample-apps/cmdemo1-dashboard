@@ -83,6 +83,20 @@ public class JsonReadTests
         Assert.Equal(expected, JsonRead.Number(Root(json), "n"));
 
     [Theory]
+    [InlineData("""{ "n": 3.5 }""", 3.5)]
+    [InlineData("""{ "n": 0 }""", 0.0)]
+    [InlineData("""{ "n": -0.3 }""", -0.3)] // below zero, such as a refund
+    [InlineData("""{ "n": -12 }""", -12.0)]
+    [InlineData("""{ "n": 1e400 }""", null)] // not finite
+    [InlineData("""{ "n": "-3" }""", null)] // text, not a number
+    [InlineData("""{ "n": true }""", null)]
+    [InlineData("""{ "n": {} }""", null)]
+    [InlineData("""{ "n": null }""", null)]
+    [InlineData("""{ }""", null)] // no such name
+    public void ASignedNumberIsAnyFiniteNumber(string json, double? expected) =>
+        Assert.Equal(expected, JsonRead.Signed(Root(json), "n"));
+
+    [Theory]
     [InlineData("""{ "n": 2.6 }""", 3)] // rounded
     [InlineData("""{ "n": 2.4 }""", 2)]
     [InlineData("""{ "n": 0 }""", 0)]
@@ -180,6 +194,7 @@ public class JsonReadTests
         Assert.Null(JsonRead.Section(null, "metrics"));
         Assert.Empty(JsonRead.Items(null, "pools"));
         Assert.Null(JsonRead.Number(null, "cpu"));
+        Assert.Null(JsonRead.Signed(null, "cpu"));
         Assert.Null(JsonRead.Count(null, "cpu"));
         Assert.Null(JsonRead.Long(null, "cpu"));
         Assert.Null(JsonRead.Flag(null, "ready"));
@@ -187,4 +202,47 @@ public class JsonReadTests
         Assert.Null(JsonRead.Time(null, "generated"));
         Assert.Null(JsonRead.Address(null, "url"));
     }
+
+    private sealed record Named(string Name, int? Count);
+
+    [Fact]
+    public void AnIdentifiedRecordIsMadeFromItsIdentityAndItsObject()
+    {
+        var named = JsonRead.Identified(Root(Answer), "name", static (name, parts) => new Named(name, JsonRead.Count(parts, "count")));
+
+        Assert.Equal(new Named("ui", 2), named);
+    }
+
+    [Theory]
+    [InlineData("""{ "count": 2 }""")] // no identity
+    [InlineData("""{ "name": "  ", "count": 2 }""")] // an empty identity
+    [InlineData("""{ "name": 7 }""")] // an identity of another type
+    [InlineData("""[ { "name": "ui" } ]""")] // not an object
+    public void ThereIsNoIdentifiedRecordWithoutItsIdentity(string json)
+    {
+        var made = false;
+
+        var named = JsonRead.Identified(Root(json), "name", (name, _) => { made = true; return new Named(name, null); });
+
+        Assert.Null(named);
+        Assert.False(made);
+    }
+
+    [Fact]
+    public void ThereIsNoIdentifiedRecordWithoutAnObject() =>
+        Assert.Null(JsonRead.Identified(null, "name", static (name, _) => new Named(name, null)));
+
+    [Fact]
+    public void APresentRecordIsMadeFromAnyObjectEvenAnEmptyOne()
+    {
+        Assert.Equal(new Named("x", 2), JsonRead.Present(Root(Answer), static parts => new Named("x", JsonRead.Count(parts, "count"))));
+        Assert.Equal(new Named("x", null), JsonRead.Present(Root("{}"), static parts => new Named("x", JsonRead.Count(parts, "count"))));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("[]")]
+    [InlineData("3")]
+    public void ThereIsNoPresentRecordWithoutAnObject(string? json) =>
+        Assert.Null(JsonRead.Present(json is null ? null : Root(json), static _ => new Named("x", null)));
 }

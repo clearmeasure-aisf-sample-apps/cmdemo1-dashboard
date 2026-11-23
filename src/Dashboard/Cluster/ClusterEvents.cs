@@ -60,26 +60,56 @@ public static class ClusterEventDetector
         ArgumentNullException.ThrowIfNull(before);
         ArgumentNullException.ThrowIfNull(after);
         ArgumentNullException.ThrowIfNull(environments);
-        var events = new List<DashboardEvent>();
-        var nodes = before.Nodes.GroupBy(node => node.Name, StringComparer.Ordinal).ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+        var events = new List<DashboardEvent>(NodeChanges(before, after, at));
+        var changes = PodChanges(before, after, EnvironmentNames(environments), at);
+        events.AddRange(NamedPodChanges(changes));
+        if (Overflow(changes, at) is { } overflow)
+        {
+            events.Add(overflow);
+        }
+
+        return events;
+    }
+
+    /// <summary>Each node of this reading whose readiness differs from its first reading in the last one, in this reading's order.</summary>
+    private static IEnumerable<DashboardEvent> NodeChanges(ClusterStatus before, ClusterStatus after, DateTimeOffset at)
+    {
+        var nodes = FirstReadingOfNodes(before);
         foreach (var node in after.Nodes)
         {
             if (nodes.TryGetValue(node.Name, out var known) && known.Ready != node.Ready)
             {
-                events.Add(node.Ready
+                yield return node.Ready
                     ? new DashboardEvent(at, EventKind.Cluster, EventLevel.Good, null, ClusterPlace, $"Node {ClusterText.ShortNode(node.Name)} is ready again")
-                    : new DashboardEvent(at, EventKind.Cluster, EventLevel.Problem, null, ClusterPlace, $"Node {ClusterText.ShortNode(node.Name)} is not ready"));
+                    : new DashboardEvent(at, EventKind.Cluster, EventLevel.Problem, null, ClusterPlace, $"Node {ClusterText.ShortNode(node.Name)} is not ready");
             }
         }
+    }
 
-        var names = environments
+    /// <summary>The nodes of a reading by name: of a name listed twice, the first reading is the one compared.</summary>
+    private static Dictionary<string, ClusterNode> FirstReadingOfNodes(ClusterStatus status) =>
+        status.Nodes
+            .GroupBy(node => node.Name, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+
+    /// <summary>The pods of a reading by namespace and name: of a pod listed twice, the first reading is the one compared.</summary>
+    private static Dictionary<(string Namespace, string Pod), ClusterPod> FirstReadingOfPods(ClusterStatus status) =>
+        status.Pods
+            .GroupBy(entry => (entry.Namespace.Name, entry.Pod.Name))
+            .ToDictionary(group => group.Key, group => group.First().Pod);
+
+    /// <summary>The environment's name per namespace: of a namespace two environments share, the first one names it.</summary>
+    private static Dictionary<string, string> EnvironmentNames(IEnumerable<EnvironmentInfo> environments) =>
+        environments
             .Where(environment => environment.Namespace is not null)
             .GroupBy(environment => environment.Namespace!, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First().Name, StringComparer.Ordinal);
+
+    /// <summary>The one event of each pod that changed, in this reading's order, named for its namespace's environment.</summary>
+    private static List<DashboardEvent> PodChanges(ClusterStatus before, ClusterStatus after, Dictionary<string, string> names, DateTimeOffset at)
+    {
         var (beforeAt, afterAt) = (before.AsOf(at), after.AsOf(at));
-        var pods = before.Pods
-            .GroupBy(entry => (entry.Namespace.Name, entry.Pod.Name))
-            .ToDictionary(group => group.Key, group => group.First().Pod);
+        var pods = FirstReadingOfPods(before);
         var changes = new List<DashboardEvent>();
         foreach (var (space, pod) in after.Pods)
         {
@@ -90,20 +120,23 @@ public static class ClusterEventDetector
             }
         }
 
-        events.AddRange(changes.Take(NamedPods));
-        if (changes.Count > NamedPods)
-        {
-            events.Add(new DashboardEvent(
+        return changes;
+    }
+
+    /// <summary>The pod changes named one by one: the first <see cref="NamedPods"/>, counted over the pods alone - nodes never count against them.</summary>
+    private static IEnumerable<DashboardEvent> NamedPodChanges(List<DashboardEvent> changes) => changes.Take(NamedPods);
+
+    /// <summary>The one event that counts the pod changes past the <see cref="NamedPods"/> named; null when none is left over.</summary>
+    private static DashboardEvent? Overflow(List<DashboardEvent> changes, DateTimeOffset at) =>
+        changes.Count > NamedPods
+            ? new DashboardEvent(
                 at,
                 EventKind.Cluster,
                 EventLevel.Info,
                 null,
                 ClusterPlace,
-                string.Create(CultureInfo.InvariantCulture, $"{changes.Count - NamedPods} more pods changed in this check")));
-        }
-
-        return events;
-    }
+                string.Create(CultureInfo.InvariantCulture, $"{changes.Count - NamedPods} more pods changed in this check"))
+            : null;
 
     /// <summary>
     /// Azure's verdict on the AKS service or its power state changed between the last facts the page read and these.

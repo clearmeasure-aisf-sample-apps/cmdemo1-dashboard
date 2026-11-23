@@ -25,7 +25,7 @@ public sealed class DashboardMonitor
     private readonly PinnedVersionsReader _versions;
     private readonly TimeProvider _time;
     private readonly List<(EnvironmentStatus Environment, DeployableStatus Deployable, TargetStatus Target)> _targets;
-    private readonly Dictionary<string, ContainerAppProbe> _containerApps = new(StringComparer.Ordinal);
+    private readonly Dictionary<ContainerAppTarget, ContainerAppProbe> _containerApps = [];
     private IReadOnlyList<ContainerAppProbe> _watched = [];
     private bool _resourceHealthWanted;
     private DateTimeOffset? _deliveryReadAt;
@@ -180,10 +180,10 @@ public sealed class DashboardMonitor
         var watched = new List<ContainerAppProbe>();
         foreach (var target in watch.Apps)
         {
-            if (!_containerApps.TryGetValue(target.Key, out var probe))
+            if (!_containerApps.TryGetValue(target, out var probe))
             {
                 probe = new ContainerAppProbe(target);
-                _containerApps[target.Key] = probe;
+                _containerApps[target] = probe;
             }
 
             watched.Add(probe);
@@ -200,7 +200,7 @@ public sealed class DashboardMonitor
     public ContainerAppStatus? ContainerAppStatusOf(ContainerAppTarget target)
     {
         ArgumentNullException.ThrowIfNull(target);
-        return _containerApps.GetValueOrDefault(target.Key)?.Status;
+        return _containerApps.GetValueOrDefault(target)?.Status;
     }
 
     /// <summary>

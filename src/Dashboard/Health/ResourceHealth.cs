@@ -67,13 +67,22 @@ public sealed record ResourceHealthReading(string Status, string Source, DateTim
     public const string FromProvisioningState = "provisioningState";
     public const string None = "none";
 
+    /// <summary>
+    /// The bounds belong to the reading of <c>containers.json</c>, not to the words of the box: a status longer than
+    /// <see cref="LongestStatus"/> is not a word or two and is refused; a summary is cut to <see cref="LongestSummary"/>.
+    /// <see cref="ResourceHealthText"/> puts no length bound on what it is given - its tooltip is one line per resource
+    /// (past eight, the rest are counted aloud), and a length cap there would silently drop resources from a reader's
+    /// tooltip. Do not "tidy" the asymmetry by capping the words.
+    /// </summary>
+    private const int LongestStatus = 40;
+
     private const int LongestSummary = 200;
 
     /// <summary>A reading; null without a status of a word or two, or without its time.</summary>
     internal static ResourceHealthReading? Read(JsonElement? section)
     {
         var status = JsonRead.Text(section, "status")?.ToLowerInvariant();
-        if (status is not { Length: <= 40 } || !status.All(character => char.IsAsciiLetterLower(character) || character == ' ')
+        if (status is not { Length: <= LongestStatus } || !status.All(character => char.IsAsciiLetterLower(character) || character == ' ')
             || JsonRead.Time(section, "checkedAt") is not { } checkedAt)
         {
             return null;
@@ -94,7 +103,10 @@ public sealed record ResourceHealthReading(string Status, string Source, DateTim
 /// <param name="Label">The badge: the most urgent state of its resources.</param>
 /// <param name="Line">Where the words come from and how long ago, or the count of each state for a box of several.</param>
 /// <param name="Tone"><c>plain</c> while the oldest reading is at most two hours old, <c>muted</c> otherwise.</param>
-/// <param name="Title">The tooltip: each resource, its state, where it comes from and when.</param>
+/// <param name="Title">
+/// The tooltip: each resource, its state, where it comes from and when. Held whole, of any length: the length bounds
+/// are the reading's (<see cref="ResourceHealthReading"/>), and a cap here would cut resources off the tooltip.
+/// </param>
 public sealed record ResourceHealthWords(string Label, string Line, string Tone, string Title);
 
 /// <summary>

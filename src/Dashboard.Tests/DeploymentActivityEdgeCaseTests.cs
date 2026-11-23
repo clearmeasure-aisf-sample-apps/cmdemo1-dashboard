@@ -74,6 +74,19 @@ public class DeploymentActivityEdgeCaseTests
         Assert.Equal(["2 queued, 10 min", "1 queued, 5 min"], Node(report, "uat").Select(line => line.Text));
     }
 
+    /// <summary>A node's lines in flight stand in the order of the marks: a state the page does not know comes after
+    /// queued, whatever the file's order - and the queued one, which the file writes second, is said first.</summary>
+    [Fact]
+    public void AStateThePageDoesNotKnowIsSaidAfterQueuedOnANode()
+    {
+        var report = Parse("""
+            { "project": "demo-ui", "environment": "uat", "release": "2", "state": "paused" },
+            { "project": "demo-ui", "environment": "uat", "release": "1", "state": "queued" }
+            """);
+
+        Assert.Equal(["1 queued", "2: paused"], Node(report, "uat").Select(line => line.Text));
+    }
+
     // ------------------------------------------------------- who started it, said one way
 
     /// <summary>Who started a deployment is said in the words each line leads to the name with - <c>, by</c> on the

@@ -183,7 +183,7 @@ public static class DeploymentActivity
         var lines = new List<ActivityLine>();
         lines.AddRange(report.Deployments
             .Where(deployment => deployment.InFlight && Own(deployment.Project, deployment.Environment))
-            .OrderBy(Urgency)
+            .OrderBy(DeploymentsReport.Rank)
             .Select(deployment => InFlight(deployment, now)));
         lines.AddRange(Freezes(report, environment, project, now).Select(freeze => OfFreeze(freeze, now, zone, Brief(freeze, now, zone))));
         if (report.Recent.FirstOrDefault(recent => Own(recent.Project, recent.Environment)) is { } last)
@@ -233,14 +233,6 @@ public static class DeploymentActivity
             .Where(freeze => freeze.Covers(environment, project) && (freeze.InForceAt(now) || freeze.ComesAt(now)))
             .OrderBy(freeze => freeze.InForceAt(now) ? 0 : 1)
             .ThenBy(freeze => freeze.From ?? DateTimeOffset.MinValue)];
-
-    private static int Urgency(Deployment deployment) => deployment.State switch
-    {
-        DeploymentState.Waiting => 0,
-        DeploymentState.Executing => 1,
-        DeploymentState.Queued => 2,
-        _ => 3,
-    };
 
     private static ActivityLine InFlight(Deployment deployment, DateTimeOffset now)
     {

@@ -21,7 +21,19 @@ public sealed record ContainerAppTarget(Uri Url, string? HealthPath = null)
     /// <summary>The health path the page asks: the deployable's, or <see cref="DefaultHealthPath"/>.</summary>
     public string EffectiveHealthPath => HealthPath ?? DefaultHealthPath;
 
-    internal string Key => $"{Url.AbsoluteUri}|{EffectiveHealthPath}";
+    /// <summary>
+    /// One rule decides which app a target is: its address and the path a probe asks. The unnamed path and the default
+    /// spelled out are one target, so a diagram that names the default on one node and omits it on another watches one
+    /// app with one probe, and the two spellings are interchangeable wherever targets are compared or keyed.
+    /// </summary>
+    public bool Equals(ContainerAppTarget? other) =>
+        other is not null
+        && string.Equals(Url.AbsoluteUri, other.Url.AbsoluteUri, StringComparison.Ordinal)
+        && string.Equals(EffectiveHealthPath, other.EffectiveHealthPath, StringComparison.Ordinal);
+
+    /// <summary>Follows <see cref="Equals(ContainerAppTarget?)"/>: the address and the path a probe asks.</summary>
+    public override int GetHashCode() =>
+        HashCode.Combine(StringComparer.Ordinal.GetHashCode(Url.AbsoluteUri), StringComparer.Ordinal.GetHashCode(EffectiveHealthPath));
 }
 
 /// <summary>What the runtime view and the page's checks need to know about the container apps it shows.</summary>

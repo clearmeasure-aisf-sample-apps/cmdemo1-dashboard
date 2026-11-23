@@ -77,6 +77,30 @@ public class ClusterAssessmentEdgeCaseTests
             "The address answered HTTP 404.",
             ClusterAssessment.Live(Silent("the address answered HTTP 404."), null, Now, Utc).Detail);
 
+    /// <summary>
+    /// A reason is said with one closing stop whatever shape its end takes: no stop, one stop, a stop and the space a
+    /// JSON field or a trimmed message leaves after it, two stops, and spaces around the words - the words the page
+    /// shows stay whole and never end in ". .".
+    /// </summary>
+    [Theory]
+    [InlineData("the file is empty")]
+    [InlineData("the file is empty.")]
+    [InlineData("the file is empty. ")]
+    [InlineData("the file is empty.\n")]
+    [InlineData("the file is empty..")]
+    [InlineData("the file is empty. .")]
+    [InlineData("  the file is empty.  ")]
+    public void AReasonIsSaidWithOneClosingStopWhateverItsEnd(string detail)
+    {
+        Assert.Equal("The file is empty.", ClusterAssessment.Live(Silent(detail), null, Now, Utc).Detail);
+        Assert.Equal(
+            "The file is empty.",
+            ClusterAssessment.Service(new SourceReading<AksService>(SourceState.Malformed, Detail: detail)).Detail);
+        Assert.Equal(
+            "The file is empty. The page reads them again with every check.",
+            ClusterAssessment.Service(new SourceReading<AksService>(SourceState.Unavailable, Detail: detail)).Detail);
+    }
+
     // ----- ClusterAssessment.Live: what is wrong before what is only starting -----
 
     /// <summary>

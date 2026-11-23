@@ -27,7 +27,7 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
 
     public string? Role { get; } = role;
 
-    public bool IsPrimary => string.Equals(Role, NodeInfo.PrimaryRole, StringComparison.OrdinalIgnoreCase);
+    public bool IsPrimary => NodeRole.IsPrimary(Role);
 
     /// <summary>The last <see cref="HistoryLength"/> checks, oldest first.</summary>
     public HistoryBuffer<ProbeResult> History { get; } = new(HistoryLength);

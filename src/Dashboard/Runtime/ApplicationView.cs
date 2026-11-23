@@ -170,7 +170,7 @@ public static class ApplicationText
     /// <summary>The boxes of one deployable, the primary first; none for a deployable without a diagram, and for a name the address refuses.</summary>
     public static IReadOnlyList<RuntimeNode> Boxes(RuntimeManifest manifest, string? deployable) =>
         IsName(deployable)
-            ? [.. BoxesWhere(manifest, node => string.Equals(node.Deployable, deployable, StringComparison.OrdinalIgnoreCase)).OrderBy(node => IsPrimary(node.Role) ? 0 : 1)]
+            ? [.. BoxesWhere(manifest, node => string.Equals(node.Deployable, deployable, StringComparison.OrdinalIgnoreCase)).OrderBy(node => NodeRole.IsPrimary(node.Role) ? 0 : 1)]
             : [];
 
     /// <summary>
@@ -203,7 +203,7 @@ public static class ApplicationText
         var running = nodes.Where(node => !string.IsNullOrWhiteSpace(node.Version)).ToList();
         if (running.Count > 0)
         {
-            var chosen = running.FirstOrDefault(node => IsPrimary(node.Role), running[0]);
+            var chosen = running.FirstOrDefault(node => NodeRole.IsPrimary(node.Role), running[0]);
             return new ApplicationVersion(chosen.Version!.Trim(), Runs: true);
         }
 
@@ -360,8 +360,6 @@ public static class ApplicationText
         ArgumentNullException.ThrowIfNull(package);
         return package.Version is { } version ? $"{package.Name} {version}" : package.Name;
     }
-
-    private static bool IsPrimary(string? role) => string.Equals(role, NodeInfo.PrimaryRole, StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>

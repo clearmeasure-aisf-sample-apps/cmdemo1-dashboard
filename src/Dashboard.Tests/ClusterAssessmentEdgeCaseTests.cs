@@ -243,6 +243,21 @@ public class ClusterAssessmentEdgeCaseTests
             ClusterAssessment.Service(new SourceReading<AksService>(SourceState.Unavailable, Detail: "   ")));
     }
 
+    /// <summary>
+    /// A service reading marked read that holds no facts is no service to assess: it is said as the reading that
+    /// could not be read - not known, with the promise that the page reads them again - the way the cluster's
+    /// liveness counts the status reading that holds nothing as silent and Azure's words say it could not be read.
+    /// </summary>
+    [Fact]
+    public void AServiceReadingMarkedReadThatHoldsNothingIsNotKnown() =>
+        Assert.Equal(
+            new ClusterAssessment(
+                ClusterState.Neutral,
+                "Not known",
+                "Azure's facts about the AKS service could not be read",
+                "The page reads them again with every check."),
+            ClusterAssessment.Service(new SourceReading<AksService>(SourceState.Read)));
+
     // ----- ClusterAssessment.AzureReports -----
 
     /// <summary>

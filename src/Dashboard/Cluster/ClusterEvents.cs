@@ -33,16 +33,16 @@ public static class ClusterEventDetector
             return null;
         }
 
-        DashboardEvent Event(EventLevel level, string text) => new(at, EventKind.Cluster, level, null, ClusterPlace, text);
         var reason = string.IsNullOrWhiteSpace(detail) ? string.Empty : $": {detail.TrimEnd('.')}";
-        return after switch
+        var notice = after switch
         {
-            ClusterLiveness.Silent => Event(EventLevel.Problem, $"The cluster's status file stopped answering{reason}"),
-            ClusterLiveness.Unreadable => Event(EventLevel.Problem, $"The cluster's status file could not be read{reason}"),
-            ClusterLiveness.Stale => Event(EventLevel.Problem, "The collector in the cluster stopped writing: the status file is stale"),
-            _ when before == ClusterLiveness.Stale => Event(EventLevel.Good, "The collector in the cluster writes again"),
-            _ => Event(EventLevel.Good, "The cluster's status file answers again"),
+            ClusterLiveness.Silent => new ClusterNotice(EventLevel.Problem, $"The cluster's status file stopped answering{reason}"),
+            ClusterLiveness.Unreadable => new ClusterNotice(EventLevel.Problem, $"The cluster's status file could not be read{reason}"),
+            ClusterLiveness.Stale => new ClusterNotice(EventLevel.Problem, "The collector in the cluster stopped writing: the status file is stale"),
+            _ when before == ClusterLiveness.Stale => new ClusterNotice(EventLevel.Good, "The collector in the cluster writes again"),
+            _ => new ClusterNotice(EventLevel.Good, "The cluster's status file answers again"),
         };
+        return new DashboardEvent(at, EventKind.Cluster, notice.Level, null, ClusterPlace, notice.Text);
     }
 
     /// <summary>
@@ -84,9 +84,9 @@ public static class ClusterEventDetector
         foreach (var (space, pod) in after.Pods)
         {
             var known = pods.GetValueOrDefault((space.Name, pod.Name));
-            if (Pod(known, known is null ? null : PodRules.StateOf(known, beforeAt), pod, PodRules.StateOf(pod, afterAt), space.Name, afterAt) is { } text)
+            if (Pod(known, known is null ? null : PodRules.StateOf(known, beforeAt), pod, PodRules.StateOf(pod, afterAt), space.Name, afterAt) is { } notice)
             {
-                changes.Add(new DashboardEvent(at, EventKind.Cluster, text.Level, names.GetValueOrDefault(space.Name), ClusterPlace, text.Text));
+                changes.Add(new DashboardEvent(at, EventKind.Cluster, notice.Level, names.GetValueOrDefault(space.Name), ClusterPlace, notice.Text));
             }
         }
 
@@ -140,21 +140,21 @@ public static class ClusterEventDetector
     }
 
     /// <summary>The one event of a pod in a round, by what matters most: a restart, then unhealthy, then ready again.</summary>
-    private static (EventLevel Level, string Text)? Pod(ClusterPod? before, PodState? was, ClusterPod after, PodState now, string space, DateTimeOffset asOf)
+    private static ClusterNotice? Pod(ClusterPod? before, PodState? was, ClusterPod after, PodState now, string space, DateTimeOffset asOf)
     {
         var name = ClusterText.PodIn(after, space);
         if (before is not null && after.Restarts > before.Restarts)
         {
             var reason = after.Reason is { } why && now != PodState.Ready ? $": {why}" : string.Empty;
-            return (EventLevel.Warning, $"{name} restarted ({ClusterText.Restarts(after.Restarts)}){reason}");
+            return new ClusterNotice(EventLevel.Warning, $"{name} restarted ({ClusterText.Restarts(after.Restarts)}){reason}");
         }
 
         if (now == PodState.Unhealthy && was != PodState.Unhealthy)
         {
             var words = ClusterText.PodWords(after, now, asOf);
-            return (EventLevel.Warning, $"{name} is unhealthy: {(after.Phase == ClusterPod.Running && after.Reason is null ? "not ready" : words)}");
+            return new ClusterNotice(EventLevel.Warning, $"{name} is unhealthy: {(after.Phase == ClusterPod.Running && after.Reason is null ? "not ready" : words)}");
         }
 
-        return was == PodState.Unhealthy && now == PodState.Ready ? (EventLevel.Good, $"{name} is ready again") : null;
+        return was == PodState.Unhealthy && now == PodState.Ready ? new ClusterNotice(EventLevel.Good, $"{name} is ready again") : null;
     }
 }

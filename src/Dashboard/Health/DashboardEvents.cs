@@ -48,6 +48,9 @@ public enum EventLevel
 /// </param>
 public sealed record DashboardEvent(DateTimeOffset At, EventKind Kind, EventLevel Level, string? Environment, string? Node, string Text);
 
+/// <summary>What a round of the cluster view says, at what level: the words of a <see cref="DashboardEvent"/> before it has a time and a place.</summary>
+internal sealed record ClusterNotice(EventLevel Level, string Text);
+
 /// <summary>The last events this page observed since it was opened, newest first.</summary>
 public sealed class EventLog
 {

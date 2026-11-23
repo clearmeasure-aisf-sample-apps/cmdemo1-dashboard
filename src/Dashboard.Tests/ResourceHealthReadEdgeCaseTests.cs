@@ -125,4 +125,22 @@ public class ResourceHealthReadEdgeCaseTests
         Assert.Single(report.Readings);
         Assert.Equal("available", report.Find(Id)?.Status);
     }
+
+    /// <summary>
+    /// The length bounds are named and belong to the reading of the file alone (#685): the status's 40 and the
+    /// summary's 200 are <c>ResourceHealthReading</c>'s, and neither the box's words nor the text that makes them
+    /// holds a bound of its own, so a tooltip never loses a resource to a cap.
+    /// </summary>
+    [Fact]
+    public void TheLengthBoundsAreTheReadingsAloneAndNamed()
+    {
+        const System.Reflection.BindingFlags Private = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.DeclaredOnly;
+        int Bound(string name) =>
+            (int)Assert.IsType<System.Reflection.FieldInfo>(typeof(ResourceHealthReading).GetField(name, Private), exactMatch: false).GetRawConstantValue()!;
+
+        Assert.Equal((40, 200), (Bound("LongestStatus"), Bound("LongestSummary")));
+        Assert.All(
+            new[] { typeof(ResourceHealthText), typeof(ResourceHealthWords) },
+            type => Assert.DoesNotContain(type.GetFields(Private), field => field.Name.StartsWith("Longest", StringComparison.Ordinal)));
+    }
 }

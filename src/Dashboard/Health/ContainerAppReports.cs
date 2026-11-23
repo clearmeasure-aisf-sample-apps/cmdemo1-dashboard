@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 
 namespace Dashboard.Health;
@@ -108,30 +109,26 @@ public static class HourlyCheckText
     public static string Title(ContainerAppReports? reports, DateTimeOffset now, TimeZoneInfo zone)
     {
         ArgumentNullException.ThrowIfNull(zone);
-        var words = new List<string>
-        {
-            "Once an hour the pipeline's runbook \"Health report\" in Octopus Deploy asks the app whether it answers, also while no page is open: the history, under the page's own probe.",
-        };
+        var words = new List<string> { HourlyReportWords.Intro };
         if (reports?.Last is { } last)
         {
-            var when = $"{TimeText.DateAndTime(last.At, zone)} ({TimeText.Ago(last.At, now)})";
-            words.Add(RecentResult(reports, now) is null
-                ? $"The last report that asked it ended {when} and found it {last.Result}: none in the last two hours, so the box says {NoRecentCheck}."
-                : $"The last report that asked it ended {when} and found it {last.Result}.");
+            var when = string.Format(CultureInfo.InvariantCulture, HourlyReportWords.When, TimeText.DateAndTime(last.At, zone), TimeText.Ago(last.At, now));
+            var found = RecentResult(reports, now) is null ? HourlyReportWords.StaleReport : HourlyReportWords.RecentReport;
+            words.Add(string.Format(CultureInfo.InvariantCulture, found, when, last.Result));
         }
         else
         {
-            words.Add(reports is null ? "The delivery facts name no report of it yet." : "No report of the last 7 days asked it.");
+            words.Add(reports is null ? HourlyReportWords.NoReportYet : HourlyReportWords.NotAskedThisWeek);
         }
 
         if (reports?.Last24Hours is { } day)
         {
-            words.Add(string.Create(CultureInfo.InvariantCulture, $"Healthy in {day.Healthy} of the {day.Reports} reports of 24 hours that asked it."));
+            words.Add(string.Format(CultureInfo.InvariantCulture, HourlyReportWords.HealthyOfDay, day.Healthy, day.Reports));
         }
 
         if (reports?.Last7Days is { } week)
         {
-            words.Add(string.Create(CultureInfo.InvariantCulture, $"Healthy in {week.Healthy} of the {week.Reports} reports of 7 days that asked it."));
+            words.Add(string.Format(CultureInfo.InvariantCulture, HourlyReportWords.HealthyOfWeek, week.Healthy, week.Reports));
         }
 
         words.Add(AvailabilityText.Note);
@@ -139,4 +136,40 @@ public static class HourlyCheckText
     }
 
     private static string Count(HealthWindow window) => window.Reports == 0 ? "none" : AvailabilityText.Count(window);
+
+    /// <summary>
+    /// The sentences of <see cref="Title"/>, named so the tooltip's template reads in one place and
+    /// <see cref="Title"/> only chooses which of them are said.
+    /// </summary>
+    private static class HourlyReportWords
+    {
+        /// <summary>What the hourly report is; said first, always.</summary>
+        public const string Intro =
+            "Once an hour the pipeline's runbook \"Health report\" in Octopus Deploy asks the app whether it answers, also while no page is open: the history, under the page's own probe.";
+
+        /// <summary>When the newest report ended: {0} the date and time in the viewer's zone, {1} how long ago.</summary>
+        public static readonly CompositeFormat When = CompositeFormat.Parse("{0} ({1})");
+
+        /// <summary>The newest report while it is still news: {0} when it ended, {1} what it found.</summary>
+        public static readonly CompositeFormat RecentReport =
+            CompositeFormat.Parse("The last report that asked it ended {0} and found it {1}.");
+
+        /// <summary>The newest report once it is older than <see cref="Recent"/>: {0} when it ended, {1} what it found.</summary>
+        public static readonly CompositeFormat StaleReport =
+            CompositeFormat.Parse($"The last report that asked it ended {{0}} and found it {{1}}: none in the last two hours, so the box says {NoRecentCheck}.");
+
+        /// <summary>An app the delivery facts have no reports for at all.</summary>
+        public const string NoReportYet = "The delivery facts name no report of it yet.";
+
+        /// <summary>An app the reports of the last seven days did not ask.</summary>
+        public const string NotAskedThisWeek = "No report of the last 7 days asked it.";
+
+        /// <summary>The last 24 hours' count: {0} healthy, of {1} reports.</summary>
+        public static readonly CompositeFormat HealthyOfDay =
+            CompositeFormat.Parse("Healthy in {0} of the {1} reports of 24 hours that asked it.");
+
+        /// <summary>The last seven days' count: {0} healthy, of {1} reports.</summary>
+        public static readonly CompositeFormat HealthyOfWeek =
+            CompositeFormat.Parse("Healthy in {0} of the {1} reports of 7 days that asked it.");
+    }
 }

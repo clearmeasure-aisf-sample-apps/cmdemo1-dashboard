@@ -860,6 +860,36 @@ public class ApplicationTextEdgeCaseTests
             ApplicationText.Links([Box("ca_ui", "ui", links: Links((LinkSet.Portal, "https://portal.example.net/#from-manifest")))], uat).Select(link => link.Href));
     }
 
+    /// <summary>The version and the portal link find the node a box stands for by one rule: the first node of the
+    /// topology at the box's address, compared as <see cref="Uri" /> equality compares them - the fragment is not
+    /// heeded, so a box at <c>#one</c> stands for a node at <c>#two</c>, and of two nodes at one address the first in
+    /// the topology's order is the one both members speak of.</summary>
+    [Fact]
+    public void TheVersionAndThePortalFindTheSameNodeByOneRule()
+    {
+        var box = Box("ca_ui", "ui", "https://ca-ui.example.io/a#one", "primary");
+        var uat = Uat("""
+            { "environments": [ { "name": "uat", "deployables": [
+                { "name": "ui", "nodes": [
+                    { "name": "ca-ui", "role": "primary", "url": "https://ca-ui.example.io/a#two", "links": { "portal": "https://portal.example.net/#first" } } ] },
+                { "name": "aisf", "nodes": [
+                    { "name": "ca-ui-again", "url": "https://ca-ui.example.io/a", "links": { "portal": "https://portal.example.net/#second" } } ] } ] } ] }
+            """);
+        uat.Deployables[0].Nodes[0].Record(Answer("1.0.1"));
+        uat.Deployables[1].Nodes[0].Record(Answer("9.9.9"));
+
+        Assert.Equal(new ApplicationVersion("1.0.1", Runs: true), ApplicationText.Version([box], uat));
+        Assert.Equal(
+            ["https://ca-ui.example.io/a#one", "https://portal.example.net/#first"],
+            ApplicationText.Links([box], uat).Select(link => link.Href));
+
+        // An address that differs by more than its fragment is another node: neither member finds one.
+        var elsewhere = Box("ca_ui", "ui", "https://ca-ui.example.io/b#one", "primary");
+
+        Assert.Null(ApplicationText.Version([elsewhere], uat));
+        Assert.Equal(["https://ca-ui.example.io/b#one"], ApplicationText.Links([elsewhere], uat).Select(link => link.Href));
+    }
+
     /// <summary>Every link of the heading row goes where the reader is told to expect them - the app itself and the
     /// portal - and each of them keeps its referrer, since nothing is hidden from those two. The one link of the view
     /// that asks for nothing to be sent with it is the diagram's own file on another origin, pinned with

@@ -223,8 +223,7 @@ public static class ApplicationText
         }
 
         var name = boxes[0].Deployable!;
-        var checkedNodes = environment.Deployables.SelectMany(deployable => deployable.Nodes).ToList();
-        var nodes = boxes.Select(box => (box.Role, box.Url is null ? null : checkedNodes.FirstOrDefault(node => node.Url == box.Url)?.Version));
+        var nodes = boxes.Select(box => (box.Role, CheckedNode(environment, box.Url)?.Version));
         var status = environment.Deployables.FirstOrDefault(deployable => string.Equals(deployable.Info.Name, name, StringComparison.OrdinalIgnoreCase));
         var pinned = status?.Pinned is { } own ? own.Of(status.Info.Name) : environment.Pinned.Of(status?.Info.Name ?? name);
         return Version(nodes, pinned);
@@ -318,7 +317,6 @@ public static class ApplicationText
     public static IReadOnlyList<ViewLink> Links(IReadOnlyList<RuntimeNode> boxes, EnvironmentStatus? environment)
     {
         ArgumentNullException.ThrowIfNull(boxes);
-        var checkedNodes = environment?.Deployables.SelectMany(deployable => deployable.Nodes).ToList() ?? [];
         var links = new List<ViewLink>();
         foreach (var box in boxes)
         {
@@ -330,7 +328,7 @@ public static class ApplicationText
                     $"{box.Name}: {site.Host}, as a browser opens it{RuntimeBoxLink.NewTabSuffix}"));
             }
 
-            var topology = box.Url is null ? null : checkedNodes.FirstOrDefault(node => node.Url == box.Url)?.Links[LinkSet.Portal];
+            var topology = CheckedNode(environment, box.Url)?.Links[LinkSet.Portal];
             if ((topology ?? box.Links?[LinkSet.Portal]) is { } portal)
             {
                 links.Add(new ViewLink(
@@ -342,6 +340,17 @@ public static class ApplicationText
 
         return links;
     }
+
+    /// <summary>
+    /// The node of the environment a box stands for, found by its address as its tile is - the first such node, in
+    /// the order of the topology; null for a box with no address, without an environment, or when no node has it.
+    /// The addresses are compared with <see cref="Uri" /> equality, which ignores the fragment: a box at
+    /// <c>https://x/a#one</c> stands for a node at <c>https://x/a#two</c>.
+    /// </summary>
+    private static TargetStatus? CheckedNode(EnvironmentStatus? environment, Uri? address) =>
+        environment is null || address is null
+            ? null
+            : environment.Deployables.SelectMany(deployable => deployable.Nodes).FirstOrDefault(node => node.Url == address);
 
     /// <summary>"Open the diagram at full size": the image's own address, for a diagram the view fitted to its frame.</summary>
     public static ViewLink DiagramLink(Uri image, string deployable, string version)

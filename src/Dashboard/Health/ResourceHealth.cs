@@ -102,12 +102,59 @@ public sealed record ResourceHealthReading(string Status, string Source, DateTim
 /// <summary>The words of a box from what Resource Health said of the resources it stands for.</summary>
 /// <param name="Label">The badge: the most urgent state of its resources.</param>
 /// <param name="Line">Where the words come from and how long ago, or the count of each state for a box of several.</param>
-/// <param name="Tone"><c>plain</c> while the oldest reading is at most two hours old, <c>muted</c> otherwise.</param>
+/// <param name="Tone">
+/// <see cref="HealthTone.Plain"/> while the oldest reading is at most two hours old, <see cref="HealthTone.Muted"/>
+/// otherwise. A string, as the page writes it; the making only ever writes one of <see cref="HealthTone"/>'s words.
+/// </param>
 /// <param name="Title">
 /// The tooltip: each resource, its state, where it comes from and when. Held whole, of any length: the length bounds
 /// are the reading's (<see cref="ResourceHealthReading"/>), and a cap here would cut resources off the tooltip.
 /// </param>
 public sealed record ResourceHealthWords(string Label, string Line, string Tone, string Title);
+
+/// <summary>
+/// The tones the words of Resource Health are dressed in - two, and never a colour: the page's own word for each, as
+/// <see cref="ResourceHealthWords.Tone"/> and <c>UnplacedRow.HealthTone</c> hold it.
+/// </summary>
+public static class HealthTone
+{
+    /// <summary>Words read recently: shown as they are.</summary>
+    public const string Plain = "plain";
+
+    /// <summary>Words read long ago, or not read at all: shown quieter.</summary>
+    public const string Muted = "muted";
+
+    /// <summary><see cref="Plain"/> for a recent reading, <see cref="Muted"/> otherwise.</summary>
+    public static string Of(bool recent) => recent ? Plain : Muted;
+}
+
+/// <summary>
+/// The badges of a box, most urgent first: the order is the declaration's, so a box of several shows the badge that
+/// comes first here. Every word <see cref="ResourceHealthText.Label"/> makes has its place by name.
+/// </summary>
+public enum HealthBadge
+{
+    /// <summary>Resource Health said <c>unavailable</c>.</summary>
+    Unavailable,
+
+    /// <summary>
+    /// A provisioning state other than <c>succeeded</c> (<c>Failed</c>, <c>Updating</c>, <c>Deleting</c> and the like),
+    /// worded as Azure says it: less urgent than a resource that is down, more than one that is only degraded.
+    /// </summary>
+    OtherProvisioningState,
+
+    /// <summary>Resource Health said <c>degraded</c>.</summary>
+    Degraded,
+
+    /// <summary>Nothing said where it stands: <c>Not known</c>.</summary>
+    NotKnown,
+
+    /// <summary>Resource Health had no answer and the provisioning state is <c>succeeded</c>.</summary>
+    Provisioned,
+
+    /// <summary>Resource Health said <c>available</c>.</summary>
+    Available,
+}
 
 /// <summary>
 /// Resource Health on a box, in neutral words, never a colour: <c>Available</c> and <c>Resource Health, 40 min ago</c>.
@@ -118,7 +165,11 @@ public static class ResourceHealthText
     /// <summary>The tooltip's first words.</summary>
     public const string Source = "Azure Resource Health, read hourly by the pipeline (workflow delivery, as the system's Reader identity); this page does not ask Azure.";
 
+    private const string Unavailable = "Unavailable";
+    private const string Degraded = "Degraded";
     private const string NotKnown = "Not known";
+    private const string Provisioned = "Provisioned";
+    private const string Available = "Available";
     private const int MostNamed = 8;
 
     /// <summary>The words of a box of these resources; null for a box without ids (a manifest from before them).</summary>
@@ -135,13 +186,13 @@ public static class ResourceHealthText
             return new ResourceHealthWords(
                 NotKnown,
                 "no Resource Health read yet",
-                "muted",
+                HealthTone.Muted,
                 $"{Source} The page has not read it: containers.json on branch status, next to delivery.json, is not there or not read yet.");
         }
 
         var readings = ids.Select(id => (Id: id, Reading: report.Find(id))).ToList();
         var labels = readings.Select(entry => Label(entry.Reading)).ToList();
-        var label = labels.OrderBy(Severity).First();
+        var label = labels.OrderBy(Badge).First();
         var read = readings.Select(entry => entry.Reading).OfType<ResourceHealthReading>().ToList();
         var oldest = read.Count == 0 ? (DateTimeOffset?)null : read.Min(reading => reading.CheckedAt);
         var age = oldest is { } at && now is { } moment ? $", {TimeText.Ago(at, moment)}" : string.Empty;
@@ -153,7 +204,7 @@ public static class ResourceHealthText
                 ResourceHealthReading.None => "no Resource Health",
                 _ => "not in the hourly reading",
             }) + age
-            : string.Join(" · ", labels.GroupBy(word => word).OrderBy(group => Severity(group.Key)).Select(group => string.Create(CultureInfo.InvariantCulture, $"{group.Count()} {group.Key.ToLowerInvariant()}"))) + age;
+            : string.Join(" · ", labels.GroupBy(word => word).OrderBy(group => Badge(group.Key)).Select(group => string.Create(CultureInfo.InvariantCulture, $"{group.Count()} {group.Key.ToLowerInvariant()}"))) + age;
         var recent = oldest is { } since && now is { } current && current - since <= HourlyCheckText.Recent;
 
         var title = new List<string> { Source };
@@ -163,27 +214,31 @@ public static class ResourceHealthText
             title.Add(string.Create(CultureInfo.InvariantCulture, $"And {readings.Count - MostNamed} more."));
         }
 
-        return new ResourceHealthWords(label, words, recent ? "plain" : "muted", string.Join('\n', title));
+        return new ResourceHealthWords(label, words, HealthTone.Of(recent), string.Join('\n', title));
     }
 
     /// <summary>The badge's word for one reading: <c>Available</c>, <c>Provisioned</c>, <c>Failed</c>, <c>Not known</c>.</summary>
     public static string Label(ResourceHealthReading? reading) => reading switch
     {
         { Source: ResourceHealthReading.FromResourceHealth, Status: "available" or "degraded" or "unavailable" } => Capitalized(reading.Status),
-        { Source: ResourceHealthReading.FromProvisioningState, Status: "succeeded" } => "Provisioned",
+        { Source: ResourceHealthReading.FromProvisioningState, Status: "succeeded" } => Provisioned,
         { Source: ResourceHealthReading.FromProvisioningState } => Capitalized(reading.Status),
         _ => NotKnown,
     };
 
-    /// <summary>The order of the words, most urgent first: a box of several shows the first.</summary>
-    private static int Severity(string label) => label switch
+    /// <summary>
+    /// The place of a badge's word among the badges (<see cref="HealthBadge"/>, most urgent first). Any word
+    /// <see cref="Label"/> makes that is not one of the five fixed ones is a provisioning state it capitalized, and
+    /// ranks as <see cref="HealthBadge.OtherProvisioningState"/>.
+    /// </summary>
+    private static HealthBadge Badge(string label) => label switch
     {
-        "Unavailable" => 0,
-        "Degraded" => 2,
-        NotKnown => 3,
-        "Provisioned" => 4,
-        "Available" => 5,
-        _ => 1,
+        Unavailable => HealthBadge.Unavailable,
+        Degraded => HealthBadge.Degraded,
+        NotKnown => HealthBadge.NotKnown,
+        Provisioned => HealthBadge.Provisioned,
+        Available => HealthBadge.Available,
+        _ => HealthBadge.OtherProvisioningState,
     };
 
     private static string Describe(string id, ResourceHealthReading? reading, DateTimeOffset? now, TimeZoneInfo zone)

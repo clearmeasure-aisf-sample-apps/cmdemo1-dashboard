@@ -29,7 +29,7 @@
                             <td>@entry.Type</td>
                             <td class="grid__name">@entry.Group</td>
                             <td class="unplaced__why">@entry.Words</td>
-                            <td class="@(row.HealthTone == "muted" ? "grid__minor" : null)" title="@row.HealthTitle">@row.Health</td>
+                            <td class="@(row.HealthTone == HealthTone.Muted ? "grid__minor" : null)" title="@row.HealthTitle">@row.Health</td>
                             <td>
                                 @if (entry.Site is { } site)
                                 {

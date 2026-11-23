@@ -73,22 +73,39 @@ public static class LinkText
 
     public static string Portal(string what) => what + PortalSuffix;
 
+    /// <summary>
+    /// The one table of a key of <see cref="LinkSet"/> to the sentence its tooltip says of a subject. A new link is one
+    /// row here; a key with no row - <see cref="LinkSet.Workloads"/> among them - is said from the key by
+    /// <see cref="SaidFromTheKey"/>.
+    /// </summary>
+    private static readonly Dictionary<string, Func<string, string>> Sentences =
+        new Dictionary<string, Func<string, string>>(StringComparer.Ordinal)
+        {
+            [LinkSet.Portal] = subject => $"The web app {subject} in the Azure portal",
+            [LinkSet.LiveMetrics] = subject => $"Live Metrics of Application Insights for {subject}: requests, failures and servers as they happen",
+            [LinkSet.Performance] = subject => $"Performance in Application Insights for {subject}: requests and their duration",
+            [LinkSet.Failures] = subject => $"Failures in Application Insights for {subject}: failed requests and exceptions",
+            [LinkSet.Dependencies] = subject => $"Dependency calls of {subject} (SQL and HTTP) of the last hour, a query in Application Insights Logs",
+            [LinkSet.FrontDoor] = subject => $"The Front Door profile of {subject} in the Azure portal",
+            [LinkSet.Logs] = subject => $"Requests of {subject} of the last hour, a query in Application Insights Logs",
+            [LinkSet.ApplicationInsights] = subject => $"Application Insights of {subject} in the Azure portal",
+            [LinkSet.ApplicationMap] = subject => $"The application map of {subject} in Application Insights",
+            [LinkSet.Database] = subject => $"The database of {subject} in the Azure portal",
+            [LinkSet.ResourceGroup] = subject => $"The resource group of {subject} in the Azure portal",
+        };
+
+    /// <summary>The keys the table has a sentence for, matched by their exact spelling.</summary>
+    public static IReadOnlyCollection<string> KeysWithASentence => Sentences.Keys;
+
     /// <summary>The tooltip of a link of <see cref="LinkSet"/> by its key, for the named resource.</summary>
-    public static string For(string key, string subject) => Portal(key switch
-    {
-        LinkSet.Portal => $"The web app {subject} in the Azure portal",
-        LinkSet.LiveMetrics => $"Live Metrics of Application Insights for {subject}: requests, failures and servers as they happen",
-        LinkSet.Performance => $"Performance in Application Insights for {subject}: requests and their duration",
-        LinkSet.Failures => $"Failures in Application Insights for {subject}: failed requests and exceptions",
-        LinkSet.Dependencies => $"Dependency calls of {subject} (SQL and HTTP) of the last hour, a query in Application Insights Logs",
-        LinkSet.FrontDoor => $"The Front Door profile of {subject} in the Azure portal",
-        LinkSet.Logs => $"Requests of {subject} of the last hour, a query in Application Insights Logs",
-        LinkSet.ApplicationInsights => $"Application Insights of {subject} in the Azure portal",
-        LinkSet.ApplicationMap => $"The application map of {subject} in Application Insights",
-        LinkSet.Database => $"The database of {subject} in the Azure portal",
-        LinkSet.ResourceGroup => $"The resource group of {subject} in the Azure portal",
-        _ => $"{key} of {subject}",
-    });
+    public static string For(string key, string subject) =>
+        Portal(key is not null && Sentences.TryGetValue(key, out var sentence) ? sentence(subject) : SaidFromTheKey(key, subject));
+
+    /// <summary>
+    /// The deliberate words of a key the table has no row for: the key as it was written, then the subject. A key the
+    /// topology invented, a key in the wrong case, or no key at all is answered rather than refused.
+    /// </summary>
+    private static string SaidFromTheKey(string? key, string subject) => $"{key} of {subject}";
 
     /// <summary>
     /// The page of one release in Octopus Deploy, from the project's page and the version a node runs:

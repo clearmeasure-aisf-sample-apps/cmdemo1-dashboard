@@ -583,6 +583,29 @@ public class ApplicationTextEdgeCaseTests
         Assert.Equal("boxes", Assert.Throws<ArgumentNullException>(() => ApplicationText.Version(none!, uat)).ParamName);
     }
 
+    /// <summary>The version is asked of the deployable the first box names, so a list whose first box names none -
+    /// which <see cref="ApplicationText.Boxes(RuntimeManifest, string)" /> never returns - is refused by the
+    /// argument's name, not with a dictionary's complaint about a key the call never mentioned. Without an
+    /// environment nothing is asked of the boxes, and nothing is known, as before. The links of the heading row ask
+    /// no deployable of a box: they are written of such a box all the same.</summary>
+    [Fact]
+    public void ABoxWithoutADeployableIsRefusedByTheBoxesName()
+    {
+        var nameless = Box("ca_ui", null, "https://ca-ui.example.io", "primary");
+        var uat = Uat("""{ "environments": [ { "name": "uat", "deployables": [] } ] }""");
+        uat.Record(PinnedVersions.Parse("""{ "ui": "1.0.40" }"""));
+
+        var refused = Assert.Throws<ArgumentException>(() => ApplicationText.Version([nameless], uat));
+
+        Assert.Equal("boxes", refused.ParamName);
+        Assert.Contains("names no deployable", refused.Message, StringComparison.Ordinal);
+        Assert.Null(ApplicationText.Version([nameless], null));
+
+        // Only the first box names the deployable: a later one without a name is asked nothing of it.
+        Assert.Equal(new ApplicationVersion("1.0.40", Runs: false), ApplicationText.Version([Box("ca_api", "ui"), nameless], uat));
+        Assert.Equal(["Open the app"], ApplicationText.Links([nameless], uat).Select(link => link.Text));
+    }
+
     // -------------------------------------------------------------------------------------------- the file of a version
 
     /// <summary>The address of the diagram is the one thing the file is built onto, and it is taken as it stands with

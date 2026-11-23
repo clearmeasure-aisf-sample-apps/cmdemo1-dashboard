@@ -213,7 +213,10 @@ public static class ApplicationText
     /// <summary>
     /// The version of a deployable in an environment the page checks: what the nodes the diagram draws report (a node
     /// is found by its address, as its tile is), and the pin of the deployable's own file or of <c>versions.json</c>.
+    /// The deployable is the one the first box names; a first box that names none is refused as an argument of
+    /// <paramref name="boxes" />, since no pin can be asked for it.
     /// </summary>
+    /// <param name="boxes">The deployable's boxes, as <see cref="Boxes(RuntimeManifest, string?)"/> returns them.</param>
     public static ApplicationVersion? Version(IReadOnlyList<RuntimeNode> boxes, EnvironmentStatus? environment)
     {
         ArgumentNullException.ThrowIfNull(boxes);
@@ -222,11 +225,24 @@ public static class ApplicationText
             return null;
         }
 
-        var name = boxes[0].Deployable!;
         var nodes = boxes.Select(box => (box.Role, CheckedNode(environment, box.Url)?.Version));
+        return Version(nodes, PinOf(environment, DeployableOf(boxes)));
+    }
+
+    /// <summary>The deployable the first of the boxes names; a box without one is refused by the argument's name.</summary>
+    private static string DeployableOf(IReadOnlyList<RuntimeNode> boxes) =>
+        boxes[0].Deployable
+        ?? throw new ArgumentException("The first box names no deployable: the boxes are the ones Boxes returns, each of a name the address takes.", nameof(boxes));
+
+    /// <summary>
+    /// The pin of a deployable in an environment: from its own file when the topology names one, else from
+    /// <c>versions.json</c> - asked by the spelling the topology gives the deployable, or by <paramref name="name" />
+    /// when the topology does not know it.
+    /// </summary>
+    private static string? PinOf(EnvironmentStatus environment, string name)
+    {
         var status = environment.Deployables.FirstOrDefault(deployable => string.Equals(deployable.Info.Name, name, StringComparison.OrdinalIgnoreCase));
-        var pinned = status?.Pinned is { } own ? own.Of(status.Info.Name) : environment.Pinned.Of(status?.Info.Name ?? name);
-        return Version(nodes, pinned);
+        return status?.Pinned is { } own ? own.Of(status.Info.Name) : environment.Pinned.Of(status?.Info.Name ?? name);
     }
 
     /// <summary>The line under the heading: <c>Version 1.0.42, as it runs</c>.</summary>

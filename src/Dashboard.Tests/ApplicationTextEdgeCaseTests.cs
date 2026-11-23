@@ -100,6 +100,31 @@ public class ApplicationTextEdgeCaseTests
         Assert.Null(ApplicationText.File(new Uri(Base), At(41), "svg"));
     }
 
+    /// <summary>The two guards share one decision but keep their own bound and their own marks: a word of forty-one to
+    /// sixty-four letters is a name and no version, the dot and the plus spell a version and no name, and the dash and
+    /// the underscore spell both.</summary>
+    [Theory]
+    [InlineData(41, true, false)]
+    [InlineData(64, true, false)]
+    [InlineData(65, false, false)]
+    public void ANameAndAVersionAreBoundedEachByItsOwnLength(int letters, bool isName, bool isVersion)
+    {
+        Assert.Equal(isName, ApplicationText.IsName(At(letters)));
+        Assert.Equal(isVersion, ApplicationText.IsVersion(At(letters)));
+    }
+
+    /// <summary>The marks of the one guard do not leak into the other.</summary>
+    [Theory]
+    [InlineData("1.0", false, true)]
+    [InlineData("1+0", false, true)]
+    [InlineData("1-0", true, true)]
+    [InlineData("1_0", true, true)]
+    public void ANameAndAVersionAreSpelledEachWithItsOwnMarks(string word, bool isName, bool isVersion)
+    {
+        Assert.Equal(isName, ApplicationText.IsName(word));
+        Assert.Equal(isVersion, ApplicationText.IsVersion(word));
+    }
+
     /// <summary>What is refused although it is spelled like a version: the letters outside the ASCII - an accented
     /// letter, a full-width digit, a superscript, the two letters an English <c>i</c> turns into in Turkish - a space
     /// or a tab or a newline at either end, and the comma, the colon, the slash and the percent sign a hostile address

@@ -130,7 +130,7 @@ public static class ClusterEventDetector
             events.Add(new DashboardEvent(
                 at,
                 EventKind.Cluster,
-                AksService.Is(current, AksService.Running) ? EventLevel.Good : EventLevel.Info,
+                after.IsRunning ? EventLevel.Good : EventLevel.Info,
                 null,
                 ServicePlace,
                 $"The power state of the AKS service: {power} → {current}"));

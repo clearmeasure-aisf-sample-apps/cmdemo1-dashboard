@@ -227,7 +227,7 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
             return new ClusterAssessment(ClusterState.Warning, "Degraded", "Azure reports the AKS service degraded", summary);
         }
 
-        if (service.ProvisioningState is { } provisioning && !AksService.Is(provisioning, AksService.Succeeded))
+        if (service.ProvisioningState is { } provisioning && !service.IsProvisioned)
         {
             return new ClusterAssessment(
                 ClusterState.Warning,

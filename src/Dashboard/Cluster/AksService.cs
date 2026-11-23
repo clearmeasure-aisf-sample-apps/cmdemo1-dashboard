@@ -34,7 +34,17 @@ public sealed record AksService(
     /// <summary>The facts are old from this age on: the workflow that publishes them may not be running.</summary>
     public static readonly TimeSpan OldAfter = TimeSpan.FromMinutes(90);
 
+    /// <summary>True when Azure says the service is powered off: its power state is <see cref="Stopped"/>, in any case.</summary>
     public bool IsStopped => Is(PowerState, Stopped);
+
+    /// <summary>True when Azure says the service is powered on: its power state is <see cref="Running"/>, in any case.</summary>
+    public bool IsRunning => Is(PowerState, Running);
+
+    /// <summary>
+    /// True when Azure has finished with the service: its provisioning state is <see cref="Succeeded"/>, in any case.
+    /// False when Azure is doing something to it (Updating, Starting, Stopping, Failed) or says nothing about it.
+    /// </summary>
+    public bool IsProvisioned => Is(ProvisioningState, Succeeded);
 
     /// <summary>True when the workflow read the facts longer ago than <see cref="OldAfter"/>.</summary>
     public bool IsOld(DateTimeOffset now) => Generated is { } generated && now - generated > OldAfter;

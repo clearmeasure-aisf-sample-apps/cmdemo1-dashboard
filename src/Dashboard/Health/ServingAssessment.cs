@@ -136,16 +136,45 @@ public sealed record ServingAssessment(
         var primaries = byPriority.Where(node => node.IsPrimary).ToList();
         if (frontDoor is not null && primaries.Count > 1)
         {
-            // No primary is named as the failed one: the detail says that none is healthy.
             var (rotating, first) = DecideRotation(primaries, byPriority);
-            return new ServingAssessment(rotating, first, null, Compare(rotating, frontDoor), frontDoor, null, primaries);
+            return RotationOf(rotating, first, frontDoor.Value, primaries);
         }
 
         var (state, expected) = Decide(byPriority);
         var failedPrimary = state == ServingState.FailedOver ? byPriority.FirstOrDefault(node => node.IsPrimary) : null;
         var single = frontDoor is null && byPriority.Count == 1 ? byPriority[0] : null;
-        return new ServingAssessment(state, expected, failedPrimary, Compare(state, frontDoor), frontDoor, single);
+        return OneNode(state, expected, failedPrimary, frontDoor, single);
     }
+
+    /// <summary>
+    /// A rotation: the Front Door rotates over <paramref name="primaries"/>. No primary is named as the failed one:
+    /// the detail says that none is healthy.
+    /// </summary>
+    private static ServingAssessment RotationOf(
+        ServingState state, NodeHealth? expected, HealthState frontDoor, IReadOnlyList<NodeHealth> primaries) =>
+        new(
+            State: state,
+            Expected: expected,
+            FailedPrimary: null,
+            FrontDoor: Compare(state, frontDoor),
+            FrontDoorState: frontDoor,
+            OnlyNode: null,
+            Rotation: primaries);
+
+    /// <summary>
+    /// A deployable where one node is expected to serve: <paramref name="onlyNode"/> is set when that node is the only
+    /// one and has no Front Door endpoint in front of it.
+    /// </summary>
+    private static ServingAssessment OneNode(
+        ServingState state, NodeHealth? expected, NodeHealth? failedPrimary, HealthState? frontDoor, NodeHealth? onlyNode) =>
+        new(
+            State: state,
+            Expected: expected,
+            FailedPrimary: failedPrimary,
+            FrontDoor: Compare(state, frontDoor),
+            FrontDoorState: frontDoor,
+            OnlyNode: onlyNode,
+            Rotation: null);
 
     /// <summary>
     /// A rotation is decided when every primary node is checked: the healthy ones serve. With none healthy, the

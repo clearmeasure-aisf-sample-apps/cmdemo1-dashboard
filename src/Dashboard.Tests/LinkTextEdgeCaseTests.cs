@@ -110,6 +110,37 @@ public class LinkTextEdgeCaseTests
             $"The database of uat<west> & \"eu\" in the Azure portal{LinkText.PortalSuffix}",
             LinkText.For(LinkSet.Database, "uat<west> & \"eu\""));
 
+    /// <summary>The table of <c>For</c> is pinned as a table: exactly the eleven keys of <see cref="LinkSet" /> that
+    /// have a sentence, and not <see cref="LinkSet.Workloads" />, which is said from its key on purpose. A key added to
+    /// the set gets a row here, or a red test asks whether being said from the key was the plan.</summary>
+    [Fact]
+    public void TheTableOfSentencesHoldsTheElevenKeysAndLeavesWorkloadsToBeSaidFromItsKey()
+    {
+        string[] expected =
+        [
+            LinkSet.Portal, LinkSet.LiveMetrics, LinkSet.Performance, LinkSet.Failures, LinkSet.Dependencies, LinkSet.FrontDoor,
+            LinkSet.Logs, LinkSet.ApplicationInsights, LinkSet.ApplicationMap, LinkSet.Database, LinkSet.ResourceGroup,
+        ];
+
+        Assert.Equal(expected.Order(StringComparer.Ordinal), LinkText.KeysWithASentence.Order(StringComparer.Ordinal));
+        Assert.DoesNotContain(LinkSet.Workloads, LinkText.KeysWithASentence);
+        Assert.Equal($"workloads of {Subject}{LinkText.PortalSuffix}", LinkText.For(LinkSet.Workloads, Subject));
+    }
+
+    /// <summary>Every key the set declares as a constant is either a row of the table or the one key deliberately
+    /// left out of it: a new constant on <see cref="LinkSet" /> with neither is caught here.</summary>
+    [Fact]
+    public void EveryKeyTheSetDeclaresIsARowOrTheDeliberateExclusion()
+    {
+        var declared = typeof(LinkSet)
+            .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .Where(field => field.IsLiteral && field.FieldType == typeof(string))
+            .Select(field => (string)field.GetRawConstantValue()!)
+            .Order(StringComparer.Ordinal);
+
+        Assert.Equal(declared, LinkText.KeysWithASentence.Append(LinkSet.Workloads).Order(StringComparer.Ordinal));
+    }
+
     // ------------------------------------------------------------------ Release: the one address the page builds
 
     /// <summary>The project's page is taken as an address, not as a prefix: its root is written with a slash by

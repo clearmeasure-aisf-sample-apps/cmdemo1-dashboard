@@ -209,6 +209,37 @@ public class ApplicationTextEdgeCaseTests
         Assert.Empty(ApplicationText.Boxes(Diagram(), "ui"));
     }
 
+    /// <summary>The view of one deployable and the view of the whole diagram take one walk and decide a box alike: for
+    /// every deployable on a mixed diagram, asked in any case, the boxes of that deployable are exactly the diagram's
+    /// boxes whose deployable is that name, the primary first and the rest in the diagram's order - no node without an
+    /// architecture or with a name the address refuses slips into the one and not the other.</summary>
+    [Fact]
+    public void TheBoxesOfOneDeployableAreTheDiagramsBoxesOfThatName()
+    {
+        var manifest = Diagram(
+            Box("ca_ui_standby", "ui", "https://ca-ui-2.example.io", "standby"),
+            Box("ca_api", "API", "https://ca-api.example.io"),
+            new RuntimeNode("no_architecture", RuntimeNodeKind.ContainerApp, "ca-x", Deployable: "ui"),
+            Box("ca_refused", "ui/../x"),
+            Box("ca_ui_primary", "UI", "https://ca-ui.example.io", "primary"),
+            Box("ca_api_two", "api", "https://ca-api-2.example.io"));
+        var all = ApplicationText.Boxes(manifest);
+
+        foreach (var deployable in new[] { "ui", "Ui", "api", "API", "worker" })
+        {
+            var expected = all
+                .Where(box => string.Equals(box.Deployable, deployable, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(box => string.Equals(box.Role, "primary", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                .Select(box => box.Alias);
+
+            Assert.Equal(expected, ApplicationText.Boxes(manifest, deployable).Select(box => box.Alias));
+        }
+
+        Assert.Equal(["ca_ui_primary", "ca_ui_standby"], ApplicationText.Boxes(manifest, "ui").Select(box => box.Alias));
+        Assert.Equal(["ca_api", "ca_api_two"], ApplicationText.Boxes(manifest, "api").Select(box => box.Alias));
+        Assert.Empty(ApplicationText.Boxes(manifest, "worker"));
+    }
+
     /// <summary>The name of a deployable is matched by its letters without heeding their case - ordinally, so it is
     /// the same match whatever the reader speaks: a diagram that names <c>ui</c> is found by <c>UI</c> and by
     /// <c>uI</c> for a reader of German exactly as for a reader of English, and a name that differs by more than its

@@ -319,6 +319,21 @@ public class ContainerAppProbeTests
     }
 
     [Fact]
+    public async Task TheDefaultPathSpelledOutOrUnnamedIsOneAppAskedOnce()
+    {
+        var handler = new StubHandler(Answer);
+        var monitor = Monitor(handler);
+        var spelled = new ContainerAppTarget(App, ContainerAppTarget.DefaultHealthPath);
+        var unnamed = new ContainerAppTarget(App);
+
+        Assert.True(monitor.Watch(new RuntimeWatch([spelled, unnamed], false)));
+        await monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
+
+        Assert.Single(handler.Requests, IsApp);
+        Assert.Same(monitor.ContainerAppStatusOf(spelled), monitor.ContainerAppStatusOf(unnamed));
+    }
+
+    [Fact]
     public async Task WithTheProbeLivenessTheAppIsStillAskedAtItsHealthPath()
     {
         var handler = new StubHandler(Answer);

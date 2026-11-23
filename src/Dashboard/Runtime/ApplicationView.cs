@@ -144,19 +144,22 @@ public static class ApplicationText
 {
     private const int LongestName = 64;
     private const int LongestVersion = 40;
+    private const string NameMarks = "-_";
+    private const string VersionMarks = "._+-";
 
     /// <summary>A deployable's name as the address takes it: letters, digits, <c>-</c> and <c>_</c>.</summary>
-    public static bool IsName(string? deployable) =>
-        deployable is { Length: > 0 and <= LongestName }
-        && deployable.All(character => char.IsAsciiLetterOrDigit(character) || character is '-' or '_');
+    public static bool IsName(string? deployable) => IsWord(deployable, LongestName, NameMarks);
 
     /// <summary>
     /// A version that may name a file: one to forty of letters, digits and <c>. _ + -</c>. The page asks for no file
     /// of any other version.
     /// </summary>
-    public static bool IsVersion(string? version) =>
-        version is { Length: > 0 and <= LongestVersion }
-        && version.All(character => char.IsAsciiLetterOrDigit(character) || character is '.' or '_' or '+' or '-');
+    public static bool IsVersion(string? version) => IsWord(version, LongestVersion, VersionMarks);
+
+    /// <summary>A word of one to <paramref name="longest" /> characters, each an ASCII letter or digit or one of <paramref name="marks" />.</summary>
+    private static bool IsWord(string? text, int longest, string marks) =>
+        text is { Length: > 0 } && text.Length <= longest
+        && text.All(character => char.IsAsciiLetterOrDigit(character) || marks.Contains(character, StringComparison.Ordinal));
 
     /// <summary>
     /// The nodes of the runtime diagram that open an application view: a web app or a container app whose manifest

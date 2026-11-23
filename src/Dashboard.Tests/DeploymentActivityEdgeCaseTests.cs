@@ -74,6 +74,28 @@ public class DeploymentActivityEdgeCaseTests
         Assert.Equal(["2 queued, 10 min", "1 queued, 5 min"], Node(report, "uat").Select(line => line.Text));
     }
 
+    // ------------------------------------------------------- who started it, said one way
+
+    /// <summary>Who started a deployment is said in the words each line leads to the name with - <c>, by</c> on the
+    /// node of a deployment that is executing, <c> by</c> on the node of the last one that ended, <c>, started
+    /// by</c> under the environment's name and in the tooltip of the last one - and, where the file does not say,
+    /// nothing at all: no leading words left behind without a name.</summary>
+    [Theory]
+    [InlineData(""", "startedBy": "pat" """, ", by pat", " by pat", ", started by pat")]
+    [InlineData("", "", "", "")]
+    public void WhoStartedADeploymentIsSaidAfterItsWordsOrNotAtAll(string startedBy, string executing, string ended, string environment)
+    {
+        var inFlight = Parse(deployments: $$"""{ "project": "demo-ui", "environment": "prod", "release": "2.4.44", "state": "executing", "since": "2026-10-09T11:57:00Z"{{startedBy}} }""");
+        Assert.Equal($"deploying 2.4.44, 3 min{executing}", Assert.Single(Node(inFlight, "prod")).Text);
+
+        var last = Parse(recent: $$"""{ "project": "demo-ui", "release": "2.4.43", "environment": "uat", "result": "succeeded", "finished": "2026-10-09T07:00:00Z"{{startedBy}} }""");
+        Assert.Equal($"2.4.43 deployed 5 h ago{ended}", Assert.Single(Node(last, "uat")).Text);
+
+        var line = Assert.Single(DeploymentActivity.OfEnvironment(last, "uat", [], Now, Utc));
+        Assert.Equal($"last: demo-ui 2.4.43 reached uat 5 h ago{environment}", line.Text);
+        Assert.Equal($"The last deployment of demo-ui to uat that ended: demo-ui 2.4.43 reached uat 5 h ago (2026-10-09 07:00 +00:00){environment}.", line.Title);
+    }
+
     // ------------------------------------------------------- the names that are not there
 
     /// <summary>The environment, the slug and the deployable a node is asked for are no guard's: they may be not

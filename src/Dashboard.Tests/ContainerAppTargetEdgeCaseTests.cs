@@ -149,6 +149,31 @@ public class ContainerAppTargetEdgeCaseTests
         Assert.NotEqual(new ContainerAppTarget(App, ""), new ContainerAppTarget(App, " "));
     }
 
+    /// <summary>The unnamed path and the default spelled out are one target (#585): the page asks the same path of
+    /// both, so the operator, <c>Equals</c>, the hash code, a dictionary and <c>Distinct</c> all see one app - and
+    /// each keeps the path it was given.</summary>
+    [Fact]
+    public void TheUnnamedPathAndTheDefaultSpelledOutAreOneTarget()
+    {
+        var unnamed = new ContainerAppTarget(App);
+        var spelled = new ContainerAppTarget(App, ContainerAppTarget.DefaultHealthPath);
+
+        Assert.True(unnamed == spelled);
+        Assert.False(unnamed != spelled);
+        Assert.True(unnamed.Equals((object)spelled));
+        Assert.True(spelled.Equals((object)unnamed));
+        Assert.Equal(unnamed.GetHashCode(), spelled.GetHashCode());
+        Assert.Single(new[] { unnamed, spelled }.Distinct());
+
+        var byTarget = new Dictionary<ContainerAppTarget, string> { [unnamed] = "first" };
+        Assert.Equal("first", byTarget[spelled]);
+
+        Assert.Null(unnamed.HealthPath);
+        Assert.Equal(ContainerAppTarget.DefaultHealthPath, spelled.HealthPath);
+        Assert.NotEqual(unnamed, new ContainerAppTarget(App, ""));
+        Assert.NotEqual(spelled, new ContainerAppTarget(new Uri("https://other.example.net"), ContainerAppTarget.DefaultHealthPath));
+    }
+
     /// <summary><c>with</c> names the part it changes and leaves the rest: the moved address keeps its path, the
     /// unnamed path falls back to the default, and the emptied path stands emptied - equal and not the same in
     /// the copy that names no part.</summary>

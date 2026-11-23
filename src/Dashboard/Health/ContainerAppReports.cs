@@ -91,17 +91,7 @@ public static class HourlyCheckText
     /// </summary>
     public static string? Counts(ContainerAppReports? reports)
     {
-        var parts = new List<string>();
-        if (reports?.Last24Hours is { } day)
-        {
-            parts.Add($"24 h: {Count(day)}");
-        }
-
-        if (reports?.Last7Days is { } week)
-        {
-            parts.Add($"7 d: {Count(week)}");
-        }
-
+        var parts = Counted(reports).Select(counted => $"{counted.Kind.Label}: {Count(counted.Window)}").ToList();
         return parts.Count == 0 ? null : string.Join(" · ", parts);
     }
 
@@ -121,21 +111,33 @@ public static class HourlyCheckText
             words.Add(reports is null ? HourlyReportWords.NoReportYet : HourlyReportWords.NotAskedThisWeek);
         }
 
-        if (reports?.Last24Hours is { } day)
-        {
-            words.Add(string.Format(CultureInfo.InvariantCulture, HourlyReportWords.HealthyOfDay, day.Healthy, day.Reports));
-        }
-
-        if (reports?.Last7Days is { } week)
-        {
-            words.Add(string.Format(CultureInfo.InvariantCulture, HourlyReportWords.HealthyOfWeek, week.Healthy, week.Reports));
-        }
-
+        words.AddRange(Counted(reports).Select(counted => string.Format(
+            CultureInfo.InvariantCulture, HourlyReportWords.HealthyOf, counted.Window.Healthy, counted.Window.Reports, counted.Kind.InSentence)));
         words.Add(AvailabilityText.Note);
         return string.Join(' ', words);
     }
 
     private static string Count(HealthWindow window) => window.Reports == 0 ? "none" : AvailabilityText.Count(window);
+
+    /// <summary>The last 24 hours: <c>24 h</c> on the box, <c>24 hours</c> in the tooltip.</summary>
+    private static readonly CountedWindow Day = new("24 h", "24 hours", reports => reports.Last24Hours);
+
+    /// <summary>The last seven days: <c>7 d</c> on the box, <c>7 days</c> in the tooltip.</summary>
+    private static readonly CountedWindow Week = new("7 d", "7 days", reports => reports.Last7Days);
+
+    /// <summary>The windows the report counts, in the order the box and the tooltip say them.</summary>
+    private static readonly CountedWindow[] Windows = [Day, Week];
+
+    /// <summary>The windows the file counts for the app, with their counts; none without reports.</summary>
+    private static IEnumerable<(CountedWindow Kind, HealthWindow Window)> Counted(ContainerAppReports? reports) =>
+        reports is null
+            ? []
+            : Windows.Select(kind => (Kind: kind, Window: kind.Of(reports)))
+                .Where(counted => counted.Window is not null)
+                .Select(counted => (counted.Kind, counted.Window!));
+
+    /// <summary>A window the hourly report counts: its short label on the box, its words in a sentence, and where the report keeps it.</summary>
+    private sealed record CountedWindow(string Label, string InSentence, Func<ContainerAppReports, HealthWindow?> Of);
 
     /// <summary>
     /// The sentences of <see cref="Title"/>, named so the tooltip's template reads in one place and
@@ -162,14 +164,10 @@ public static class HourlyCheckText
         public const string NoReportYet = "The delivery facts name no report of it yet.";
 
         /// <summary>An app the reports of the last seven days did not ask.</summary>
-        public const string NotAskedThisWeek = "No report of the last 7 days asked it.";
+        public static readonly string NotAskedThisWeek = $"No report of the last {Week.InSentence} asked it.";
 
-        /// <summary>The last 24 hours' count: {0} healthy, of {1} reports.</summary>
-        public static readonly CompositeFormat HealthyOfDay =
-            CompositeFormat.Parse("Healthy in {0} of the {1} reports of 24 hours that asked it.");
-
-        /// <summary>The last seven days' count: {0} healthy, of {1} reports.</summary>
-        public static readonly CompositeFormat HealthyOfWeek =
-            CompositeFormat.Parse("Healthy in {0} of the {1} reports of 7 days that asked it.");
+        /// <summary>A counted window: {0} healthy, of {1} reports, in {2} the window's words.</summary>
+        public static readonly CompositeFormat HealthyOf =
+            CompositeFormat.Parse("Healthy in {0} of the {1} reports of {2} that asked it.");
     }
 }

@@ -168,5 +168,15 @@ public sealed record NodeInfo(string Name, string? Region, string Role, Uri Url,
     public const string PrimaryRole = "primary";
     public const string StandbyRole = "standby";
 
-    public bool IsPrimary => string.Equals(Role, PrimaryRole, StringComparison.OrdinalIgnoreCase);
+    public bool IsPrimary => NodeRole.IsPrimary(Role);
+}
+
+/// <summary>The one place that decides which role word names a primary node.</summary>
+public static class NodeRole
+{
+    /// <summary>
+    /// Whether <paramref name="role"/> is <see cref="NodeInfo.PrimaryRole"/>: the whole word in any case, as written,
+    /// with no space trimmed; no word at all is no primary.
+    /// </summary>
+    public static bool IsPrimary(string? role) => string.Equals(role, NodeInfo.PrimaryRole, StringComparison.OrdinalIgnoreCase);
 }

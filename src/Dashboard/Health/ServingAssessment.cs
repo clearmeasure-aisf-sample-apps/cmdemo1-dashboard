@@ -85,29 +85,40 @@ public sealed record ServingAssessment(
     public IReadOnlyList<NodeHealth> OutOfRotation =>
         Rotation is null ? [] : [.. Rotation.Where(node => node.State != HealthState.Healthy)];
 
-    public string Headline => Rotation is { } rotation
-        ? State switch
-        {
-            ServingState.Pending => "Checking which regions serve traffic",
-            ServingState.Primary => RotationHeadline(rotation.Count, OutOfRotation),
-            ServingState.FailedOver => $"Failed over to {Expected!.Label}",
-            _ => "No region is healthy",
-        }
-        : OnlyNode is { } only
-        ? State switch
-        {
-            ServingState.Pending => $"Checking {only.Label}",
-            ServingState.Primary or ServingState.FailedOver => $"Serves traffic: {only.Label}",
-            _ => $"Not serving: {only.Label}",
-        }
-        : State switch
-        {
-            ServingState.NoNodes => "No nodes in the topology",
-            ServingState.Pending => "Checking which region serves traffic",
-            ServingState.Primary => $"Expected to serve traffic: {Expected!.Label} (primary)",
-            ServingState.FailedOver => $"Failed over to {Expected!.Label}",
-            _ => "No healthy node: nothing can serve traffic",
-        };
+    /// <summary>The headline in the words of the deployable's shape: a rotation, an only node, or a plain deployable.</summary>
+    public string Headline => Rotation is { } rotation ? RotationWords(rotation)
+        : OnlyNode is { } only ? OnlyNodeWords(only)
+        : PlainWords();
+
+    /// <summary>A rotation names regions in the plural: the Front Door rotates over several.</summary>
+    private string RotationWords(IReadOnlyList<NodeHealth> rotation) => State switch
+    {
+        ServingState.Pending => "Checking which regions serve traffic",
+        ServingState.Primary => RotationHeadline(rotation.Count, OutOfRotation),
+        ServingState.FailedOver => FailedOverWords(),
+        _ => "No region is healthy",
+    };
+
+    /// <summary>The only node names no primary, no standby and no failover: it serves, or it does not.</summary>
+    private string OnlyNodeWords(NodeHealth only) => State switch
+    {
+        ServingState.Pending => $"Checking {only.Label}",
+        ServingState.Primary or ServingState.FailedOver => $"Serves traffic: {only.Label}",
+        _ => $"Not serving: {only.Label}",
+    };
+
+    /// <summary>A plain deployable names the one node expected to serve.</summary>
+    private string PlainWords() => State switch
+    {
+        ServingState.NoNodes => "No nodes in the topology",
+        ServingState.Pending => "Checking which region serves traffic",
+        ServingState.Primary => $"Expected to serve traffic: {Expected!.Label} (primary)",
+        ServingState.FailedOver => FailedOverWords(),
+        _ => "No healthy node: nothing can serve traffic",
+    };
+
+    /// <summary>A rotation and a plain deployable fail over in the same words.</summary>
+    private string FailedOverWords() => $"Failed over to {Expected!.Label}";
 
     /// <summary>Why the deployable failed over; null in every other state, and for a single node.</summary>
     public string? FailoverDetail => State != ServingState.FailedOver || OnlyNode is not null
@@ -136,16 +147,45 @@ public sealed record ServingAssessment(
         var primaries = byPriority.Where(node => node.IsPrimary).ToList();
         if (frontDoor is not null && primaries.Count > 1)
         {
-            // No primary is named as the failed one: the detail says that none is healthy.
             var (rotating, first) = DecideRotation(primaries, byPriority);
-            return new ServingAssessment(rotating, first, null, Compare(rotating, frontDoor), frontDoor, null, primaries);
+            return RotationOf(rotating, first, frontDoor.Value, primaries);
         }
 
         var (state, expected) = Decide(byPriority);
         var failedPrimary = state == ServingState.FailedOver ? byPriority.FirstOrDefault(node => node.IsPrimary) : null;
         var single = frontDoor is null && byPriority.Count == 1 ? byPriority[0] : null;
-        return new ServingAssessment(state, expected, failedPrimary, Compare(state, frontDoor), frontDoor, single);
+        return OneNode(state, expected, failedPrimary, frontDoor, single);
     }
+
+    /// <summary>
+    /// A rotation: the Front Door rotates over <paramref name="primaries"/>. No primary is named as the failed one:
+    /// the detail says that none is healthy.
+    /// </summary>
+    private static ServingAssessment RotationOf(
+        ServingState state, NodeHealth? expected, HealthState frontDoor, IReadOnlyList<NodeHealth> primaries) =>
+        new(
+            State: state,
+            Expected: expected,
+            FailedPrimary: null,
+            FrontDoor: Compare(state, frontDoor),
+            FrontDoorState: frontDoor,
+            OnlyNode: null,
+            Rotation: primaries);
+
+    /// <summary>
+    /// A deployable where one node is expected to serve: <paramref name="onlyNode"/> is set when that node is the only
+    /// one and has no Front Door endpoint in front of it.
+    /// </summary>
+    private static ServingAssessment OneNode(
+        ServingState state, NodeHealth? expected, NodeHealth? failedPrimary, HealthState? frontDoor, NodeHealth? onlyNode) =>
+        new(
+            State: state,
+            Expected: expected,
+            FailedPrimary: failedPrimary,
+            FrontDoor: Compare(state, frontDoor),
+            FrontDoorState: frontDoor,
+            OnlyNode: onlyNode,
+            Rotation: null);
 
     /// <summary>
     /// A rotation is decided when every primary node is checked: the healthy ones serve. With none healthy, the

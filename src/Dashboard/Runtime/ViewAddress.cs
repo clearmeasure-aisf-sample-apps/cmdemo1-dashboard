@@ -102,10 +102,18 @@ public sealed record ViewAddress(DashboardView View, string? Environment = null,
         DashboardView.Runtime when Environment is { } environment => $"{RuntimeName}/{environment}",
         DashboardView.Runtime => RuntimeName,
         DashboardView.Cluster => ClusterName,
-        DashboardView.WorkItems when Audience == WorkAudience.Bot => $"{WorkItemsName}/bot",
-        DashboardView.WorkItems when Audience == WorkAudience.Team => $"{WorkItemsName}/team",
-        DashboardView.WorkItems => WorkItemsName,
+        DashboardView.WorkItems => WorkItemsHash(Audience),
         DashboardView.Health => string.Empty,
         _ => throw new ArgumentOutOfRangeException(nameof(View), View, "A view has no address."),
     };
+
+    /// <summary>
+    /// The work items view's hash: its word, then the filter's segment from <see cref="WorkItemsText.AudienceHash"/>
+    /// when it has one. All has an empty segment, and a filter that is none of the three is no filter: both leave the
+    /// word alone.
+    /// </summary>
+    private static string WorkItemsHash(WorkAudience audience) =>
+        Enum.IsDefined(audience) && WorkItemsText.AudienceHash(audience) is { Length: > 0 } segment
+            ? $"{WorkItemsName}/{segment}"
+            : WorkItemsName;
 }

@@ -12,6 +12,67 @@ public class ServingAssessmentTests
     private static NodeHealth Standby(HealthState state, string region = "eastus2") => new($"app-{region}", region, false, state);
 
     [Fact]
+    public void ARotationIsBuiltWithEveryPartInItsPlace()
+    {
+        var west = Primary(Unhealthy, "westus3");
+        var east = Primary(Healthy, "eastus2");
+        var standby = Standby(Healthy, "centralus");
+
+        var assessment = ServingAssessment.Assess([standby, west, east], frontDoor: Unreachable);
+
+        Assert.Equal(
+            new ServingAssessment(
+                State: ServingState.Primary,
+                Expected: east,
+                FailedPrimary: null,
+                FrontDoor: FrontDoorAgreement.Disagrees,
+                FrontDoorState: Unreachable,
+                OnlyNode: null,
+                Rotation: assessment.Rotation),
+            assessment);
+        Assert.Equal(new[] { west, east }, assessment.Rotation);
+    }
+
+    [Fact]
+    public void AFailedOverDeployableIsBuiltWithEveryPartInItsPlace()
+    {
+        var west = Primary(Unreachable, "westus3");
+        var east = Standby(Healthy, "eastus2");
+
+        var assessment = ServingAssessment.Assess([west, east], frontDoor: Healthy);
+
+        Assert.Equal(
+            new ServingAssessment(
+                State: ServingState.FailedOver,
+                Expected: east,
+                FailedPrimary: west,
+                FrontDoor: FrontDoorAgreement.Agrees,
+                FrontDoorState: Healthy,
+                OnlyNode: null,
+                Rotation: null),
+            assessment);
+    }
+
+    [Fact]
+    public void AnOnlyNodeWithoutFrontDoorIsBuiltWithEveryPartInItsPlace()
+    {
+        var only = Primary(Healthy, "westus3");
+
+        var assessment = ServingAssessment.Assess([only], frontDoor: null);
+
+        Assert.Equal(
+            new ServingAssessment(
+                State: ServingState.Primary,
+                Expected: only,
+                FailedPrimary: null,
+                FrontDoor: FrontDoorAgreement.NotPresent,
+                FrontDoorState: null,
+                OnlyNode: only,
+                Rotation: null),
+            assessment);
+    }
+
+    [Fact]
     public void AHealthyPrimaryServes()
     {
         var assessment = ServingAssessment.Assess([Primary(Healthy), Standby(Healthy)], frontDoor: Healthy);

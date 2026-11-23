@@ -144,35 +144,46 @@ public static class ApplicationText
 {
     private const int LongestName = 64;
     private const int LongestVersion = 40;
+    private const string NameMarks = "-_";
+    private const string VersionMarks = "._+-";
 
     /// <summary>A deployable's name as the address takes it: letters, digits, <c>-</c> and <c>_</c>.</summary>
-    public static bool IsName(string? deployable) =>
-        deployable is { Length: > 0 and <= LongestName }
-        && deployable.All(character => char.IsAsciiLetterOrDigit(character) || character is '-' or '_');
+    public static bool IsName(string? deployable) => IsWord(deployable, LongestName, NameMarks);
 
     /// <summary>
     /// A version that may name a file: one to forty of letters, digits and <c>. _ + -</c>. The page asks for no file
     /// of any other version.
     /// </summary>
-    public static bool IsVersion(string? version) =>
-        version is { Length: > 0 and <= LongestVersion }
-        && version.All(character => char.IsAsciiLetterOrDigit(character) || character is '.' or '_' or '+' or '-');
+    public static bool IsVersion(string? version) => IsWord(version, LongestVersion, VersionMarks);
+
+    /// <summary>A word of one to <paramref name="longest" /> characters, each an ASCII letter or digit or one of <paramref name="marks" />.</summary>
+    private static bool IsWord(string? text, int longest, string marks) =>
+        text is { Length: > 0 } && text.Length <= longest
+        && text.All(character => char.IsAsciiLetterOrDigit(character) || marks.Contains(character, StringComparison.Ordinal));
 
     /// <summary>
     /// The nodes of the runtime diagram that open an application view: a web app or a container app whose manifest
     /// entry names where its deployable's diagrams are published.
     /// </summary>
-    public static IReadOnlyList<RuntimeNode> Boxes(RuntimeManifest manifest)
-    {
-        ArgumentNullException.ThrowIfNull(manifest);
-        return [.. manifest.Nodes.Where(node => node.Architecture is not null && IsName(node.Deployable))];
-    }
+    public static IReadOnlyList<RuntimeNode> Boxes(RuntimeManifest manifest) => [.. BoxesWhere(manifest, static _ => true)];
 
     /// <summary>The boxes of one deployable, the primary first; none for a deployable without a diagram, and for a name the address refuses.</summary>
     public static IReadOnlyList<RuntimeNode> Boxes(RuntimeManifest manifest, string? deployable) =>
         IsName(deployable)
-            ? [.. Boxes(manifest).Where(node => string.Equals(node.Deployable, deployable, StringComparison.OrdinalIgnoreCase)).OrderBy(node => IsPrimary(node.Role) ? 0 : 1)]
+            ? [.. BoxesWhere(manifest, node => string.Equals(node.Deployable, deployable, StringComparison.OrdinalIgnoreCase)).OrderBy(node => NodeRole.IsPrimary(node.Role) ? 0 : 1)]
             : [];
+
+    /// <summary>
+    /// The one walk over the diagram both views of the boxes take: a node is a box when it has an architecture and a
+    /// name the address takes, and is kept when it also belongs to what the caller asked for - in the diagram's order.
+    /// </summary>
+    private static IEnumerable<RuntimeNode> BoxesWhere(RuntimeManifest manifest, Func<RuntimeNode, bool> belongs)
+    {
+        ArgumentNullException.ThrowIfNull(manifest);
+        return manifest.Nodes.Where(node => IsBox(node) && belongs(node));
+    }
+
+    private static bool IsBox(RuntimeNode node) => node.Architecture is not null && IsName(node.Deployable);
 
     /// <summary>The accessible name of an application's box in the runtime diagram.</summary>
     public static string BoxLabel(RuntimeNode node)
@@ -192,7 +203,7 @@ public static class ApplicationText
         var running = nodes.Where(node => !string.IsNullOrWhiteSpace(node.Version)).ToList();
         if (running.Count > 0)
         {
-            var chosen = running.FirstOrDefault(node => IsPrimary(node.Role), running[0]);
+            var chosen = running.FirstOrDefault(node => NodeRole.IsPrimary(node.Role), running[0]);
             return new ApplicationVersion(chosen.Version!.Trim(), Runs: true);
         }
 
@@ -349,8 +360,6 @@ public static class ApplicationText
         ArgumentNullException.ThrowIfNull(package);
         return package.Version is { } version ? $"{package.Name} {version}" : package.Name;
     }
-
-    private static bool IsPrimary(string? role) => string.Equals(role, NodeInfo.PrimaryRole, StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>

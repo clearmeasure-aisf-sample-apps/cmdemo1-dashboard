@@ -100,6 +100,31 @@ public class ApplicationTextEdgeCaseTests
         Assert.Null(ApplicationText.File(new Uri(Base), At(41), "svg"));
     }
 
+    /// <summary>The two guards share one decision but keep their own bound and their own marks: a word of forty-one to
+    /// sixty-four letters is a name and no version, the dot and the plus spell a version and no name, and the dash and
+    /// the underscore spell both.</summary>
+    [Theory]
+    [InlineData(41, true, false)]
+    [InlineData(64, true, false)]
+    [InlineData(65, false, false)]
+    public void ANameAndAVersionAreBoundedEachByItsOwnLength(int letters, bool isName, bool isVersion)
+    {
+        Assert.Equal(isName, ApplicationText.IsName(At(letters)));
+        Assert.Equal(isVersion, ApplicationText.IsVersion(At(letters)));
+    }
+
+    /// <summary>The marks of the one guard do not leak into the other.</summary>
+    [Theory]
+    [InlineData("1.0", false, true)]
+    [InlineData("1+0", false, true)]
+    [InlineData("1-0", true, true)]
+    [InlineData("1_0", true, true)]
+    public void ANameAndAVersionAreSpelledEachWithItsOwnMarks(string word, bool isName, bool isVersion)
+    {
+        Assert.Equal(isName, ApplicationText.IsName(word));
+        Assert.Equal(isVersion, ApplicationText.IsVersion(word));
+    }
+
     /// <summary>What is refused although it is spelled like a version: the letters outside the ASCII - an accented
     /// letter, a full-width digit, a superscript, the two letters an English <c>i</c> turns into in Turkish - a space
     /// or a tab or a newline at either end, and the comma, the colon, the slash and the percent sign a hostile address
@@ -207,6 +232,37 @@ public class ApplicationTextEdgeCaseTests
         Assert.Empty(ApplicationText.Boxes(manifest, " "));
         Assert.Empty(ApplicationText.Boxes(manifest, null));
         Assert.Empty(ApplicationText.Boxes(Diagram(), "ui"));
+    }
+
+    /// <summary>The view of one deployable and the view of the whole diagram take one walk and decide a box alike: for
+    /// every deployable on a mixed diagram, asked in any case, the boxes of that deployable are exactly the diagram's
+    /// boxes whose deployable is that name, the primary first and the rest in the diagram's order - no node without an
+    /// architecture or with a name the address refuses slips into the one and not the other.</summary>
+    [Fact]
+    public void TheBoxesOfOneDeployableAreTheDiagramsBoxesOfThatName()
+    {
+        var manifest = Diagram(
+            Box("ca_ui_standby", "ui", "https://ca-ui-2.example.io", "standby"),
+            Box("ca_api", "API", "https://ca-api.example.io"),
+            new RuntimeNode("no_architecture", RuntimeNodeKind.ContainerApp, "ca-x", Deployable: "ui"),
+            Box("ca_refused", "ui/../x"),
+            Box("ca_ui_primary", "UI", "https://ca-ui.example.io", "primary"),
+            Box("ca_api_two", "api", "https://ca-api-2.example.io"));
+        var all = ApplicationText.Boxes(manifest);
+
+        foreach (var deployable in new[] { "ui", "Ui", "api", "API", "worker" })
+        {
+            var expected = all
+                .Where(box => string.Equals(box.Deployable, deployable, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(box => string.Equals(box.Role, "primary", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                .Select(box => box.Alias);
+
+            Assert.Equal(expected, ApplicationText.Boxes(manifest, deployable).Select(box => box.Alias));
+        }
+
+        Assert.Equal(["ca_ui_primary", "ca_ui_standby"], ApplicationText.Boxes(manifest, "ui").Select(box => box.Alias));
+        Assert.Equal(["ca_api", "ca_api_two"], ApplicationText.Boxes(manifest, "api").Select(box => box.Alias));
+        Assert.Empty(ApplicationText.Boxes(manifest, "worker"));
     }
 
     /// <summary>The name of a deployable is matched by its letters without heeding their case - ordinally, so it is

@@ -192,6 +192,58 @@ public class AksServiceEdgeCaseTests
     public void OnlyTheWordStoppedIsStopped(string? powerState, bool expected) =>
         Assert.Equal(expected, (None with { PowerState = powerState }).IsStopped);
 
+    /// <summary>Only the word <c>Running</c>, in any case, is running - the question the events ask of a power state
+    /// that changed - and the record answers it itself rather than lending its comparison out.</summary>
+    [Theory]
+    [InlineData("Running", true)]
+    [InlineData("running", true)]
+    [InlineData("RUNNING", true)]
+    [InlineData("Stopped", false)]
+    [InlineData("Starting", false)]
+    [InlineData("Running ", false)]
+    [InlineData("Runn", false)]
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void OnlyTheWordRunningIsRunning(string? powerState, bool expected) =>
+        Assert.Equal(expected, (None with { PowerState = powerState }).IsRunning);
+
+    /// <summary>Only the word <c>Succeeded</c>, in any case, is provisioned; what Azure is still doing to the
+    /// service, a failure, and a provisioning state the file does not have are not.</summary>
+    [Theory]
+    [InlineData("Succeeded", true)]
+    [InlineData("succeeded", true)]
+    [InlineData("SUCCEEDED", true)]
+    [InlineData("Updating", false)]
+    [InlineData("Starting", false)]
+    [InlineData("Stopping", false)]
+    [InlineData("Failed", false)]
+    [InlineData("Succeeded ", false)]
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void OnlyTheWordSucceededIsProvisioned(string? provisioningState, bool expected) =>
+        Assert.Equal(expected, (None with { ProvisioningState = provisioningState }).IsProvisioned);
+
+    /// <summary>Each query reads its own part and no other: a running service may be still provisioning, a stopped
+    /// one may be provisioned, and running and stopped are never both true.</summary>
+    [Fact]
+    public void EachQueryReadsItsOwnPart()
+    {
+        var updating = None with { PowerState = "Running", ProvisioningState = "Updating" };
+
+        Assert.True(updating.IsRunning);
+        Assert.False(updating.IsStopped);
+        Assert.False(updating.IsProvisioned);
+
+        var stopped = None with { PowerState = "Stopped", ProvisioningState = "Succeeded" };
+
+        Assert.False(stopped.IsRunning);
+        Assert.True(stopped.IsStopped);
+        Assert.True(stopped.IsProvisioned);
+
+        Assert.True(ClusterFixture.SampleService.IsRunning);
+        Assert.True(ClusterFixture.SampleService.IsProvisioned);
+    }
+
     /// <summary>Which part of the service says "stopped": the power state and nothing else, whatever the rest of it
     /// claims. A stopped cluster Azure still calls available is stopped, and a running one whose provisioning failed
     /// is not.</summary>
@@ -433,6 +485,8 @@ public class AksServiceEdgeCaseTests
         Assert.Null(none.Metrics);
 
         Assert.False(none.IsStopped);
+        Assert.False(none.IsRunning);
+        Assert.False(none.IsProvisioned);
         Assert.False(none.IsOld(Generated));
         Assert.False(none.IsOld(DateTimeOffset.UnixEpoch));
     }

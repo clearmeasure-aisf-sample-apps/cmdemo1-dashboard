@@ -84,29 +84,37 @@ public static class WorkItemsText
         _ => throw new ArgumentOutOfRangeException(nameof(availability), availability, "A work items state has no sentence."),
     };
 
-    public static string AudienceLabel(WorkAudience audience) => audience switch
-    {
-        WorkAudience.All => "All",
-        WorkAudience.Bot => "Bot",
-        WorkAudience.Team => "Team",
-        _ => throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no name."),
-    };
+    /// <summary>
+    /// The words of one audience: its name on the strip, its segment of the address, and the worker whose items it
+    /// holds. The segment is also that worker's word on a row. All holds no one worker, so it has none.
+    /// </summary>
+    private sealed record AudienceWords(WorkAudience Audience, string Label, string Segment, WorkWorker? Worker);
+
+    /// <summary>The one table of audience words. A new audience is one more row here.</summary>
+    private static readonly AudienceWords[] Audiences =
+    [
+        new(WorkAudience.All, "All", string.Empty, Worker: null),
+        new(WorkAudience.Bot, "Bot", "bot", WorkWorker.Bot),
+        new(WorkAudience.Team, "Team", "team", WorkWorker.Team),
+    ];
+
+    private static AudienceWords? WordsOf(WorkAudience audience) => Array.Find(Audiences, words => words.Audience == audience);
+
+    public static string AudienceLabel(WorkAudience audience) =>
+        WordsOf(audience)?.Label
+        ?? throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no name.");
 
     /// <summary>The first segment after <c>work-items</c> in the address: <c>bot</c>, <c>team</c>, or anything else for all.</summary>
-    public static WorkAudience AudienceOf(string? segment) => segment?.Trim().ToLowerInvariant() switch
+    public static WorkAudience AudienceOf(string? segment)
     {
-        "bot" => WorkAudience.Bot,
-        "team" => WorkAudience.Team,
-        _ => WorkAudience.All,
-    };
+        var word = segment?.Trim();
+        return Array.Find(Audiences, words => string.Equals(words.Segment, word, StringComparison.OrdinalIgnoreCase))?.Audience
+            ?? WorkAudience.All;
+    }
 
-    public static string AudienceHash(WorkAudience audience) => audience switch
-    {
-        WorkAudience.Bot => "bot",
-        WorkAudience.Team => "team",
-        WorkAudience.All => string.Empty,
-        _ => throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no address."),
-    };
+    public static string AudienceHash(WorkAudience audience) =>
+        WordsOf(audience)?.Segment
+        ?? throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no address.");
 
     /// <summary>The items of one filter, in the file's order. An item with no worker is only in All.</summary>
     public static IReadOnlyList<WorkItem> Select(IReadOnlyList<WorkItem> items, WorkAudience audience)
@@ -129,13 +137,12 @@ public static class WorkItemsText
         _ => throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no empty state."),
     };
 
-    public static string? WorkerLabel(WorkWorker worker) => worker switch
-    {
-        WorkWorker.Bot => "bot",
-        WorkWorker.Team => "team",
-        WorkWorker.Unknown => null,
-        _ => throw new ArgumentOutOfRangeException(nameof(worker), worker, "A worker has no name."),
-    };
+    /// <summary>The worker's word on a row: its audience's address segment. Null when the file does not say who.</summary>
+    public static string? WorkerLabel(WorkWorker worker) =>
+        worker == WorkWorker.Unknown
+            ? null
+            : Array.Find(Audiences, words => words.Worker == worker)?.Segment
+              ?? throw new ArgumentOutOfRangeException(nameof(worker), worker, "A worker has no name.");
 
     /// <summary>
     /// The stats strip for a filter. All is the file's board (<c>stats.all</c>, or the older top-level fields). Bot

@@ -96,6 +96,14 @@ public class ServingStateShapeEdgeCaseTests
     }
 
     [Fact]
+    public void ARotationAndAPlainDeployableFailOverInTheSameWords()
+    {
+        Assert.Equal(Plain(ServingState.FailedOver).Headline, Rotation(ServingState.FailedOver).Headline);
+        Assert.Equal("Failed over to centralus", Plain(ServingState.FailedOver).Headline);
+        Assert.Equal("Serves traffic: app-one", OnlyNode(ServingState.FailedOver).Headline);
+    }
+
+    [Fact]
     public void ARotationThatFailedOverNamesNoPrimaryInItsDetail()
     {
         Assert.Equal("No primary node is healthy; centralus is expected to serve traffic.", Rotation(ServingState.FailedOver).FailoverDetail);

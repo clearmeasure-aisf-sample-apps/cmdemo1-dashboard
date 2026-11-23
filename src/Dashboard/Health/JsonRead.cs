@@ -23,8 +23,12 @@ internal static class JsonRead
 
     /// <summary>A number that is not negative; null for anything else.</summary>
     public static double? Number(JsonElement? parent, string name) =>
+        Signed(parent, name) is { } real and >= 0 ? real : null;
+
+    /// <summary>Any finite number, also below zero (such as a refund); null for anything else.</summary>
+    public static double? Signed(JsonElement? parent, string name) =>
         parent is { ValueKind: JsonValueKind.Object } value && value.TryGetProperty(name, out var number) && number.ValueKind == JsonValueKind.Number
-            && number.TryGetDouble(out var real) && double.IsFinite(real) && real >= 0
+            && number.TryGetDouble(out var real) && double.IsFinite(real)
             ? real
             : null;
 

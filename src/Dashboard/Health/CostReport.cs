@@ -78,14 +78,7 @@ public sealed record CostReport(DateTimeOffset? Generated, string? Currency, Dat
 public sealed record CostAmounts(double? Yesterday, double? Last7Days, double? MonthToDate)
 {
     internal static CostAmounts Read(JsonElement element) =>
-        new(Amount(element, "yesterday"), Amount(element, "last7Days"), Amount(element, "monthToDate"));
-
-    /// <summary>An amount of money: any finite number, also below zero (a refund); null for anything else.</summary>
-    internal static double? Amount(JsonElement element, string name) =>
-        element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var number) && number.ValueKind == JsonValueKind.Number
-            && number.TryGetDouble(out var amount) && double.IsFinite(amount)
-            ? amount
-            : null;
+        new(JsonRead.Signed(element, "yesterday"), JsonRead.Signed(element, "last7Days"), JsonRead.Signed(element, "monthToDate"));
 }
 
 /// <summary>The cost of one environment, or of what the environments share.</summary>
@@ -102,7 +95,7 @@ public sealed record CostEntry(string Name, CostAmounts Amounts, IReadOnlyList<C
                 name,
                 CostAmounts.Read(element),
                 [.. JsonRead.Items(element, "topServices")
-                    .Select(service => (Name: JsonRead.Text(service, "name"), Amount: CostAmounts.Amount(service, "monthToDate")))
+                    .Select(service => (Name: JsonRead.Text(service, "name"), Amount: JsonRead.Signed(service, "monthToDate")))
                     .Where(service => service.Name is not null)
                     .Select(service => new CostService(service.Name!, service.Amount))],
                 JsonRead.Section(element, "estimate") is { } estimate ? CostEstimate.Read(estimate) : null)
@@ -119,7 +112,7 @@ public sealed record CostEstimate(double? Share, CostAmounts Amounts)
     internal static CostEstimate? Read(JsonElement element)
     {
         var amounts = CostAmounts.Read(element);
-        var share = CostAmounts.Amount(element, "share") is { } value and >= 0 and <= 1 ? value : (double?)null;
+        var share = JsonRead.Signed(element, "share") is { } value and >= 0 and <= 1 ? value : (double?)null;
         return amounts is { Yesterday: null, Last7Days: null, MonthToDate: null } ? null : new CostEstimate(share, amounts);
     }
 }

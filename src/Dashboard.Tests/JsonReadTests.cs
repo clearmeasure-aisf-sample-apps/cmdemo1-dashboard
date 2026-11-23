@@ -83,6 +83,20 @@ public class JsonReadTests
         Assert.Equal(expected, JsonRead.Number(Root(json), "n"));
 
     [Theory]
+    [InlineData("""{ "n": 3.5 }""", 3.5)]
+    [InlineData("""{ "n": 0 }""", 0.0)]
+    [InlineData("""{ "n": -0.3 }""", -0.3)] // below zero, such as a refund
+    [InlineData("""{ "n": -12 }""", -12.0)]
+    [InlineData("""{ "n": 1e400 }""", null)] // not finite
+    [InlineData("""{ "n": "-3" }""", null)] // text, not a number
+    [InlineData("""{ "n": true }""", null)]
+    [InlineData("""{ "n": {} }""", null)]
+    [InlineData("""{ "n": null }""", null)]
+    [InlineData("""{ }""", null)] // no such name
+    public void ASignedNumberIsAnyFiniteNumber(string json, double? expected) =>
+        Assert.Equal(expected, JsonRead.Signed(Root(json), "n"));
+
+    [Theory]
     [InlineData("""{ "n": 2.6 }""", 3)] // rounded
     [InlineData("""{ "n": 2.4 }""", 2)]
     [InlineData("""{ "n": 0 }""", 0)]
@@ -180,6 +194,7 @@ public class JsonReadTests
         Assert.Null(JsonRead.Section(null, "metrics"));
         Assert.Empty(JsonRead.Items(null, "pools"));
         Assert.Null(JsonRead.Number(null, "cpu"));
+        Assert.Null(JsonRead.Signed(null, "cpu"));
         Assert.Null(JsonRead.Count(null, "cpu"));
         Assert.Null(JsonRead.Long(null, "cpu"));
         Assert.Null(JsonRead.Flag(null, "ready"));

@@ -79,8 +79,8 @@ public sealed record ClusterStatus(
                 JsonRead.Time(root, "generated"),
                 JsonRead.Count(root, "intervalSeconds"),
                 JsonRead.Text(root, "kubernetesVersion"),
-                ReadAll<ClusterNode>(root, "nodes", ClusterNode.Read),
-                ReadAll<ClusterNamespace>(root, "namespaces", ClusterNamespace.Read)));
+                ReadNamed(root, "nodes", ClusterNode.Read),
+                ReadNamed(root, "namespaces", ClusterNamespace.Read)));
         }
         catch (JsonException)
         {
@@ -88,9 +88,16 @@ public sealed record ClusterStatus(
         }
     }
 
-    internal static IReadOnlyList<T> ReadAll<T>(JsonElement? parent, string name, Func<JsonElement, T?> read)
+    /// <summary>
+    /// The rows of the array under <paramref name="name"/>, each made by <paramref name="read"/> from its name and its
+    /// object. The one place of the rule that a row without a name is left out: a row type gets it by construction.
+    /// </summary>
+    internal static IReadOnlyList<T> ReadNamed<T>(JsonElement? parent, string name, Func<string, JsonElement, T> read)
         where T : class =>
-        [.. JsonRead.Items(parent, name).Select(read).OfType<T>()];
+        [.. JsonRead.Items(parent, name).Select(item => JsonRead.Identified(item, RowName, read)).OfType<T>()];
+
+    /// <summary>The field that names a node, a namespace, a pod or a volume: the one part without which there is no row.</summary>
+    private const string RowName = "name";
 
     private static bool HasArray(JsonElement root, string name) =>
         root.TryGetProperty(name, out var array) && array.ValueKind == JsonValueKind.Array;
@@ -144,13 +151,8 @@ public sealed record ClusterNode(
     /// <summary>Ready and under no pressure. A cordoned node is still a healthy one.</summary>
     public bool IsHealthy => Ready && Pressures.Count == 0;
 
-    internal static ClusterNode? Read(JsonElement element)
+    internal static ClusterNode Read(string name, JsonElement element)
     {
-        if (JsonRead.Text(element, "name") is not { } name)
-        {
-            return null;
-        }
-
         var pods = JsonRead.Section(element, "pods");
         return new ClusterNode(
             name,
@@ -174,13 +176,11 @@ public sealed record ClusterNode(
 /// <summary>One namespace with its pods and its volume claims.</summary>
 public sealed record ClusterNamespace(string Name, IReadOnlyList<ClusterPod> Pods, IReadOnlyList<ClusterVolume> Volumes)
 {
-    internal static ClusterNamespace? Read(JsonElement element) =>
-        JsonRead.Text(element, "name") is { } name
-            ? new ClusterNamespace(
-                name,
-                ClusterStatus.ReadAll<ClusterPod>(element, "pods", ClusterPod.Read),
-                ClusterStatus.ReadAll<ClusterVolume>(element, "volumes", ClusterVolume.Read))
-            : null;
+    internal static ClusterNamespace Read(string name, JsonElement element) =>
+        new(
+            name,
+            ClusterStatus.ReadNamed(element, "pods", ClusterPod.Read),
+            ClusterStatus.ReadNamed(element, "volumes", ClusterVolume.Read));
 }
 
 /// <summary>One pod.</summary>
@@ -219,23 +219,21 @@ public sealed record ClusterPod(
     /// <summary>What the page calls the pod: its workload, or its own name without one.</summary>
     public string Label => Workload ?? Name;
 
-    internal static ClusterPod? Read(JsonElement element) =>
-        JsonRead.Text(element, "name") is { } name
-            ? new ClusterPod(
-                name,
-                JsonRead.Text(element, "workload"),
-                JsonRead.Text(element, "kind"),
-                JsonRead.Text(element, "node"),
-                JsonRead.Text(element, "phase") ?? Unknown,
-                JsonRead.Flag(element, "ready") ?? false,
-                JsonRead.Count(element, "containers"),
-                JsonRead.Count(element, "containersReady"),
-                JsonRead.Count(element, "restarts") ?? 0,
-                JsonRead.Text(element, "reason"),
-                JsonRead.Time(element, "startedAt"),
-                ResourceUse.Read(JsonRead.Section(element, "cpu")),
-                ResourceUse.Read(JsonRead.Section(element, "memory")))
-            : null;
+    internal static ClusterPod Read(string name, JsonElement element) =>
+        new(
+            name,
+            JsonRead.Text(element, "workload"),
+            JsonRead.Text(element, "kind"),
+            JsonRead.Text(element, "node"),
+            JsonRead.Text(element, "phase") ?? Unknown,
+            JsonRead.Flag(element, "ready") ?? false,
+            JsonRead.Count(element, "containers"),
+            JsonRead.Count(element, "containersReady"),
+            JsonRead.Count(element, "restarts") ?? 0,
+            JsonRead.Text(element, "reason"),
+            JsonRead.Time(element, "startedAt"),
+            ResourceUse.Read(JsonRead.Section(element, "cpu")),
+            ResourceUse.Read(JsonRead.Section(element, "memory")));
 }
 
 /// <summary>One volume claim of a namespace.</summary>
@@ -243,8 +241,6 @@ public sealed record ClusterPod(
 /// <param name="Phase">Bound, Pending or Lost.</param>
 public sealed record ClusterVolume(string Name, double? Capacity, string? Phase)
 {
-    internal static ClusterVolume? Read(JsonElement element) =>
-        JsonRead.Text(element, "name") is { } name
-            ? new ClusterVolume(name, JsonRead.Number(element, "capacity"), JsonRead.Text(element, "phase"))
-            : null;
+    internal static ClusterVolume Read(string name, JsonElement element) =>
+        new(name, JsonRead.Number(element, "capacity"), JsonRead.Text(element, "phase"));
 }

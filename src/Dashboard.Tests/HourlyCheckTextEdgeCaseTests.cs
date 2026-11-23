@@ -289,6 +289,54 @@ public class HourlyCheckTextTemplateTests
         Assert.Empty(sentences);
     }
 
+    /// <summary>
+    /// The words of the two counted windows - <c>24 h</c> and <c>7 d</c> on the box, <c>24 hours</c> and <c>7 days</c>
+    /// in the tooltip - are each written once in <see cref="HourlyCheckText" />: <c>Counts</c> and <c>Title</c> walk
+    /// the same list of windows, so a third window is one entry and the box and its tooltip cannot drift apart.
+    /// </summary>
+    [Theory]
+    [InlineData(@"\b24 h\b")]
+    [InlineData(@"\b7 d\b")]
+    [InlineData(@"\b24 hours\b")]
+    [InlineData(@"\b7 days\b")]
+    public void EachWordOfACountedWindowIsWrittenOnce(string word)
+    {
+        var literals = System.Text.RegularExpressions.Regex.Matches(HourlyCheckTextSource(), "\"(?:[^\"\\\\]|\\\\.)*\"")
+            .Select(match => match.Value)
+            .Where(literal => System.Text.RegularExpressions.Regex.IsMatch(literal, word))
+            .ToList();
+
+        Assert.Single(literals);
+    }
+
+    /// <summary>
+    /// The box and its tooltip say the same windows: with one window counted, each of them names it and only it.
+    /// </summary>
+    [Fact]
+    public void TheBoxAndItsTooltipSayTheSameWindows()
+    {
+        var now = new DateTimeOffset(2026, 10, 7, 1, 30, 0, TimeSpan.Zero);
+        var dayOnly = new ContainerAppReports("scorecard", null, new HealthWindow(24, 23), null);
+        var weekOnly = new ContainerAppReports("scorecard", null, null, new HealthWindow(168, 160));
+
+        Assert.Equal("24 h: 23 of 24", HourlyCheckText.Counts(dayOnly));
+        Assert.Contains("Healthy in 23 of the 24 reports of 24 hours that asked it.", HourlyCheckText.Title(dayOnly, now, TimeZoneInfo.Utc), StringComparison.Ordinal);
+        Assert.DoesNotContain("7 days that asked", HourlyCheckText.Title(dayOnly, now, TimeZoneInfo.Utc), StringComparison.Ordinal);
+        Assert.Equal("7 d: 160 of 168", HourlyCheckText.Counts(weekOnly));
+        Assert.Contains("Healthy in 160 of the 168 reports of 7 days that asked it.", HourlyCheckText.Title(weekOnly, now, TimeZoneInfo.Utc), StringComparison.Ordinal);
+        Assert.DoesNotContain("24 hours", HourlyCheckText.Title(weekOnly, now, TimeZoneInfo.Utc), StringComparison.Ordinal);
+    }
+
+    /// <summary>The text of <c>HourlyCheckText</c>, from its declaration to the end of the file.</summary>
+    private static string HourlyCheckTextSource([System.Runtime.CompilerServices.CallerFilePath] string here = "")
+    {
+        var source = File.ReadAllText(Path.GetFullPath(
+            Path.Combine(Path.GetDirectoryName(here)!, "..", "Dashboard", "Health", "ContainerAppReports.cs")));
+        var start = source.IndexOf("public static class HourlyCheckText", StringComparison.Ordinal);
+        Assert.True(start >= 0, "HourlyCheckText was not found where the hourly report is written");
+        return source[start..];
+    }
+
     /// <summary>The text of <c>Title</c>, from its declaration to the closing brace at its own indent.</summary>
     private static string TitleBody([System.Runtime.CompilerServices.CallerFilePath] string here = "")
     {

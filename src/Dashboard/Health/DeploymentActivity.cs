@@ -221,8 +221,7 @@ public static class DeploymentActivity
         var last = report.Recent.FirstOrDefault(recent => string.Equals(recent.Environment, environment, StringComparison.OrdinalIgnoreCase));
         if (last is not null && !marks.Any(mark => !mark.InFlight && string.Equals(mark.Project, last.Project, StringComparison.OrdinalIgnoreCase) && mark.Release == last.Release))
         {
-            var by = last.StartedBy is { } startedBy ? $", started by {startedBy}" : string.Empty;
-            lines.Add(Last(last, now, zone, $"last: {Sentence(last, now)}{by}"));
+            lines.Add(Last(last, now, zone, $"last: {Sentence(last, now)}{By(last.StartedBy, ", started by ")}"));
         }
 
         return lines;
@@ -265,10 +264,7 @@ public static class DeploymentActivity
             }
 
             case DeploymentState.Executing:
-            {
-                var by = deployment.StartedBy is { } startedBy ? $", by {startedBy}" : string.Empty;
-                return new ActivityLine(ActivityKind.Deploying, $"deploying {deployment.Release}{(age is null ? string.Empty : $", {age}")}{by}", title, deployment.Url);
-            }
+                return new ActivityLine(ActivityKind.Deploying, $"deploying {deployment.Release}{(age is null ? string.Empty : $", {age}")}{By(deployment.StartedBy, ", by ")}", title, deployment.Url);
 
             case DeploymentState.Queued:
                 return new ActivityLine(ActivityKind.Queued, $"{deployment.Release} queued{(age is null ? string.Empty : $", {age}")}", title, deployment.Url);
@@ -297,10 +293,8 @@ public static class DeploymentActivity
             + "A freeze belongs to the Octopus Deploy instance; a person with the right may override it for one deployment.";
     }
 
-    private static ActivityLine Last(RecentDeployment last, DateTimeOffset now, TimeZoneInfo zone, string words)
-    {
-        var by = last.StartedBy is { } startedBy ? $", started by {startedBy}" : string.Empty;
-        return new ActivityLine(
+    private static ActivityLine Last(RecentDeployment last, DateTimeOffset now, TimeZoneInfo zone, string words) =>
+        new(
             last.Result switch
             {
                 DeploymentState.Succeeded => ActivityKind.Deployed,
@@ -308,14 +302,12 @@ public static class DeploymentActivity
                 _ => ActivityKind.Canceled,
             },
             words,
-            $"The last deployment of {last.Project} to {last.Environment} that ended: {Sentence(last, now)} ({TimeText.DateAndTime(last.Finished, zone)}){by}.",
+            $"The last deployment of {last.Project} to {last.Environment} that ended: {Sentence(last, now)} ({TimeText.DateAndTime(last.Finished, zone)}){By(last.StartedBy, ", started by ")}.",
             last.Url);
-    }
 
     /// <summary><c>2.4.43 deployed 5 h ago by ai-ops</c>, <c>2.4.43 failed 5 h ago by ai-ops</c>, <c>2.4.43 canceled 5 h ago</c>.</summary>
     private static string Brief(RecentDeployment last, DateTimeOffset now)
     {
-        var by = last.StartedBy is { } startedBy ? $" by {startedBy}" : string.Empty;
         var result = last.Result switch
         {
             DeploymentState.Succeeded => "deployed",
@@ -323,8 +315,14 @@ public static class DeploymentActivity
             DeploymentState.Canceled => "canceled",
             _ => last.ResultText,
         };
-        return $"{last.Release} {result} {DeploymentText.Age(now - last.Finished)} ago{by}";
+        return $"{last.Release} {result} {DeploymentText.Age(now - last.Finished)} ago{By(last.StartedBy, " by ")}";
     }
+
+    /// <summary>
+    /// Who started a deployment, after the <paramref name="words"/> that lead to the name (<c>, by ai-ops</c>,
+    /// <c>, started by ai-ops</c>, <c> by ai-ops</c>); nothing when the file does not say.
+    /// </summary>
+    private static string By(string? startedBy, string words) => startedBy is { } who ? $"{words}{who}" : string.Empty;
 
     /// <summary>The words of a mark that ended, for the last deployment: <c>cmdemo2-ui 2.4.43 reached uat 5 h ago</c>.</summary>
     private static string Sentence(RecentDeployment last, DateTimeOffset now)

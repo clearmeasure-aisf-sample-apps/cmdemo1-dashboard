@@ -72,6 +72,38 @@ public class WorkItemsTextTests
         }
     }
 
+    // ---- One vocabulary: the strip, the address and the row say the same word ----
+
+    [Theory]
+    [InlineData(WorkAudience.Bot, WorkWorker.Bot)]
+    [InlineData(WorkAudience.Team, WorkWorker.Team)]
+    public void AWorkersWordIsItsFiltersAddressSegment(WorkAudience audience, WorkWorker worker) =>
+        Assert.Equal(WorkItemsText.AudienceHash(audience), WorkItemsText.WorkerLabel(worker));
+
+    [Fact]
+    public void EveryFiltersNameIsItsAddressSegmentInTitleCaseAndAllHasNoSegment()
+    {
+        foreach (var audience in Enum.GetValues<WorkAudience>())
+        {
+            var label = WorkItemsText.AudienceLabel(audience);
+            var segment = WorkItemsText.AudienceHash(audience);
+            Assert.Equal(audience == WorkAudience.All ? string.Empty : label.ToLowerInvariant(), segment);
+        }
+    }
+
+    [Fact]
+    public void EveryKnownWorkerIsNamedByTheSegmentOfExactlyOneFilter()
+    {
+        var segments = Enum.GetValues<WorkAudience>().Select(WorkItemsText.AudienceHash).ToList();
+        foreach (var worker in Enum.GetValues<WorkWorker>().Where(worker => worker != WorkWorker.Unknown))
+        {
+            var word = WorkItemsText.WorkerLabel(worker);
+            Assert.NotNull(word);
+            Assert.Single(segments, segment => segment == word);
+            Assert.Equal(word, WorkItemsText.AudienceHash(WorkItemsText.AudienceOf(word)));
+        }
+    }
+
     // ---- Entered ----
 
     [Fact]

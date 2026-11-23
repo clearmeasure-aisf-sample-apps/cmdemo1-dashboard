@@ -98,21 +98,15 @@ public sealed record VersionAssessment(
                 $"{file} has no entry for {deployable}: it was not deployed here yet.");
         }
 
-        var all = nodes.ToList();
-        var unknown = all.Where(node => node.Running is null).ToList();
-        var matching = all.Where(node => Same(node.Running, version)).ToList();
-        var differing = all.Where(node => node.Running is not null && !Same(node.Running, version)).ToList();
-        var state = differing.Count > 0 ? VersionState.Differs
-            : matching.Count > 0 ? VersionState.InSync
-            : VersionState.NodesUnknown;
+        var tally = Tally(nodes, version);
         return new VersionAssessment(
-            state,
+            tally.State,
             version,
-            matching,
-            differing,
-            unknown,
+            tally.Matching,
+            tally.Differing,
+            tally.Unknown,
             $"Pinned {version}",
-            Describe(state, version, all.Count, matching, differing, unknown));
+            Describe(tally, version));
     }
 
     private static VersionAssessment Without(VersionState state, string headline, string? detail) =>
@@ -121,14 +115,28 @@ public sealed record VersionAssessment(
     private static bool Same(string? running, string pinned) =>
         string.Equals(running, pinned, StringComparison.OrdinalIgnoreCase);
 
-    private static string Describe(
-        VersionState state,
-        string version,
-        int total,
-        List<NodeVersion> matching,
-        List<NodeVersion> differing,
-        List<NodeVersion> unknown)
+    /// <summary>Walks the nodes once, reads each node's running version once and puts the node in its list.</summary>
+    private static NodeTally Tally(IEnumerable<NodeVersion> nodes, string pinned)
     {
+        var tally = new NodeTally([], [], []);
+        foreach (var node in nodes)
+        {
+            var list = node.Running switch
+            {
+                null => tally.Unknown,
+                var running when Same(running, pinned) => tally.Matching,
+                _ => tally.Differing,
+            };
+            list.Add(node);
+        }
+
+        return tally;
+    }
+
+    private static string Describe(NodeTally tally, string version)
+    {
+        var (matching, differing, unknown) = tally;
+        var (total, state) = (tally.Total, tally.State);
         var known = state switch
         {
             VersionState.Differs => $"Differs: {string.Join(", ", differing.Select(node => $"{node.Label} runs {node.Running}"))}",
@@ -145,6 +153,19 @@ public sealed record VersionAssessment(
 
         var separator = state == VersionState.NodesUnknown ? ": " : "; ";
         return $"{known}{separator}{string.Join(", ", unknown.Select(node => $"{node.Label} {node.UnknownReason}"))}.";
+    }
+
+    /// <summary>
+    /// The nodes sorted, in one walk, by what each runs next to the pinned version: every node stands in exactly one
+    /// list, in the order it was handed, and the total is the three lists together.
+    /// </summary>
+    private sealed record NodeTally(List<NodeVersion> Matching, List<NodeVersion> Differing, List<NodeVersion> Unknown)
+    {
+        public int Total => Matching.Count + Differing.Count + Unknown.Count;
+
+        public VersionState State => Differing.Count > 0 ? VersionState.Differs
+            : Matching.Count > 0 ? VersionState.InSync
+            : VersionState.NodesUnknown;
     }
 }
 

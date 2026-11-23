@@ -69,4 +69,31 @@ public class ViewAddressTests
         Assert.Equal(new ViewAddress(DashboardView.WorkItems, Audience: WorkAudience.Bot), ViewAddress.Parse(new ViewAddress(DashboardView.WorkItems, Audience: WorkAudience.Bot).ToHash()));
         Assert.Equal(new ViewAddress(DashboardView.Runtime, "uat"), ViewAddress.Parse(new ViewAddress(DashboardView.Runtime, "uat").ToHash()));
     }
+
+    /// <summary>The work items address is built from <see cref="WorkItemsText.AudienceHash"/>, the one mapping of a
+    /// filter to its segment: every filter writes the view's word followed by its segment (none for All), and the hash
+    /// it writes opens that filter again.</summary>
+    [Theory]
+    [InlineData(WorkAudience.All)]
+    [InlineData(WorkAudience.Bot)]
+    [InlineData(WorkAudience.Team)]
+    public void TheWorkItemsAddressIsBuiltFromTheFiltersAudienceHash(WorkAudience audience)
+    {
+        var address = new ViewAddress(DashboardView.WorkItems, Audience: audience);
+        var segment = WorkItemsText.AudienceHash(audience);
+
+        Assert.Equal(segment.Length == 0 ? "work-items" : $"work-items/{segment}", address.ToHash());
+        Assert.Equal(address, ViewAddress.Parse(address.ToHash()));
+    }
+
+    /// <summary>A filter that is none of the three has no segment, so its address is the view's word alone rather
+    /// than the refusal <see cref="WorkItemsText.AudienceHash"/> gives it.</summary>
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(3)]
+    [InlineData(7)]
+    public void AFilterThatIsNoneOfTheThreeWritesTheWordAlone(int value)
+    {
+        Assert.Equal("work-items", new ViewAddress(DashboardView.WorkItems, Audience: (WorkAudience)value).ToHash());
+    }
 }

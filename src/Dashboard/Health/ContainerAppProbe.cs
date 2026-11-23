@@ -133,18 +133,36 @@ public sealed class ContainerAppProbe(ContainerAppTarget target)
     {
         ArgumentNullException.ThrowIfNull(answer);
         _answeredInRun |= answer.Answered;
-        var state = answer switch
-        {
-            { StatusCode: { } status, ReadsHealth: true, HealthyPayload: true } when status is >= 200 and < 300 => ContainerAppState.Healthy,
-            { StatusCode: 404, ReadsHealth: true } => ContainerAppState.NotResponding,
-            { StatusCode: { } status, ReadsHealth: true } when status is >= 500 and < 600 => ContainerAppState.Unhealthy,
-            { StatusCode: { }, ReadsHealth: true } => ContainerAppState.Unhealthy,
-            { Answered: true } => ContainerAppState.Responding,
-            _ when !_answeredInRun && answer.CheckedAt - (_runStartedAt ?? answer.CheckedAt) < Grace => ContainerAppState.Waking,
-            _ => ContainerAppState.NotResponding,
-        };
-        Status = new ContainerAppStatus(state, answer, Status.CorsRefused || answer.Opaque);
+        Status = new ContainerAppStatus(StateOf(answer), answer, Status.CorsRefused || answer.Opaque);
     }
+
+    /// <summary>
+    /// The rules, in the order they are asked; the first that holds names the state. Order matters: a 404 at the
+    /// health path is asked before any other status there, or a deleted app would read as merely unhealthy.
+    /// </summary>
+    private ContainerAppState StateOf(ContainerAppAnswer answer) =>
+        HealthyAtHealthPath(answer) ? ContainerAppState.Healthy
+        : GoneAtHealthPath(answer) ? ContainerAppState.NotResponding
+        : UnhealthyAtHealthPath(answer) ? ContainerAppState.Unhealthy
+        : answer.Answered ? ContainerAppState.Responding
+        : StillWaking(answer) ? ContainerAppState.Waking
+        : ContainerAppState.NotResponding;
+
+    /// <summary>The health path answered 2xx with a healthy payload.</summary>
+    private static bool HealthyAtHealthPath(ContainerAppAnswer answer) =>
+        answer is { ReadsHealth: true, StatusCode: >= 200 and < 300, HealthyPayload: true };
+
+    /// <summary>The health path answered 404: the app is gone or unavailable (Azure's deleted-app page included).</summary>
+    private static bool GoneAtHealthPath(ContainerAppAnswer answer) =>
+        answer is { ReadsHealth: true, StatusCode: 404 };
+
+    /// <summary>The health path answered any other status (a 5xx, or a 2xx without a healthy payload).</summary>
+    private static bool UnhealthyAtHealthPath(ContainerAppAnswer answer) =>
+        answer is { ReadsHealth: true, StatusCode: not null };
+
+    /// <summary>No answer yet in this run, and the run is still inside <see cref="Grace"/> of its first probe.</summary>
+    private bool StillWaking(ContainerAppAnswer answer) =>
+        !_answeredInRun && answer.CheckedAt - (_runStartedAt ?? answer.CheckedAt) < Grace;
 
     /// <summary>
     /// True when a 2xx health-check body is healthy: the plain word <c>Healthy</c>, or a JSON object whose

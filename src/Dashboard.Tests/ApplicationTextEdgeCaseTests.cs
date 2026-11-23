@@ -860,6 +860,25 @@ public class ApplicationTextEdgeCaseTests
             ApplicationText.Links([Box("ca_ui", "ui", links: Links((LinkSet.Portal, "https://portal.example.net/#from-manifest")))], uat).Select(link => link.Href));
     }
 
+    /// <summary>The row is said box by box, the app first and its portal after: with two boxes each link names its
+    /// box, and a box with only a portal page says that one alone, in its place.</summary>
+    [Fact]
+    public void SeveralBoxesSayTheirAppThenTheirPortalEachInTurn()
+    {
+        var first = Box("ca_ui", "ui", "https://ca-ui.example.io", "primary", Links((LinkSet.Portal, "https://portal.example.net/#ui")));
+        var second = Box("ca_ui2", "ui", "http://ca-ui2.example.io", links: Links((LinkSet.Portal, "https://portal.example.net/#ui2")));
+        var third = Box("ca_ui3", "ui", "https://ca-ui3.example.io");
+
+        Assert.Equal(
+            [
+                new ViewLink("Open ca_ui", "https://ca-ui.example.io/", "ca_ui: ca-ui.example.io, as a browser opens it (opens in a new tab)"),
+                new ViewLink("ca_ui in the Azure portal", "https://portal.example.net/#ui", LinkText.Portal("ca_ui in the Azure portal")),
+                new ViewLink("ca_ui2 in the Azure portal", "https://portal.example.net/#ui2", LinkText.Portal("ca_ui2 in the Azure portal")),
+                new ViewLink("Open ca_ui3", "https://ca-ui3.example.io/", "ca_ui3: ca-ui3.example.io, as a browser opens it (opens in a new tab)"),
+            ],
+            ApplicationText.Links([first, second, third], null));
+    }
+
     /// <summary>The version and the portal link find the node a box stands for by one rule: the first node of the
     /// topology at the box's address, compared as <see cref="Uri" /> equality compares them - the fragment is not
     /// heeded, so a box at <c>#one</c> stands for a node at <c>#two</c>, and of two nodes at one address the first in

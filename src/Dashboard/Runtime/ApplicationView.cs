@@ -317,29 +317,48 @@ public static class ApplicationText
     public static IReadOnlyList<ViewLink> Links(IReadOnlyList<RuntimeNode> boxes, EnvironmentStatus? environment)
     {
         ArgumentNullException.ThrowIfNull(boxes);
+        var alone = boxes.Count == 1;
         var links = new List<ViewLink>();
         foreach (var box in boxes)
         {
-            if ((box.Links?[RuntimeBoxLink.Site] ?? box.Url) is { } site && site.Scheme == Uri.UriSchemeHttps)
+            if (SiteOf(box, alone) is { } site)
             {
-                links.Add(new ViewLink(
-                    boxes.Count == 1 ? "Open the app" : $"Open {box.Name}",
-                    site.AbsoluteUri,
-                    $"{box.Name}: {site.Host}, as a browser opens it{RuntimeBoxLink.NewTabSuffix}"));
+                links.Add(site);
             }
 
-            var topology = CheckedNode(environment, box.Url)?.Links[LinkSet.Portal];
-            if ((topology ?? box.Links?[LinkSet.Portal]) is { } portal)
+            if (PortalOf(box, CheckedNode(environment, box.Url), alone) is { } portal)
             {
-                links.Add(new ViewLink(
-                    boxes.Count == 1 ? "Open in the Azure portal" : $"{box.Name} in the Azure portal",
-                    portal.AbsoluteUri,
-                    LinkText.Portal($"{box.Name} in the Azure portal")));
+                links.Add(portal);
             }
         }
 
         return links;
     }
+
+    /// <summary>
+    /// The link to where a box's app is: <c>links.site</c>, else the node's <c>url</c> - and only when that one is
+    /// https. Named "Open the app" when the box is <paramref name="alone" /> in its row, else after the box.
+    /// </summary>
+    private static ViewLink? SiteOf(RuntimeNode box, bool alone) =>
+        (box.Links?[RuntimeBoxLink.Site] ?? box.Url) is { } site && site.Scheme == Uri.UriSchemeHttps
+            ? new ViewLink(
+                alone ? "Open the app" : $"Open {box.Name}",
+                site.AbsoluteUri,
+                $"{box.Name}: {site.Host}, as a browser opens it{RuntimeBoxLink.NewTabSuffix}")
+            : null;
+
+    /// <summary>
+    /// The link to a box's page in the Azure portal: <c>links.portal</c> of its <paramref name="node" /> in the
+    /// topology, else of the box. Named "Open in the Azure portal" when the box is <paramref name="alone" /> in its
+    /// row, else after the box.
+    /// </summary>
+    private static ViewLink? PortalOf(RuntimeNode box, TargetStatus? node, bool alone) =>
+        (node?.Links[LinkSet.Portal] ?? box.Links?[LinkSet.Portal]) is { } portal
+            ? new ViewLink(
+                alone ? "Open in the Azure portal" : $"{box.Name} in the Azure portal",
+                portal.AbsoluteUri,
+                LinkText.Portal($"{box.Name} in the Azure portal"))
+            : null;
 
     /// <summary>
     /// The node of the environment a box stands for, found by its address as its tile is - the first such node, in

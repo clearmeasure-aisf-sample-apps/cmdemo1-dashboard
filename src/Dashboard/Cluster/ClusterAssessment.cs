@@ -79,14 +79,15 @@ public static class PodRules
     public static PodState StateOf(ClusterPod pod, DateTimeOffset asOf)
     {
         ArgumentNullException.ThrowIfNull(pod);
+        var phase = new PodPhase(pod.Phase);
         var age = pod.StartedAt is { } started ? asOf - started : (TimeSpan?)null;
-        return pod.Phase switch
+        return phase.Kind switch
         {
-            ClusterPod.Succeeded => PodState.Finished,
-            ClusterPod.Failed => PodState.Unhealthy,
-            ClusterPod.Pending => age > PendingGrace ? PodState.Unhealthy : PodState.Starting,
+            PodPhaseKind.Succeeded => PodState.Finished,
+            PodPhaseKind.Failed => PodState.Unhealthy,
+            PodPhaseKind.Pending => age > PendingGrace ? PodState.Unhealthy : PodState.Starting,
             _ when pod.Ready => PodState.Ready,
-            ClusterPod.Running => age < StartingGrace ? PodState.Starting : PodState.Unhealthy,
+            PodPhaseKind.Running => age < StartingGrace ? PodState.Starting : PodState.Unhealthy,
             _ => PodState.Unhealthy,
         };
     }
@@ -210,19 +211,19 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
         }
 
         var service = reading.Value!;
-        var verdict = service.Availability?.State;
+        var verdict = new AzureState(service.Availability?.State);
         var summary = service.Availability?.Summary;
         if (service.IsStopped)
         {
             return new ClusterAssessment(ClusterState.Neutral, "Stopped", "The AKS service is stopped", summary);
         }
 
-        if (AksService.Is(verdict, AksAvailability.Unavailable))
+        if (verdict.Is(AksAvailability.Unavailable))
         {
             return new ClusterAssessment(ClusterState.Unhealthy, "Unavailable", "Azure reports the AKS service unavailable", summary);
         }
 
-        if (AksService.Is(verdict, AksAvailability.Degraded))
+        if (verdict.Is(AksAvailability.Degraded))
         {
             return new ClusterAssessment(ClusterState.Warning, "Degraded", "Azure reports the AKS service degraded", summary);
         }
@@ -236,14 +237,14 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
                 summary);
         }
 
-        if (verdict is null || AksService.Is(verdict, AksAvailability.Unknown))
+        if (verdict.IsMissing || verdict.Is(AksAvailability.Unknown))
         {
             return new ClusterAssessment(ClusterState.Neutral, "Unknown", "Azure Resource Health has no verdict on the AKS service at the moment", summary);
         }
 
-        return AksService.Is(verdict, AksAvailability.Available)
+        return verdict.Is(AksAvailability.Available)
             ? new ClusterAssessment(ClusterState.Healthy, "Available", "Azure reports the AKS service available and running", summary)
-            : new ClusterAssessment(ClusterState.Neutral, verdict, $"Azure reports the AKS service {verdict}", summary);
+            : new ClusterAssessment(ClusterState.Neutral, verdict.ToString(), $"Azure reports the AKS service {verdict}", summary);
     }
 
     /// <summary>
@@ -276,7 +277,7 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
     {
         ArgumentNullException.ThrowIfNull(pod);
         var words = ClusterText.PodWords(pod, PodState.Unhealthy, asOf);
-        var text = $"{ClusterText.PodIn(pod, space)}: {(pod.Phase == ClusterPod.Running && pod.Reason is null ? "not ready" : words)}";
+        var text = $"{ClusterText.PodIn(pod, space)}: {(new PodPhase(pod.Phase).Is(PodPhaseKind.Running) && pod.Reason is null ? "not ready" : words)}";
         return pod.Restarts > 0 ? $"{text}, {ClusterText.Restarts(pod.Restarts)}" : text;
     }
 
@@ -341,11 +342,11 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
         return said.Count == 0 ? null : string.Join(' ', said);
     }
 
-    private static int Severity(ClusterPod pod) => pod.Phase switch
+    private static int Severity(ClusterPod pod) => new PodPhase(pod.Phase).Kind switch
     {
-        ClusterPod.Failed => 0,
-        ClusterPod.Running => 1,
-        ClusterPod.Pending => 2,
+        PodPhaseKind.Failed => 0,
+        PodPhaseKind.Running => 1,
+        PodPhaseKind.Pending => 2,
         _ => 3,
     };
 }

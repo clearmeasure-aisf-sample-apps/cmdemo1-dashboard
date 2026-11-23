@@ -35,16 +35,16 @@ public sealed record AksService(
     public static readonly TimeSpan OldAfter = TimeSpan.FromMinutes(90);
 
     /// <summary>True when Azure says the service is powered off: its power state is <see cref="Stopped"/>, in any case.</summary>
-    public bool IsStopped => Is(PowerState, Stopped);
+    public bool IsStopped => new AzureState(PowerState).Is(Stopped);
 
     /// <summary>True when Azure says the service is powered on: its power state is <see cref="Running"/>, in any case.</summary>
-    public bool IsRunning => Is(PowerState, Running);
+    public bool IsRunning => new AzureState(PowerState).Is(Running);
 
     /// <summary>
     /// True when Azure has finished with the service: its provisioning state is <see cref="Succeeded"/>, in any case.
     /// False when Azure is doing something to it (Updating, Starting, Stopping, Failed) or says nothing about it.
     /// </summary>
-    public bool IsProvisioned => Is(ProvisioningState, Succeeded);
+    public bool IsProvisioned => new AzureState(ProvisioningState).Is(Succeeded);
 
     /// <summary>True when the workflow read the facts longer ago than <see cref="OldAfter"/>.</summary>
     public bool IsOld(DateTimeOffset now) => Generated is { } generated && now - generated > OldAfter;
@@ -90,8 +90,6 @@ public sealed record AksService(
             return new Parsed<AksService>(null, "the file is not valid JSON");
         }
     }
-
-    internal static bool Is(string? value, string expected) => string.Equals(value, expected, StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>The verdict of Azure Resource Health on the service.</summary>
@@ -160,4 +158,28 @@ public sealed record AksMetrics(
             JsonRead.Number(parts, "nodeDiskPercent"),
             JsonRead.Number(parts, "apiServerCpuPercent"),
             JsonRead.Number(parts, "apiServerMemoryPercent")));
+}
+
+/// <summary>
+/// A state word Azure reports about the AKS service (its power state, its provisioning state, the verdict of
+/// Resource Health), as a value the page asks about: compared in any case, and keeping the word as the file held it
+/// for the label the page shows. A word that is not there (<see cref="IsMissing"/>) is not the empty word: the empty
+/// string is a word, and matches none of Azure's.
+/// </summary>
+/// <param name="Text">The word as the file held it; null when the file does not say.</param>
+public readonly record struct AzureState(string? Text)
+{
+    /// <summary>The word as the file held it; null when the file does not say.</summary>
+    public string? Text { get; } = Text;
+
+    /// <summary>True when the file does not say.</summary>
+    public bool IsMissing => Text is null;
+
+    /// <summary>True when the word is <paramref name="word"/>, in any case.</summary>
+    public bool Is(string word) => string.Equals(Text, word, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>True when both say a word and it is the same, in any case.</summary>
+    public bool IsSameAs(AzureState other) => Text is not null && other.Text is not null && Is(other.Text);
+
+    public override string ToString() => Text ?? string.Empty;
 }

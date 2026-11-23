@@ -162,17 +162,25 @@ public static class ApplicationText
     /// The nodes of the runtime diagram that open an application view: a web app or a container app whose manifest
     /// entry names where its deployable's diagrams are published.
     /// </summary>
-    public static IReadOnlyList<RuntimeNode> Boxes(RuntimeManifest manifest)
-    {
-        ArgumentNullException.ThrowIfNull(manifest);
-        return [.. manifest.Nodes.Where(node => node.Architecture is not null && IsName(node.Deployable))];
-    }
+    public static IReadOnlyList<RuntimeNode> Boxes(RuntimeManifest manifest) => [.. BoxesWhere(manifest, static _ => true)];
 
     /// <summary>The boxes of one deployable, the primary first; none for a deployable without a diagram, and for a name the address refuses.</summary>
     public static IReadOnlyList<RuntimeNode> Boxes(RuntimeManifest manifest, string? deployable) =>
         IsName(deployable)
-            ? [.. Boxes(manifest).Where(node => string.Equals(node.Deployable, deployable, StringComparison.OrdinalIgnoreCase)).OrderBy(node => IsPrimary(node.Role) ? 0 : 1)]
+            ? [.. BoxesWhere(manifest, node => string.Equals(node.Deployable, deployable, StringComparison.OrdinalIgnoreCase)).OrderBy(node => IsPrimary(node.Role) ? 0 : 1)]
             : [];
+
+    /// <summary>
+    /// The one walk over the diagram both views of the boxes take: a node is a box when it has an architecture and a
+    /// name the address takes, and is kept when it also belongs to what the caller asked for - in the diagram's order.
+    /// </summary>
+    private static IEnumerable<RuntimeNode> BoxesWhere(RuntimeManifest manifest, Func<RuntimeNode, bool> belongs)
+    {
+        ArgumentNullException.ThrowIfNull(manifest);
+        return manifest.Nodes.Where(node => IsBox(node) && belongs(node));
+    }
+
+    private static bool IsBox(RuntimeNode node) => node.Architecture is not null && IsName(node.Deployable);
 
     /// <summary>The accessible name of an application's box in the runtime diagram.</summary>
     public static string BoxLabel(RuntimeNode node)

@@ -187,30 +187,31 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
     /// <summary>
     /// The state of the AKS service as Azure reports it: healthy when it is Available, Running and Succeeded; neutral
     /// when it is stopped or Azure has no verdict; a warning when it is Degraded or being changed; unhealthy when it
-    /// is Unavailable. A file that is not published yet is said calmly: it is no error of the page.
+    /// is Unavailable. A file that is not published yet is said calmly: it is no error of the page. A reading marked
+    /// read that holds no facts is not known, as one that could not be read.
     /// </summary>
     public static ClusterAssessment Service(SourceReading<AksService> reading)
     {
         ArgumentNullException.ThrowIfNull(reading);
         const string NotRead = "Azure's facts about the AKS service could not be read";
         const string Again = "The page reads them again with every check.";
-        switch (reading.State)
+        return reading.State switch
         {
-            case SourceState.Pending:
-                return new ClusterAssessment(ClusterState.Checking, "Checking", "Reading Azure's facts about the AKS service");
-            case SourceState.Missing:
-                return new ClusterAssessment(
-                    ClusterState.Neutral,
-                    "Not published",
-                    "Azure's facts about the AKS service are not published yet",
-                    $"A scheduled workflow publishes them several times an hour; until its first run the address answers HTTP 404. {Again}");
-            case SourceState.Malformed:
-                return new ClusterAssessment(ClusterState.Warning, "Unreadable", NotRead, Sentence(reading.Detail));
-            case SourceState.Unavailable:
-                return new ClusterAssessment(ClusterState.Neutral, "Not known", NotRead, Join(Sentence(reading.Detail), Again));
-        }
+            SourceState.Pending => new ClusterAssessment(ClusterState.Checking, "Checking", "Reading Azure's facts about the AKS service"),
+            SourceState.Missing => new ClusterAssessment(
+                ClusterState.Neutral,
+                "Not published",
+                "Azure's facts about the AKS service are not published yet",
+                $"A scheduled workflow publishes them several times an hour; until its first run the address answers HTTP 404. {Again}"),
+            SourceState.Malformed => new ClusterAssessment(ClusterState.Warning, "Unreadable", NotRead, Sentence(reading.Detail)),
+            SourceState.Read when reading.Value is { } service => Reported(service),
+            _ => new ClusterAssessment(ClusterState.Neutral, "Not known", NotRead, Join(Sentence(reading.Detail), Again)),
+        };
+    }
 
-        var service = reading.Value!;
+    /// <summary>The state of the AKS service in the facts Azure reports about it.</summary>
+    private static ClusterAssessment Reported(AksService service)
+    {
         var verdict = new AzureState(service.Availability?.State);
         var summary = service.Availability?.Summary;
         if (service.IsStopped)

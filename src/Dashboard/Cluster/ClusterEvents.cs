@@ -113,19 +113,19 @@ public static class ClusterEventDetector
         ArgumentNullException.ThrowIfNull(before);
         ArgumentNullException.ThrowIfNull(after);
         var events = new List<DashboardEvent>();
-        if (before.Availability?.State is { } verdict && after.Availability?.State is { } now && !AksService.Is(verdict, now))
+        if (new AzureState(before.Availability?.State) is { IsMissing: false } verdict && new AzureState(after.Availability?.State) is { IsMissing: false } now && !verdict.IsSameAs(now))
         {
             var level = now switch
             {
-                _ when AksService.Is(now, AksAvailability.Available) => EventLevel.Good,
-                _ when AksService.Is(now, AksAvailability.Degraded) => EventLevel.Warning,
-                _ when AksService.Is(now, AksAvailability.Unavailable) => EventLevel.Problem,
+                _ when now.Is(AksAvailability.Available) => EventLevel.Good,
+                _ when now.Is(AksAvailability.Degraded) => EventLevel.Warning,
+                _ when now.Is(AksAvailability.Unavailable) => EventLevel.Problem,
                 _ => EventLevel.Info,
             };
             events.Add(new DashboardEvent(at, EventKind.Cluster, level, null, ServicePlace, $"Azure's verdict on the AKS service: {verdict} → {now}"));
         }
 
-        if (before.PowerState is { } power && after.PowerState is { } current && !AksService.Is(power, current))
+        if (new AzureState(before.PowerState) is { IsMissing: false } power && new AzureState(after.PowerState) is { IsMissing: false } current && !power.IsSameAs(current))
         {
             events.Add(new DashboardEvent(
                 at,
@@ -152,7 +152,7 @@ public static class ClusterEventDetector
         if (now == PodState.Unhealthy && was != PodState.Unhealthy)
         {
             var words = ClusterText.PodWords(after, now, asOf);
-            return new ClusterNotice(EventLevel.Warning, $"{name} is unhealthy: {(after.Phase == ClusterPod.Running && after.Reason is null ? "not ready" : words)}");
+            return new ClusterNotice(EventLevel.Warning, $"{name} is unhealthy: {(new PodPhase(after.Phase).Is(PodPhaseKind.Running) && after.Reason is null ? "not ready" : words)}");
         }
 
         return was == PodState.Unhealthy && now == PodState.Ready ? new ClusterNotice(EventLevel.Good, $"{name} is ready again") : null;

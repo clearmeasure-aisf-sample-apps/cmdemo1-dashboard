@@ -244,3 +244,54 @@ public sealed record ClusterVolume(string Name, double? Capacity, string? Phase)
     internal static ClusterVolume Read(string name, JsonElement element) =>
         new(name, JsonRead.Number(element, "capacity"), JsonRead.Text(element, "phase"));
 }
+
+/// <summary>The pod phases of Kubernetes the page tells apart; <see cref="Other"/> for any other word.</summary>
+public enum PodPhaseKind
+{
+    /// <summary>A word the page does not know: neither of the five below.</summary>
+    Other,
+
+    Pending,
+
+    Running,
+
+    Succeeded,
+
+    Failed,
+
+    /// <summary>Kubernetes' own Unknown, which is also the phase of a pod whose file does not say.</summary>
+    Unknown,
+}
+
+/// <summary>
+/// A pod's phase as a value the page asks about instead of a string it compares: parsed once, in the exact case
+/// Kubernetes writes it (<c>running</c> is a word the page does not know), and keeping the word as the file held it
+/// for the label the page shows.
+/// </summary>
+/// <param name="Text">The word as the file held it.</param>
+public readonly record struct PodPhase(string Text)
+{
+    /// <summary>The word as the file held it.</summary>
+    public string Text { get; } = Text;
+
+    /// <summary>Which of the phases the page knows the word is; <see cref="PodPhaseKind.Other"/> for any other.</summary>
+    public PodPhaseKind Kind { get; } = Parse(Text);
+
+    /// <summary>True for a word the page does not know, and for Kubernetes' own Unknown.</summary>
+    public bool IsUnknown => Kind is PodPhaseKind.Other or PodPhaseKind.Unknown;
+
+    /// <summary>True when the phase is <paramref name="kind"/>.</summary>
+    public bool Is(PodPhaseKind kind) => Kind == kind;
+
+    public override string ToString() => Text;
+
+    private static PodPhaseKind Parse(string? text) => text switch
+    {
+        ClusterPod.Pending => PodPhaseKind.Pending,
+        ClusterPod.Running => PodPhaseKind.Running,
+        ClusterPod.Succeeded => PodPhaseKind.Succeeded,
+        ClusterPod.Failed => PodPhaseKind.Failed,
+        ClusterPod.Unknown => PodPhaseKind.Unknown,
+        _ => PodPhaseKind.Other,
+    };
+}

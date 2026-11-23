@@ -154,15 +154,16 @@ public static class ClusterText
     public static string PodWords(ClusterPod pod, PodState state, DateTimeOffset asOf)
     {
         ArgumentNullException.ThrowIfNull(pod);
+        var phase = new PodPhase(pod.Phase);
         return state switch
         {
             PodState.Ready => "Ready",
             PodState.Finished => "Finished",
             PodState.Starting => pod.Reason is { } reason ? $"Starting: {reason}" : "Starting",
-            _ when pod.Phase == ClusterPod.Pending => Age(pod.StartedAt, asOf) is { } age
+            _ when phase.Is(PodPhaseKind.Pending) => Age(pod.StartedAt, asOf) is { } age
                 ? $"Pending for {age}{(pod.Reason is { } reason ? $": {reason}" : string.Empty)}"
                 : pod.Reason ?? ClusterPod.Pending,
-            _ when pod.Phase == ClusterPod.Running => pod.Reason ?? "Not ready",
+            _ when phase.Is(PodPhaseKind.Running) => pod.Reason ?? "Not ready",
             _ => pod.Reason ?? pod.Phase,
         };
     }

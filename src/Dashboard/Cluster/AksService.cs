@@ -97,9 +97,8 @@ public sealed record AksAvailability(string State, string? Summary, string? Reas
     public const string Unknown = "Unknown";
 
     internal static AksAvailability? Read(JsonElement? section) =>
-        JsonRead.Text(section, "state") is { } state
-            ? new AksAvailability(state, JsonRead.Text(section, "summary"), JsonRead.Text(section, "reason"), JsonRead.Time(section, "occurredAt"))
-            : null;
+        JsonRead.Identified(section, "state", static (state, parts) =>
+            new AksAvailability(state, JsonRead.Text(parts, "summary"), JsonRead.Text(parts, "reason"), JsonRead.Time(parts, "occurredAt")));
 }
 
 /// <summary>One node pool, as Azure describes it.</summary>
@@ -117,17 +116,15 @@ public sealed record AksPool(
     string? KubernetesVersion)
 {
     internal static AksPool? Read(JsonElement element) =>
-        JsonRead.Text(element, "name") is { } name
-            ? new AksPool(
-                name,
-                JsonRead.Text(element, "mode"),
-                JsonRead.Count(element, "count"),
-                JsonRead.Text(element, "size"),
-                JsonRead.Count(element, "osDiskGb"),
-                JsonRead.Text(element, "powerState"),
-                JsonRead.Text(element, "provisioningState"),
-                JsonRead.Text(element, "kubernetesVersion"))
-            : null;
+        JsonRead.Identified(element, "name", static (name, parts) => new AksPool(
+            name,
+            JsonRead.Text(parts, "mode"),
+            JsonRead.Count(parts, "count"),
+            JsonRead.Text(parts, "size"),
+            JsonRead.Count(parts, "osDiskGb"),
+            JsonRead.Text(parts, "powerState"),
+            JsonRead.Text(parts, "provisioningState"),
+            JsonRead.Text(parts, "kubernetesVersion")));
 }
 
 /// <summary>
@@ -146,13 +143,11 @@ public sealed record AksMetrics(
     public bool HasAny => (NodeCpuPercent ?? NodeMemoryPercent ?? NodeDiskPercent ?? ApiServerCpuPercent ?? ApiServerMemoryPercent) is not null;
 
     internal static AksMetrics? Read(JsonElement? section) =>
-        section is null
-            ? null
-            : new AksMetrics(
-                JsonRead.Count(section, "windowMinutes"),
-                JsonRead.Number(section, "nodeCpuPercent"),
-                JsonRead.Number(section, "nodeMemoryPercent"),
-                JsonRead.Number(section, "nodeDiskPercent"),
-                JsonRead.Number(section, "apiServerCpuPercent"),
-                JsonRead.Number(section, "apiServerMemoryPercent"));
+        JsonRead.Present(section, static parts => new AksMetrics(
+            JsonRead.Count(parts, "windowMinutes"),
+            JsonRead.Number(parts, "nodeCpuPercent"),
+            JsonRead.Number(parts, "nodeMemoryPercent"),
+            JsonRead.Number(parts, "nodeDiskPercent"),
+            JsonRead.Number(parts, "apiServerCpuPercent"),
+            JsonRead.Number(parts, "apiServerMemoryPercent")));
 }

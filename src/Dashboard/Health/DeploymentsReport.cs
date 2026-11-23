@@ -96,17 +96,37 @@ public sealed record DeploymentsReport(DateTimeOffset? Generated, IReadOnlyList<
         }
     }
 
-    /// <summary>A state the page does not know stands after the ones it knows, in flight or ended as the file says.</summary>
-    private static int Rank(Deployment deployment) => deployment.State switch
+    /// <summary>Where a deployment stands among the marks (<see cref="MarkPlace"/>).</summary>
+    internal static MarkPlace Rank(Deployment deployment) => deployment.State switch
     {
-        DeploymentState.Waiting => 0,
-        DeploymentState.Executing => 1,
-        DeploymentState.Queued => 2,
-        DeploymentState.Failed => 4,
-        DeploymentState.Canceled => 5,
-        DeploymentState.Succeeded => 6,
-        _ => deployment.InFlight ? 3 : 7,
+        DeploymentState.Waiting => MarkPlace.Waiting,
+        DeploymentState.Executing => MarkPlace.Executing,
+        DeploymentState.Queued => MarkPlace.Queued,
+        DeploymentState.Failed => MarkPlace.Failed,
+        DeploymentState.Canceled => MarkPlace.Canceled,
+        DeploymentState.Succeeded => MarkPlace.Succeeded,
+        _ => deployment.InFlight ? MarkPlace.UnknownInFlight : MarkPlace.UnknownEnded,
     };
+}
+
+/// <summary>
+/// The order of the marks, first to last: what a person has to act on, then what runs, then what ended. A state the
+/// page does not know stands after the ones it knows on its side of the boundary: after queued while the file gives
+/// it no end, after succeeded once it does. Adding a state is putting it where it belongs.
+/// </summary>
+internal enum MarkPlace
+{
+    // In flight.
+    Waiting,
+    Executing,
+    Queued,
+    UnknownInFlight,
+
+    // Ended.
+    Failed,
+    Canceled,
+    Succeeded,
+    UnknownEnded,
 }
 
 public enum DeploymentState

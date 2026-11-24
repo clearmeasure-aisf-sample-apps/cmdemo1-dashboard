@@ -47,6 +47,9 @@ public static class RuntimePayloadBuilder
     /// <summary>How many characters of a health check's own words fit the line of a dependency's tile.</summary>
     public const int DescriptionLength = 36;
 
+    /// <summary>How many characters of a health check entry's name fit the line of a dependency's tile, where no description stands in for it.</summary>
+    private const int CheckNameLength = 14;
+
     /// <param name="Serves">True for a node the serving decision expects to serve: one node, or every healthy primary of a rotation.</param>
     private sealed record Entry(DeployableStatus Deployable, TargetStatus Target, ServingAssessment Assessment, bool Serves);
 
@@ -487,7 +490,7 @@ public static class RuntimePayloadBuilder
                 ? NeutralTile(
                     node,
                     "Not known",
-                    $"no health check entry {HealthDetailText.Brief(check, 14)}",
+                    $"no health check entry {HealthDetailText.Brief(check, CheckNameLength)}",
                     $"{node.Name}: the detailed health check of the web apps that use it has no entry named {check}, so this page cannot tell its state.")
                 : NeutralTile(
                     node,
@@ -519,12 +522,12 @@ public static class RuntimePayloadBuilder
 
             var line = entry.Description is { } description
                 ? HealthDetailText.Brief(description, DescriptionLength)
-                : $"health check {HealthDetailText.Brief(check, 14)} passed";
+                : $"health check {HealthDetailText.Brief(check, CheckNameLength)} passed";
             return new RuntimeTile(node.Alias, TileState.Healthy.Word(), "Reachable", null, [new RuntimeTileLine(line, "ok")], null, reachable);
         }
 
         var label = HealthDetailText.Label(worst.Check.State);
-        var words = worst.Check.Description is { } said ? HealthDetailText.Brief(said, DescriptionLength) : $"health check {HealthDetailText.Brief(check, 14)}: {label.ToLowerInvariant()}";
+        var words = worst.Check.Description is { } said ? HealthDetailText.Brief(said, DescriptionLength) : $"health check {HealthDetailText.Brief(check, CheckNameLength)}: {label.ToLowerInvariant()}";
         var title = $"{node.Name}: by the health check of {worst.Target.Name} (last {TimeText.Clock(worst.Target.Last?.CheckedAt ?? worst.Target.HealthDetail!.ReadAt, zone)}). The browser does not call it. {HealthDetailText.Title(worst.Check)}";
         return worst.Check.State switch
         {

@@ -165,10 +165,16 @@ public static class CostText
     /// The day the first number covers: <c>yesterday</c> only while it is the day before <paramref name="now"/> in
     /// <see cref="DayZone"/>, else the date (<c>on 2026-10-03</c>), so a file that was not renewed never reads as recent.
     /// </summary>
-    public static string Day(DateOnly? asOf, DateTimeOffset now) =>
-        asOf is not { } day ? "in the last full day"
-        : day == UtcDay(now).AddDays(-1) ? "yesterday"
-        : $"on {Date(day)}";
+    public static string Day(DateOnly? asOf, DateTimeOffset now)
+    {
+        var yesterday = UtcDay(now).AddDays(-1);
+        return asOf switch
+        {
+            null => NoDayOfItsOwn(),
+            DateOnly day when day == yesterday => Yesterday(),
+            DateOnly day => OnDay(day),
+        };
+    }
 
     /// <summary>
     /// The month the last number covers: <c>this month</c> while <paramref name="now"/> is in it (in <see cref="DayZone"/>),
@@ -177,9 +183,13 @@ public static class CostText
     public static string Month(DateOnly? asOf, DateTimeOffset now)
     {
         var today = UtcDay(now);
-        return asOf is not { } day || (day.Year == today.Year && day.Month == today.Month) ? "this month"
-            : day.Year == today.Year ? $"in {day.ToString("MMMM", CultureInfo.InvariantCulture)}"
-            : $"in {day.ToString("MMMM yyyy", CultureInfo.InvariantCulture)}";
+        return asOf switch
+        {
+            null => ThisMonth(),
+            DateOnly day when IsSameMonth(day, today) => ThisMonth(),
+            DateOnly day when IsSameYear(day, today) => InMonth(day),
+            DateOnly day => InMonthOfYear(day),
+        };
     }
 
     /// <summary>The three amounts with their days: <c>$1.52 yesterday</c>, <c>$9.80 in 7 days</c>, <c>$11.02 this month</c>.</summary>
@@ -218,6 +228,30 @@ public static class CostText
 
     /// <summary>The calendar day of <paramref name="now"/> in <see cref="DayZone"/>, whatever zone its moment carries: the one day every period word of a cost is counted from.</summary>
     private static DateOnly UtcDay(DateTimeOffset now) => DateOnly.FromDateTime(now.UtcDateTime);
+
+    /// <summary>The word of a file that names no day: its sums cover the last full day, and nothing else is said of them.</summary>
+    private static string NoDayOfItsOwn() => "in the last full day";
+
+    /// <summary>The word of the one day that is the UTC day before the rendering.</summary>
+    private static string Yesterday() => "yesterday";
+
+    /// <summary>The date a day is said by when it is not the UTC day before the rendering.</summary>
+    private static string OnDay(DateOnly day) => $"on {Date(day)}";
+
+    /// <summary>Whether <paramref name="day"/> stands in the month <paramref name="today"/> is in.</summary>
+    private static bool IsSameMonth(DateOnly day, DateOnly today) => day.Year == today.Year && day.Month == today.Month;
+
+    /// <summary>Whether <paramref name="day"/> stands in the year <paramref name="today"/> is in.</summary>
+    private static bool IsSameYear(DateOnly day, DateOnly today) => day.Year == today.Year;
+
+    /// <summary>The word of the month the rendering stands in, and of a file that names no day at all.</summary>
+    private static string ThisMonth() => "this month";
+
+    /// <summary>The month's name alone, in the other months of the year the rendering stands in.</summary>
+    private static string InMonth(DateOnly day) => $"in {day.ToString("MMMM", CultureInfo.InvariantCulture)}";
+
+    /// <summary>The month's name with its year, in every year the rendering does not stand in.</summary>
+    private static string InMonthOfYear(DateOnly day) => $"in {day.ToString("MMMM yyyy", CultureInfo.InvariantCulture)}";
 
     /// <summary>
     /// <c>Most this month: Azure Container Apps $6.10, SQL Database $2.00</c>; null when the file names no service.

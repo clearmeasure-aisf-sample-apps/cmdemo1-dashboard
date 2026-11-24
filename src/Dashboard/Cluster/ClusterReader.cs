@@ -74,7 +74,7 @@ public sealed class ClusterReader(HttpClient http, TimeProvider time)
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return new SourceReading<T>(SourceState.Unavailable, Detail: $"no answer within {Timeout.TotalSeconds:0} s");
+            return new SourceReading<T>(SourceState.Unavailable, Detail: ProbeDefaults.NoAnswerWithin(Timeout));
         }
         catch (HttpRequestException)
         {

@@ -173,7 +173,7 @@ public sealed class PinnedVersionsReader(HttpClient http, TimeProvider time)
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return PinnedVersions.Unavailable($"no answer within {Timeout.TotalSeconds:0} s");
+            return PinnedVersions.Unavailable(ProbeDefaults.NoAnswerWithin(Timeout));
         }
         catch (HttpRequestException)
         {

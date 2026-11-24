@@ -9,10 +9,14 @@ public static class ClusterText
     /// <summary>From this share of its limit on, a meter is marked as high.</summary>
     public const double HighPercent = 90;
 
-    private const double MillicoresPerCore = 1000;
+    /// <summary>The millicores in one core: the cluster reads CPU in millicores and says it in cores.</summary>
+    internal const double MillicoresPerCore = 1000;
+
     private const double Kibibyte = 1024;
     private const double Mebibyte = Kibibyte * 1024;
-    private const double Gibibyte = Mebibyte * 1024;
+
+    /// <summary>The bytes in one GiB (1024³): the cluster reads memory in bytes and says it, from a GiB on, in GiB.</summary>
+    internal const double Gibibyte = Mebibyte * 1024;
 
     /// <summary>
     /// The binary units memory is said in, largest first: a number of bytes is said in the first unit it is at least

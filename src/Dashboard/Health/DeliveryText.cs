@@ -66,7 +66,11 @@ public static class AvailabilityText
         return noneEnded ? NoCheckEnded("7 days") : Hourly(week, "7 days");
     }
 
-    /// <summary><c>Healthy in 23 of 24 hourly checks (95.8 %) in 24 hours</c>.</summary>
+    /// <summary>
+    /// <c>Healthy in 23 of 24 hourly checks (95.8 %) in 24 hours</c>; the one report of a window is said
+    /// <c>Healthy in 1 of 1 hourly check (100 %) in 24 hours</c>. The word after <c>hourly</c> is
+    /// <see cref="Plural.Noun(int, string, string?)" />'s, so the line carries no second copy of the agreement.
+    /// </summary>
     private static AvailabilityPart Hourly(HealthWindow window, string inWhat) =>
         new("Healthy in ", Count(window), $" hourly {Plural.Noun(window.Reports, "check")} ({Percent(window)}) in {inWhat}");
 

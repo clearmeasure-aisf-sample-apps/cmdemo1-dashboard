@@ -12,7 +12,12 @@ public static class HistoryText
     /// </summary>
     private static readonly HealthState[] Counted = [HealthState.Healthy, HealthState.Unhealthy, HealthState.Unreachable];
 
-    /// <summary><c>Last 12 checks: 10 healthy, 2 unreachable</c>.</summary>
+    /// <summary>
+    /// <c>Last 12 checks: 10 healthy, 2 unreachable</c>; the single check is said without its digit, <c>Last check:
+    /// 1 healthy</c>. The word after <c>Last</c> is <see cref="Plural.Noun(int, string, string?)" />'s, so the
+    /// sentence carries no second copy of the agreement; the digit it counts with is written only when there is more
+    /// than one to count, in the invariant culture.
+    /// </summary>
     public static string Describe(IReadOnlyCollection<ProbeResult> history)
     {
         ArgumentNullException.ThrowIfNull(history);
@@ -26,8 +31,8 @@ public static class HistoryText
             .Where(entry => entry.Count > 0)
             .Select(entry => string.Create(CultureInfo.InvariantCulture, $"{entry.Count} {HealthClassifier.Sentence(entry.State)}"));
         var noun = Plural.Noun(history.Count, "check");
-        var header = history.Count == 1 ? "Last" : $"Last {history.Count}";
-        return $"{header} {noun}: {string.Join(", ", parts)}";
+        var last = history.Count == 1 ? "Last" : string.Create(CultureInfo.InvariantCulture, $"Last {history.Count}");
+        return $"{last} {noun}: {string.Join(", ", parts)}";
     }
 
     /// <summary>One check in words: <c>15:04:05 Healthy, HTTP 200, 123 ms</c>.</summary>
@@ -48,7 +53,7 @@ public static class HistoryText
     /// Empty when neither is present.</summary>
     public static string ResultFacts(ProbeResult result, string separator)
     {
-        var parts = new System.Collections.Generic.List<string>();
+        var parts = new List<string>();
         if (result.StatusCode is { } status)
         {
             parts.Add($"HTTP {status}");

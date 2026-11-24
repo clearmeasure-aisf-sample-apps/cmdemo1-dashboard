@@ -245,4 +245,26 @@ public class JsonReadTests
     [InlineData("3")]
     public void ThereIsNoPresentRecordWithoutAnObject(string? json) =>
         Assert.Null(JsonRead.Present(json is null ? null : Root(json), static _ => new Named("x", null)));
+
+    [Theory]
+    [InlineData("pools", true)]
+    [InlineData("empty", true)]
+    [InlineData("metrics", false)] // an object, not an array
+    [InlineData("name", false)]   // text
+    [InlineData("count", false)]  // a number
+    [InlineData("nothere", false)]
+    public void HasArrayRecognisesAnArrayByItsName(string name, bool expected) =>
+        Assert.Equal(expected, JsonRead.HasArray(Root(Answer), name));
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("3")]
+    [InlineData("\"text\"")]
+    [InlineData("{ }")]
+    public void HasArrayOnANonObjectParentIsFalse(string json) =>
+        Assert.False(JsonRead.HasArray(Root(json), "x"));
+
+    [Fact]
+    public void HasArrayOnANullParentIsFalse() =>
+        Assert.False(JsonRead.HasArray(null, "x"));
 }

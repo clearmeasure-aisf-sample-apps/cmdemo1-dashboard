@@ -73,6 +73,8 @@ internal static class ClusterFixture
 
     public static ClusterNamespace Space(string name, params ClusterPod[] pods) => new(name, pods, []);
 
+    public static ClusterNamespace Space(string name, IReadOnlyList<ClusterVolume> volumes, params ClusterPod[] pods) => new(name, pods, volumes);
+
     public static ClusterStatus Status(IReadOnlyList<ClusterNode>? nodes = null, params ClusterNamespace[] spaces) =>
         new(Generated, 15, "v1.33.3", nodes ?? [Node()], spaces);
 

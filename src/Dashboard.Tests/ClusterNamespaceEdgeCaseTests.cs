@@ -224,4 +224,27 @@ public class ClusterNamespaceEdgeCaseTests
             new ClusterNamespace("apps", order, []),
             new ClusterNamespace("apps", [ClusterFixture.Pod("db"), ClusterFixture.Pod("ui")], []));
     }
+
+    /// <summary>
+    /// Two namespaces that differ only in the volume list are not one, even when the lists hold the same
+    /// volumes in the same order: the volume list is the list it is, and a different list makes a
+    /// different namespace.
+    /// </summary>
+    [Fact]
+    public void ADifferentVolumeListIsAnotherNamespaceWhileItsPartsAreTheSame()
+    {
+        var pod = ClusterFixture.Pod("ui");
+        var firstVolume = new ClusterVolume("data", 8589934592d, "Bound");
+        var sameVolume = new ClusterVolume("data", 8589934592d, "Bound");
+
+        var one = ClusterFixture.Space("apps", [firstVolume], pod);
+        var two = ClusterFixture.Space("apps", [sameVolume], pod);
+
+        Assert.Equal("apps", one.Name);
+        Assert.Equal("apps", two.Name);
+        Assert.Equal(pod.Name, one.Pods[0].Name);
+        Assert.Equal(pod.Name, two.Pods[0].Name);
+        Assert.NotSame(firstVolume, sameVolume);
+        Assert.NotEqual(one, two);
+    }
 }

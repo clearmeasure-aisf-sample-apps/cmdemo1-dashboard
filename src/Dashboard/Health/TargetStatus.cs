@@ -5,6 +5,13 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
 {
     public const int HistoryLength = 30;
 
+    /// <summary>
+    /// How many readings of the node's telemetry <see cref="Samples"/> keeps: half an hour at the default interval.
+    /// It is the length of a drawn <see cref="Trend"/> today, named here so the readings kept and the line drawn are
+    /// two facts even while their value is one.
+    /// </summary>
+    public const int SampleLength = Trend.Length;
+
     /// <summary>The one word for a deployable's public address: the name and the label of its tile.</summary>
     public const string FrontDoorName = "Front Door";
 
@@ -86,10 +93,10 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
     }
 
     /// <summary>
-    /// The last <see cref="Trend.Length"/> readings of the node's telemetry, oldest first, for the sparklines: one per
+    /// The last <see cref="SampleLength"/> readings of the node's telemetry, oldest first, for the sparklines: one per
     /// check, null where the node reported none.
     /// </summary>
-    public HistoryBuffer<TelemetrySnapshot?> Samples { get; } = new(Trend.Length);
+    public HistoryBuffer<TelemetrySnapshot?> Samples { get; } = new(SampleLength);
 
     /// <summary>Records the telemetry of one check. A node that never reported any keeps no readings.</summary>
     public void RecordTelemetry(TelemetrySnapshot? telemetry)

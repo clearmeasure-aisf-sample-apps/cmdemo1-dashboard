@@ -83,4 +83,66 @@ public class PluralTests
             Assert.Equal("1,234 rows", Plural.Of(1234L, "row"));
             Assert.Equal("1234567 restarts", Plural.Of(1234567, "restart"));
         });
+
+    // ----- The noun alone -----
+
+    /// <summary>The noun asked on its own follows the same rule as the phrase, and writes no digit: only a count of
+    /// exactly one is singular, while zero, two and the ends of the number are plural.</summary>
+    [Theory]
+    [InlineData(0, "nodes")]
+    [InlineData(1, "node")]
+    [InlineData(2, "nodes")]
+    [InlineData(1234, "nodes")]
+    public void TheNounAloneTakesTheSingularForACountOfOneOnly(int count, string expected) =>
+        Assert.Equal(expected, Plural.Noun(count, "node"));
+
+    /// <summary>The noun alone is given the irregular plural too: the singular on the one, the given plural on every
+    /// other count, and never the singular plus an <c>s</c> that was declined.</summary>
+    [Theory]
+    [InlineData(0, "assemblies")]
+    [InlineData(1, "assembly")]
+    [InlineData(2, "assemblies")]
+    public void TheNounAloneTakesTheIrregularPluralItWasGiven(int count, string expected) =>
+        Assert.Equal(expected, Plural.Noun(count, "assembly", "assemblies"));
+
+    /// <summary>The phrase and the noun alone are the one rule and cannot drift apart: writing the count in front of
+    /// the noun alone is always what <see cref="Plural.Of(int, string, string?)" /> writes, grouped or not, out to the
+    /// end of the number.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(1234)]
+    [InlineData(int.MaxValue)]
+    public void ThePhraseIsItsCountAndItsNounAlone(int count)
+    {
+        Assert.Equal(FormattableString.Invariant($"{count} {Plural.Noun(count, "restart")}"), Plural.Of(count, "restart"));
+        Assert.Equal(FormattableString.Invariant($"{count:#,0} {Plural.Noun(count, "restart")}"), Plural.Of((long)count, "restart"));
+    }
+
+    /// <summary>The noun alone is the dashboard's word and not the viewer's: a reader of German is given the noun as
+    /// it was written, singular for the one and with the <c>s</c> on every other count.</summary>
+    [Fact]
+    public void TheNounAloneDoesNotChangeWithTheViewersCulture() =>
+        ViewerCulture.German(() =>
+        {
+            Assert.Equal("node", Plural.Noun(1, "node"));
+            Assert.Equal("nodes", Plural.Noun(0, "node"));
+            Assert.Equal("nodes", Plural.Noun(2, "node"));
+            Assert.Equal("assemblies", Plural.Noun(2, "assembly", "assemblies"));
+        });
+
+    /// <summary>The sentences of the header take their noun from this rule rather than from a second copy of it: the
+    /// words each level says for a total of one are singular and the words for any other total are plural, the empty
+    /// sentence included - which for a total of one says "No node in the topology".</summary>
+    [Theory]
+    [InlineData(1, "The only node is healthy", "1 of 1 node not healthy", "Checking 1 node", "No node in the topology")]
+    [InlineData(4, "All 4 nodes healthy", "4 of 4 nodes not healthy", "Checking 4 nodes", "No nodes in the topology")]
+    public void TheSummarySentencesTakeTheirNounFromThisRule(int total, string allHealthy, string problems, string pending, string empty)
+    {
+        Assert.Equal(allHealthy, SummaryWords.Text(SummaryLevel.AllHealthy, total, total, 0));
+        Assert.Equal(problems, SummaryWords.Text(SummaryLevel.Problems, total, 0, 0));
+        Assert.Equal(pending, SummaryWords.Text(SummaryLevel.Pending, total, 0, total));
+        Assert.Equal(empty, SummaryWords.Text(SummaryLevel.Empty, total, total, 0));
+    }
 }

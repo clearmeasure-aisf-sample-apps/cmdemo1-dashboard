@@ -10,13 +10,14 @@ public static class SummaryWords
     /// <summary>
     /// The sentence the header announces for the given counts. <paramref name="total" /> is every node (Front Door
     /// endpoints and web apps), <paramref name="healthy" /> is how many answered HTTP 200, and <paramref name="pending" />
-    /// is how many are still being checked. The not-healthy count is the rest. Every arm takes its noun from the one
-    /// singular/plural rule below, so a count of one says "node" and any other count says "nodes" in every sentence.
+    /// is how many are still being checked. The not-healthy count is the rest. Every arm takes its noun from
+    /// <see cref="Plural.Noun(int, string, string?)" />, so a count of one says "node" and any other count says
+    /// "nodes" in every sentence.
     /// </summary>
     public static string Text(SummaryLevel level, int total, int healthy, int pending)
     {
         var notHealthy = total - healthy - pending;
-        var noun = total == 1 ? "node" : "nodes";
+        var noun = Plural.Noun(total, "node");
 
         return level switch
         {

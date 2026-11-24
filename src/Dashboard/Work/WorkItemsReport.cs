@@ -311,6 +311,22 @@ public sealed record WorkCost(double? TotalUsd, string? Note)
     }
 }
 
+/// <summary>Whether the work items view has a file to show.</summary>
+public enum WorkItemsAvailability
+{
+    /// <summary>The address is known and the first read has not finished.</summary>
+    Loading,
+
+    /// <summary>The topology names no delivery file, so there is no sibling to read.</summary>
+    NoAddress,
+
+    /// <summary>The read found nothing: the file is not published yet, or it is not this file.</summary>
+    NotPublished,
+
+    /// <summary>A file was read.</summary>
+    Ready,
+}
+
 /// <summary>Who is doing the work. Unknown when the file does not say: the item stays in All and in neither filter.</summary>
 public enum WorkWorker
 {

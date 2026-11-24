@@ -166,22 +166,23 @@ public sealed class DeployableStatus
     /// <summary>The version the node ran when the build endpoint was asked: another version is another build.</summary>
     public string? BuildReadForVersion { get; private set; }
 
+    /// <summary>
+    /// The three parts above as the one read they are, and the only way they are written: the rule of when the build
+    /// is due, and what a read leaves behind, belong to <see cref="Health.BuildRead"/>.
+    /// </summary>
+    private BuildRead BuildRead
+    {
+        get => BuildWasRead ? BuildRead.Read(Build, BuildReadForVersion) : BuildRead.NotYet;
+        set => (Build, BuildReadForVersion, BuildWasRead) = (value.Build, value.Version, value.WasRead);
+    }
+
     /// <summary>The serving decision at the end of the last round of checks; null before the first.</summary>
     public ServingAssessment? LastServing { get; private set; }
 
-    /// <summary>
-    /// True when the build endpoint should be asked now: it was not asked yet, or the node reports another version
-    /// than when it was. Not every round: the answer changes only with a deployment.
-    /// </summary>
-    public bool BuildIsDue(string? version) =>
-        !BuildWasRead || !string.Equals(version, BuildReadForVersion, StringComparison.OrdinalIgnoreCase);
+    /// <summary>True when the build endpoint should be asked now: see <see cref="BuildRead.IsDue"/>.</summary>
+    public bool BuildIsDue(string? version) => BuildRead.IsDue(version);
 
-    public void RecordBuild(BuildInfo? build, string? version)
-    {
-        Build = build;
-        BuildWasRead = true;
-        BuildReadForVersion = version;
-    }
+    public void RecordBuild(BuildInfo? build, string? version) => BuildRead = BuildRead.Read(build, version);
 
     public void RecordServing(ServingAssessment assessment) => LastServing = assessment;
 

@@ -411,8 +411,30 @@ public static class DeploymentActivity
         var local = TimeZoneInfo.ConvertTime(time, zone);
         var today = TimeZoneInfo.ConvertTime(now, zone);
         var days = Math.Abs((local.Date - today.Date).TotalDays);
-        return local.ToString(days < 1 ? "HH:mm" : days < 7 ? "ddd HH:mm" : "d MMM HH:mm", CultureInfo.InvariantCulture);
+        var format = days switch
+        {
+            < DaysBeforeWeekday => TimeOfDayFormat,
+            < DaysBeforeDate => WeekdayFormat,
+            _ => DateFormat,
+        };
+        return local.ToString(format, CultureInfo.InvariantCulture);
     }
+
+    /// <summary>A moment is said by its time of day below this many calendar days away: the same day.</summary>
+    private const double DaysBeforeWeekday = 1;
+
+    /// <summary>A moment is said by its day of the week below this many calendar days away (a weekday name still
+    /// points to one day), then by its date.</summary>
+    private const double DaysBeforeDate = 7;
+
+    /// <summary>The time of day: <c>19:00</c>.</summary>
+    private const string TimeOfDayFormat = "HH:mm";
+
+    /// <summary>The day of the week and the time: <c>Sun 19:00</c>.</summary>
+    private const string WeekdayFormat = "ddd HH:mm";
+
+    /// <summary>The date and the time: <c>12 Oct 19:00</c>.</summary>
+    private const string DateFormat = "d MMM HH:mm";
 
     private static string Names(IReadOnlyList<string> names) => names.Count == 0 ? "the system" : string.Join(", ", names);
 

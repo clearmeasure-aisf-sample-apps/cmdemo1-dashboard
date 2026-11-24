@@ -73,6 +73,11 @@ internal static class RecordSurface
             .Select(field => field.Name)
             .Order(StringComparer.Ordinal)];
 
+    /// <summary>A method as the surface is written: what it gives back, what it is called, and its arguments in the
+    /// order a caller names them, each with its type and its name.</summary>
+    public static string Signature(MethodInfo method) =>
+        $"{method.ReturnType.Name} {method.Name}({string.Join(", ", method.GetParameters().Select(parameter => $"{parameter.ParameterType.Name} {parameter.Name}"))})";
+
     /// <summary>True when the signature says a part may be nothing.</summary>
     public static bool IsNullable(ParameterInfo parameter) =>
         new NullabilityInfoContext().Create(parameter).WriteState == NullabilityState.Nullable;

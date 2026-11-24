@@ -92,6 +92,32 @@ public class RecordSurfaceMachineryTests
         Assert.Equal(TopologyCopy<string[]>("NamesOfFields", record), Shared<string[]>(nameof(RecordSurface.FieldNamesOf), record));
 
     [Fact]
+    public void SignatureSaysWhatProbeUrlEdgeCaseTestsPrivateCopySays()
+    {
+        var method = typeof(ProbeUrl).GetMethod("Combine", BindingFlags.Public | BindingFlags.Static);
+        Assert.NotNull(method);
+
+        var privateCopy = typeof(ProbeUrlEdgeCaseTests).GetMethod("Signature", Private, [typeof(MethodInfo)])!;
+        var privateResult = Assert.IsType<string>(privateCopy.Invoke(null, [method]));
+        var sharedResult = RecordSurface.Signature(method);
+
+        Assert.Equal(privateResult, sharedResult);
+    }
+
+    [Fact]
+    public void SignatureSaysWhatTimeTextEdgeCaseTestsPrivateCopySays()
+    {
+        var method = typeof(TimeText).GetMethod("Clock", BindingFlags.Public | BindingFlags.Static);
+        Assert.NotNull(method);
+
+        var privateCopy = typeof(TimeTextEdgeCaseTests).GetMethod("Signature", Private, [typeof(MethodInfo)])!;
+        var privateResult = Assert.IsType<string>(privateCopy.Invoke(null, [method]));
+        var sharedResult = RecordSurface.Signature(method);
+
+        Assert.Equal(privateResult, sharedResult);
+    }
+
+    [Fact]
     public void WithFieldsOfKeepsThePublicFieldsTheRecordWalkWalksPast()
     {
         Assert.DoesNotContain("Word", RecordSurface.Of<WithAField>());

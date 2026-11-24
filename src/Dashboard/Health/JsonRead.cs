@@ -82,6 +82,10 @@ internal static class JsonRead
     /// <summary>An absolute http or https address: the only kind the dashboard links to.</summary>
     public static Uri? Address(JsonElement? parent, string name) => Address(Text(parent, name));
 
+    /// <summary>True when the value under <paramref name="name"/> is an array; false when there is no such name or it is not an array.</summary>
+    public static bool HasArray(JsonElement? parent, string name) =>
+        parent is { ValueKind: JsonValueKind.Object } value && value.TryGetProperty(name, out var part) && part.ValueKind == JsonValueKind.Array;
+
     public static Uri? Address(string? text) =>
         Uri.TryCreate(text, UriKind.Absolute, out var address) && (address.Scheme == Uri.UriSchemeHttp || address.Scheme == Uri.UriSchemeHttps)
             ? address

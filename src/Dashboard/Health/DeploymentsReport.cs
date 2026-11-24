@@ -83,10 +83,10 @@ public sealed record DeploymentsReport(DateTimeOffset? Generated, IReadOnlyList<
             return root.ValueKind == JsonValueKind.Object && root.TryGetProperty("deployments", out var list) && list.ValueKind == JsonValueKind.Array
                 ? new DeploymentsReport(JsonRead.Time(root, "generated"), [.. JsonRead.Items(root, "deployments").Select(Deployment.Read).OfType<Deployment>()])
                 {
-                    Recent = [.. JsonRead.Items(root, "recent").Select(RecentDeployment.Read).OfType<RecentDeployment>().OrderByDescending(recent => recent.Finished)],
-                    Freezes = [.. JsonRead.Items(root, "freezes").Select(DeploymentFreeze.Read).OfType<DeploymentFreeze>()],
-                    Missing = [.. JsonRead.Items(root, "missing").Where(item => item.ValueKind == JsonValueKind.String).Select(item => item.GetString()!)],
-                    SaysActivity = ActivityLists.Any(name => root.TryGetProperty(name, out var part) && part.ValueKind == JsonValueKind.Array),
+                    Recent = ReadRecent(root),
+                    Freezes = ReadFreezes(root),
+                    Missing = ReadMissing(root),
+                    SaysActivity = ReadSaysActivity(root),
                 }
                 : null;
         }
@@ -95,6 +95,21 @@ public sealed record DeploymentsReport(DateTimeOffset? Generated, IReadOnlyList<
             return null;
         }
     }
+
+    /// <summary>The last deployments that ended, newest first; empty for a file from before the field.</summary>
+    private static IReadOnlyList<RecentDeployment> ReadRecent(JsonElement root) =>
+        [.. JsonRead.Items(root, "recent").Select(RecentDeployment.Read).OfType<RecentDeployment>().OrderByDescending(recent => recent.Finished)];
+
+    /// <summary>The deployment freezes, in the file's order; empty for a file from before the field.</summary>
+    private static IReadOnlyList<DeploymentFreeze> ReadFreezes(JsonElement root) =>
+        [.. JsonRead.Items(root, "freezes").Select(DeploymentFreeze.Read).OfType<DeploymentFreeze>()];
+
+    /// <summary>The parts the system could not read, in the file's words; empty for a file from before the field.</summary>
+    private static IReadOnlyList<string> ReadMissing(JsonElement root) =>
+        [.. JsonRead.Items(root, "missing").Where(item => item.ValueKind == JsonValueKind.String).Select(item => item.GetString()!)];
+
+    /// <summary>True when the file has one of the activity lists: recent, freezes or missing.</summary>
+    private static bool ReadSaysActivity(JsonElement root) => ActivityLists.Any(name => JsonRead.HasArray(root, name));
 
     /// <summary>Where a deployment stands among the marks: a <see cref="MarkPlace"/>, which is a place in the marks and
     /// not a number of <see cref="DeploymentState"/>.</summary>

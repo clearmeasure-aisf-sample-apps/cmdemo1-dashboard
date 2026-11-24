@@ -378,13 +378,11 @@ public static class TopologyParser
     }
 
     private static string ReadPath(JsonElement parent, string property, string fallback) =>
-        AsPath(ReadText(parent, property) ?? fallback);
+        ReadOptionalPath(parent, property) ?? fallback;
 
-    /// <summary>An optional path, or none: <see cref="ReadText"/> already answers null for anything but a word.</summary>
+    /// <summary>An optional path, or none: <see cref="ReadText"/> answers null for anything but a word.</summary>
     private static string? ReadOptionalPath(JsonElement parent, string property) =>
-        ReadText(parent, property) is { } path ? AsPath(path) : null;
-
-    private static string AsPath(string path) => path.StartsWith('/') ? path : $"/{path}";
+        SitePath.Parse(ReadText(parent, property));
 
     /// <summary>An optional array of paths; null when absent, an error for anything but strings.</summary>
     private static List<string>? ReadPaths(JsonElement parent, string property, string parentPath, List<string> errors)
@@ -403,7 +401,8 @@ public static class TopologyParser
                 return null;
             }
 
-            paths.Add(AsPath(element.GetString()!));
+            // Deliberately untrimmed (#1041): a padded entry stays the path it was written as.
+            paths.Add(SitePath.WithFront(element.GetString()!));
         }
 
         return paths;

@@ -179,3 +179,50 @@ internal sealed class CultureScope : IDisposable
     public static void Runs(string cultureName, Action what) =>
         Runs(System.Globalization.CultureInfo.GetCultureInfo(cultureName), what);
 }
+
+/// <summary>
+/// The one way a test builds a telemetry reading: every counter is named at the call, so a value that lands on
+/// the wrong property shows as the swap it is rather than matching a count that happens to be the same. The eleven
+/// values of one reading are written as the reading they are and not as a list to be counted through.
+/// </summary>
+public static class TelemetrySnapshots
+{
+    /// <summary>A reading that says no numbers: every count zero, both percentiles and both halves of the SQL
+    /// unsaid. The reading of an app that counted a quiet minute, beside the nothing a node that reported no
+    /// telemetry at all lands on.</summary>
+    public static TelemetrySnapshot Quiet(DateTimeOffset at) => new(0, 0, 0, 0, null, 0, 0, 0, null, 0, at);
+
+    /// <summary>A reading with traffic but no other numbers: the requests that are not checks, all forwarded
+    /// by Front Door, no errors, no percentiles. The shape of a reading that has only one thing to say.</summary>
+    public static TelemetrySnapshot Traffic(int requests, DateTimeOffset at) => new(requests, requests, 0, 0, null, 0, 0, 0, null, 0, at);
+
+    /// <summary>A reading with traffic and outgoing HTTP calls.</summary>
+    public static TelemetrySnapshot WithHttp(int requests, int http, DateTimeOffset at) => new(requests, requests, 0, 0, null, 0, 0, 0, null, http, at);
+
+    /// <summary>A reading with traffic and SQL commands.</summary>
+    public static TelemetrySnapshot WithSql(int requests, int sql, DateTimeOffset at) => new(requests, requests, 0, 0, null, 0, 0, sql, null, 0, at);
+
+    /// <summary>A reading with traffic, SQL commands and the app's own process vitals: the uptime it says it has
+    /// been running, and nothing else of the vitals.</summary>
+    public static TelemetrySnapshot WithUptime(long uptime, DateTimeOffset at) =>
+        Quiet(at) with { Process = new ProcessVitals(null, null, null, null, null, null, uptime) };
+
+    /// <summary>A reading with traffic and the moment the app's process started: an app that says when it started
+    /// and nothing else about itself.</summary>
+    public static TelemetrySnapshot WithStartedAt(DateTimeOffset startedAt, DateTimeOffset at) =>
+        Quiet(at) with { StartedAt = startedAt };
+
+    /// <summary>A reading with traffic and the moment the app's process started, and the uptime it says it has
+    /// been running: both of the two ways an app can say when it started, and nothing else about itself.</summary>
+    public static TelemetrySnapshot WithStartAndUptime(long uptime, DateTimeOffset startedAt, DateTimeOffset at) =>
+        Quiet(at) with
+        {
+            Process = new ProcessVitals(null, null, null, null, null, null, uptime),
+            StartedAt = startedAt,
+        };
+
+    /// <summary>A reading that tells the SQL of its requests from the SQL it runs in the background, beside the
+    /// total of all its SQL commands.</summary>
+    public static TelemetrySnapshot WithSplitSql(int requests, int totalSql, int sqlRequests, int sqlBackground, DateTimeOffset at) =>
+        WithSql(requests, totalSql, at) with { SqlRequests = sqlRequests, SqlBackground = sqlBackground };
+}

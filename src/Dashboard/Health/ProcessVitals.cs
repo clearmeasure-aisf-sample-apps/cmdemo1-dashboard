@@ -26,6 +26,9 @@ public sealed record ProcessVitals(
     /// <summary>An uptime below this is shown as a restart.</summary>
     public static readonly TimeSpan RecentRestart = TimeSpan.FromMinutes(5);
 
+    /// <summary>The reading of a <c>process</c> object that holds no value: every part unmeasured.</summary>
+    private static readonly ProcessVitals Nothing = new(null, null, null, null, null, null, null);
+
     public bool RestartedRecently => UptimeSeconds is { } seconds && IsRecentRestart(seconds);
 
     /// <summary>The one statement of the rule: an uptime of fewer seconds than <see cref="RecentRestart" /> is a restart.</summary>
@@ -48,7 +51,7 @@ public sealed record ProcessVitals(
             JsonRead.Count(process, "inFlight"),
             JsonRead.Count(process, "exceptionsPerMinute"),
             JsonRead.Long(process, "uptimeSeconds"));
-        return vitals == new ProcessVitals(null, null, null, null, null, null, null) ? null : vitals;
+        return vitals == Nothing ? null : vitals;
     }
 }
 

@@ -10,7 +10,8 @@ public static class SummaryWords
     /// <summary>
     /// The sentence the header announces for the given counts. <paramref name="total" /> is every node (Front Door
     /// endpoints and web apps), <paramref name="healthy" /> is how many answered HTTP 200, and <paramref name="pending" />
-    /// is how many are still being checked. The not-healthy count is the rest.
+    /// is how many are still being checked. The not-healthy count is the rest. Every arm takes its noun from the one
+    /// singular/plural rule below, so a count of one says "node" and any other count says "nodes" in every sentence.
     /// </summary>
     public static string Text(SummaryLevel level, int total, int healthy, int pending)
     {
@@ -19,11 +20,11 @@ public static class SummaryWords
 
         return level switch
         {
-            SummaryLevel.Empty => "No nodes in the topology",
+            SummaryLevel.Empty => $"No {noun} in the topology",
             SummaryLevel.Problems => $"{notHealthy} of {total} {noun} not healthy",
             SummaryLevel.Pending when healthy == 0 => $"Checking {total} {noun}",
             SummaryLevel.Pending => $"{healthy} of {total} {noun} healthy, {pending} being checked",
-            SummaryLevel.AllHealthy => total == 1 ? "The only node is healthy" : $"All {total} nodes healthy",
+            SummaryLevel.AllHealthy => total == 1 ? $"The only {noun} is healthy" : $"All {total} {noun} healthy",
             _ => throw new ArgumentOutOfRangeException(nameof(level), level, null),
         };
     }

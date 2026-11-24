@@ -88,6 +88,12 @@ public sealed record HealthDetail(IReadOnlyList<HealthCheckEntry> Entries, DateT
 /// <summary>The entries of a detailed health check in the words of the tiles.</summary>
 public static class HealthDetailText
 {
+    /// <summary>The smallest number of milliseconds the `0.#` format shows as `0.1`.</summary>
+    private const double SmallestShownMilliseconds = 0.05;
+
+    /// <summary>The milliseconds in one second: used as the ms/s cutoff and as the divisor to convert to seconds.</summary>
+    private const double MillisecondsPerSecond = 1000;
+
     /// <summary>The state's word: a mark is never colour alone.</summary>
     public static string Label(CheckState state) => state switch
     {
@@ -135,9 +141,9 @@ public static class HealthDetailText
 
     /// <summary><c>42.1 ms</c>; under a tenth of a millisecond <c>under 0.1 ms</c>; from a second on <c>1.2 s</c>.</summary>
     public static string Duration(double milliseconds) =>
-        milliseconds < 0.05 ? "under 0.1 ms"
-        : milliseconds < 1000 ? string.Create(CultureInfo.InvariantCulture, $"{milliseconds:0.#} ms")
-        : string.Create(CultureInfo.InvariantCulture, $"{milliseconds / 1000:0.#} s");
+        milliseconds < SmallestShownMilliseconds ? "under 0.1 ms"
+        : milliseconds < MillisecondsPerSecond ? string.Create(CultureInfo.InvariantCulture, $"{milliseconds:0.#} ms")
+        : string.Create(CultureInfo.InvariantCulture, $"{milliseconds / MillisecondsPerSecond:0.#} s");
 
     /// <summary>
     /// One short line for all entries: <c>4 checks healthy</c>; the one that is not, by name, <c>DataAccess

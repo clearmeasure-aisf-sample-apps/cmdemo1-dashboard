@@ -3,9 +3,12 @@
 @inject NodeProber Prober
 @inject PinnedVersionsReader Versions
 @inject ClusterReader ClusterFiles
-@inject TimeProvider Time
+@inject TimeProvider Clock
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
+
+@* One reading of the clock per render: every tile below asks Time, and all of them get this one instant. *@
+@{ Time.Pin(); }
 
 <PageTitle>@PageTitleText</PageTitle>
 
@@ -200,7 +203,7 @@
 @if (_monitor is { } trafficMonitor)
 {
     <EventsStrip Events="_events" Monitor="trafficMonitor" Opened="_opened" Zone="Zone" Now="Time.GetUtcNow()" />
-    <TrafficPanel Monitor="trafficMonitor" Environment="@(_address.Environment ?? _runtimeEnvironment)" CheckNow="CheckNow" Time="Time" Events="_events"
+    <TrafficPanel Monitor="trafficMonitor" Environment="@(_address.Environment ?? _runtimeEnvironment)" CheckNow="CheckNow" Time="Clock" Events="_events"
                   RunningChanged="OnTrafficRunningChanged" />
 }
 
@@ -271,7 +274,10 @@
     private WorkAudience _workAudience = WorkAudience.All;
     private bool _trafficRunning;
 
-    private TimeZoneInfo Zone => Time.LocalTimeZone;
+    /// <summary>The moment of this rendering, pinned at the top of the markup; the running clock is <c>Clock</c>.</summary>
+    private RenderClock Time { get; set; } = default!;
+
+    private TimeZoneInfo Zone => Clock.LocalTimeZone;
 
     /// <summary>The view that is shown: the address's, but the health view where it names a cluster the topology does not have.</summary>
     private DashboardView View => _address.View == DashboardView.Cluster && _monitor?.Cluster is null ? DashboardView.Health : _address.View;
@@ -343,8 +349,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _opened = Time.GetUtcNow();
-        _poller = new Poller(CheckAsync, Time, DefaultInterval);
+        Time = new RenderClock(Clock);
+        _opened = Clock.GetUtcNow();
+        _poller = new Poller(CheckAsync, Clock, DefaultInterval);
         await LoadTopologyAsync();
         _polling = RunPollerAsync();
     }
@@ -444,7 +451,7 @@
                 previous.Changed -= OnMonitorChanged;
             }
 
-            _monitor = result.Topology is { } topology ? new DashboardMonitor(topology, Prober, Versions, Time, _events, ClusterFiles) : null;
+            _monitor = result.Topology is { } topology ? new DashboardMonitor(topology, Prober, Versions, Clock, _events, ClusterFiles) : null;
             _errors = result.Topology is null ? result.Errors : null;
 
             // Without a topology the page has no traffic panel, and what it sent has stopped with it.

@@ -34,16 +34,30 @@ public static class HistoryText
     {
         ArgumentNullException.ThrowIfNull(result);
         var text = $"{TimeText.Clock(result.CheckedAt, zone)} {HealthClassifier.Label(result.State)}";
+        var facts = ResultFacts(result, ", ");
+        if (facts.Length > 0)
+        {
+            text += $", {facts}";
+        }
+
+        return text;
+    }
+
+    /// <summary>The HTTP status and latency parts of a check result, joined by <paramref name="separator"/>.
+    /// Empty when neither is present.</summary>
+    public static string ResultFacts(ProbeResult result, string separator)
+    {
+        var parts = new System.Collections.Generic.List<string>();
         if (result.StatusCode is { } status)
         {
-            text += $", HTTP {status}";
+            parts.Add($"HTTP {status}");
         }
 
         if (result.LatencyMs is { } latency)
         {
-            text += $", {latency} ms";
+            parts.Add($"{latency} ms");
         }
 
-        return text;
+        return string.Join(separator, parts);
     }
 }

@@ -789,6 +789,31 @@ public partial class HealthHelperCoverageTests
         Assert.Equal($"demo-ui 2.4.43 waits for a sign-off in prod (2 h so far)\n{detail}", DeploymentText.Title(mark));
     }
 
+    // ---------------------------------------------------------------- HistoryText.ResultFacts
+
+    /// <summary>The shared helper that formats the HTTP status and latency parts of a check result: the two callers
+    /// (RuntimePayloadBuilder and HistoryText.Describe) pass their own separator, and the helper joins the parts
+    /// accordingly.</summary>
+    [Fact]
+    public void ResultFactsJoinsTheStatusAndLatencyPartsOfAProbe()
+    {
+        var result = new ProbeResult(HealthState.Healthy, 200, 85, Now);
+
+        Assert.Equal("HTTP 200 · 85 ms", HistoryText.ResultFacts(result, " · "));
+        Assert.Equal("HTTP 200, 85 ms", HistoryText.ResultFacts(result, ", "));
+
+        // One part only: the helper writes what is there and leaves out the rest.
+        var statusOnly = new ProbeResult(HealthState.Unhealthy, 503, null, Now);
+        Assert.Equal("HTTP 503", HistoryText.ResultFacts(statusOnly, " · "));
+
+        var latencyOnly = new ProbeResult(HealthState.Unreachable, null, 12, Now);
+        Assert.Equal("12 ms", HistoryText.ResultFacts(latencyOnly, " · "));
+
+        // Neither part: the helper writes nothing, and the caller decides what to say in that case.
+        var neither = new ProbeResult(HealthState.Unreachable, null, null, Now);
+        Assert.Equal(string.Empty, HistoryText.ResultFacts(neither, " · "));
+    }
+
     // ---------------------------------------------------------------- the machinery
 
     /// <summary>The eight helpers the issue found untested, as their type and their name.</summary>

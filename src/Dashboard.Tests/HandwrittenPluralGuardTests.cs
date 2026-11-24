@@ -33,19 +33,57 @@ public class HandwrittenPluralGuardTests
     private static readonly Regex InterpolatedSuffix = new(@"""[^""]*\{[^}]*\}(s|es)""", RegexOptions.Compiled);
 
     /// <summary>
-    /// A ternary that compares a variable to 1 and chooses between string branches:
-    /// <c>count == 1 ? "word" : "words"</c>. The <c>(?s)</c> flag lets the match span lines.
+    /// A ternary that compares a variable to 1 and chooses between string branches.
+    /// The <c>(?s)</c> flag lets the match span lines. Branches can be plain, interpolated, or verbatim strings.
     /// </summary>
     private static readonly Regex PluralTernary = new(
-        @"(?s)(\w+)\s*(==|!=|>|<|>=|<=)\s*1\s*\?\s*""([^""]*)""\s*:\s*""([^""]*)""",
+        "(?s)(\\w+)\\s*(==|!=|>|<|>=|<=)\\s*1\\s*\\?\\s*(\\$?@?\")([^\"]*)\"\\s*:\\s*(\\$?@?\")([^\"]*)\"",
         RegexOptions.Compiled);
 
     /// <summary>
     /// The reversed form where 1 is on the left: <c>1 == count ? "word" : "words"</c>.
     /// </summary>
     private static readonly Regex ReversedPluralTernary = new(
-        @"(?s)1\s*(==|!=|>|<|>=|<=)\s*(\w+)\s*\?\s*""([^""]*)""\s*:\s*""([^""]*)""",
+        "(?s)1\\s*(==|!=|>|<|>=|<=)\\s*(\\w+)\\s*\\?\\s*(\\$?@?\")([^\"]*)\"\\s*:\\s*(\\$?@?\")([^\"]*)\"",
         RegexOptions.Compiled);
+
+    /// <summary>
+    /// Known verb/pronoun agreement pairs that are NOT noun plurals. These are allowed
+    /// in ternaries that compare counts to 1.
+    /// </summary>
+    private static readonly HashSet<string> VerbPronounPairs = new(StringComparer.Ordinal)
+    {
+        "is/are",
+        "are/is",
+        "was/were",
+        "were/was",
+        "has/have",
+        "have/has",
+        "it/they",
+        "they/it",
+        "its/their",
+        "their/its",
+        "this/these",
+        "these/this",
+        "that/those",
+        "those/that",
+        " is/ are",
+        " are/ is",
+        " was/ were",
+        " were/ was",
+        " has/ have",
+        " have/ has",
+        " it/ they",
+        " they/ it",
+        " its/ their",
+        " their/ its",
+        " this/ these",
+        " these/ this",
+        " that/ those",
+        " those/ that",
+        "its answer/their answers",
+        "their answers/its answer",
+    };
 
     /// <summary>
     /// Every <c>.cs</c> under <c>src/Dashboard</c> is read once, as the path the assertion prints and its text.
@@ -118,47 +156,50 @@ public class HandwrittenPluralGuardTests
 
     /// <summary>
     /// Determines if a matched ternary is a hand-written noun plural (vs verb/pronoun agreement).
-    /// Catches word/word plurals ("check"/"checks"), word/suffix patterns ("item"/"s"),
-    /// and suffix/suffix patterns.
+    /// Flags ternaries comparing a count to 1 with two differing short, space-free string branches,
+    /// unless the pair is a known verb/pronoun agreement pair. Longer or multi-word branches are
+    /// treated as whole-sentence choices, not simple noun plurals.
     /// </summary>
     private static bool IsHandwrittenPluralTernary(Match match)
     {
-        var branch1 = match.Groups[match.Groups.Count - 2].Value;
-        var branch2 = match.Groups[match.Groups.Count - 1].Value;
+        // Branch content is in groups 4 and 6
+        var branch1 = match.Groups[4].Value;
+        var branch2 = match.Groups[6].Value;
 
-        // Suffix form: one branch is empty or just "s"/"es", the other is a word
-        if (IsSuffixOnly(branch1) && IsWord(branch2)) return true;
-        if (IsWord(branch1) && IsSuffixOnly(branch2)) return true;
+        // Same text in both branches is not a plural
+        if (branch1 == branch2) return false;
 
-        // Word form: both are words and one looks like the plural of the other
-        if (IsWord(branch1) && IsWord(branch2))
+        // Check for known verb/pronoun agreement pairs
+        var pair = $"{branch1}/{branch2}";
+        if (VerbPronounPairs.Contains(pair)) return false;
+
+        // Long branches are whole-sentence choices, not simple noun plurals
+        if (branch1.Length > 15 || branch2.Length > 15) return false;
+
+        return true;
+    }
+
+    /// <summary>
+    /// Strips string delimiters (" or @ or $) to get the raw content for comparison.
+    /// </summary>
+    private static string StripStringDelimiters(string s)
+    {
+        s = s.Trim();
+        // Remove opening delimiter: optionally $ or @, then "
+        if (s.StartsWith("$@", StringComparison.Ordinal) || s.StartsWith("@$", StringComparison.Ordinal))
         {
-            if (branch2 == branch1 + "s") return true;
-            if (branch1 == branch2 + "s") return true;
-            if (branch2 == branch1 + "es") return true;
-            if (branch1 == branch2 + "es") return true;
-            if (LooksLikePluralOf(branch1, branch2)) return true;
-            if (LooksLikePluralOf(branch2, branch1)) return true;
+            s = s.Substring(2);
         }
-
-        return false;
-    }
-
-    private static bool IsWord(string s)
-    {
-        return s.Length > 0 && s.All(c => char.IsLetter(c));
-    }
-
-    private static bool IsSuffixOnly(string s)
-    {
-        return s == "" || s == "s" || s == "es";
-    }
-
-    private static bool LooksLikePluralOf(string singular, string plural)
-    {
-        // Different plural spelling: "box" -> "boxes", "child" -> "children", etc.
-        // Heuristic: the plural is longer and starts with the singular.
-        return plural.Length > singular.Length && plural.StartsWith(singular, StringComparison.Ordinal);
+        else if (s.StartsWith('$') || s.StartsWith('"'))
+        {
+            s = s.Substring(1);
+        }
+        // Remove closing quote if present
+        if (s.EndsWith('"'))
+        {
+            s = s.Substring(0, s.Length - 1);
+        }
+        return s;
     }
 
     private static int LineNumberAt(string text, int position)
@@ -246,15 +287,25 @@ public class HandwrittenPluralGuardTests
     }
 
     /// <summary>
-    /// The ternary regex catches noun plurals in all comparison forms and not verb/pronoun agreement.
+    /// The ternary rule catches noun plurals in all comparison forms and string styles,
+    /// and lets through verb/pronoun agreement and non-1 comparisons.
     /// </summary>
     [Fact]
-    public void ThePluralTernaryRegexDiscriminatesNounFromVerb()
+    public void ThePluralTernaryRuleDiscriminatesNounFromVerb()
     {
         // Noun plural: singular + "s"
         Assert.True(IsPluralTernaryIn("var n = count == 1 ? \"check\" : \"checks\";"));
-        // Noun plural: different plural spelling
-        Assert.True(IsPluralTernaryIn("var n = count == 1 ? \"box\" : \"boxes\";"));
+        // Noun plural: different plural spelling (y -> ies)
+        Assert.True(IsPluralTernaryIn("var n = count == 1 ? \"assembly\" : \"assemblies\";"));
+        Assert.True(IsPluralTernaryIn("var n = count == 1 ? \"entry\" : \"entries\";"));
+        // Multi-word noun plural
+        Assert.True(IsPluralTernaryIn("var n = count == 1 ? \"work item\" : \"work items\";"));
+        // Interpolated string branches
+        Assert.True(IsPluralTernaryIn("var n = count == 1 ? $\"check\" : $\"checks\";"));
+        // Verbatim string branches
+        Assert.True(IsPluralTernaryIn("var n = count == 1 ? @\"check\" : @\"checks\";"));
+        // != comparison, plural in first branch
+        Assert.True(IsPluralTernaryIn("var n = count != 1 ? \"people\" : \"person\";"));
         // Suffix form: empty true branch
         Assert.True(IsPluralTernaryIn("var n = count == 1 ? \"\" : \"s\";"));
         // Suffix form: empty false branch with !=
@@ -266,8 +317,20 @@ public class HandwrittenPluralGuardTests
 
         // Verb agreement: not a noun plural
         Assert.False(IsPluralTernaryIn("var v = count == 1 ? \"is\" : \"are\";"));
+        Assert.False(IsPluralTernaryIn("var v = count == 1 ? \"was\" : \"were\";"));
+        Assert.False(IsPluralTernaryIn("var v = count == 1 ? \"has\" : \"have\";"));
         // Pronoun agreement: not a noun plural
+        Assert.False(IsPluralTernaryIn("var p = count == 1 ? \"it\" : \"they\";"));
         Assert.False(IsPluralTernaryIn("var p = count == 1 ? \"its\" : \"their\";"));
+        Assert.False(IsPluralTernaryIn("var p = count == 1 ? \"this\" : \"these\";"));
+        Assert.False(IsPluralTernaryIn("var p = count == 1 ? \"that\" : \"those\";"));
+        // Same text in both branches
+        Assert.False(IsPluralTernaryIn("var s = count == 1 ? \"x\" : \"x\";"));
+        // Non-1 comparisons
+        Assert.False(IsPluralTernaryIn("var o = ok ? \"yes\" : \"no\";"));
+        Assert.False(IsPluralTernaryIn("var t = count == 2 ? \"a\" : \"b\";"));
+        Assert.False(IsPluralTernaryIn("var t = count == 10 ? \"a\" : \"b\";"));
+        Assert.False(IsPluralTernaryIn("var t = count == 11 ? \"a\" : \"b\";"));
     }
 
     private static bool IsPluralTernaryIn(string code)
@@ -300,7 +363,7 @@ public class HandwrittenPluralGuardTests
     }
 
     /// <summary>
-    /// A multi-line planted offender is detected and reports the line where the ternary starts.
+    /// A multi-line ternary offender is detected and reports the line where the ternary/condition starts.
     /// </summary>
     [Fact]
     public void MultiLinePlantedOffenderReportsStartLine()
@@ -312,15 +375,17 @@ public class HandwrittenPluralGuardTests
             {
                 public string Format(int n)
                 {
-                    return n + " item" +
-                        (n == 1 ? "" : "s");
+                    var w = n == 1
+                        ? "check"
+                        : "checks";
+                    return n + " " + w;
                 }
             }
             """;
 
         var findings = ScanFile("Test.cs", source);
         Assert.Single(findings);
-        Assert.Contains("Test.cs:8", findings[0]);
+        Assert.Contains("Test.cs:7", findings[0]);
     }
 
     private static string DashboardRoot() => MarkupGuards.DashboardRoot();

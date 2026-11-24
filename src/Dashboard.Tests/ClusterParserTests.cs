@@ -83,6 +83,30 @@ public class ClusterParserTests
     }
 
     [Fact]
+    public void ANamespaceElementThatIsNotAnObjectIsLeftOut()
+    {
+        var status = ClusterStatus.Parse("""
+            { "namespaces": [ "text", 42, null, true, { "name": "apps", "pods": [], "volumes": [] } ] }
+            """).Value!;
+
+        Assert.Single(status.Namespaces);
+        Assert.Equal("apps", status.Namespaces[0].Name);
+    }
+
+    [Fact]
+    public void TheFileOrderIsKept()
+    {
+        var status = ClusterStatus.Parse("""
+            { "namespaces": [
+                { "name": "second", "pods": [], "volumes": [] },
+                { "name": "first", "pods": [], "volumes": [] }
+            ] }
+            """).Value!;
+
+        Assert.Equal(["second", "first"], status.Namespaces.Select(s => s.Name));
+    }
+
+    [Fact]
     public void ValuesOfAnotherTypeAreNoValuesAndNeverAnException()
     {
         var status = ClusterStatus.Parse("""

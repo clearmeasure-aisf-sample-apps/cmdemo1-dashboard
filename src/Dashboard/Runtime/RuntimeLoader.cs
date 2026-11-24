@@ -55,6 +55,17 @@ public sealed record DatabaseDiagram(DatabaseManifest? Manifest, string? Svg, IR
     public bool IsValid => Manifest is not null && Svg is not null;
 }
 
+/// <summary>
+/// A manifest and its SVG, read as a pair: both parts and no errors, or neither part and the reasons why. A view is
+/// never drawn from half a pair.
+/// </summary>
+internal sealed record RuntimeFilesRead<TManifest>(TManifest? Manifest, string? Svg, IReadOnlyList<string> Errors)
+    where TManifest : class
+{
+    internal static RuntimeFilesRead<TManifest> Of(TManifest? manifest, string? svg, IReadOnlyList<string> errors) =>
+        errors.Count > 0 || manifest is null || svg is null ? new(null, null, errors) : new(manifest, svg, []);
+}
+
 /// <summary>Loads the files of <c>runtime/</c> from the dashboard's own address, as it loads <c>topology.json</c>.</summary>
 public sealed class RuntimeLoader(HttpClient http)
 {
@@ -77,74 +88,21 @@ public sealed class RuntimeLoader(HttpClient http)
         var parsed = RuntimeManifestParser.ParseIndex(text);
         return parsed.Value is { } index
             ? RuntimeIndexResult.Read(index)
-            : RuntimeIndexResult.Failed([.. parsed.Errors.Select(problem => $"{Folder}{IndexFile}: {problem}")]);
+            : RuntimeIndexResult.Failed(Prefixed(IndexFile, parsed.Errors));
     }
 
     public async Task<RuntimeDiagram> LoadDiagramAsync(RuntimeIndexEntry entry, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(entry);
-        var manifestTask = GetAsync(entry.Manifest, cancellationToken);
-        var svgTask = GetAsync(entry.Svg, cancellationToken);
-        var (_, manifestText, manifestError) = await manifestTask;
-        var (_, svg, svgError) = await svgTask;
-
-        var errors = new List<string>();
-        RuntimeManifest? manifest = null;
-        if (manifestError is not null)
-        {
-            errors.Add(manifestError);
-        }
-        else
-        {
-            var parsed = RuntimeManifestParser.ParseManifest(manifestText);
-            manifest = parsed.Value;
-            errors.AddRange(parsed.Errors.Select(problem => $"{Folder}{entry.Manifest}: {problem}"));
-        }
-
-        if (svgError is not null)
-        {
-            errors.Add(svgError);
-        }
-        else if (svg is null || !svg.Contains("<svg", StringComparison.Ordinal))
-        {
-            errors.Add($"{Folder}{entry.Svg}: not an SVG.");
-            svg = null;
-        }
-
-        return errors.Count > 0 ? new RuntimeDiagram(entry.Name, null, null, errors) : new RuntimeDiagram(entry.Name, manifest, svg, []);
+        var read = await ReadPairAsync(entry.Manifest, entry.Svg, RuntimeManifestParser.ParseManifest, cancellationToken);
+        return new RuntimeDiagram(entry.Name, read.Manifest, read.Svg, read.Errors);
     }
 
     public async Task<DatabaseDiagram> LoadDatabaseAsync(RuntimeDatabaseFiles files, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(files);
-        var manifestTask = GetAsync(files.Manifest, cancellationToken);
-        var svgTask = GetAsync(files.Svg, cancellationToken);
-        var (_, manifestText, manifestError) = await manifestTask;
-        var (_, svg, svgError) = await svgTask;
-
-        var errors = new List<string>();
-        DatabaseManifest? manifest = null;
-        if (manifestError is not null)
-        {
-            errors.Add(manifestError);
-        }
-        else
-        {
-            var parsed = DatabaseParser.ParseManifest(manifestText);
-            manifest = parsed.Value;
-            errors.AddRange(parsed.Errors.Select(problem => $"{Folder}{files.Manifest}: {problem}"));
-        }
-
-        if (svgError is not null)
-        {
-            errors.Add(svgError);
-        }
-        else if (svg is null || !svg.Contains("<svg", StringComparison.Ordinal))
-        {
-            errors.Add($"{Folder}{files.Svg}: not an SVG.");
-        }
-
-        return errors.Count > 0 ? new DatabaseDiagram(null, null, errors) : new DatabaseDiagram(manifest, svg, []);
+        var read = await ReadPairAsync(files.Manifest, files.Svg, DatabaseParser.ParseManifest, cancellationToken);
+        return new DatabaseDiagram(read.Manifest, read.Svg, read.Errors);
     }
 
     /// <summary>
@@ -204,6 +162,51 @@ public sealed class RuntimeLoader(HttpClient http)
             return ApplicationRead.Failed;
         }
     }
+
+    /// <summary>
+    /// A manifest and its SVG, both asked for at once: each file that cannot be read, parsed or is no SVG adds its
+    /// reasons, in that order (the manifest's first).
+    /// </summary>
+    private async Task<RuntimeFilesRead<TManifest>> ReadPairAsync<TManifest>(
+        string manifestFile, string svgFile, Func<string?, RuntimeParseResult<TManifest>> parse, CancellationToken cancellationToken)
+        where TManifest : class
+    {
+        var manifestTask = GetAsync(manifestFile, cancellationToken);
+        var svgTask = GetAsync(svgFile, cancellationToken);
+        var (_, manifestText, manifestError) = await manifestTask;
+        var (_, svg, svgError) = await svgTask;
+
+        var errors = new List<string>();
+        TManifest? manifest = null;
+        if (manifestError is not null)
+        {
+            errors.Add(manifestError);
+        }
+        else
+        {
+            var parsed = parse(manifestText);
+            manifest = parsed.Value;
+            errors.AddRange(Prefixed(manifestFile, parsed.Errors));
+        }
+
+        if (svgError is not null)
+        {
+            errors.Add(svgError);
+        }
+        else if (!IsSvg(svg))
+        {
+            errors.AddRange(Prefixed(svgFile, ["not an SVG."]));
+        }
+
+        return RuntimeFilesRead<TManifest>.Of(manifest, svg, errors);
+    }
+
+    /// <summary>The text of a file of <c>runtime/</c> is a picture only when it holds an <c>&lt;svg</c> element.</summary>
+    private static bool IsSvg(string? text) => text is not null && text.Contains("<svg", StringComparison.Ordinal);
+
+    /// <summary>Each problem of a file of <c>runtime/</c>, said with the file's path in front.</summary>
+    private static IReadOnlyList<string> Prefixed(string file, IEnumerable<string> problems) =>
+        [.. problems.Select(problem => $"{Folder}{file}: {problem}")];
 
     /// <summary>
     /// A host that answers every unknown address with the page itself (a fallback route) serves no JSON either.

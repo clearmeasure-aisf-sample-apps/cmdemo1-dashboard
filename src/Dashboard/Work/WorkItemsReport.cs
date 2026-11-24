@@ -125,9 +125,9 @@ public sealed record WorkItemsStats(
         || MergeToProdHours is not null;
 
     /// <summary>
-    /// <paramref name="section"/> is <c>stats</c>. <c>stats.all</c> is the whole board, and the same fields written
-    /// beside it (the older shape) are that same board. <c>stats.bot</c> and <c>stats.team</c> are the split; null
-    /// when that object is missing or empty.
+    /// <paramref name="section"/> is <c>stats</c>: the whole board, which of its two shapes is meant is
+    /// <see cref="WholeBoard"/>, and the <c>bot</c> and <c>team</c> split of it - each of the three null-ready parts
+    /// read by <see cref="ReadSlice"/>, so an object that says nothing is absent.
     /// </summary>
     internal static (WorkItemsStats All, WorkItemsStats? Bot, WorkItemsStats? Team) ReadSet(JsonElement? section)
     {
@@ -136,26 +136,36 @@ public sealed record WorkItemsStats(
             return (Empty, null, null);
         }
 
-        var legacy = Read(section);
-        var nested = JsonRead.Section(section, "all");
-        var all = nested is null ? legacy : Read(nested);
-        if (!all.HasAny && legacy.HasAny)
-        {
-            all = legacy;
-        }
-
-        return (all, Split(JsonRead.Section(section, "bot")), Split(JsonRead.Section(section, "team")));
+        return (WholeBoard(section), ReadSlice(section, "bot"), ReadSlice(section, "team"));
     }
 
-    private static WorkItemsStats? Split(JsonElement? section)
+    /// <summary>
+    /// Which object of <c>stats</c> is the whole board, named in one place: the nested <c>stats.all</c> when it
+    /// carries a count, and the same fields written beside it (the older shape - <c>stats.wipByColumn</c> and the
+    /// rest) when it carries none or is not there at all.
+    /// <para>
+    /// A mixed file is therefore read from beside it: <c>{ "stats": { "all": { }, "wipByColumn": { "Todo": 2 } } }</c>
+    /// is a board with two items in Todo, because the empty <c>all</c> says nothing and the counts beside it answer.
+    /// The same file with nothing beside it - <c>{ "stats": { "all": { } } }</c> - is an empty count: the file did
+    /// start arriving, so the page shows it and computes what it can from the items.
+    /// </para>
+    /// </summary>
+    private static WorkItemsStats WholeBoard(JsonElement? stats) => ReadSlice(stats, "all") ?? Read(stats);
+
+    /// <summary>
+    /// The counts of the object of <paramref name="name"/> under <paramref name="stats"/> - the whole board's
+    /// <c>all</c>, or one side of the <c>bot</c>/<c>team</c> split; null when there is no such object or it says
+    /// nothing. An object that says nothing is treated as absent, so the page can compute that part from the items.
+    /// </summary>
+    private static WorkItemsStats? ReadSlice(JsonElement? stats, string name)
     {
-        if (section is null)
+        if (JsonRead.Section(stats, name) is not { } section)
         {
             return null;
         }
 
-        var stats = Read(section);
-        return stats.HasAny ? stats : null;
+        var slice = Read(section);
+        return slice.HasAny ? slice : null;
     }
 
     internal static WorkItemsStats Read(JsonElement? section)

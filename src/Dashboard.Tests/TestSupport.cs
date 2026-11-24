@@ -129,3 +129,53 @@ public static class ProbeResults
     public static ProbeResult Detected(HealthState state, int? status = null, string? detail = null, string? version = null, DateTimeOffset? at = null) =>
         new(state, status, status is null ? null : 40, at ?? DefaultNow, version, detail);
 }
+
+/// <summary>
+/// The one way a test asks a question as a reader of another culture: the thread's culture is set for the
+/// lifetime of the scope and put back as it was found when the scope ends, whatever the question did.
+/// </summary>
+internal sealed class CultureScope : IDisposable
+{
+    private readonly System.Globalization.CultureInfo _reader = Thread.CurrentThread.CurrentCulture;
+
+    /// <summary>Makes <paramref name="culture" /> the thread's culture until the scope is disposed.</summary>
+    public CultureScope(System.Globalization.CultureInfo culture)
+    {
+        ArgumentNullException.ThrowIfNull(culture);
+        Thread.CurrentThread.CurrentCulture = culture;
+    }
+
+    /// <summary>Makes the culture named <paramref name="cultureName" /> the thread's culture until the scope is
+    /// disposed; the empty name is the invariant culture.</summary>
+    public CultureScope(string cultureName)
+        : this(System.Globalization.CultureInfo.GetCultureInfo(cultureName))
+    {
+    }
+
+    /// <summary>Puts back the culture the thread had before the scope.</summary>
+    public void Dispose() => Thread.CurrentThread.CurrentCulture = _reader;
+
+    /// <summary>What <paramref name="what" /> says to a reader of <paramref name="culture" />.</summary>
+    public static T Says<T>(System.Globalization.CultureInfo culture, Func<T> what)
+    {
+        ArgumentNullException.ThrowIfNull(what);
+        using var scope = new CultureScope(culture);
+        return what();
+    }
+
+    /// <summary>What <paramref name="what" /> says to a reader of the culture named <paramref name="cultureName" />.</summary>
+    public static T Says<T>(string cultureName, Func<T> what) =>
+        Says(System.Globalization.CultureInfo.GetCultureInfo(cultureName), what);
+
+    /// <summary>Runs <paramref name="what" /> as a reader of <paramref name="culture" />.</summary>
+    public static void Runs(System.Globalization.CultureInfo culture, Action what)
+    {
+        ArgumentNullException.ThrowIfNull(what);
+        using var scope = new CultureScope(culture);
+        what();
+    }
+
+    /// <summary>Runs <paramref name="what" /> as a reader of the culture named <paramref name="cultureName" />.</summary>
+    public static void Runs(string cultureName, Action what) =>
+        Runs(System.Globalization.CultureInfo.GetCultureInfo(cultureName), what);
+}

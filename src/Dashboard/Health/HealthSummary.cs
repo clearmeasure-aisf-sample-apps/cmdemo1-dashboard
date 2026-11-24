@@ -20,11 +20,17 @@ public sealed record HealthSummary(int Total, int Healthy, int Pending)
 {
     public int NotHealthy => Total - Healthy - Pending;
 
-    public SummaryLevel Level =>
-        Total == 0 ? SummaryLevel.Empty
-        : NotHealthy > 0 ? SummaryLevel.Problems
-        : Pending > 0 ? SummaryLevel.Pending
-        : SummaryLevel.AllHealthy;
+    /// <summary>
+    /// The level the counts fall on, asked in order of precedence: a total of nothing outranks a problem, and a problem
+    /// outranks a pending check. The first ask that holds decides the level.
+    /// </summary>
+    public SummaryLevel Level => this switch
+    {
+        _ when Total == 0 => SummaryLevel.Empty,
+        _ when NotHealthy > 0 => SummaryLevel.Problems,
+        _ when Pending > 0 => SummaryLevel.Pending,
+        _ => SummaryLevel.AllHealthy,
+    };
 
     public string Text => SummaryWords.Text(Level, Total, Healthy, Pending);
 

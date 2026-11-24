@@ -1,3 +1,5 @@
+using Dashboard.Work;
+
 namespace Dashboard.Health;
 
 /// <param name="Slug">The system's short name.</param>
@@ -19,15 +21,22 @@ public sealed record SystemInfo(
     DashboardInfo? Dashboard = null,
     Uri? DeploymentsUrl = null)
 {
+    /// <summary>The name of the file Resource Health's readings are published in, next to <c>delivery.json</c>.</summary>
+    internal const string ContainersFileName = "containers.json";
+
     /// <summary>
     /// Where the browser reads what Resource Health said of the system's resources: <c>containers.json</c>, which the
     /// same workflow publishes next to the delivery facts; null without them.
     /// </summary>
-    public Uri? ContainersUrl => DeliveryUrl is null ? null : new Uri(DeliveryUrl, "containers.json");
+    public Uri? ContainersUrl => FileBeside(DeliveryUrl, ContainersFileName);
 
     /// <summary>
     /// Where the browser reads the work items the system's bots are handling: <c>workitems.json</c>, published next
     /// to the delivery facts; null without them. The work items view is empty until that file is there.
     /// </summary>
-    public Uri? WorkItemsUrl => DeliveryUrl is null ? null : new Uri(DeliveryUrl, "workitems.json");
+    public Uri? WorkItemsUrl => FileBeside(DeliveryUrl, WorkItemsReport.FileName);
+
+    /// <summary>The file of the given name beside the delivery facts; null without them.</summary>
+    private static Uri? FileBeside(Uri? delivery, string fileName) =>
+        delivery is null ? null : new Uri(delivery, fileName);
 }

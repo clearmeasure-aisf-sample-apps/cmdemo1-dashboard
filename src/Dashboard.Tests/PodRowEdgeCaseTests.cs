@@ -23,6 +23,16 @@ public class PodRowEdgeCaseTests
     private static ClusterPod Silent(string name) =>
         new(name, null, null, null, ClusterPod.Running, false, null, null, 0, null, null, ResourceUse.None, ResourceUse.None);
 
+    /// <summary>The whole word the row of a silent pod says up to its state: every part of the pod said as the record
+    /// says it, in the order the record declares them, and the separator that goes before the state. The bytes are
+    /// the pinned bytes the two literal pins of <see cref="TheRowSaysItsPodAndItsStateInTheirOrder"/> hold verbatim,
+    /// so the state alone is what a pin of the silent row has to name.</summary>
+    private const string SilentPodWords =
+        "PodRow { Pod = ClusterPod { Name = , Workload = , Kind = , Node = , Phase = Running, "
+        + "Ready = False, Containers = , ContainersReady = , Restarts = 0, Reason = , StartedAt = , "
+        + "Cpu = ResourceUse { Usage = , Requests = , Limits = , Allocatable =  }, "
+        + "Memory = ResourceUse { Usage = , Requests = , Limits = , Allocatable =  }, Label =  }, ";
+
     // ----- the parts the row holds
 
     /// <summary>The row keeps the very pod and the very state it is given: the pod is the instance the row was
@@ -188,6 +198,28 @@ public class PodRowEdgeCaseTests
                 "Memory = ResourceUse { Usage = , Requests = , Limits = , Allocatable =  }, Label =  }, " +
                 "State = 4 }",
             new PodRow(Silent(""), (PodState)4).ToString());
+    }
+
+    /// <summary>The shared block of the silent row and the state alone make the row's words: the same pinned bytes the
+    /// literal pins of <see cref="TheRowSaysItsPodAndItsStateInTheirOrder"/> hold, said once as the block and again
+    /// with the state named - the word the enum names and the number the enum does not - so a state that moved shows
+    /// as the one difference and the block is not copied a third time as the file grows.</summary>
+    [Fact]
+    public void TheSilentRowSaysTheSharedBlockAndTheStateItWasGiven()
+    {
+        Assert.Equal(SilentPodWords + "State = Finished }", new PodRow(Silent(""), PodState.Finished).ToString());
+        Assert.Equal(SilentPodWords + "State = 4 }", new PodRow(Silent(""), (PodState)4).ToString());
+    }
+
+    /// <summary>The shared block stops where the state begins: it says no state of its own, opens with the row's own
+    /// word and ends on the separator the record puts between two parts - so a pin that interpolates a state says the
+    /// one it names and not a state the block carried along unnoticed.</summary>
+    [Fact]
+    public void TheSharedBlockOfTheSilentRowSaysNoStateOfItsOwn()
+    {
+        Assert.DoesNotContain("State =", SilentPodWords, StringComparison.Ordinal);
+        Assert.StartsWith("PodRow { Pod = ClusterPod { ", SilentPodWords, StringComparison.Ordinal);
+        Assert.EndsWith(", ", SilentPodWords, StringComparison.Ordinal);
     }
 
     /// <summary>A row whose pod is not there still says it is a row: the pod is said as the empty word and the

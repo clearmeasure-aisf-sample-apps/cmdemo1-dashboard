@@ -82,7 +82,14 @@ public static class TopologyParser
             dashboard = ReadDashboard(system);
         }
 
-        return new SystemInfo(slug, name ?? (slug.Length > 0 ? slug : "System"), repository, delivery, cost, dashboard, deployments);
+        return new SystemInfo(
+            Slug: slug,
+            Name: name ?? (slug.Length > 0 ? slug : "System"),
+            Repository: repository,
+            DeliveryUrl: delivery,
+            CostUrl: cost,
+            Dashboard: dashboard,
+            DeploymentsUrl: deployments);
     }
 
     /// <summary>
@@ -232,20 +239,20 @@ public static class TopologyParser
             var pinHistory = ReadOptionalAddress(element, "pinHistoryUrl", path, errors);
             var nodes = ReadNodes(element, path, errors);
             deployables.Add(new DeployableInfo(
-                ReadText(element, "name") ?? "app",
-                frontDoor,
-                ReadPath(element, "healthPath", DeployableInfo.DefaultHealthPath),
-                ReadPath(element, "alivePath", DeployableInfo.DefaultAlivePath),
-                ReadPath(element, "versionPath", DeployableInfo.DefaultVersionPath),
-                nodes,
-                project,
-                ReadOptionalPath(element, "telemetryPath"),
-                ReadPaths(element, "trafficPaths", path, errors),
-                ReadOptionalPath(element, "buildPath"),
-                ReadLinks(element),
-                pin,
-                pinHistory,
-                ReadOptionalPath(element, "healthDetailPath")));
+                Name: ReadText(element, "name") ?? "app",
+                FrontDoor: frontDoor,
+                HealthPath: ReadPath(element, "healthPath", DeployableInfo.DefaultHealthPath),
+                AlivePath: ReadPath(element, "alivePath", DeployableInfo.DefaultAlivePath),
+                VersionPath: ReadPath(element, "versionPath", DeployableInfo.DefaultVersionPath),
+                Nodes: nodes,
+                ProjectUrl: project,
+                TelemetryPath: ReadOptionalPath(element, "telemetryPath"),
+                TrafficPaths: ReadPaths(element, "trafficPaths", path, errors),
+                BuildPath: ReadOptionalPath(element, "buildPath"),
+                Links: ReadLinks(element),
+                PinUrl: pin,
+                PinHistoryUrl: pinHistory,
+                HealthDetailPath: ReadOptionalPath(element, "healthDetailPath")));
         }
 
         return deployables;

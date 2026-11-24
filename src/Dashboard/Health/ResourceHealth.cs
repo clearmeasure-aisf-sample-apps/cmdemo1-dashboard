@@ -192,29 +192,8 @@ public static class ResourceHealthText
 
         var readings = ids.Select(id => (Id: id, Reading: report.Find(id))).ToList();
         var labels = readings.Select(entry => Label(entry.Reading)).ToList();
-        var label = labels.OrderBy(Badge).First();
-        var read = readings.Select(entry => entry.Reading).OfType<ResourceHealthReading>().ToList();
-        var oldest = read.Count == 0 ? (DateTimeOffset?)null : read.Min(reading => reading.CheckedAt);
-        var age = oldest is { } at && now is { } moment ? $", {TimeText.Ago(at, moment)}" : string.Empty;
-        var words = ids.Count == 1
-            ? (readings[0].Reading?.Source switch
-            {
-                ResourceHealthReading.FromResourceHealth => "Resource Health",
-                ResourceHealthReading.FromProvisioningState => "provisioning state",
-                ResourceHealthReading.None => "no Resource Health",
-                _ => "not in the hourly reading",
-            }) + age
-            : string.Join(" · ", labels.GroupBy(word => word).OrderBy(group => Badge(group.Key)).Select(group => string.Create(CultureInfo.InvariantCulture, $"{group.Count()} {group.Key.ToLowerInvariant()}"))) + age;
-        var recent = oldest is { } since && now is { } current && current - since <= HourlyCheckText.Recent;
-
-        var title = new List<string> { Source };
-        title.AddRange(readings.Take(MostNamed).Select(entry => Describe(entry.Id, entry.Reading, now, zone)));
-        if (readings.Count > MostNamed)
-        {
-            title.Add(string.Create(CultureInfo.InvariantCulture, $"And {readings.Count - MostNamed} more."));
-        }
-
-        return new ResourceHealthWords(label, words, HealthTone.Of(recent), string.Join('\n', title));
+        var oldest = Oldest(readings.Select(entry => entry.Reading));
+        return new ResourceHealthWords(Badge(labels), Line(readings, labels, oldest, now), Tone(oldest, now), Title(readings, now, zone));
     }
 
     /// <summary>The badge's word for one reading: <c>Available</c>, <c>Provisioned</c>, <c>Failed</c>, <c>Not known</c>.</summary>
@@ -226,12 +205,66 @@ public static class ResourceHealthText
         _ => NotKnown,
     };
 
+    /// <summary>The badge of a box: the most urgent of its resources' words (<see cref="Rank"/>); the first of equals.</summary>
+    private static string Badge(IEnumerable<string> labels) => labels.OrderBy(Rank).First();
+
+    /// <summary>
+    /// The line under the badge: where the words come from for a box of one, the count of each badge (most urgent first)
+    /// for a box of several; then how long ago the oldest reading was, when there is one and a moment to measure from.
+    /// </summary>
+    private static string Line(List<(string Id, ResourceHealthReading? Reading)> readings, List<string> labels, DateTimeOffset? oldest, DateTimeOffset? now)
+    {
+        var age = oldest is { } at && now is { } moment ? $", {TimeText.Ago(at, moment)}" : string.Empty;
+        var words = readings.Count == 1 ? Origin(readings[0].Reading) : Counted(labels);
+        return words + age;
+    }
+
+    /// <summary>Where the words of a box of one come from.</summary>
+    private static string Origin(ResourceHealthReading? reading) => reading?.Source switch
+    {
+        ResourceHealthReading.FromResourceHealth => "Resource Health",
+        ResourceHealthReading.FromProvisioningState => "provisioning state",
+        ResourceHealthReading.None => "no Resource Health",
+        _ => "not in the hourly reading",
+    };
+
+    /// <summary>The count of each badge of a box of several, most urgent first: <c>1 degraded · 2 available</c>.</summary>
+    private static string Counted(IEnumerable<string> labels) => string.Join(
+        " · ",
+        labels.GroupBy(word => word)
+            .OrderBy(group => Rank(group.Key))
+            .Select(group => string.Create(CultureInfo.InvariantCulture, $"{group.Count()} {group.Key.ToLowerInvariant()}")));
+
+    /// <summary>When the oldest of the readings was taken; null when none of the resources was read.</summary>
+    private static DateTimeOffset? Oldest(IEnumerable<ResourceHealthReading?> readings)
+    {
+        var read = readings.OfType<ResourceHealthReading>().ToList();
+        return read.Count == 0 ? null : read.Min(reading => reading.CheckedAt);
+    }
+
+    /// <summary><see cref="HealthTone.Plain"/> while the oldest reading is within <see cref="HourlyCheckText.Recent"/> of now.</summary>
+    private static string Tone(DateTimeOffset? oldest, DateTimeOffset? now) =>
+        HealthTone.Of(oldest is { } since && now is { } current && current - since <= HourlyCheckText.Recent);
+
+    /// <summary>The tooltip: the source, then up to <see cref="MostNamed"/> resources described, then how many more.</summary>
+    private static string Title(List<(string Id, ResourceHealthReading? Reading)> readings, DateTimeOffset? now, TimeZoneInfo zone)
+    {
+        var title = new List<string> { Source };
+        title.AddRange(readings.Take(MostNamed).Select(entry => Describe(entry.Id, entry.Reading, now, zone)));
+        if (readings.Count > MostNamed)
+        {
+            title.Add(string.Create(CultureInfo.InvariantCulture, $"And {readings.Count - MostNamed} more."));
+        }
+
+        return string.Join('\n', title);
+    }
+
     /// <summary>
     /// The place of a badge's word among the badges (<see cref="HealthBadge"/>, most urgent first). Any word
     /// <see cref="Label"/> makes that is not one of the five fixed ones is a provisioning state it capitalized, and
     /// ranks as <see cref="HealthBadge.OtherProvisioningState"/>.
     /// </summary>
-    private static HealthBadge Badge(string label) => label switch
+    private static HealthBadge Rank(string label) => label switch
     {
         Unavailable => HealthBadge.Unavailable,
         Degraded => HealthBadge.Degraded,

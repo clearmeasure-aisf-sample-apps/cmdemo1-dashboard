@@ -96,7 +96,8 @@ public sealed record DeploymentsReport(DateTimeOffset? Generated, IReadOnlyList<
         }
     }
 
-    /// <summary>Where a deployment stands among the marks (<see cref="MarkPlace"/>).</summary>
+    /// <summary>Where a deployment stands among the marks: a <see cref="MarkPlace"/>, which is a place in the marks and
+    /// not a number of <see cref="DeploymentState"/>.</summary>
     internal static MarkPlace Rank(Deployment deployment) => deployment.State switch
     {
         DeploymentState.Waiting => MarkPlace.Waiting,
@@ -113,6 +114,14 @@ public sealed record DeploymentsReport(DateTimeOffset? Generated, IReadOnlyList<
 /// The order of the marks, first to last: what a person has to act on, then what runs, then what ended. A state the
 /// page does not know stands after the ones it knows on its side of the boundary: after queued while the file gives
 /// it no end, after succeeded once it does. Adding a state is putting it where it belongs.
+/// <para>
+/// These places are a numbering of the marks and nothing else. They are not the numbers of
+/// <see cref="DeploymentState"/>, which orders the same states its own way and is not consulted here: the enum's
+/// <see cref="DeploymentState.Waiting"/> is the fourth of the seven and stands first among the marks, and its
+/// <see cref="DeploymentState.Unknown"/> is the first of the seven and stands twice among them - <see
+/// cref="UnknownInFlight"/> while the file gives no end, <see cref="UnknownEnded"/> once it does. Nothing converts
+/// between the two: a state is matched by name to the place it belongs to.
+/// </para>
 /// </summary>
 internal enum MarkPlace
 {

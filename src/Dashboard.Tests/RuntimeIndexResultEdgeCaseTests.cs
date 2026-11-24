@@ -25,37 +25,72 @@ namespace Dashboard.Tests;
 /// <para>
 /// What follows is the record on its own, at the ends the tests above leave open: the three parts by the names of their
 /// own properties, each held as the very instance it was given and none of them refused - the <see cref="RuntimeIndex" />
-/// that is not there and the <see langword="null" /> and the empty list of reasons an availability stands with. The
-/// record counted by its three parts - the same three standing one in a set, the copy a <c>with</c> makes and the one part
-/// it turns, the <c>==</c> and the <c>!=</c> a caller writes, the three parts read out in the order they are declared and
-/// the line the record says about them. The cached <see cref="RuntimeIndexResult.NotDeployed" /> - one instance the loader
-/// keeps, and not one built per ask. And the record's and the enum's whole public surface, so that the day a fourth
-/// availability or a fourth part is added the lists below say so.
+/// that is not there, the <see langword="null" /> reasons an availability stands with and the result that is never the
+/// same as nothing. The record counted by its three parts - the same three standing one in a set, the copy a <c>with</c>
+/// makes and the one part it turns, the <c>==</c> and the <c>!=</c> a caller writes, the three parts read out in the
+/// order they are declared and the line the record says about them. The shapes a caller can survive - that every shape
+/// the loader builds has the index to draw, answers <see cref="RuntimeAvailability.NotDeployed" /> for itself, or has
+/// at least one message to list, and that an index of no environments is an answer and not a failure. The cached <see cref="RuntimeIndexResult.NotDeployed" /> - one instance the loader keeps, and not one built
+/// per ask. And the record's and the enum's whole public surface, so that the day a fourth availability or a fourth
+/// part is added the lists below say so.
 /// </para>
 /// <para>
 /// Nothing here reaches the network or asks a clock what time it is: no loader is built, no
-/// <c>runtime/index.json</c> is read, and every result below is one the test brought.
+/// <c>runtime/index.json</c> is fetched, and every result below is one the test brought - the few reads of
+/// <see cref="RuntimeManifestParser.ParseIndex" /> included, which are of words the test wrote.
 /// </para>
 /// </summary>
 public class RuntimeIndexResultEdgeCaseTests
 {
     private const string PlantUmlVersion = "1.2026.01.01";
-    private static readonly string[] FileCouldNotBeRead = ["The file could not be read."];
 
-    private static List<string> PublicSurface()
-    {
-        return typeof(RuntimeIndexResult)
-            .GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
-            .Where(member =>
-                member is PropertyInfo ||
-                member is MethodInfo method && (!method.IsSpecialName ||
-                    method.Name.StartsWith("op_", StringComparison.Ordinal)))
-            .Where(member => !member.Name.Contains('<', StringComparison.Ordinal))
-            .Select(member => member.Name)
-            .Distinct(StringComparer.Ordinal)
-            .Order(StringComparer.Ordinal)
-            .ToList();
-    }
+    /// <summary>The reason the loader says when the file is there and could not be read - the one word the page lists
+    /// under "The runtime diagrams could not be read".</summary>
+    private const string Reason = "The file could not be read.";
+
+    /// <summary>The one reason, held once: every result below that stands with one reason stands with this list.</summary>
+    private static readonly string[] FileCouldNotBeRead = [Reason];
+
+    /// <summary>The line a result says of itself when the index and the reasons are there: the environment list named
+    /// and never walked, and the reasons named as the array they are - the same words serving one reason and none.</summary>
+    private const string AvailableWords =
+        "RuntimeIndexResult { Availability = Available, Index = RuntimeIndex { Environments = Dashboard.Runtime.RuntimeIndexEntry[], PlantUml = 1.2026.01.01 }, Errors = System.String[] }";
+
+    /// <summary>The line the cached <see cref="RuntimeIndexResult.NotDeployed" /> says of itself: both parts named, the
+    /// index blank, the reasons named as the array they are.</summary>
+    private const string NotDeployedWords = "RuntimeIndexResult { Availability = NotDeployed, Index = , Errors = System.String[] }";
+
+    /// <summary>The one environment of the index the tests below hand over.</summary>
+    private static readonly RuntimeIndexEntry[] OneEnvironment = [new RuntimeIndexEntry("tdd", "diagram", null!, null)];
+
+    /// <summary>An index of no environments: the answer of a deployment whose <c>system.json</c> names none.</summary>
+    private static readonly RuntimeIndex NoEnvironmentIndex = new([], PlantUmlVersion);
+
+    /// <summary>The deployment rendered its diagrams: the index the loader read, and no reason at all.</summary>
+    private static RuntimeIndexResult Available => new(RuntimeAvailability.Available, new RuntimeIndex(OneEnvironment, PlantUmlVersion), []);
+
+    /// <summary>The site has no <c>runtime/</c>: no index and no reason. Built here, so that the instance the loader
+    /// keeps stays the one <see cref="RuntimeIndexResult.NotDeployed" /> the test of the cache names itself.</summary>
+    private static RuntimeIndexResult NotDeployed => new(RuntimeAvailability.NotDeployed, null, []);
+
+    /// <summary>The file is there and could not be read: no index, and the one reason the page lists.</summary>
+    private static RuntimeIndexResult FailedOne => new(RuntimeAvailability.Failed, null, FileCouldNotBeRead);
+
+    /// <summary>A read that had two things to say at once: still no index, and both reasons standing.</summary>
+    private static RuntimeIndexResult FailedMany => new(
+        RuntimeAvailability.Failed,
+        null,
+        [Reason, "runtime/index.json: environments[0].name: missing or empty."]);
+
+    /// <summary>The shape the record allows and the loader never builds: a <see cref="RuntimeAvailability.Failed" /> of
+    /// no index and no reason either - what the page would open as an alert with nothing in it.</summary>
+    private static RuntimeIndexResult EmptyErrors => new(RuntimeAvailability.Failed, null, []);
+
+    /// <summary>An answer of no environments: the index is there, it holds none, and no reason stands with it.</summary>
+    private static RuntimeIndexResult NoEnvironments => new(RuntimeAvailability.Available, NoEnvironmentIndex, []);
+
+    /// <summary>The result of nothing at all: no index and no list of reasons either.</summary>
+    private static RuntimeIndexResult Nothing => new(RuntimeAvailability.Failed, null, null!);
 
     // ----------------------------------------------- the three parts, as the names they are
 
@@ -65,8 +100,8 @@ public class RuntimeIndexResultEdgeCaseTests
     [Fact]
     public void TheConstructorHandsEachPartToThePropertyOfItsName()
     {
-        var index = new RuntimeIndex([], PlantUmlVersion);
-        var reasons = new List<string> { "The file could not be read." };
+        var index = NoEnvironmentIndex;
+        var reasons = new List<string> { Reason };
 
         var result = new RuntimeIndexResult(RuntimeAvailability.Available, index, reasons);
 
@@ -82,14 +117,10 @@ public class RuntimeIndexResultEdgeCaseTests
     [Fact]
     public void TheRecordRefusesNothingItIsGiven()
     {
-        var nothing = new RuntimeIndexResult(RuntimeAvailability.Failed, null, null!);
+        Assert.Null(Nothing.Index);
+        Assert.Null(Nothing.Errors);
 
-        Assert.Null(nothing.Index);
-        Assert.Null(nothing.Errors);
-
-        var withoutReasons = new RuntimeIndexResult(RuntimeAvailability.NotDeployed, null, []);
-
-        Assert.Empty(withoutReasons.Errors);
+        Assert.Empty(NotDeployed.Errors);
 
         var words = new List<string> { "  ", string.Empty };
         var padded = new RuntimeIndexResult(RuntimeAvailability.Failed, null, words);
@@ -97,6 +128,34 @@ public class RuntimeIndexResultEdgeCaseTests
         Assert.Same(words, padded.Errors);
         Assert.Equal("  ", padded.Errors[0]);
         Assert.Equal(string.Empty, padded.Errors[1]);
+    }
+
+    /// <summary>Nothing is no result: the <c>==</c> and the <c>!=</c> a caller writes both answer that a result is
+    /// something and nothing is not, from either side of the operator, and the <c>Equals</c> asked of a result answers
+    /// false to nothing - as the object it is and as the result it is not.</summary>
+    [Fact]
+    public void AResultIsNeverTheSameAsNothingAndNeverEqualToIt()
+    {
+        var result = RuntimeIndexResult.NotDeployed;
+
+        Assert.True(result != null);
+        Assert.False(result == null);
+        Assert.False(null == result);
+        Assert.True(null != result);
+        Assert.False(result.Equals((object?)null));
+        Assert.False(result.Equals((RuntimeIndexResult?)null));
+    }
+
+    /// <summary>The hash a result says is the hash it says again: asked twice of the result whose parts are all there
+    /// and twice of the result of nothing at all, so that the record neither answers nothing with a word of its own
+    /// nor changes its mind between the two asks of one result.</summary>
+    [Fact]
+    public void TheHashItSaysIsTheHashItSaysAgain()
+    {
+        var served = Available;
+
+        Assert.Equal(served.GetHashCode(), served.GetHashCode());
+        Assert.Equal(Nothing.GetHashCode(), Nothing.GetHashCode());
     }
 
     // ------------------------------------------------------- the record counted by its parts
@@ -107,8 +166,8 @@ public class RuntimeIndexResultEdgeCaseTests
     [Fact]
     public void TwoResultsOfTheSameThreePartsAreOneResult()
     {
-        var index = new RuntimeIndex([], PlantUmlVersion);
-        var reasons = new List<string> { "The file could not be read." };
+        var index = NoEnvironmentIndex;
+        var reasons = new List<string> { Reason };
 
         var result = new RuntimeIndexResult(RuntimeAvailability.Failed, index, reasons);
         var again = new RuntimeIndexResult(RuntimeAvailability.Failed, index, reasons);
@@ -127,7 +186,7 @@ public class RuntimeIndexResultEdgeCaseTests
     [Fact]
     public void AResultIsNeverEqualToAnythingOfAnotherKind()
     {
-        var index = new RuntimeIndex([], PlantUmlVersion);
+        var index = NoEnvironmentIndex;
         var result = new RuntimeIndexResult(RuntimeAvailability.Failed, index, []);
 
         Assert.False(result.Equals("Failed"));
@@ -143,8 +202,8 @@ public class RuntimeIndexResultEdgeCaseTests
     [Fact]
     public void AResultDiffersInAnyOneOfItsThreeParts()
     {
-        var index = new RuntimeIndex([], PlantUmlVersion);
-        var reasons = new List<string> { "The file could not be read." };
+        var index = NoEnvironmentIndex;
+        var reasons = new List<string> { Reason };
         var result = new RuntimeIndexResult(RuntimeAvailability.Failed, index, reasons);
 
         Assert.NotEqual(result, new RuntimeIndexResult(RuntimeAvailability.Available, index, reasons));
@@ -152,7 +211,7 @@ public class RuntimeIndexResultEdgeCaseTests
         Assert.NotEqual(result, new RuntimeIndexResult(RuntimeAvailability.Failed, new RuntimeIndex([], "1.2026.01.02"), reasons));
         Assert.NotEqual(result, new RuntimeIndexResult(RuntimeAvailability.Failed, null, reasons));
         Assert.NotEqual(result, new RuntimeIndexResult(RuntimeAvailability.Failed, index, null!));
-        Assert.NotEqual(result, new RuntimeIndexResult(RuntimeAvailability.Failed, index, new List<string> { "The file could not be read." }));
+        Assert.NotEqual(result, new RuntimeIndexResult(RuntimeAvailability.Failed, index, new List<string> { Reason }));
 
         Assert.True(result != new RuntimeIndexResult(RuntimeAvailability.Available, index, reasons));
     }
@@ -166,14 +225,14 @@ public class RuntimeIndexResultEdgeCaseTests
         var environments = new RuntimeIndexEntry[] { new RuntimeIndexEntry("tdd", "diagram", null!, null) };
         var index = new RuntimeIndex(environments, PlantUmlVersion);
 
-        var first = new RuntimeIndexResult(RuntimeAvailability.Available, index, new List<string> { "The file could not be read." });
-        var second = new RuntimeIndexResult(RuntimeAvailability.Available, index, new List<string> { "The file could not be read." });
+        var first = new RuntimeIndexResult(RuntimeAvailability.Available, index, new List<string> { Reason });
+        var second = new RuntimeIndexResult(RuntimeAvailability.Available, index, new List<string> { Reason });
 
         Assert.NotSame(first.Errors, second.Errors);
         Assert.NotEqual(first, second);
         Assert.True(first != second);
 
-        var shared = new List<string> { "The file could not be read." };
+        var shared = new List<string> { Reason };
         Assert.Equal(new RuntimeIndexResult(RuntimeAvailability.Available, index, shared),
                     new RuntimeIndexResult(RuntimeAvailability.Available, index, shared));
 
@@ -193,8 +252,8 @@ public class RuntimeIndexResultEdgeCaseTests
     [Fact]
     public void AWithCopiesTheResultAndTurnsOnlyThePartItNames()
     {
-        var index = new RuntimeIndex([], PlantUmlVersion);
-        var reasons = new List<string> { "The file could not be read." };
+        var index = NoEnvironmentIndex;
+        var reasons = new List<string> { Reason };
         var result = new RuntimeIndexResult(RuntimeAvailability.Failed, index, reasons);
 
         var copy = result with { };
@@ -225,12 +284,14 @@ public class RuntimeIndexResultEdgeCaseTests
 
     /// <summary>The three parts fall out of the result in the order they are declared - the availability, the index
     /// and the list of reasons, each as the very reference the result holds - and the parts read out are the parts of
-    /// the one result they came out of, the parts that are not standing out as nothing.</summary>
+    /// the one result they came out of, the parts that are not standing out as nothing: the cached
+    /// <see cref="RuntimeIndexResult.NotDeployed" /> falls apart into the empty list it holds, and the result of
+    /// nothing at all into the <see langword="null" /> it was given.</summary>
     [Fact]
     public void TheThreePartsFallOutOfTheResultInTheirOrder()
     {
-        var index = new RuntimeIndex([], PlantUmlVersion);
-        var reasons = new List<string> { "The file could not be read." };
+        var index = NoEnvironmentIndex;
+        var reasons = new List<string> { Reason };
         var result = new RuntimeIndexResult(RuntimeAvailability.Failed, index, reasons);
 
         var (availability, readIndex, readReasons) = result;
@@ -245,7 +306,96 @@ public class RuntimeIndexResultEdgeCaseTests
         Assert.Null(notIndex);
         Assert.Empty(notReasons);
 
+        var (failedAvailability, nothingIndex, nothingReasons) = Nothing;
+
+        Assert.Equal(RuntimeAvailability.Failed, failedAvailability);
+        Assert.Null(nothingIndex);
+        Assert.Null(nothingReasons);
+
         Assert.Equal(result, new RuntimeIndexResult(availability, readIndex, readReasons));
+    }
+
+    // --------------------------------------------------- what the page can show
+
+    /// <summary>The page reads either the index or the messages and never both: <c>RuntimeView.razor</c> lets
+    /// <see cref="RuntimeAvailability.NotDeployed" /> answer for itself, shows the index when there is one, and only
+    /// then opens the alert that lists the reasons. So every shape <see cref="RuntimeLoader.LoadIndexAsync" /> builds -
+    /// the index it read (line 61), the <see cref="RuntimeIndexResult.NotDeployed" /> it keeps (line 51), the
+    /// <see cref="RuntimeAvailability.Failed" /> of the one reason a file could not be read (line 56) and the
+    /// <see cref="RuntimeAvailability.Failed" /> of the reasons a read of an index collected (line 62) - has the index
+    /// to draw, or answers <see cref="RuntimeAvailability.NotDeployed" /> which the page says for itself, or has at
+    /// least one message to list; no <see cref="RuntimeAvailability.Failed" /> of the loader stands without one, since
+    /// a failure with nothing to say would reach the page as an alert with an empty list under it. The first loop walks
+    /// those shapes, the second the two lines of the loader over every kind of answer the reader hands back.</summary>
+    [Fact]
+    public void ThePageReadsTheIndexOrTheMessagesNeverBoth()
+    {
+        foreach (var result in new[] { Available, NoEnvironments, NotDeployed, FailedOne, FailedMany })
+        {
+            // RuntimeView.razor: NotDeployed answers for itself, an index is drawn, and only a read with neither asks
+            // for the messages - so what reaches the alert is a list with at least one reason in it.
+            var messages = result.Availability == RuntimeAvailability.NotDeployed || result.Index is not null ? null : result.Errors;
+
+            Assert.True(messages is null || messages.Count > 0, $"A failure with nothing to show: {result}");
+            Assert.True(result.Index is null || result.Errors.Count == 0, $"A reason the page would never show: {result}");
+            Assert.True(result.Availability != RuntimeAvailability.Failed || result.Errors.Count > 0, $"A failure the page cannot explain: {result}");
+        }
+
+        // The record itself refuses nothing: a Failed of no index and no reason is one it will hold, and nothing but
+        // the loader's own three constructions keeps that shape away from the page.
+        Assert.Null(EmptyErrors.Index);
+        Assert.Empty(EmptyErrors.Errors);
+
+        foreach (var file in new string?[]
+        {
+            """{ "environments": [ { "name": "tdd" } ], "plantuml": "1.2026.01.01" }""",
+            """{ "environments": [ ] }""",
+            """{ "environments": [ { } ] }""",
+            """{ }""",
+            null,
+            "<html>",
+            "[]",
+            "42",
+        })
+        {
+            var parsed = RuntimeManifestParser.ParseIndex(file);
+
+            // RuntimeLoader.cs:61-62, the two shapes a read of the index lands on.
+            var result = parsed.Value is { } index
+                ? new RuntimeIndexResult(RuntimeAvailability.Available, index, [])
+                : new RuntimeIndexResult(RuntimeAvailability.Failed, null, [.. parsed.Errors.Select(problem => $"{RuntimeLoader.Folder}{RuntimeLoader.IndexFile}: {problem}")]);
+
+            Assert.True(result.Index is not null || result.Errors.Count > 0, $"A read with nothing to show: {file}");
+        }
+    }
+
+    /// <summary>The boundary the page reads last: an index that rendered no environment is an answer and not a failure.
+    /// The availability stands <see cref="RuntimeAvailability.Available" />, the index is there, it holds none and no
+    /// reason stands with it - so the page says that the deployment rendered no runtime diagram
+    /// (<c>RuntimeView.razor</c>) instead of opening the alert of a read that could not be done. An index of no
+    /// environments and no index at all are two answers, and only the second of them leaves the page with the
+    /// messages.</summary>
+    [Fact]
+    public void AnIndexOfNoEnvironmentsIsAnAnswerAndNotAFailure()
+    {
+        var rendered = NoEnvironments;
+
+        Assert.Equal(RuntimeAvailability.Available, rendered.Availability);
+        Assert.NotNull(rendered.Index);
+        Assert.Empty(rendered.Index!.Environments);
+        Assert.Empty(rendered.Errors);
+
+        // The reader hands it back the same way: an index of no environments is a value, and no reason comes with it.
+        var read = RuntimeManifestParser.ParseIndex("""{ "environments": [ ] }""");
+
+        Assert.True(read.IsValid);
+        Assert.Empty(read.Value!.Environments);
+        Assert.Empty(read.Errors);
+
+        // The other answer of nothing: no index at all, and the page is left with the messages - another shape.
+        Assert.NotEqual(rendered, FailedOne);
+        Assert.NotEqual(rendered, EmptyErrors);
+        Assert.NotEqual(rendered, NotDeployed);
     }
 
     // ---------------------------------------------------------------- words
@@ -257,27 +407,29 @@ public class RuntimeIndexResultEdgeCaseTests
     [Fact]
     public void TheResultSaysItsThreePartsInTheirOrder()
     {
-        var environments = new RuntimeIndexEntry[] { new RuntimeIndexEntry("tdd", "diagram", null!, null) };
-        var index = new RuntimeIndex(environments, PlantUmlVersion);
+        Assert.Equal(
+            AvailableWords,
+            new RuntimeIndexResult(RuntimeAvailability.Available, new RuntimeIndex(OneEnvironment, PlantUmlVersion), FileCouldNotBeRead).ToString());
 
         Assert.Equal(
-            "RuntimeIndexResult { Availability = Available, Index = RuntimeIndex { Environments = Dashboard.Runtime.RuntimeIndexEntry[], PlantUml = 1.2026.01.01 }, Errors = System.String[] }",
-            new RuntimeIndexResult(RuntimeAvailability.Available, index, FileCouldNotBeRead).ToString());
-
-        Assert.Equal(
-            "RuntimeIndexResult { Availability = NotDeployed, Index = , Errors = System.String[] }",
+            NotDeployedWords,
             RuntimeIndexResult.NotDeployed.ToString());
 
         Assert.Equal(
             "RuntimeIndexResult { Availability = Failed, Index = , Errors = System.String[] }",
             new RuntimeIndexResult(RuntimeAvailability.Failed, null, Array.Empty<string>()).ToString());
 
+        // The reasons that are not a list at all leave the name of the part and no word after it.
+        Assert.Equal(
+            "RuntimeIndexResult { Availability = Failed, Index = , Errors =  }",
+            Nothing.ToString());
+
         Assert.Equal(
             "RuntimeIndexResult { Availability = Available, Index = RuntimeIndex { Environments = , PlantUml = 1.2026.01.01 }, Errors = System.String[] }",
             new RuntimeIndexResult(RuntimeAvailability.Available, new RuntimeIndex(null!, PlantUmlVersion), []).ToString());
         Assert.Equal(
-            "RuntimeIndexResult { Availability = Available, Index = RuntimeIndex { Environments = Dashboard.Runtime.RuntimeIndexEntry[], PlantUml = 1.2026.01.01 }, Errors = System.String[] }",
-            new RuntimeIndexResult(RuntimeAvailability.Available, new RuntimeIndex([], PlantUmlVersion), []).ToString());
+            AvailableWords,
+            new RuntimeIndexResult(RuntimeAvailability.Available, NoEnvironmentIndex, []).ToString());
     }
 
     /// <summary>A result's words are nothing but words, so no reader's culture turns them: a viewer of German is told
@@ -289,12 +441,10 @@ public class RuntimeIndexResultEdgeCaseTests
         ViewerCulture.German(() =>
         {
             Assert.Equal(
-                "RuntimeIndexResult { Availability = Available, Index = RuntimeIndex { Environments = Dashboard.Runtime.RuntimeIndexEntry[], PlantUml = 1.2026.01.01 }, Errors = System.String[] }",
-                new RuntimeIndexResult(RuntimeAvailability.Available,
-                    new RuntimeIndex(new RuntimeIndexEntry[] { new RuntimeIndexEntry("tdd", "diagram", null!, null) }, PlantUmlVersion),
-                    FileCouldNotBeRead).ToString());
+                AvailableWords,
+                new RuntimeIndexResult(RuntimeAvailability.Available, new RuntimeIndex(OneEnvironment, PlantUmlVersion), FileCouldNotBeRead).ToString());
             Assert.Equal(
-                "RuntimeIndexResult { Availability = NotDeployed, Index = , Errors = System.String[] }",
+                NotDeployedWords,
                 RuntimeIndexResult.NotDeployed.ToString());
         });
     }
@@ -304,7 +454,8 @@ public class RuntimeIndexResultEdgeCaseTests
     /// <summary>The <see cref="RuntimeIndexResult.NotDeployed" /> the loader keeps is one instance and not one built per
     /// ask: it stands on the availability <see cref="RuntimeAvailability.NotDeployed" />, the index that is not there
     /// and the empty list of reasons, and the result built the same way is equal to it - one value, not the same
-    /// instance - holding the very list the cache holds.</summary>
+    /// instance - holding the very list the cache holds. A <c>with</c> over the cached value turns only the part it
+    /// names, so the copy of it holds that same list too.</summary>
     [Fact]
     public void TheCachedNotDeployedIsOneInstanceAndItsParts()
     {
@@ -320,6 +471,12 @@ public class RuntimeIndexResultEdgeCaseTests
         Assert.Equal(built, RuntimeIndexResult.NotDeployed);
         Assert.Same(built.Errors, RuntimeIndexResult.NotDeployed.Errors);
         Assert.Equal(built.GetHashCode(), RuntimeIndexResult.NotDeployed.GetHashCode());
+
+        var served = RuntimeIndexResult.NotDeployed with { Availability = RuntimeAvailability.Available };
+
+        Assert.Same(RuntimeIndexResult.NotDeployed.Errors, served.Errors);
+        Assert.Null(served.Index);
+        Assert.NotEqual(served, RuntimeIndexResult.NotDeployed);
     }
 
     // -------------------------------------------------------- the record's own shape
@@ -341,10 +498,12 @@ public class RuntimeIndexResultEdgeCaseTests
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                 .Select(property => property.Name)]);
 
+        var surface = PublicSurface(typeof(RuntimeIndexResult));
+
         Assert.Equal(
             ["Availability", "Deconstruct", "Equals", "Errors", "GetHashCode", "Index", "NotDeployed", "ToString", "op_Equality", "op_Inequality"],
-            PublicSurface());
-        Assert.DoesNotContain("EqualityContract", PublicSurface(), StringComparer.Ordinal);
+            surface);
+        Assert.DoesNotContain("EqualityContract", surface, StringComparer.Ordinal);
 
         var properties = typeof(RuntimeIndexResult)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
@@ -486,4 +645,20 @@ public class RuntimeIndexResultEdgeCaseTests
             Assert.Equal(typeof(RuntimeAvailability), field.FieldType);
         });
     }
+
+    // ------------------------------------------------------------------------------------------ the machinery
+
+    /// <summary>The public members a type declares itself: its properties and its methods that are not a property's
+    /// get or set, the two operators kept although the compiler names them specially since they are the <c>==</c> and
+    /// the <c>!=</c> a caller writes, the record's compiler-named clone and its print walk past.</summary>
+    private static List<string> PublicSurface(Type type) =>
+        [.. type
+            .GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
+            .Where(member => member is PropertyInfo
+                             || member is MethodInfo method
+                             && (!method.IsSpecialName || method.Name.StartsWith("op_", StringComparison.Ordinal)))
+            .Where(member => !member.Name.Contains('<', StringComparison.Ordinal))
+            .Select(member => member.Name)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)];
 }

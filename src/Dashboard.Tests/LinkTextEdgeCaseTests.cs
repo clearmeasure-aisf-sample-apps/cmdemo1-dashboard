@@ -213,4 +213,92 @@ public class LinkTextEdgeCaseTests
         Assert.Equal($"Release   of   in Octopus Deploy{LinkText.OctopusSuffix}", LinkText.ReleaseTitle(" ", " "));
         Assert.Equal($"Release 2.4.15 of  in Octopus Deploy{LinkText.OctopusSuffix}", LinkText.ReleaseTitle(null!, "2.4.15"));
     }
+
+    // ------------------------------------------------------------------ Edge cases from EdgeCaseTextTests
+
+    /// <summary>
+    /// <c>LinkText.Portal</c> and <c>LinkText.For</c> glue a name onto a suffix, and a name of nothing is still a
+    /// name it has to accept: the subject comes from the topology, and a topology that names nothing leaves the
+    /// tooltip reading " of uat" rather than throwing at the middle of a render. What the suffix is stays the
+    /// constant's, so an empty subject still promises the new tab and the sign-in.
+    /// </summary>
+    [Fact]
+    public void ALinkTitleOfNothingStillCarriesItsSuffix()
+    {
+        Assert.Equal(LinkText.PortalSuffix, LinkText.Portal(""));
+        Assert.Equal($"uat{LinkText.PortalSuffix}", LinkText.Portal("uat"));
+        Assert.Equal($" of {LinkText.PortalSuffix}", LinkText.For("", ""));
+        Assert.Equal($" of uat{LinkText.PortalSuffix}", LinkText.For(null!, "uat"));
+        Assert.Equal($"Release  of  in Octopus Deploy{LinkText.OctopusSuffix}", LinkText.ReleaseTitle("", ""));
+        Assert.Equal($"Commit  on GitHub{LinkText.GitHubSuffix}", LinkText.CommitTitle(""));
+
+        // The suffixes themselves, one for the portal and Octopus, one for a place that asks for nothing.
+        Assert.Equal(" (opens in a new tab; the Azure portal asks you to sign in)", LinkText.PortalSuffix);
+        Assert.Equal(" (opens in a new tab; Octopus Deploy asks you to sign in)", LinkText.OctopusSuffix);
+        Assert.Equal(" (opens in a new tab)", LinkText.GitHubSuffix);
+    }
+
+    /// <summary>
+    /// A link's key is looked up by <see cref="StringComparer.Ordinal" />, so the one that names no link of
+    /// <see cref="LinkSet" /> - a key the topology invented, the same key with its first letter in the wrong case,
+    /// or no key at all - falls through to the words built out of it. It is answered rather than thrown, and
+    /// answered out of the key it was handed: a key of nothing says " of uat", and <c>Portal</c> is not <c>portal</c>.
+    /// </summary>
+    [Theory]
+    [InlineData("", " of uat")]
+    [InlineData("portal", "The web app uat in the Azure portal")]
+    [InlineData("Portal", "Portal of uat")]
+    [InlineData("PORTAL", "PORTAL of uat")]
+    [InlineData("workloads", "workloads of uat")]
+    [InlineData("liveMetrics", "Live Metrics of Application Insights for uat: requests, failures and servers as they happen")]
+    [InlineData("dependencies", "Dependency calls of uat (SQL and HTTP) of the last hour, a query in Application Insights Logs")]
+    [InlineData("0", "0 of uat")]
+    public void ALinkKeyIsLookedUpByItsExactSpelling(string key, string expected) =>
+        Assert.Equal($"{expected}{LinkText.PortalSuffix}", LinkText.For(key, "uat"));
+
+    /// <summary>
+    /// The release page needs both of its halves: without the project's page, or without a version, or with a
+    /// version of nothing - the empty string and the whitespace a JSON field drift into included - there is no
+    /// release to lead to and the link is absent rather than a guess. The project's trailing slash is taken off
+    /// before the path is added, so the address has one separator and not two, and the version is escaped because it
+    /// is a string a repository wrote, not a path segment the app chose.
+    /// </summary>
+    [Theory]
+    [InlineData(null, "2.4.15", null)]
+    [InlineData("https://a.example.net/app", null, null)]
+    [InlineData("https://a.example.net/app", "", null)]
+    [InlineData("https://a.example.net/app", "   ", null)]
+    [InlineData("https://a.example.net/app/", "2.4.15", "https://a.example.net/app/deployments/releases/2.4.15")]
+    [InlineData("https://a.example.net/app", "0", "https://a.example.net/app/deployments/releases/0")]
+    [InlineData("https://a.example.net/app", "1.0 / beta+2", "https://a.example.net/app/deployments/releases/1.0%20%2F%20beta%2B2")]
+    [InlineData("https://a.example.net/app", "?#", "https://a.example.net/app/deployments/releases/%3F%23")]
+    public void AReleasePageWantsItsProjectAndItsVersion(string? project, string? version, string? expected)
+    {
+        var release = LinkText.Release(project is null ? null : new Uri(project), version);
+
+        Assert.Equal(expected, release?.AbsoluteUri);
+    }
+
+    /// <summary>The commit a title names is cut to seven characters when it is longer than seven and written as it
+    /// stands when it is not: the length exactly on the cut, one over it, one under it, one character, and the empty
+    /// string that cuts to nothing.</summary>
+    [Theory]
+    [InlineData("", "Commit  on GitHub")]
+    [InlineData("0", "Commit 0 on GitHub")]
+    [InlineData("012345", "Commit 012345 on GitHub")]
+    [InlineData("0123456", "Commit 0123456 on GitHub")]
+    [InlineData("01234567", "Commit 0123456 on GitHub")]
+    [InlineData("0123456789abcdef", "Commit 0123456 on GitHub")]
+    public void ACommitIsNamedByTheSevenCharactersThatDistinguishIt(string commit, string expected) =>
+        Assert.Equal($"{expected}{LinkText.GitHubSuffix}", LinkText.CommitTitle(commit));
+
+    /// <summary>A commit of nothing at all - not the empty string, which is a SHA of no characters, but no string -
+    /// is refused by name rather than turned into a tooltip that points nowhere.</summary>
+    [Fact]
+    public void NoCommitOfNothingIsNamed()
+    {
+        var error = Assert.Throws<ArgumentNullException>(() => LinkText.CommitTitle(null!));
+
+        Assert.Equal("commit", error.ParamName);
+    }
 }

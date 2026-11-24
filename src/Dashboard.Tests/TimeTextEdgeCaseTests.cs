@@ -57,6 +57,9 @@ public class TimeTextEdgeCaseTests
     /// <summary>A zone five hours east: the other side of the same instant.</summary>
     private static readonly TimeZoneInfo EastFive = TimeZoneInfo.CreateCustomTimeZone("east-five", TimeSpan.FromHours(5), "East Five", "East Five");
 
+    /// <summary>A zone five and a half hours east, for the dated line that writes the half-hour offset.</summary>
+    private static readonly TimeZoneInfo EastFiveThirty = TimeZoneInfo.CreateCustomTimeZone("east-five-thirty", TimeSpan.FromMinutes(330), "East Five Thirty", "East Five Thirty");
+
     /// <summary>An hour east of UTC that keeps a daylight rule of its own - see <see cref="SummerZone" />.</summary>
     private static readonly TimeZoneInfo Summer = SummerZone();
 
@@ -385,4 +388,96 @@ public class TimeTextEdgeCaseTests
     /// order a caller names them.</summary>
     private static string Signature(MethodInfo method) =>
         $"{method.ReturnType.Name} {method.Name}({string.Join(", ", method.GetParameters().Select(parameter => $"{parameter.ParameterType.Name} {parameter.Name}"))})";
+
+    // ------------------------------------------------------------------ Edge cases from EdgeCaseTextTests
+
+    /// <summary>
+    /// <c>TimeText.Span</c> changes unit at two of the next, not at one: seconds to sixty, minutes to two hours,
+    /// hours to two days - and it truncates on the way, so 59.999 s is still "59 s" and never "1 min". The last two
+    /// rows are the negative half of the number line: a duration below zero has no words of its own, because a
+    /// "minus 3 minutes" on a page that says "built" or "deployed" is a clock out by an hour rather than a length of
+    /// time, and the clamp says the shortest true thing instead.
+    /// </summary>
+    [Theory]
+    [InlineData("-10675199.02:48:05.4775808", "0 s")]
+    [InlineData("-1.00:00:00", "0 s")]
+    [InlineData("-00:00:00.0000001", "0 s")]
+    [InlineData("00:00:00", "0 s")]
+    [InlineData("00:00:00.999", "0 s")]
+    [InlineData("00:00:01", "1 s")]
+    [InlineData("00:00:59", "59 s")]
+    [InlineData("00:00:59.999", "59 s")]
+    [InlineData("00:01:00", "1 min")]
+    [InlineData("01:59:00", "119 min")]
+    [InlineData("02:00:00", "2 h")]
+    [InlineData("1.23:59:59", "47 h")]
+    [InlineData("2.00:00:00", "2 d")]
+    [InlineData("47.12:00:00", "47 d")]
+    [InlineData("3650.00:00:00", "3650 d")]
+    public void ASpanIsSaidInWholeUnitsAndNeverBelowZero(string span, string expected) =>
+        Assert.Equal(expected, TimeText.Span(TimeSpan.Parse(span, CultureInfo.InvariantCulture)));
+
+    /// <summary>The two ends of <see cref="TimeSpan" /> itself, taken as the values rather than as text: the
+    /// smallest says the shortest true thing, the largest is still counted in days and not in years.</summary>
+    [Fact]
+    public void TheEndsOfTimeSpanAreStillSaid()
+    {
+        Assert.Equal("0 s", TimeText.Span(TimeSpan.MinValue));
+        Assert.Equal("0 s", TimeText.Span(TimeSpan.Zero));
+        Assert.Equal("1 min", TimeText.Span(TimeSpan.FromMinutes(1)));
+        Assert.Equal("10675199 d", TimeText.Span(TimeSpan.MaxValue));
+    }
+
+    /// <summary>
+    /// <c>TimeText.Ago</c> is the one wording of the page that a viewer reads as a fact about the clock rather than
+    /// about arithmetic, so its edges matter twice: a moment under a minute old is "just now" - including the exact
+    /// zero, and including a moment ahead of the clock, whose negative duration would otherwise be the only span the
+    /// app refuses to say at all. One minute to the second it stops being "just now".
+    /// </summary>
+    [Theory]
+    [InlineData(-86400, "just now")]
+    [InlineData(-1, "just now")]
+    [InlineData(0, "just now")]
+    [InlineData(1, "just now")]
+    [InlineData(59, "just now")]
+    [InlineData(60, "1 min ago")]
+    [InlineData(7199, "119 min ago")]
+    [InlineData(7200, "2 h ago")]
+    [InlineData(86399, "23 h ago")]
+    [InlineData(86400, "24 h ago")]
+    [InlineData(172800, "2 d ago")]
+    public void TheAgeOfAMomentTurnsOnAMinute(int secondsInThePast, string expected) =>
+        Assert.Equal(expected, TimeText.Ago(Now.AddSeconds(-secondsInThePast), Now));
+
+    /// <summary>The clock, the date and the machine-readable moment at the edges of a day and of a year: a moment a
+    /// quarter past midnight in one zone is still the day before in another, and the <c>datetime</c> a
+    /// <c>&lt;time&gt;</c> writes is UTC whoever looks at it - the year changing underneath on the way back.</summary>
+    [Fact]
+    public void AInstantCrossedIntoAnotherZoneKeepsItsDayAndItsOffset()
+    {
+        var midnight = new DateTimeOffset(2026, 10, 5, 0, 0, 0, TimeSpan.Zero);
+
+        Assert.Equal("00:00:00", TimeText.Clock(midnight, TimeZoneInfo.Utc));
+        Assert.Equal("19:00:00", TimeText.Clock(midnight, WestFive));
+        Assert.Equal("2026-10-04 19:00 -05:00", TimeText.DateAndTime(midnight, WestFive));
+        Assert.Equal("2026-10-05 05:30 +05:30", TimeText.DateAndTime(midnight, EastFiveThirty));
+        Assert.Equal("2026-10-05 00:00 +00:00", TimeText.DateAndTime(midnight, TimeZoneInfo.Utc));
+
+        // Iso says the same instant to a machine: the offset is taken out, the day it belongs to follows, and the
+        // fraction of the second is cut rather than rounded up into a minute the instant never reached.
+        Assert.Equal("2026-10-05T00:00:00Z", TimeText.Iso(midnight));
+        Assert.Equal("2025-12-31T22:30:00Z", TimeText.Iso(new DateTimeOffset(2026, 1, 1, 0, 30, 0, TimeSpan.FromHours(2))));
+        Assert.Equal("2026-10-04T22:00:05Z", TimeText.Iso(new DateTimeOffset(2026, 10, 4, 22, 0, 5, 999, TimeSpan.Zero)));
+        Assert.Equal("0001-01-01T00:00:00Z", TimeText.Iso(DateTimeOffset.MinValue));
+        Assert.Equal("9999-12-31T23:59:59Z", TimeText.Iso(DateTimeOffset.MaxValue));
+    }
+
+    /// <summary>An offset the viewer stands in changes no instant: the same moment at +14 and at -12 is the same
+    /// <c>datetime</c>, which is the whole point of writing one.</summary>
+    [Theory]
+    [InlineData(14)]
+    [InlineData(0)]
+    [InlineData(-12)]
+    public void TheMachineReadableMomentIgnoresTheOffsetItWasWrittenIn(int hours) =>
+        Assert.Equal("2026-10-04T22:00:00Z", TimeText.Iso(Now.ToOffset(TimeSpan.FromHours(hours))));
 }

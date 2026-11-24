@@ -24,16 +24,7 @@ public sealed record HealthSummary(int Total, int Healthy, int Pending)
         : Pending > 0 ? SummaryLevel.Pending
         : SummaryLevel.AllHealthy;
 
-    public string Text => Level switch
-    {
-        SummaryLevel.Empty => "No nodes in the topology",
-        SummaryLevel.Problems => $"{NotHealthy} of {Total} {Noun} not healthy",
-        SummaryLevel.Pending when Healthy == 0 => $"Checking {Total} {Noun}",
-        SummaryLevel.Pending => $"{Healthy} of {Total} {Noun} healthy, {Pending} being checked",
-        _ => Total == 1 ? "The only node is healthy" : $"All {Total} nodes healthy",
-    };
-
-    private string Noun => Total == 1 ? "node" : "nodes";
+    public string Text => SummaryWords.Text(Level, Total, Healthy, Pending);
 
     public static HealthSummary Of(IEnumerable<HealthState> states)
     {

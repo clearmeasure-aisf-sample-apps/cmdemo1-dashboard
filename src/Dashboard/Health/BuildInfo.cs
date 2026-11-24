@@ -55,7 +55,7 @@ public sealed record BuildInfo(
                 ComplexityFacts.Read(JsonRead.Section(root, "complexity")),
                 CrapFacts.Read(JsonRead.Section(root, "crap")),
                 JsonRead.Count(JsonRead.Section(root, "analysis"), "qodanaProblems"));
-            return build.MeasuredNothing ? null : build;
+            return MeasuredFacts.OrNone(build, build.MeasuredNothing);
         }
         catch (JsonException)
         {
@@ -74,6 +74,13 @@ public sealed record BuildInfo(
 /// <summary>The one rule of the build's facts for "nothing measured": every part came back without a value.</summary>
 internal static class MeasuredFacts
 {
+    /// <summary>
+    /// The record as read; null when it measured nothing, so the card shows nothing for it: a record of nothing is no
+    /// record. The record says what "nothing" is for its parts; this says what follows from it, once.
+    /// </summary>
+    internal static T? OrNone<T>(T facts, bool measuredNothing)
+        where T : class => measuredNothing ? null : facts;
+
     /// <summary>True when every part is null: the build measured nothing there, and there is no record.</summary>
     internal static bool None(params ReadOnlySpan<object?> parts)
     {
@@ -109,7 +116,7 @@ public sealed record CodeSize(long? LinesOfCode, int? Files, IReadOnlyList<Langu
             .ToList();
         var lines = JsonRead.Long(section, "linesOfCode") ?? (languages.Count > 0 ? languages.Sum(language => language.Lines) : null);
         var code = new CodeSize(lines, JsonRead.Count(section, "files"), languages);
-        return code.MeasuredNothing ? null : code;
+        return MeasuredFacts.OrNone(code, code.MeasuredNothing);
     }
 
     /// <summary>No lines, no files and no languages: the build measured no code.</summary>
@@ -130,7 +137,7 @@ public sealed record TestCounts(int? Unit, int? Integration, int? Acceptance)
     internal static TestCounts? Read(JsonElement? section)
     {
         var tests = new TestCounts(JsonRead.Count(section, "unit"), JsonRead.Count(section, "integration"), JsonRead.Count(section, "acceptance"));
-        return tests.MeasuredNothing ? null : tests;
+        return MeasuredFacts.OrNone(tests, tests.MeasuredNothing);
     }
 
     internal bool MeasuredNothing => MeasuredFacts.None(Unit, Integration, Acceptance);
@@ -141,7 +148,7 @@ public sealed record CoverageFacts(double? LinePercent, double? BranchPercent)
     internal static CoverageFacts? Read(JsonElement? section)
     {
         var coverage = new CoverageFacts(JsonRead.Number(section, "linePercent"), JsonRead.Number(section, "branchPercent"));
-        return coverage.MeasuredNothing ? null : coverage;
+        return MeasuredFacts.OrNone(coverage, coverage.MeasuredNothing);
     }
 
     internal bool MeasuredNothing => MeasuredFacts.None(LinePercent, BranchPercent);
@@ -153,7 +160,7 @@ public sealed record ComplexityFacts(double? Average, int? Max, int? Methods)
     internal static ComplexityFacts? Read(JsonElement? section)
     {
         var complexity = new ComplexityFacts(JsonRead.Number(section, "average"), JsonRead.Count(section, "max"), JsonRead.Count(section, "methods"));
-        return complexity.MeasuredNothing ? null : complexity;
+        return MeasuredFacts.OrNone(complexity, complexity.MeasuredNothing);
     }
 
     internal bool MeasuredNothing => MeasuredFacts.None(Average, Max, Methods);
@@ -165,7 +172,7 @@ public sealed record CrapFacts(double? Max, double? Threshold, int? OverThreshol
     internal static CrapFacts? Read(JsonElement? section)
     {
         var crap = new CrapFacts(JsonRead.Number(section, "max"), JsonRead.Number(section, "threshold"), JsonRead.Count(section, "overThreshold"));
-        return crap.MeasuredNothing ? null : crap;
+        return MeasuredFacts.OrNone(crap, crap.MeasuredNothing);
     }
 
     internal bool MeasuredNothing => MeasuredFacts.None(Max, Threshold, OverThreshold);

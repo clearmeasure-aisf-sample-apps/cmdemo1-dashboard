@@ -1,5 +1,6 @@
 using System.Net;
 using System.Threading.Channels;
+using Dashboard.Health;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Dashboard.Tests;
@@ -85,4 +86,46 @@ internal sealed class SignallingTimeProvider : FakeTimeProvider
             return false;
         }
     }
+}
+
+/// <summary>An answer of one check of one endpoint: the state, the status, the latency, the moment, the version and the word for why - each one call away from its default.</summary>
+public static class ProbeResults
+{
+    private static readonly DateTimeOffset DefaultNow = new(2026, 10, 4, 22, 0, 0, TimeSpan.Zero);
+
+    /// <summary>A healthy check that answered 200 in 40 ms, reporting the version named.</summary>
+    public static ProbeResult Healthy(string? version = null, DateTimeOffset? at = null, int latencyMs = 40, int statusCode = 200) =>
+        new(HealthState.Healthy, statusCode, latencyMs, at ?? DefaultNow, version);
+
+    /// <summary>An unhealthy check: the status named, the time to the answer named, a word for why named - or the defaults of 503 in 40 ms.</summary>
+    public static ProbeResult Unhealthy(int statusCode = 503, string? detail = null, DateTimeOffset? at = null, int latencyMs = 40) =>
+        new(HealthState.Unhealthy, statusCode, latencyMs, at ?? DefaultNow, null, detail);
+
+    /// <summary>An endpoint that did not answer: no status, no time to the answer, a word for why it was not there - or the default of ten seconds of silence.</summary>
+    public static ProbeResult Unreachable(string detail = "No answer within 10 s.", DateTimeOffset? at = null) =>
+        new(HealthState.Unreachable, null, null, at ?? DefaultNow, null, detail);
+
+    /// <summary>A check that has not been made yet.</summary>
+    public static ProbeResult Pending(DateTimeOffset? at = null) =>
+        new(HealthState.Pending, null, null, at ?? DefaultNow);
+
+    /// <summary>A check that answered with the status named, deriving the state from it.</summary>
+    public static ProbeResult WithStatus(int statusCode, string? version = null, ProbeKind probe = ProbeKind.Health, DateTimeOffset? at = null) =>
+        new(HealthClassifier.FromStatusCode(statusCode), statusCode, 40, at ?? DefaultNow, version, Probe: probe);
+
+    /// <summary>A check of the state named, at the second offset from the default now; an unreachable endpoint has no status and no time to the answer, every other state has 200 in 12 ms.</summary>
+    public static ProbeResult State(HealthState state, int second = 0, string? version = null) =>
+        new(state, state == HealthState.Unreachable ? null : 200, state == HealthState.Unreachable ? null : 12, DefaultNow.AddSeconds(second), version);
+
+    /// <summary>The check made at the fixed moment: the state named, the HTTP status and the time to the answer named or absent, and nothing invented where nobody named them.</summary>
+    public static ProbeResult Check(HealthState state, int? statusCode = null, int? latencyMs = null, DateTimeOffset? at = null) =>
+        new(state, statusCode, latencyMs, at ?? DefaultNow);
+
+    /// <summary>A check of the state named, at the fixed moment: an unreachable endpoint has no status and no latency, a healthy one has 200, an unhealthy one has 503, and every other state has 40 ms to the answer.</summary>
+    public static ProbeResult Of(HealthState state, string? version = null, DateTimeOffset? at = null) =>
+        new(state, state == HealthState.Unreachable ? null : state == HealthState.Healthy ? 200 : 503, state == HealthState.Unreachable ? null : 40, at ?? DefaultNow, version);
+
+    /// <summary>A check made by a detector: the state named, the status named or absent, the time to the answer named or absent - and no time to the answer where the caller named no status.</summary>
+    public static ProbeResult Detected(HealthState state, int? status = null, string? detail = null, string? version = null, DateTimeOffset? at = null) =>
+        new(state, status, status is null ? null : 40, at ?? DefaultNow, version, detail);
 }

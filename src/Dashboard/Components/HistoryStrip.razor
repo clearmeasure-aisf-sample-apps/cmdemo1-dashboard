@@ -1,11 +1,11 @@
 @* The last checks, oldest on the left. Height says the state as well as colour: tall is healthy, half is unhealthy,
    a stub is unreachable. Each bar names its check on hover. *@
 <svg class="history" viewBox="0 0 @Width @Height" preserveAspectRatio="none" role="img" aria-label="@HistoryText.Describe(History)">
-    @for (var slot = 0; slot < History.Capacity; slot++)
+    @for (var slot = 0; slot < Slots.Count; slot++)
     {
-        var index = slot - (History.Capacity - History.Count);
+        var result = Slots[slot];
         var x = slot * (BarWidth + Gap);
-        if (index < 0)
+        if (result is null)
         {
             <rect class="history__bar history__bar--empty" x="@x" y="@(Height - 2)" width="@BarWidth" height="2" rx="1">
                 <title>No check yet</title>
@@ -13,7 +13,6 @@
         }
         else
         {
-            var result = History[index];
             var height = BarHeight(result.State);
             <rect class="history__bar history__bar--@result.State.ToString().ToLowerInvariant()" x="@x" y="@(Height - height)"
                   width="@BarWidth" height="@height" rx="1.5">
@@ -33,6 +32,8 @@
 
     [Parameter, EditorRequired]
     public TimeZoneInfo Zone { get; set; } = default!;
+
+    private IReadOnlyList<ProbeResult?> Slots => HistorySlots.Of(History);
 
     private int Width => History.Capacity * (BarWidth + Gap) - Gap;
 

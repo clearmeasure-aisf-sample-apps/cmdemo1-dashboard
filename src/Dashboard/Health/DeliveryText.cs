@@ -29,21 +29,12 @@ public static class AvailabilityText
         var parts = new List<AvailabilityPart>();
         if (reports.Last24Hours is { } day)
         {
-            parts.Add(day.Reports == 0
-                ? new AvailabilityPart("No hourly check ended in ", "24 hours", string.Empty)
-                : new AvailabilityPart("Healthy in ", Count(day), $" hourly {(day.Reports == 1 ? "check" : "checks")} ({Percent(day)}) in 24 hours"));
+            parts.Add(day.Reports == 0 ? NoCheckEnded("24 hours") : Hourly(day, "24 hours"));
         }
 
         if (reports.Last7Days is { } week)
         {
-            // After the 24 hours the words are short; alone, the part says what it counts.
-            parts.Add((parts.Count > 0, week.Reports) switch
-            {
-                (true, 0) => new AvailabilityPart(string.Empty, "none", " in 7 days"),
-                (true, _) => new AvailabilityPart(string.Empty, Count(week), " in 7 days", $"{Percent(week)} of the hourly checks of the last 7 days"),
-                (false, 0) => new AvailabilityPart("No hourly check ended in ", "7 days", string.Empty),
-                _ => new AvailabilityPart("Healthy in ", Count(week), $" hourly {(week.Reports == 1 ? "check" : "checks")} ({Percent(week)}) in 7 days"),
-            });
+            parts.Add(WeekPart(afterTheDay: parts.Count > 0, week));
         }
 
         if (reports.LastFailure is { } failed)
@@ -57,6 +48,30 @@ public static class AvailabilityText
 
         return parts;
     }
+
+    /// <summary>
+    /// The seven days' part. After the 24 hours the words are short (<c>164 of 166 in 7 days</c>, its percent in the
+    /// tooltip); alone, the part says what it counts, the way the 24 hours do.
+    /// </summary>
+    private static AvailabilityPart WeekPart(bool afterTheDay, HealthWindow week)
+    {
+        var noneEnded = week.Reports == 0;
+        if (afterTheDay)
+        {
+            return noneEnded
+                ? new AvailabilityPart(string.Empty, "none", " in 7 days")
+                : new AvailabilityPart(string.Empty, Count(week), " in 7 days", $"{Percent(week)} of the hourly checks of the last 7 days");
+        }
+
+        return noneEnded ? NoCheckEnded("7 days") : Hourly(week, "7 days");
+    }
+
+    /// <summary><c>Healthy in 23 of 24 hourly checks (95.8 %) in 24 hours</c>.</summary>
+    private static AvailabilityPart Hourly(HealthWindow window, string inWhat) =>
+        new("Healthy in ", Count(window), $" hourly {(window.Reports == 1 ? "check" : "checks")} ({Percent(window)}) in {inWhat}");
+
+    /// <summary><c>No hourly check ended in 7 days</c>.</summary>
+    private static AvailabilityPart NoCheckEnded(string inWhat) => new("No hourly check ended in ", inWhat, string.Empty);
 
     /// <summary>The whole line in one text, its parts joined with a dot.</summary>
     public static string Line(HealthReports reports, DateTimeOffset now) =>
@@ -97,10 +112,12 @@ public sealed record AvailabilityPart(string Before, string Strong, string After
 public static class DeliveryText
 {
     /// <summary><c>5.2 h</c>; under an hour <c>40 min</c>; from two days on <c>3.5 d</c>.</summary>
-    public static string LeadTime(double hours) =>
-        hours < 1 ? string.Create(CultureInfo.InvariantCulture, $"{Math.Round(hours * 60):0} min")
-        : hours < 48 ? string.Create(CultureInfo.InvariantCulture, $"{hours:0.#} h")
-        : string.Create(CultureInfo.InvariantCulture, $"{hours / 24:0.#} d");
+    public static string LeadTime(double hours) => hours switch
+    {
+        < 1 => string.Create(CultureInfo.InvariantCulture, $"{Math.Round(hours * 60):0} min"),
+        < 48 => string.Create(CultureInfo.InvariantCulture, $"{hours:0.#} h"),
+        _ => string.Create(CultureInfo.InvariantCulture, $"{hours / 24:0.#} d"),
+    };
 
     /// <summary>Whose delivery a card shows: <c>ui in uat</c>; the system project by what it is.</summary>
     public static string Context(string name, string environment) =>

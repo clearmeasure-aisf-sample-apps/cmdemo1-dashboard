@@ -5,6 +5,22 @@ namespace Dashboard.Health;
 /// <summary>Times as the dashboard shows them, in the time zone of the viewer.</summary>
 public static class TimeText
 {
+    /// <summary>Seconds before the unit rolls up to a minute.</summary>
+    private const double SecondsUntilMinutes = 60;
+
+    /// <summary>Minutes (two hours) before the unit rolls up to an hour.</summary>
+    private const double MinutesUntilHours = 120;
+
+    /// <summary>Hours (two days) before the unit rolls up to a day.</summary>
+    private const double HoursUntilDays = 48;
+
+    /// <summary>Moments newer than this are "just now".</summary>
+    private static readonly TimeSpan JustNow = TimeSpan.FromMinutes(1);
+
+    /// <summary>A length in one whole unit: <c>45 s</c>, <c>3 min</c>, <c>2 h</c>, <c>4 d</c>.</summary>
+    private static string Whole(double amount, string unit) =>
+        string.Create(CultureInfo.InvariantCulture, $"{(int)amount} {unit}");
+
     /// <summary>The time of day: <c>15:04:05</c>.</summary>
     public static string Clock(DateTimeOffset time, TimeZoneInfo zone) =>
         TimeZoneInfo.ConvertTime(time, zone).ToString("HH:mm:ss", CultureInfo.InvariantCulture);
@@ -28,13 +44,13 @@ public static class TimeText
             span = TimeSpan.Zero;
         }
 
-        return span.TotalSeconds < 60 ? string.Create(CultureInfo.InvariantCulture, $"{(int)span.TotalSeconds} s")
-            : span.TotalMinutes < 120 ? string.Create(CultureInfo.InvariantCulture, $"{(int)span.TotalMinutes} min")
-            : span.TotalHours < 48 ? string.Create(CultureInfo.InvariantCulture, $"{(int)span.TotalHours} h")
-            : string.Create(CultureInfo.InvariantCulture, $"{(int)span.TotalDays} d");
+        return span.TotalSeconds < SecondsUntilMinutes ? Whole(span.TotalSeconds, "s")
+            : span.TotalMinutes < MinutesUntilHours ? Whole(span.TotalMinutes, "min")
+            : span.TotalHours < HoursUntilDays ? Whole(span.TotalHours, "h")
+            : Whole(span.TotalDays, "d");
     }
 
     /// <summary>How long ago a moment was: <c>just now</c> within a minute (and for a moment ahead of the clock), then <c>3 min ago</c>.</summary>
     public static string Ago(DateTimeOffset then, DateTimeOffset now) =>
-        now - then < TimeSpan.FromMinutes(1) ? "just now" : $"{Span(now - then)} ago";
+        now - then < JustNow ? "just now" : $"{Span(now - then)} ago";
 }

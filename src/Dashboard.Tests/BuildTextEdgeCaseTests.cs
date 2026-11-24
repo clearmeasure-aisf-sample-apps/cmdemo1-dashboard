@@ -445,6 +445,31 @@ public class BuildTextEdgeCaseTests
         Assert.Equal($"x ({BuildText.ThisPage})", BuildText.DashboardContext("x"));
     }
 
+    // ----- ShortCommit: the dashboard-wide short SHA
+
+    /// <summary>A full forty-character SHA is shown as git's short form, its first seven characters.</summary>
+    [Fact]
+    public void AFullShaIsCutToItsFirstSevenCharacters() =>
+        Assert.Equal("a1b2c3d", BuildText.ShortCommit("a1b2c3d4e5f6789012345678abcdef9012345678"));
+
+    /// <summary>A commit of exactly seven characters is already short and comes back as it is, not cut; one of
+    /// eight loses only its last.</summary>
+    [Fact]
+    public void ACommitOfExactlySevenCharactersIsNotCut()
+    {
+        Assert.Equal("5c0ffee", BuildText.ShortCommit("5c0ffee"));
+        Assert.Equal("5c0ffee", BuildText.ShortCommit("5c0ffee1"));
+        Assert.Equal("abc", BuildText.ShortCommit("abc"));
+    }
+
+    /// <summary>An empty commit comes back empty, and a commit that is not there is refused by name.</summary>
+    [Fact]
+    public void AnEmptyCommitIsEmptyAndNoCommitIsRefused()
+    {
+        Assert.Equal(string.Empty, BuildText.ShortCommit(string.Empty));
+        Assert.Equal("commit", Assert.Throws<ArgumentNullException>(() => BuildText.ShortCommit(null!)).ParamName);
+    }
+
     // ----- the fixture
 
     /// <summary>A code size whose bar is the languages it is given, in the order they are given in, of no lines of

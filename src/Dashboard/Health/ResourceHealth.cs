@@ -187,7 +187,7 @@ public static class ResourceHealthText
                 NotKnown,
                 "no Resource Health read yet",
                 HealthTone.Muted,
-                $"{Source} The page has not read it: containers.json on branch status, next to delivery.json, is not there or not read yet.");
+                $"{Source} The page has not read it: {SystemInfo.ContainersFileName} on branch status, next to delivery.json, is not there or not read yet.");
         }
 
         var readings = ids.Select(id => (Id: id, Reading: report.Find(id))).ToList();

@@ -14,6 +14,17 @@ public static class ClusterText
     private const double Mebibyte = Kibibyte * 1024;
     private const double Gibibyte = Mebibyte * 1024;
 
+    /// <summary>
+    /// The binary units memory is said in, largest first: a number of bytes is said in the first unit it is at least
+    /// one of, and in the last one - the KiB - when it is none of them (a number below a KiB, a negative, a NaN).
+    /// </summary>
+    private static readonly MemoryUnit[] MemoryUnits =
+    [
+        new(Gibibyte, "0.#", "GiB"),
+        new(Mebibyte, "0", "MiB"),
+        new(Kibibyte, "0", "KiB"),
+    ];
+
     /// <summary>Millicores as cores, without the unit: <c>0.81</c>, <c>3.86</c>, <c>12.5</c>.</summary>
     public static string Cores(double millicores) => (millicores / MillicoresPerCore).ToString("0.##", CultureInfo.InvariantCulture);
 
@@ -40,28 +51,28 @@ public static class ClusterText
     public static string? CpuUse(ResourceUse cpu)
     {
         ArgumentNullException.ThrowIfNull(cpu);
-        return cpu.Usage is not { } used ? null : cpu.Limits is { } limit && limit > 0 ? CpuOf(used, limit) : Cpu(used);
+        return UseAgainst(cpu.Usage, cpu.Limits, CpuOf, Cpu);
     }
 
     /// <summary>A pod's memory for its row, by the same rule.</summary>
     public static string? MemoryUse(ResourceUse memory)
     {
         ArgumentNullException.ThrowIfNull(memory);
-        return memory.Usage is not { } used ? null : memory.Limits is { } limit && limit > 0 ? MemoryOf(used, limit) : Memory(used);
+        return UseAgainst(memory.Usage, memory.Limits, MemoryOf, Memory);
     }
 
     /// <summary>The CPU of a node or of all nodes against what they offer, in cores; null without a usage.</summary>
     public static string? NodeCpu(ResourceUse cpu)
     {
         ArgumentNullException.ThrowIfNull(cpu);
-        return cpu.Usage is not { } used ? null : cpu.Allocatable is { } offered && offered > 0 ? CoresOf(used, offered) : $"{Cores(used)} cores";
+        return UseAgainst(cpu.Usage, cpu.Allocatable, CoresOf, used => $"{Cores(used)} cores");
     }
 
     /// <summary>The memory of a node or of all nodes against what they offer; null without a usage.</summary>
     public static string? NodeMemory(ResourceUse memory)
     {
         ArgumentNullException.ThrowIfNull(memory);
-        return memory.Usage is not { } used ? null : memory.Allocatable is { } offered && offered > 0 ? MemoryOf(used, offered) : Memory(used);
+        return UseAgainst(memory.Usage, memory.Allocatable, MemoryOf, Memory);
     }
 
     /// <summary>What the pods ask for of what the nodes offer: <c>63 % requested</c>; null without both numbers.</summary>
@@ -271,8 +282,19 @@ public static class ClusterText
 
     private static string CoreUnit(double millicores) => millicores == MillicoresPerCore ? "core" : "cores";
 
-    private static (string Number, string Unit) MemoryParts(double bytes) =>
-        bytes >= Gibibyte ? ((bytes / Gibibyte).ToString("0.#", CultureInfo.InvariantCulture), "GiB")
-        : bytes >= Mebibyte ? ((bytes / Mebibyte).ToString("0", CultureInfo.InvariantCulture), "MiB")
-        : ((bytes / Kibibyte).ToString("0", CultureInfo.InvariantCulture), "KiB");
+    /// <summary>
+    /// A use against a whole: null without a usage, said against the whole when it is more than zero, plain otherwise.
+    /// The four members that call it are only the choice of unit they make.
+    /// </summary>
+    private static string? UseAgainst(double? usage, double? whole, Func<double, double, string> against, Func<double, string> plain) =>
+        usage is not { } used ? null : whole is { } of && of > 0 ? against(used, of) : plain(used);
+
+    private static (string Number, string Unit) MemoryParts(double bytes)
+    {
+        var unit = Array.Find(MemoryUnits, candidate => bytes >= candidate.Bytes) ?? MemoryUnits[^1];
+        return ((bytes / unit.Bytes).ToString(unit.Format, CultureInfo.InvariantCulture), unit.Unit);
+    }
+
+    /// <summary>A binary unit of memory: how many bytes it is, the format of its number and its name.</summary>
+    private sealed record MemoryUnit(double Bytes, string Format, string Unit);
 }

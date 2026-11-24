@@ -33,6 +33,13 @@ public class WorkItemsTextRemainingEdgeCaseTests
     public void ARateOfAtMostOneIsAPercentAndOneItselfIsAHundred(double rate, string text) =>
         Assert.Equal(text, WorkItemsText.Rework(new WorkRework(null, null, rate)));
 
+    [Theory]
+    [InlineData(1.0, "100 %")]
+    [InlineData(1.005, "1.01")]
+    [InlineData(1.25, "1.25")]
+    public void BothSidesOfTheLargestFractionAreSaidTheirOwnWay(double rate, string text) =>
+        Assert.Equal(text, WorkItemsText.Rework(new WorkRework(null, null, rate)));
+
     // ---- Duration: the parts a median leaves out ----
 
     [Fact]

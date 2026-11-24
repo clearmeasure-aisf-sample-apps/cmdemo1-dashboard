@@ -365,6 +365,15 @@ public static class WorkBotText
         return hours.Select(pair => (pair.Key, Summarize(pair.Value)!));
     }
 
+    /// <summary>What fraction of the sorted durations the median represents; fills <see cref="WorkDuration.Median"/>.</summary>
+    private const double MedianFraction = 0.5;
+
+    /// <summary>What fraction the 85th percentile represents; fills <see cref="WorkDuration.P85"/> and the p85 word the page writes.</summary>
+    private const double P85Fraction = 0.85;
+
+    /// <summary>How many decimal places of an hour a page-measured duration keeps.</summary>
+    private const int HourDecimals = 2;
+
     private static WorkDuration? Summarize(List<double> hours)
     {
         if (hours.Count == 0)
@@ -373,13 +382,14 @@ public static class WorkBotText
         }
 
         hours.Sort();
-        return new WorkDuration(Percentile(hours, 0.5), Percentile(hours, 0.85), hours.Count);
+        return new WorkDuration(Percentile(hours, MedianFraction), Percentile(hours, P85Fraction), hours.Count);
     }
 
+    /// <summary>The nearest-rank percentile (rank = ceil(n·fraction), clamped to 1..n) over an already sorted list.</summary>
     private static double Percentile(List<double> sorted, double fraction)
     {
         var rank = (int)Math.Ceiling(sorted.Count * fraction);
         var index = Math.Clamp(rank, 1, sorted.Count) - 1;
-        return Math.Round(sorted[index], 2);
+        return Math.Round(sorted[index], HourDecimals);
     }
 }

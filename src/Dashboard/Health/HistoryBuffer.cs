@@ -31,6 +31,13 @@ public sealed class HistoryBuffer<T> : IReadOnlyList<T>
         }
     }
 
+    /// <summary>
+    /// The newest item kept: the one <see cref="Add"/> wrote last, the item at index <see cref="Count"/> minus one.
+    /// A buffer that holds nothing has no newest item and answers with <see langword="default"/>, the same answer a
+    /// buffer whose newest item is <see langword="default"/> itself gives - <see cref="Count"/> tells them apart.
+    /// </summary>
+    public T? Last => Count > 0 ? this[Count - 1] : default;
+
     /// <summary>Adds an item; when the buffer is full, the oldest item is dropped.</summary>
     public void Add(T item)
     {

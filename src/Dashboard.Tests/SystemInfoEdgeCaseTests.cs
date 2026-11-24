@@ -21,6 +21,21 @@ namespace Dashboard.Tests;
 /// <see cref="DeployableFactsTests" /> pin the dashboard the file names.
 /// </para>
 /// <para>
+/// This file is where the record itself is pinned, as the house keeps a record: <see cref="DeployableInfo" /> and
+/// <see cref="NodeInfo" /> have their own boundary tests, <see cref="DashboardInfo" /> has
+/// <see cref="DashboardInfoEdgeCaseTests" />, and the section <see cref="TopologyEdgeCaseTests" /> carried for
+/// <see cref="SystemInfo" /> stands here now - the constructor's seven parts each back as the property of its own
+/// name, the five a caller may leave out standing absent, the words kept as they were given, the two derived files
+/// beside the shapes of a delivery address a file really names, the two names apart, the files made anew at every
+/// ask, two systems one while their seven parts are, any one part telling them apart, the seven parts read out in
+/// their order, <c>with</c>, the words the system says about itself and its whole reflection surface. The surface
+/// pin there asks the shared walks of <see cref="RecordSurface" /> rather than the private copy
+/// <see cref="TopologyEdgeCaseTests" /> still hand-rolls; <see cref="RecordSurfaceMachineryTests" /> pins that the
+/// shared walk and that copy say one thing of this record, so the list pinned is the list pinned there. The same
+/// thirteen pins stand in that file too until the follow-up of cmdemo1-dashboard#1225 walks past them: landing the
+/// move dropped no pin and weakened none.
+/// </para>
+/// <para>
 /// Nothing here reaches the network or asks a clock what time it is: the addresses are named and never fetched,
 /// and the two derived files are made of the address the record holds and of the two file words the record keeps
 /// to itself.
@@ -28,6 +43,21 @@ namespace Dashboard.Tests;
 /// </summary>
 public class SystemInfoEdgeCaseTests
 {
+    private static readonly Uri Repository = new("https://github.example.net/org/demo-system");
+    private static readonly Uri Delivery = new("https://raw.example.net/org/demo-system/status/delivery.json");
+    private static readonly Uri Cost = new("https://raw.example.net/org/demo-system/status/cost.json");
+    private static readonly Uri Deployments = new("https://raw.example.net/org/demo-system/deployments/deployments.json");
+
+    private static readonly DashboardInfo Dashboard = new(DashboardInfo.DefaultName, "/build-facts.json");
+
+    /// <summary>A system with every part named and the seven values apart from one another, so that an argument
+    /// landing on another property is seen instead of quietly matching a second part of the record.</summary>
+    private static readonly SystemInfo FullSystem = new("cmdemo1", "Demo system", Repository, Delivery, Cost, Dashboard, Deployments);
+
+    /// <summary>A system named by nothing but its two required parts, the five a caller may leave out standing as
+    /// they stand when nobody names them - and with no delivery facts to derive a file from.</summary>
+    private static readonly SystemInfo BareSystem = new("demo", "Demo");
+
     /// <summary>
     /// Both files stand beside the delivery address as the address machinery makes them: an address that names
     /// nothing but its host - or its host with a port after it - puts both files in the site's root, with the

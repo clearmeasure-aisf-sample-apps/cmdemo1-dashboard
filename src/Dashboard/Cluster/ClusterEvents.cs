@@ -60,8 +60,9 @@ public static class ClusterEventDetector
         ArgumentNullException.ThrowIfNull(before);
         ArgumentNullException.ThrowIfNull(after);
         ArgumentNullException.ThrowIfNull(environments);
+        var index = EnvironmentIndex.Of(environments);
         var events = new List<DashboardEvent>(NodeChanges(before, after, at));
-        var changes = PodChanges(before, after, EnvironmentNames(environments), at);
+        var changes = PodChanges(before, after, index.NameForNamespace, at);
         events.AddRange(NamedPodChanges(changes));
         if (Overflow(changes, at) is { } overflow)
         {
@@ -98,12 +99,7 @@ public static class ClusterEventDetector
             .GroupBy(entry => (entry.Namespace.Name, entry.Pod.Name))
             .ToDictionary(group => group.Key, group => group.First().Pod);
 
-    /// <summary>The environment's name per namespace: of a namespace two environments share, the first one names it.</summary>
-    private static Dictionary<string, string> EnvironmentNames(IEnumerable<EnvironmentInfo> environments) =>
-        environments
-            .Where(environment => environment.Namespace is not null)
-            .GroupBy(environment => environment.Namespace!, StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.First().Name, StringComparer.Ordinal);
+
 
     /// <summary>The one event of each pod that changed, in this reading's order, named for its namespace's environment.</summary>
     private static List<DashboardEvent> PodChanges(ClusterStatus before, ClusterStatus after, Dictionary<string, string> names, DateTimeOffset at)

@@ -226,13 +226,14 @@ public static class RuntimePayloadBuilder
     private static RuntimeTileLine ActivityLineOf(ActivityLine line) =>
         RuntimeTileLine.Of(line.Kind, [new RuntimeTextPart(line.Text, RuntimeLink.To(line.Url, $"{line.Title}\n{DeploymentText.TaskTitle}"))]);
 
-    /// <summary>The state word of a health state, as the payload carries it.</summary>
+    /// <summary>The state word of a health state, as the payload carries it, one arm per state so a new state fails the build.</summary>
     public static string StateOf(HealthState state) => state switch
     {
         HealthState.Healthy => Healthy,
         HealthState.Unhealthy => Unhealthy,
         HealthState.Unreachable => Unreachable,
-        _ => Checking,
+        HealthState.Pending => Checking,
+        _ => throw new ArgumentOutOfRangeException(nameof(state), state, null),
     };
 
     private static List<Entry> Index(EnvironmentStatus? environment)

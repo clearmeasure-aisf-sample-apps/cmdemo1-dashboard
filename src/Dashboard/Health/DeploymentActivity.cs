@@ -23,6 +23,38 @@ public sealed record DeploymentWait(string Kind, string? Title, DateTimeOffset? 
     /// <summary>True for a title that says no more than the kind does (<c>Sign-off</c> for a sign-off).</summary>
     public bool TitleIsTheKind => Title is null || string.Equals(Title.Replace(" ", "-", StringComparison.Ordinal), Kind.Replace(" ", "-", StringComparison.Ordinal), StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// The kind as a noun: <c>the question after a failed step</c>, <c>the sign-off</c>, else the file's own word.
+    /// With <see cref="Asks"/> and <see cref="Line"/>, the one place a kind of wait is put in words.
+    /// </summary>
+    public string Noun() => IsGuidedFailure ? "the question after a failed step" : IsSignOff ? "the sign-off" : Kind;
+
+    /// <summary>The <see cref="Noun"/>, with Octopus Deploy's title quoted where it says more than the kind does.</summary>
+    public string Question() => Title is { } title && !TitleIsTheKind ? $"{Noun()} \"{title}\"" : Noun();
+
+    /// <summary>
+    /// The sentence of a deployment that waits: <c>cmdemo2-ui 2.4.43 asks what to do after a failed step in uat</c>
+    /// for a guided failure; <c>... waits for a sign-off in uat</c> for anything else, and where the file names no wait.
+    /// </summary>
+    public static string Asks(DeploymentWait? wait, string what, string where) =>
+        wait is { IsGuidedFailure: true }
+            ? $"{what} asks what to do after a failed step in {where}"
+            : $"{what} waits for a sign-off in {where}";
+
+    /// <summary>
+    /// The line of a deployment that waits, on a node: <c>2.4.43 failed a step: ops decides</c>, <c>2.4.43 failed a
+    /// step and waits</c>, <c>2.4.43 waits for ops</c>, else <c>2.4.43 waits for a sign-off</c> and the
+    /// <paramref name="waited"/> words after it.
+    /// </summary>
+    public static string Line(DeploymentWait? wait, string release, string waited) =>
+        (wait?.IsGuidedFailure ?? false, wait?.Responsible) switch
+        {
+            (true, { } who) => $"{release} failed a step: {who} decides",
+            (true, null) => $"{release} failed a step and waits",
+            (false, { } who) => $"{release} waits for {who}",
+            _ => $"{release} waits for a sign-off{waited}",
+        };
+
     /// <summary>Null for an entry without the field, or without a kind.</summary>
     internal static DeploymentWait? Read(JsonElement? element) =>
         element is { ValueKind: JsonValueKind.Object } && JsonRead.Text(element, "kind") is { } kind
@@ -245,14 +277,7 @@ public static class DeploymentActivity
             {
                 var wait = deployment.WaitsFor;
                 var waited = After(wait?.Since is { } asked ? DeploymentText.Age(now - asked) : age);
-                var words = (wait?.IsGuidedFailure ?? false, wait?.Responsible) switch
-                {
-                    (true, { } who) => $"{deployment.Release} failed a step: {who} decides",
-                    (true, null) => $"{deployment.Release} failed a step and waits",
-                    (false, { } who) => $"{deployment.Release} waits for {who}",
-                    _ => $"{deployment.Release} waits for a sign-off{waited}",
-                };
-                return new ActivityLine(ActivityKind.Waiting, words, title, deployment.Url);
+                return new ActivityLine(ActivityKind.Waiting, DeploymentWait.Line(wait, deployment.Release, waited), title, deployment.Url);
             }
 
             case DeploymentState.Executing:

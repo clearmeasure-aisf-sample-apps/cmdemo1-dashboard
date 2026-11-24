@@ -318,23 +318,8 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
     /// <summary>A reading's reason (the end of a sentence) as a sentence of its own.</summary>
     internal static string? Sentence(string? detail)
     {
-        var words = Unclosed(detail);
+        var words = ClusterText.Words(detail);
         return words.Length == 0 ? null : $"{char.ToUpperInvariant(words[0])}{words[1..]}.";
-    }
-
-    /// <summary>
-    /// The words of a reason without the spaces around them and without the full stops they end in - a stop followed
-    /// by a space is still a stop - so the one that closes the sentence is the only one said.
-    /// </summary>
-    private static string Unclosed(string? detail)
-    {
-        var words = (detail ?? string.Empty).Trim();
-        while (words.EndsWith('.'))
-        {
-            words = words.TrimEnd('.').TrimEnd();
-        }
-
-        return words;
     }
 
     private static string? Join(params string?[] sentences)

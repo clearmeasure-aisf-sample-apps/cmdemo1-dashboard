@@ -178,6 +178,14 @@ internal sealed class CultureScope : IDisposable
     /// <summary>Runs <paramref name="what" /> as a reader of the culture named <paramref name="cultureName" />.</summary>
     public static void Runs(string cultureName, Action what) =>
         Runs(System.Globalization.CultureInfo.GetCultureInfo(cultureName), what);
+
+    /// <summary>What <paramref name="item" /> says to a reader of the invariant culture: the object's string
+    /// form with no culture-specific formatting to confuse a test that is checking words rather than numerals.</summary>
+    internal static string Words(object item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return CultureScope.Says(System.Globalization.CultureInfo.InvariantCulture, () => item.ToString()!);
+    }
 }
 
 /// <summary>

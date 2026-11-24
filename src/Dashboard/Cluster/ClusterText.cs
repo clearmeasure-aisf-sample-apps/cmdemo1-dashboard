@@ -186,19 +186,20 @@ public static class ClusterText
     public static string Summary(NamespaceGroup group)
     {
         ArgumentNullException.ThrowIfNull(group);
-        var parts = new List<string> { $"{Of(group.Ready, group.Total)} ready" };
-        if (group.Finished > 0)
+        var tally = new PodTally(group.Pods);
+        var parts = new List<string> { $"{Of(tally.Ready, tally.Total)} ready" };
+        if (tally.Finished > 0)
         {
-            parts.Add(string.Create(CultureInfo.InvariantCulture, $"{group.Finished} finished"));
+            parts.Add(string.Create(CultureInfo.InvariantCulture, $"{tally.Finished} finished"));
         }
 
-        parts.Add(Restarts(group.Restarts));
-        if (group.CpuUsage is { } cpu)
+        parts.Add(Restarts(tally.Restarts));
+        if (tally.CpuUsage is { } cpu)
         {
             parts.Add($"CPU {Cpu(cpu)}");
         }
 
-        if (group.MemoryUsage is { } memory)
+        if (tally.MemoryUsage is { } memory)
         {
             parts.Add($"memory {Memory(memory)}");
         }
@@ -212,7 +213,8 @@ public static class ClusterText
         ArgumentNullException.ThrowIfNull(groups);
         var count = groups.Platform.Count;
         var spaces = Plural.Of(count, "namespace");
-        return $"Platform: {spaces}, {Of(groups.Platform.Sum(space => space.Ready), groups.Platform.Sum(space => space.Total))} pods ready";
+        var tallies = groups.Platform.Select(space => new PodTally(space.Pods)).ToList();
+        return $"Platform: {spaces}, {Of(tallies.Sum(tally => tally.Ready), tallies.Sum(tally => tally.Total))} pods ready";
     }
 
     /// <summary>A volume claim: <c>data-db-0 8 GiB, Bound</c>.</summary>

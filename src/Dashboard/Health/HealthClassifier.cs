@@ -8,12 +8,14 @@ public static class HealthClassifier
     public static HealthState FromStatusCode(int statusCode) =>
         statusCode == Ok ? HealthState.Healthy : HealthState.Unhealthy;
 
+    /// <summary>The state's label on a badge, one arm per state so a state the enum does not name fails loud.</summary>
     public static string Label(HealthState state) => state switch
     {
+        HealthState.Pending => "Checking",
         HealthState.Healthy => "Healthy",
         HealthState.Unhealthy => "Unhealthy",
         HealthState.Unreachable => "Unreachable",
-        _ => "Checking",
+        _ => throw new ArgumentOutOfRangeException(nameof(state), state, null),
     };
 
     /// <summary>The state in the words of a sentence: the lowercase of the label, except the unchecked one, which is not checking.</summary>

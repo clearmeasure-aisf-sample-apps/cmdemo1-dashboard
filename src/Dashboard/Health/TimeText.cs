@@ -17,8 +17,12 @@ public static class TimeText
     /// <summary>Moments newer than this are "just now".</summary>
     private static readonly TimeSpan JustNow = TimeSpan.FromMinutes(1);
 
-    /// <summary>A length in one whole unit: <c>45 s</c>, <c>3 min</c>, <c>2 h</c>, <c>4 d</c>.</summary>
-    private static string Whole(double amount, string unit) =>
+    /// <summary>
+    /// A length in one whole unit, truncated and in the invariant culture: <c>45 s</c>, <c>3 min</c>, <c>2 h</c>,
+    /// <c>4 d</c> (<c>5 h</c> for five and a half hours). The one home of how a count of whole units is said, for
+    /// <see cref="Span"/> and for <see cref="DeploymentText.Age"/>, each of which keeps its own unit boundaries.
+    /// </summary>
+    internal static string Whole(double amount, string unit) =>
         string.Create(CultureInfo.InvariantCulture, $"{(int)amount} {unit}");
 
     /// <summary>The time of day: <c>15:04:05</c>.</summary>

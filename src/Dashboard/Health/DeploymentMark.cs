@@ -11,7 +11,7 @@ namespace Dashboard.Health;
 /// </param>
 /// <param name="Sentence">The mark in words: the same as on the fleet's dashboard.</param>
 /// <param name="Minutes">
-/// Whole minutes since it started (or was queued) while it is in flight, since it ended otherwise; null when the
+/// Whole minutes since <see cref="Deployment.CountsFrom"/>, the moment the deployment is counted from; null when the
 /// file's time does not parse.
 /// </param>
 /// <param name="Url">The task in Octopus Deploy; null when the file gives no address.</param>
@@ -45,12 +45,20 @@ public sealed record DeploymentMark(
             deployment.Release,
             deployment.State,
             DeploymentText.Sentence(deployment, now),
-            (deployment.InFlight ? deployment.Since : deployment.Finished) is { } then ? (int)Math.Max(0, (now - then).TotalMinutes) : null,
+            deployment.CountsFrom is { } then ? WholeMinutesSince(then, now) : null,
             deployment.Url,
             deployment.InFlight,
             system,
             DeploymentText.Detail(deployment, now));
     }
+
+    /// <summary>
+    /// How an age becomes a mark's number: whole minutes since the moment, truncated, and never below zero - a clock
+    /// that runs behind the file's time reads 0. Not <see cref="DeploymentText.Age"/>, which is the age in words: it
+    /// chooses the unit (minutes, hours, days) and never says less than a minute, while a mark carries the number
+    /// itself and must say 0 where a deployment has not begun to be old.
+    /// </summary>
+    private static int WholeMinutesSince(DateTimeOffset then, DateTimeOffset now) => (int)Math.Max(0, (now - then).TotalMinutes);
 
     /// <summary>
     /// What a project is called after the system's slug (<c>ui</c> of <c>cmdemo2-ui</c>); null for a project that is

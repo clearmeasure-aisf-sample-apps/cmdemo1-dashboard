@@ -6,13 +6,13 @@ namespace Dashboard.Health;
 /// <summary>
 /// What the system cost in Azure: the content of the file at <c>system.costUrl</c> of the topology (<c>cost.json</c>,
 /// which a workflow of the system repository publishes from Azure Cost Management). Per environment, for what no
-/// environment owns (<see cref="SharedName"/>) and for the whole system: the last complete UTC day, the seven days
-/// that end with it and its month so far. Every part is optional, and nothing of it is live: the numbers are those of
-/// <see cref="AsOf"/>.
+/// environment owns (<see cref="SharedName"/>) and for the whole system: the last complete day (in
+/// <see cref="CostText.DayZone"/>), the seven days that end with it and its month so far. Every part is optional, and
+/// nothing of it is live: the numbers are those of <see cref="AsOf"/>.
 /// </summary>
 /// <param name="Generated">When the file's content last changed. It is not the time of a check.</param>
 /// <param name="Currency">The currency Azure bills in, such as <c>USD</c>.</param>
-/// <param name="AsOf">The last complete UTC day the numbers include.</param>
+/// <param name="AsOf">The last complete day (in <see cref="CostText.DayZone"/>) the numbers include.</param>
 /// <param name="System">The whole system; null when the file does not say.</param>
 /// <param name="Entries">The environments, in the file's order, with the entry of what they share.</param>
 public sealed record CostReport(DateTimeOffset? Generated, string? Currency, DateOnly? AsOf, CostAmounts? System, IReadOnlyList<CostEntry> Entries)
@@ -77,8 +77,11 @@ public sealed record CostReport(DateTimeOffset? Generated, string? Currency, Dat
             : null;
 }
 
-/// <summary>Three sums of complete UTC days; one that Azure did not give is null, and the page shows a dash.</summary>
-/// <param name="Yesterday">The last complete UTC day (<see cref="CostReport.AsOf"/>).</param>
+/// <summary>
+/// Three sums of complete days in <see cref="CostText.DayZone"/>; one that Azure did not give is null, and the page
+/// shows a dash.
+/// </summary>
+/// <param name="Yesterday">The last complete day (<see cref="CostReport.AsOf"/>).</param>
 /// <param name="Last7Days">The seven days that end with it.</param>
 /// <param name="MonthToDate">The first of its month up to it.</param>
 public sealed record CostAmounts(double? Yesterday, double? Last7Days, double? MonthToDate)
@@ -159,24 +162,34 @@ public static class CostText
     }
 
     /// <summary>
-    /// The day the first number covers: <c>yesterday</c> only while it is the UTC day before <paramref name="now"/>,
-    /// else the date (<c>on 2026-10-03</c>), so a file that was not renewed never reads as recent.
+    /// The day the first number covers: <c>yesterday</c> only while it is the day before <paramref name="now"/> in
+    /// <see cref="DayZone"/>, else the date (<c>on 2026-10-03</c>), so a file that was not renewed never reads as recent.
     /// </summary>
-    public static string Day(DateOnly? asOf, DateTimeOffset now) =>
-        asOf is not { } day ? "in the last full day"
-        : day == UtcDay(now).AddDays(-1) ? "yesterday"
-        : $"on {Date(day)}";
+    public static string Day(DateOnly? asOf, DateTimeOffset now)
+    {
+        var yesterday = UtcDay(now).AddDays(-1);
+        return asOf switch
+        {
+            null => NoDayOfItsOwn(),
+            DateOnly day when day == yesterday => Yesterday(),
+            DateOnly day => OnDay(day),
+        };
+    }
 
     /// <summary>
-    /// The month the last number covers: <c>this month</c> while <paramref name="now"/> is in it (UTC), else its name
-    /// (<c>in September</c>, on the first of a month and for an old file), with the year when that differs too.
+    /// The month the last number covers: <c>this month</c> while <paramref name="now"/> is in it (in <see cref="DayZone"/>),
+    /// else its name (<c>in September</c>, on the first of a month and for an old file), with the year when that differs too.
     /// </summary>
     public static string Month(DateOnly? asOf, DateTimeOffset now)
     {
         var today = UtcDay(now);
-        return asOf is not { } day || (day.Year == today.Year && day.Month == today.Month) ? "this month"
-            : day.Year == today.Year ? In(MonthName, day)
-            : In(MonthNameAndYear, day);
+        return asOf switch
+        {
+            null => ThisMonth(),
+            DateOnly day when IsSameMonth(day, today) => ThisMonth(),
+            DateOnly day when IsSameYear(day, today) => InMonth(day),
+            DateOnly day => InMonthOfYear(day),
+        };
     }
 
     /// <summary>The three amounts with their days: <c>$1.52 yesterday</c>, <c>$9.80 in 7 days</c>, <c>$11.02 this month</c>.</summary>
@@ -201,7 +214,7 @@ public static class CostText
 
     /// <summary>
     /// <c>as of 2026-10-06 (UTC)</c>: the last day the numbers include; null when the file does not say. The days of a
-    /// cost are UTC days, on a page whose times are the viewer's: the line says so where it names the day.
+    /// cost are days in <see cref="DayZone"/>, on a page whose times are the viewer's: the line says so where it names the day.
     /// </summary>
     public static string? AsOf(DateOnly? asOf) => asOf is { } day ? $"as of {Date(day)} ({DayZone})" : null;
 
@@ -226,6 +239,30 @@ public static class CostText
 
     /// <summary>The calendar day of <paramref name="now"/> in <see cref="DayZone"/>, whatever zone its moment carries: the one day every period word of a cost is counted from.</summary>
     private static DateOnly UtcDay(DateTimeOffset now) => DateOnly.FromDateTime(now.UtcDateTime);
+
+    /// <summary>The word of a file that names no day: its sums cover the last full day, and nothing else is said of them.</summary>
+    private static string NoDayOfItsOwn() => "in the last full day";
+
+    /// <summary>The word of the one day that is the UTC day before the rendering.</summary>
+    private static string Yesterday() => "yesterday";
+
+    /// <summary>The date a day is said by when it is not the UTC day before the rendering.</summary>
+    private static string OnDay(DateOnly day) => $"on {Date(day)}";
+
+    /// <summary>Whether <paramref name="day"/> stands in the month <paramref name="today"/> is in.</summary>
+    private static bool IsSameMonth(DateOnly day, DateOnly today) => day.Year == today.Year && day.Month == today.Month;
+
+    /// <summary>Whether <paramref name="day"/> stands in the year <paramref name="today"/> is in.</summary>
+    private static bool IsSameYear(DateOnly day, DateOnly today) => day.Year == today.Year;
+
+    /// <summary>The word of the month the rendering stands in, and of a file that names no day at all.</summary>
+    private static string ThisMonth() => "this month";
+
+    /// <summary>The month's name alone, in the other months of the year the rendering stands in.</summary>
+    private static string InMonth(DateOnly day) => In(MonthName, day);
+
+    /// <summary>The month's name with its year, in every year the rendering does not stand in.</summary>
+    private static string InMonthOfYear(DateOnly day) => In(MonthNameAndYear, day);
 
     /// <summary>
     /// <c>Most this month: Azure Container Apps $6.10, SQL Database $2.00</c>; null when the file names no service.
@@ -265,7 +302,8 @@ public static class CostText
     public static string Help(CostReport report)
     {
         ArgumentNullException.ThrowIfNull(report);
-        var days = report.AsOf is { } day ? $"complete UTC days up to {Date(day)}" : "complete UTC days";
+        var upTo = report.AsOf is { } day ? $" up to {Date(day)}" : string.Empty;
+        var days = $"complete {DayZone} days{upTo}";
         return $"Not live: what Azure Cost Management reported for {days}, by the tag \"environment\" of the resources. "
             + "Azure's cost arrives hours late and is amended for a day or two; a workflow of the system repository reads it hourly until the day is complete, then every six hours.";
     }

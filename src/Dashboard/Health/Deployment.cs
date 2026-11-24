@@ -42,6 +42,15 @@ public sealed record Deployment(
     /// </summary>
     public bool IsMarkedAt(DateTimeOffset now) => InFlight || (Finished is { } ended && now - ended < DeploymentsReport.EndedFor);
 
+    /// <summary>
+    /// The moment the page counts this deployment from: when it started, or when it was queued while it has not
+    /// started, while it is in flight; when it ended otherwise. Null when the file's time does not parse, and for one
+    /// that ended at no time the file can say. What a mark says of the moment's age is
+    /// <see cref="DeploymentMark.Minutes"/>; the sentence says an age only of an end, and <see cref="IsMarkedAt"/> asks
+    /// how lately it ended, so neither counts from here.
+    /// </summary>
+    internal DateTimeOffset? CountsFrom => InFlight ? Since : Finished;
+
     /// <summary>An entry without a project, an environment, a release or a state is left out.</summary>
     internal static Deployment? Read(JsonElement element) =>
         JsonRead.Text(element, "project") is { } project && JsonRead.Text(element, "environment") is { } environment

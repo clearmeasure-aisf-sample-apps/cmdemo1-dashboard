@@ -291,6 +291,18 @@ public class AvailabilityTextEdgeCaseTests
     public void ThePercentTheRoundingCarriesToAWholeIsSaidAsTheWhole(int reports, int healthy, string expected) =>
         Assert.Equal(expected, AvailabilityText.Percent(new HealthWindow(reports, healthy)));
 
+    /// <summary>The rounding that would carry a share onto all is brought back to the ninety-nine point nine
+    /// it never crosses onto, and the rounding that would carry a share onto none is brought back to the
+    /// tenth of a percent it never crosses below: the cap and the floor that keep the percent away from the
+    /// two words it could not be said as - the whole and the none - while a single report failed or passed.</summary>
+    [Theory]
+    [InlineData(1000, 999, "99.9 %")]  // rounds to 99.9, stays
+    [InlineData(1000, 1, "0.1 %")]    // rounds to 0.1, stays
+    [InlineData(2000, 1999, "99.9 %")] // rounds to 100.0, cap brings back
+    [InlineData(2000, 1, "0.1 %")]    // rounds to 0.0, floor brings back
+    public void ThePercentIsBroughtBackFromTheWholeOrTheNoneItWouldRoundOnto(int reports, int healthy, string expected) =>
+        Assert.Equal(expected, AvailabilityText.Percent(new HealthWindow(reports, healthy)));
+
     /// <summary>The window with no reports is the dash whatever the healthy count says: the count no report
     /// stands behind is no share, and the healthy count that is not there, that is over the reports or that is
     /// negative alike leaves the dash standing.</summary>

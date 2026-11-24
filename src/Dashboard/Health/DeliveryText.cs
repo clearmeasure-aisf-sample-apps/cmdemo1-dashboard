@@ -11,6 +11,24 @@ public static class AvailabilityText
     /// <summary>Said next to the numbers, so nobody reads them as monitoring.</summary>
     public const string Note = "Hourly checks by the pipeline, not continuous monitoring.";
 
+    /// <summary>The factor by which the healthy share is multiplied to become a percent.</summary>
+    private const double PercentScale = 100.0;
+
+    /// <summary>The number of decimal places the percent is rounded to: one tenth of a percent.</summary>
+    private const int PercentDecimals = 1;
+
+    /// <summary>
+    /// The highest percent said while a report failed: one tenth below the whole, so the rounding of a single
+    /// failure in many reports never carries the share onto all.
+    /// </summary>
+    private const double BelowWhole = 99.9;
+
+    /// <summary>
+    /// The lowest percent said while a report passed: one tenth above nothing, so the rounding of a single
+    /// passing report in many never carries the share onto none.
+    /// </summary>
+    private const double AboveNothing = 0.1;
+
     /// <summary>
     /// The day's window word: the last 24 hours, as the hourly reports count them (<c>ContainerAppReports</c> names
     /// the same window <c>Day</c>).
@@ -111,9 +129,9 @@ public static class AvailabilityText
             return "–";
         }
 
-        var percent = Math.Round(100.0 * window.Healthy / window.Reports, 1);
-        percent = window.Healthy < window.Reports ? Math.Min(percent, 99.9) : percent;
-        percent = window.Healthy > 0 ? Math.Max(percent, 0.1) : percent;
+        var percent = Math.Round(PercentScale * window.Healthy / window.Reports, PercentDecimals);
+        percent = window.Healthy < window.Reports ? Math.Min(percent, BelowWhole) : percent;
+        percent = window.Healthy > 0 ? Math.Max(percent, AboveNothing) : percent;
         return string.Create(CultureInfo.InvariantCulture, $"{percent:0.#} %");
     }
 }

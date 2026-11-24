@@ -85,7 +85,7 @@ public sealed record ServingAssessment(
         ? null
         : FailedPrimary is null
             ? $"No primary node is healthy; {Expected!.Label} is expected to serve traffic."
-            : $"Primary {FailedPrimary.Label} is {Lower(FailedPrimary.State)}; {Expected!.Label} is expected to serve traffic.";
+            : $"Primary {FailedPrimary.Label} is {HealthClassifier.Sentence(FailedPrimary.State)}; {Expected!.Label} is expected to serve traffic.";
 
     /// <summary>Whether the Front Door endpoint shows what the nodes predict; null without a Front Door endpoint.</summary>
     public string? FrontDoorText => FrontDoor switch
@@ -93,9 +93,9 @@ public sealed record ServingAssessment(
         FrontDoorAgreement.NotPresent => null,
         FrontDoorAgreement.Pending => "Front Door is being checked.",
         FrontDoorAgreement.Agrees when FrontDoorState == HealthState.Healthy => "Front Door agrees: it is healthy.",
-        FrontDoorAgreement.Agrees => $"Front Door agrees: it is {Lower(FrontDoorState)} too.",
+        FrontDoorAgreement.Agrees => $"Front Door agrees: it is {HealthClassifier.Sentence(FrontDoorState)} too.",
         _ when FrontDoorState == HealthState.Healthy => "Front Door disagrees: it is healthy although no node is.",
-        _ => $"Front Door disagrees: it is {Lower(FrontDoorState)} although {Expected?.Label ?? "a node"} is healthy.",
+        _ => $"Front Door disagrees: it is {HealthClassifier.Sentence(FrontDoorState)} although {Expected?.Label ?? "a node"} is healthy.",
     };
 
     public static ServingAssessment Assess(IEnumerable<NodeHealth> nodes, HealthState? frontDoor)
@@ -221,11 +221,4 @@ public sealed record ServingAssessment(
         return nodeServes == (frontDoor == HealthState.Healthy) ? FrontDoorAgreement.Agrees : FrontDoorAgreement.Disagrees;
     }
 
-    private static string Lower(HealthState? state) => state switch
-    {
-        HealthState.Healthy => "healthy",
-        HealthState.Unhealthy => "unhealthy",
-        HealthState.Unreachable => "unreachable",
-        _ => "not checked",
-    };
 }

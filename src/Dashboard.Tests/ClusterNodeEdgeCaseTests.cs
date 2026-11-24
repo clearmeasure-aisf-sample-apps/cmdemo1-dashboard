@@ -379,4 +379,15 @@ public class ClusterNodeEdgeCaseTests
         Assert.NotEqual(one, one with { Pressures = [] });
         Assert.NotEqual(one, one with { Pressures = [""] });
     }
+
+    /// <summary>A node whose memory part is the nothing it was given says the one word the all-nothing use says:
+    /// the constant that every edge-case file names instead of repeating the string twice. The test builds a node
+    /// with no memory part said and checks that its words carry the constant where the memory part stands.</summary>
+    [Fact]
+    public void ANodeWithNoMemoryPartSaidSaysTheEmptyResourceUseConstant()
+    {
+        var node = ClusterFixture.Node() with { Memory = ResourceUse.None };
+
+        Assert.Contains($"Memory = {RecordWords.EmptyResourceUse}", node.ToString(), StringComparison.Ordinal);
+    }
 }

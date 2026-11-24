@@ -46,17 +46,23 @@ public sealed class Poller(Func<CancellationToken, Task> check, TimeProvider tim
         }
     }
 
-    /// <summary>Checks run only while the dashboard is not paused and its browser tab is visible.</summary>
+    /// <summary>Whether checks run on their own; see <see cref="Running"/> for the rule.</summary>
     public bool IsActive
     {
         get
         {
             lock (_gate)
             {
-                return !_paused && _visible;
+                return Running;
             }
         }
     }
+
+    /// <summary>
+    /// Checks run only while the dashboard is not paused and its browser tab is visible. Read only while holding
+    /// <c>_gate</c>.
+    /// </summary>
+    private bool Running => !_paused && _visible;
 
     public void Pause() => Change(() => Set(ref _paused, true));
 
@@ -91,7 +97,7 @@ public sealed class Poller(Func<CancellationToken, Task> check, TimeProvider tim
                 }
 
                 wake = _wake.Task;
-                active = (!_paused && _visible) || _checkRequested;
+                active = Running || _checkRequested;
                 _checkRequested = false;
             }
 
@@ -103,7 +109,7 @@ public sealed class Poller(Func<CancellationToken, Task> check, TimeProvider tim
             TimeSpan wait;
             lock (_gate)
             {
-                wait = !_paused && _visible ? _interval : Timeout.InfiniteTimeSpan;
+                wait = Running ? _interval : Timeout.InfiniteTimeSpan;
             }
 
             if (wait == Timeout.InfiniteTimeSpan)

@@ -279,6 +279,41 @@ public class RuntimeWorkHelperCoverageTests
     }
 
     /// <summary>
+    /// The source scan and the assembly enumeration are two reads of the same set: neither may find what the other
+    /// misses. An attribute in front of the <c>public static</c>, a return type the source pattern cannot cross,
+    /// a type written in a form the regex does not know - the source scan would miss them, but the assembly read
+    /// does not; and the source scan would read internal helpers the assembly read skips, which is the other way a
+    /// discrepancy shows up. The two sets must be equal, both ways, for each of the two namespaces.
+    /// </summary>
+    [Fact]
+    public void TheSourceAndTheAssemblyDeclareTheSameRuntimeWorkHelpers()
+    {
+        var methods = HelperMethods();
+
+        // Runtime namespace: compare source scan with assembly enumeration.
+        var runtimeSource = methods
+            .Where(method => method.File.StartsWith("Runtime/", StringComparison.Ordinal))
+            .Select(method => $"{method.Class}.{method.Name}")
+            .Distinct(StringComparer.Ordinal)
+            .ToHashSet(StringComparer.Ordinal);
+        var runtimeAssembly = SourceScan.DeclaredInAssembly(typeof(RuntimeBoxLink), "Dashboard.Runtime");
+
+        Assert.Empty(runtimeSource.Except(runtimeAssembly));
+        Assert.Empty(runtimeAssembly.Except(runtimeSource));
+
+        // Work namespace: compare source scan with assembly enumeration.
+        var workSource = methods
+            .Where(method => method.File.StartsWith("Work/", StringComparison.Ordinal))
+            .Select(method => $"{method.Class}.{method.Name}")
+            .Distinct(StringComparer.Ordinal)
+            .ToHashSet(StringComparer.Ordinal);
+        var workAssembly = SourceScan.DeclaredInAssembly(typeof(WorkItemsText), "Dashboard.Work");
+
+        Assert.Empty(workSource.Except(workAssembly));
+        Assert.Empty(workAssembly.Except(workSource));
+    }
+
+    /// <summary>
     /// A guard that found nothing has seen nothing: the helpers declare well over a hundred public static methods
     /// across both directories today, and the tests that call them number well over a hundred files. A scan that
     /// reaches far fewer read the wrong place, and the clean verdict above would mean nothing; the floors are set

@@ -42,8 +42,6 @@ public sealed record PinnedVersions(PinnedVersionsState State, IReadOnlyDictiona
     /// <summary>What a Kustomize file is called when its address names no file.</summary>
     public const string KustomizationFileName = "kustomization.yaml";
 
-    private const string NewTag = "newTag";
-
     private static readonly Dictionary<string, string> None = new(StringComparer.Ordinal);
 
     public static PinnedVersions NotTracked { get; } = new(PinnedVersionsState.NotTracked, None);
@@ -65,7 +63,7 @@ public sealed record PinnedVersions(PinnedVersionsState State, IReadOnlyDictiona
     {
         if (string.IsNullOrWhiteSpace(json))
         {
-            return Unavailable("the file is empty");
+            return Unavailable(FileProblems.Empty);
         }
 
         try
@@ -74,7 +72,7 @@ public sealed record PinnedVersions(PinnedVersionsState State, IReadOnlyDictiona
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
             {
-                return Unavailable("the file does not contain a JSON object");
+                return Unavailable(FileProblems.NotAnObject);
             }
 
             var versions = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -91,7 +89,7 @@ public sealed record PinnedVersions(PinnedVersionsState State, IReadOnlyDictiona
         }
         catch (JsonException)
         {
-            return Unavailable("the file is not valid JSON");
+            return Unavailable(FileProblems.Broken);
         }
     }
 
@@ -106,20 +104,20 @@ public sealed record PinnedVersions(PinnedVersionsState State, IReadOnlyDictiona
         ArgumentNullException.ThrowIfNull(deployable);
         if (string.IsNullOrWhiteSpace(yaml))
         {
-            return Unavailable("the file is empty");
+            return Unavailable(FileProblems.Empty);
         }
 
         foreach (var line in yaml.Split('\n'))
         {
-            if (NewTagValue(line) is { } value)
+            if (KustomizationPinLine.Of(line) is { } value)
             {
                 return VersionText.Display(value) is { } version
                     ? new PinnedVersions(PinnedVersionsState.Read, new Dictionary<string, string>(StringComparer.Ordinal) { [deployable] = version })
-                    : Unavailable($"the first {NewTag} entry of the file has no value");
+                    : Unavailable($"the first {KustomizationPinLine.Key} entry of the file has no value");
             }
         }
 
-        return Unavailable($"the file has no {NewTag} entry");
+        return Unavailable($"the file has no {KustomizationPinLine.Key} entry");
     }
 
     /// <summary>The name of the file at an address: the last part of its path.</summary>
@@ -130,57 +128,6 @@ public sealed record PinnedVersions(PinnedVersionsState State, IReadOnlyDictiona
         var name = path[(path.LastIndexOf('/') + 1)..];
         return name.Length == 0 ? KustomizationFileName : name;
     }
-
-    /// <summary>
-    /// The value of a line that is a <c>newTag</c> entry, empty when it has none; null for any other line (a comment,
-    /// another key).
-    /// </summary>
-    private static string? NewTagValue(string line)
-    {
-        var text = line.AsSpan().Trim();
-
-        // The first key of a list item: "- newTag: 2.4.15".
-        if (text.Length > 1 && text[0] == '-' && char.IsWhiteSpace(text[1]))
-        {
-            text = text[1..].TrimStart();
-        }
-
-        if (!text.StartsWith(NewTag, StringComparison.Ordinal))
-        {
-            return null;
-        }
-
-        text = text[NewTag.Length..].TrimStart();
-        if (text.IsEmpty || text[0] != ':' || (text.Length > 1 && !char.IsWhiteSpace(text[1])))
-        {
-            return null;
-        }
-
-        text = text[1..].Trim();
-        if (text.IsEmpty || text[0] == '#')
-        {
-            return string.Empty;
-        }
-
-        if (text[0] is '"' or '\'')
-        {
-            var rest = text[1..];
-            var end = rest.IndexOf(text[0]);
-            return (end < 0 ? rest : rest[..end]).ToString();
-        }
-
-        // Without quotes, a comment starts at a "#" that follows a space.
-        for (var index = 1; index < text.Length; index++)
-        {
-            if (text[index] == '#' && char.IsWhiteSpace(text[index - 1]))
-            {
-                text = text[..index].TrimEnd();
-                break;
-            }
-        }
-
-        return text.ToString();
-    }
 }
 
 /// <summary>
@@ -190,7 +137,7 @@ public sealed record PinnedVersions(PinnedVersionsState State, IReadOnlyDictiona
 public sealed class PinnedVersionsReader(HttpClient http, TimeProvider time)
 {
     /// <summary>How long the answer may take: as long as a node's.</summary>
-    public TimeSpan Timeout { get; init; } = NodeProber.DefaultTimeout;
+    public TimeSpan Timeout { get; init; } = ProbeDefaults.DefaultTimeout;
 
     /// <summary>
     /// Never throws for a file that cannot be read: that is the result Missing or Unavailable. Only the caller's
@@ -226,7 +173,7 @@ public sealed class PinnedVersionsReader(HttpClient http, TimeProvider time)
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return PinnedVersions.Unavailable($"no answer within {Timeout.TotalSeconds:0} s");
+            return PinnedVersions.Unavailable(ProbeDefaults.NoAnswerWithin(Timeout));
         }
         catch (HttpRequestException)
         {

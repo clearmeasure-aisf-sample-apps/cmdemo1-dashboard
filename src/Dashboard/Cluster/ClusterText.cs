@@ -9,23 +9,38 @@ public static class ClusterText
     /// <summary>From this share of its limit on, a meter is marked as high.</summary>
     public const double HighPercent = 90;
 
-    private const double MillicoresPerCore = 1000;
+    /// <summary>The millicores in one core: the cluster reads CPU in millicores and says it in cores.</summary>
+    internal const double MillicoresPerCore = 1000;
+
     private const double Kibibyte = 1024;
     private const double Mebibyte = Kibibyte * 1024;
-    private const double Gibibyte = Mebibyte * 1024;
+
+    /// <summary>The bytes in one GiB (1024³): the cluster reads memory in bytes and says it, from a GiB on, in GiB.</summary>
+    internal const double Gibibyte = Mebibyte * 1024;
+
+    /// <summary>
+    /// The binary units memory is said in, largest first: a number of bytes is said in the first unit it is at least
+    /// one of, and in the last one - the KiB - when it is none of them (a number below a KiB, a negative, a NaN).
+    /// </summary>
+    private static readonly MemoryUnit[] MemoryUnits =
+    [
+        new(Gibibyte, "0.#", "GiB"),
+        new(Mebibyte, "0", "MiB"),
+        new(Kibibyte, "0", "KiB"),
+    ];
 
     /// <summary>Millicores as cores, without the unit: <c>0.81</c>, <c>3.86</c>, <c>12.5</c>.</summary>
     public static string Cores(double millicores) => (millicores / MillicoresPerCore).ToString("0.##", CultureInfo.InvariantCulture);
 
     /// <summary>The CPU of a node or of the cluster, in cores: <c>0.81 of 3.86 cores</c>.</summary>
     public static string CoresOf(double usedMillicores, double ofMillicores) =>
-        $"{Cores(usedMillicores)} of {Cores(ofMillicores)} {CoreUnit(ofMillicores)}";
+        $"{Cores(usedMillicores)} of {Cores(ofMillicores)} {CoresUnitOf(ofMillicores)}";
 
     /// <summary>The CPU of a pod: <c>14 m</c> (millicores, a thousandth of a core) below one core, then <c>1.25 cores</c>.</summary>
     public static string Cpu(double millicores) =>
         millicores < MillicoresPerCore
             ? string.Create(CultureInfo.InvariantCulture, $"{millicores:0} m")
-            : $"{Cores(millicores)} {CoreUnit(millicores)}";
+            : $"{Cores(millicores)} {CoresUnitOf(millicores)}";
 
     /// <summary>A pod's CPU against its limit: <c>14 of 500 m</c>, <c>38 m of 1 core</c>, <c>1.2 of 2 cores</c>.</summary>
     public static string CpuOf(double usedMillicores, double limitMillicores) =>
@@ -40,28 +55,28 @@ public static class ClusterText
     public static string? CpuUse(ResourceUse cpu)
     {
         ArgumentNullException.ThrowIfNull(cpu);
-        return cpu.Usage is not { } used ? null : cpu.Limits is { } limit && limit > 0 ? CpuOf(used, limit) : Cpu(used);
+        return UseAgainst(cpu.Usage, cpu.Limits, CpuOf, Cpu);
     }
 
     /// <summary>A pod's memory for its row, by the same rule.</summary>
     public static string? MemoryUse(ResourceUse memory)
     {
         ArgumentNullException.ThrowIfNull(memory);
-        return memory.Usage is not { } used ? null : memory.Limits is { } limit && limit > 0 ? MemoryOf(used, limit) : Memory(used);
+        return UseAgainst(memory.Usage, memory.Limits, MemoryOf, Memory);
     }
 
     /// <summary>The CPU of a node or of all nodes against what they offer, in cores; null without a usage.</summary>
     public static string? NodeCpu(ResourceUse cpu)
     {
         ArgumentNullException.ThrowIfNull(cpu);
-        return cpu.Usage is not { } used ? null : cpu.Allocatable is { } offered && offered > 0 ? CoresOf(used, offered) : $"{Cores(used)} cores";
+        return UseAgainst(cpu.Usage, cpu.Allocatable, CoresOf, used => $"{Cores(used)} cores");
     }
 
     /// <summary>The memory of a node or of all nodes against what they offer; null without a usage.</summary>
     public static string? NodeMemory(ResourceUse memory)
     {
         ArgumentNullException.ThrowIfNull(memory);
-        return memory.Usage is not { } used ? null : memory.Allocatable is { } offered && offered > 0 ? MemoryOf(used, offered) : Memory(used);
+        return UseAgainst(memory.Usage, memory.Allocatable, MemoryOf, Memory);
     }
 
     /// <summary>What the pods ask for of what the nodes offer: <c>63 % requested</c>; null without both numbers.</summary>
@@ -159,12 +174,12 @@ public static class ClusterText
         {
             PodState.Ready => "Ready",
             PodState.Finished => "Finished",
-            PodState.Starting => pod.Reason is { } reason ? $"Starting: {reason}" : "Starting",
+            PodState.Starting => $"Starting{Reason(pod.Reason)}",
             _ when phase.Is(PodPhaseKind.Pending) => Age(pod.StartedAt, asOf) is { } age
-                ? $"Pending for {age}{(pod.Reason is { } reason ? $": {reason}" : string.Empty)}"
-                : pod.Reason ?? ClusterPod.Pending,
-            _ when phase.Is(PodPhaseKind.Running) => pod.Reason ?? "Not ready",
-            _ => pod.Reason ?? pod.Phase,
+                ? $"Pending for {age}{Reason(pod.Reason)}"
+                : Said(pod.Reason) ?? ClusterPod.Pending,
+            _ when phase.Is(PodPhaseKind.Running) => Said(pod.Reason) ?? "Not ready",
+            _ => Said(pod.Reason) ?? pod.Phase,
         };
     }
 
@@ -175,19 +190,20 @@ public static class ClusterText
     public static string Summary(NamespaceGroup group)
     {
         ArgumentNullException.ThrowIfNull(group);
-        var parts = new List<string> { $"{Of(group.Ready, group.Total)} ready" };
-        if (group.Finished > 0)
+        var tally = new PodTally(group.Pods);
+        var parts = new List<string> { $"{Of(tally.Ready, tally.Total)} ready" };
+        if (tally.Finished > 0)
         {
-            parts.Add(string.Create(CultureInfo.InvariantCulture, $"{group.Finished} finished"));
+            parts.Add(string.Create(CultureInfo.InvariantCulture, $"{tally.Finished} finished"));
         }
 
-        parts.Add(Restarts(group.Restarts));
-        if (group.CpuUsage is { } cpu)
+        parts.Add(Restarts(tally.Restarts));
+        if (tally.CpuUsage is { } cpu)
         {
             parts.Add($"CPU {Cpu(cpu)}");
         }
 
-        if (group.MemoryUsage is { } memory)
+        if (tally.MemoryUsage is { } memory)
         {
             parts.Add($"memory {Memory(memory)}");
         }
@@ -201,7 +217,8 @@ public static class ClusterText
         ArgumentNullException.ThrowIfNull(groups);
         var count = groups.Platform.Count;
         var spaces = Plural.Of(count, "namespace");
-        return $"Platform: {spaces}, {Of(groups.Platform.Sum(space => space.Ready), groups.Platform.Sum(space => space.Total))} pods ready";
+        var tallies = groups.Platform.Select(space => new PodTally(space.Pods)).ToList();
+        return $"Platform: {spaces}, {Of(tallies.Sum(tally => tally.Ready), tallies.Sum(tally => tally.Total))} pods ready";
     }
 
     /// <summary>A volume claim: <c>data-db-0 8 GiB, Bound</c>.</summary>
@@ -245,10 +262,50 @@ public static class ClusterText
     public static string WorkloadsTitle(string? cluster) =>
         LinkText.Portal(cluster is null ? "The cluster's workloads in the Azure portal" : $"The workloads of {cluster} in the Azure portal: deployments, pods and their logs");
 
-    private static string CoreUnit(double millicores) => millicores == MillicoresPerCore ? "core" : "cores";
+    /// <summary>
+    /// A reason as the end of what comes before it: <c>: CrashLoopBackOff</c>, trimmed by <see cref="Words"/>; empty
+    /// when there is nothing to say.
+    /// </summary>
+    internal static string Reason(string? detail) => Said(detail) is { } words ? $": {words}" : string.Empty;
 
-    private static (string Number, string Unit) MemoryParts(double bytes) =>
-        bytes >= Gibibyte ? ((bytes / Gibibyte).ToString("0.#", CultureInfo.InvariantCulture), "GiB")
-        : bytes >= Mebibyte ? ((bytes / Mebibyte).ToString("0", CultureInfo.InvariantCulture), "MiB")
-        : ((bytes / Kibibyte).ToString("0", CultureInfo.InvariantCulture), "KiB");
+    /// <summary>
+    /// The words of a reason without the spaces around them and without the full stops they end in - a stop followed
+    /// by a space is still a stop - so the one that closes the sentence is the only one said.
+    /// </summary>
+    internal static string Words(string? detail)
+    {
+        var words = (detail ?? string.Empty).Trim();
+        while (words.EndsWith('.'))
+        {
+            words = words.TrimEnd('.').TrimEnd();
+        }
+
+        return words;
+    }
+
+    /// <summary>The <see cref="Words"/> of a reason; null when nothing is left of it.</summary>
+    private static string? Said(string? detail) => Words(detail) is { Length: > 0 } words ? words : null;
+
+    /// <summary>
+    /// The unit a quantity of CPU is said in: <c>core</c> for a quantity of exactly one core (1000 millicores),
+    /// <c>cores</c> for every other - 0, 0.5, 1.5, NaN. The word agrees with a quantity, not with a count, so it is
+    /// deliberately not <see cref="Plural"/>: there is no "count of one" in half a core.
+    /// </summary>
+    private static string CoresUnitOf(double millicores) => millicores == MillicoresPerCore ? "core" : "cores";
+
+    /// <summary>
+    /// A use against a whole: null without a usage, said against the whole when it is more than zero, plain otherwise.
+    /// The four members that call it are only the choice of unit they make.
+    /// </summary>
+    private static string? UseAgainst(double? usage, double? whole, Func<double, double, string> against, Func<double, string> plain) =>
+        usage is not { } used ? null : whole is { } of && of > 0 ? against(used, of) : plain(used);
+
+    private static (string Number, string Unit) MemoryParts(double bytes)
+    {
+        var unit = Array.Find(MemoryUnits, candidate => bytes >= candidate.Bytes) ?? MemoryUnits[^1];
+        return ((bytes / unit.Bytes).ToString(unit.Format, CultureInfo.InvariantCulture), unit.Unit);
+    }
+
+    /// <summary>A binary unit of memory: how many bytes it is, the format of its number and its name.</summary>
+    private sealed record MemoryUnit(double Bytes, string Format, string Unit);
 }

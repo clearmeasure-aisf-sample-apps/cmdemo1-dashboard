@@ -226,13 +226,17 @@ public static class RuntimePayloadBuilder
     private static RuntimeTileLine ActivityLineOf(ActivityLine line) =>
         RuntimeTileLine.Of(line.Kind, [new RuntimeTextPart(line.Text, RuntimeLink.To(line.Url, $"{line.Title}\n{DeploymentText.TaskTitle}"))]);
 
-    /// <summary>The state word of a health state, as the payload carries it.</summary>
-    public static string StateOf(HealthState state) => state switch
+    /// <summary>The state word of a health state, as the payload carries it, one arm per state so a new state fails the build.</summary>
+    public static string StateOf(HealthState state) => TileStateOf(state).Word();
+
+    /// <summary>The tile state of a health state, one arm per state so a new state fails the build.</summary>
+    public static TileState TileStateOf(HealthState state) => state switch
     {
-        HealthState.Healthy => Healthy,
-        HealthState.Unhealthy => Unhealthy,
-        HealthState.Unreachable => Unreachable,
-        _ => Checking,
+        HealthState.Healthy => TileState.Healthy,
+        HealthState.Unhealthy => TileState.Unhealthy,
+        HealthState.Unreachable => TileState.Unreachable,
+        HealthState.Pending => TileState.Checking,
+        _ => throw new ArgumentOutOfRangeException(nameof(state), state, null),
     };
 
     private static List<Entry> Index(EnvironmentStatus? environment)
@@ -252,20 +256,9 @@ public static class RuntimePayloadBuilder
         return entries;
     }
 
-    private static Entry? Find(List<Entry> entries, RuntimeNode node)
-    {
-        var kind = node.Kind switch
-        {
-            RuntimeNodeKind.WebApp => TargetKind.Node,
-            // A dashboard the topology lists as a node (another home of this page) is checked like a web app.
-            RuntimeNodeKind.StaticSite => TargetKind.Node,
-            RuntimeNodeKind.FrontDoor => TargetKind.FrontDoor,
-            _ => (TargetKind?)null,
-        };
-        return kind is null || node.Url is null
-            ? null
-            : entries.FirstOrDefault(entry => entry.Target.Kind == kind && entry.Target.Url == node.Url);
-    }
+    /// <summary>The entry of the monitor target the node is (<see cref="TargetMatch"/>); null for a node that is none.</summary>
+    private static Entry? Find(List<Entry> entries, RuntimeNode node) =>
+        TargetMatch.Of(node) is { } match ? entries.FirstOrDefault(entry => match.Matches(entry.Target)) : null;
 
     /// <summary>Resource Health as the tiles take it: what it said of the resources a box stands for.</summary>
     private sealed record HealthSource(ResourceHealthReport? Report, DateTimeOffset? Now, TimeZoneInfo Zone)
@@ -282,7 +275,7 @@ public static class RuntimePayloadBuilder
             }
 
             var title = why.Length > 0 ? $"{node.Name}: {why}\n{words.Title}" : $"{node.Name}\n{words.Title}";
-            return new RuntimeTile(node.Alias, Neutral, words.Label, null, [new RuntimeTileLine(words.Line, words.Tone)], null, title);
+            return new RuntimeTile(node.Alias, TileState.Neutral.Word(), words.Label, null, [new RuntimeTileLine(words.Line, words.Tone)], null, title);
         }
     }
 
@@ -349,14 +342,17 @@ public static class RuntimePayloadBuilder
 
     /// <summary>The state word of a container app's probe, one arm per state so a new state fails the build: the
     /// colours of the other states, none of its own.</summary>
-    public static string StateOf(ContainerAppState state) => state switch
+    public static string StateOf(ContainerAppState state) => TileStateOf(state).Word();
+
+    /// <summary>The tile state of a container app's probe, one arm per state so a new state fails the build.</summary>
+    public static TileState TileStateOf(ContainerAppState state) => state switch
     {
-        ContainerAppState.Probing => Checking,
-        ContainerAppState.Waking => Checking,
-        ContainerAppState.Healthy => Healthy,
-        ContainerAppState.Responding => Healthy,
-        ContainerAppState.Unhealthy => Unhealthy,
-        ContainerAppState.NotResponding => Unreachable,
+        ContainerAppState.Probing => TileState.Checking,
+        ContainerAppState.Waking => TileState.Checking,
+        ContainerAppState.Healthy => TileState.Healthy,
+        ContainerAppState.Responding => TileState.Healthy,
+        ContainerAppState.Unhealthy => TileState.Unhealthy,
+        ContainerAppState.NotResponding => TileState.Unreachable,
         _ => throw new ArgumentOutOfRangeException(nameof(state), state, null),
     };
 
@@ -478,7 +474,7 @@ public static class RuntimePayloadBuilder
         {
             if (clients.Any(entry => entry.Target.State == HealthState.Pending))
             {
-                return new RuntimeTile(node.Alias, Checking, "Checking", null, [new RuntimeTileLine("waiting for the health checks", "muted")], null, $"{node.Name}: waiting for the health checks of the web apps that use it.");
+                return new RuntimeTile(node.Alias, TileState.Checking.Word(), "Checking", null, [new RuntimeTileLine("waiting for the health checks", "muted")], null, $"{node.Name}: waiting for the health checks of the web apps that use it.");
             }
 
             return clients.Any(entry => entry.Target.HealthDetail is not null)
@@ -507,10 +503,10 @@ public static class RuntimePayloadBuilder
             {
                 return new RuntimeTile(
                     node.Alias,
-                    Healthy,
+                    TileState.Healthy.Word(),
                     "Reachable",
                     null,
-                    [new RuntimeTileLine($"{worst.Target.Region ?? worst.Target.Name} reports it {HealthDetailText.Label(worst.Check.State).ToLowerInvariant()}", "warn")],
+                    [new RuntimeTileLine($"{worst.Target.Label} reports it {HealthDetailText.Label(worst.Check.State).ToLowerInvariant()}", "warn")],
                     null,
                     $"{reachable} Not so for {worst.Target.Name}: {HealthDetailText.Title(worst.Check)}");
             }
@@ -518,7 +514,7 @@ public static class RuntimePayloadBuilder
             var line = entry.Description is { } description
                 ? HealthDetailText.Brief(description, DescriptionLength)
                 : $"health check {HealthDetailText.Brief(check, 14)} passed";
-            return new RuntimeTile(node.Alias, Healthy, "Reachable", null, [new RuntimeTileLine(line, "ok")], null, reachable);
+            return new RuntimeTile(node.Alias, TileState.Healthy.Word(), "Reachable", null, [new RuntimeTileLine(line, "ok")], null, reachable);
         }
 
         var label = HealthDetailText.Label(worst.Check.State);
@@ -526,7 +522,7 @@ public static class RuntimePayloadBuilder
         var title = $"{node.Name}: by the health check of {worst.Target.Name} (last {TimeText.Clock(worst.Target.Last?.CheckedAt ?? worst.Target.HealthDetail!.ReadAt, zone)}). The browser does not call it. {HealthDetailText.Title(worst.Check)}";
         return worst.Check.State switch
         {
-            CheckState.Unhealthy or CheckState.Degraded => new RuntimeTile(node.Alias, Unhealthy, label, null, [new RuntimeTileLine(words, "warn")], null, title),
+            CheckState.Unhealthy or CheckState.Degraded => new RuntimeTile(node.Alias, TileState.Unhealthy.Word(), label, null, [new RuntimeTileLine(words, "warn")], null, title),
             CheckState.Unknown => NeutralTile(node, "Not known", words, title),
             _ => NeutralTile(
                 node,
@@ -561,7 +557,7 @@ public static class RuntimePayloadBuilder
             var names = string.Join(", ", passed.Select(entry => entry.Target.Name));
             var latest = passed.Max(entry => entry.Target.Last!.CheckedAt);
             var line = passed.Count == 1
-                ? $"health check of {passed[0].Target.Region ?? passed[0].Target.Name} passed"
+                ? $"health check of {passed[0].Target.Label} passed"
                 : $"health checks of {passed.Count} web apps passed";
             var queries = clients.Select(entry => entry.Target.Telemetry).OfType<TelemetrySnapshot>().ToList();
 
@@ -572,7 +568,7 @@ public static class RuntimePayloadBuilder
                 : string.Empty;
             return new RuntimeTile(
                 node.Alias,
-                Healthy,
+                TileState.Healthy.Word(),
                 "Reachable",
                 queries.Count == 0 ? null : string.Create(CultureInfo.InvariantCulture, $"{queries.Sum(telemetry => telemetry.SqlOfTraffic)} queries/min"),
                 [new RuntimeTileLine(line, "ok")],
@@ -588,7 +584,7 @@ public static class RuntimePayloadBuilder
 
         if (clients.Any(entry => entry.Target.State == HealthState.Pending))
         {
-            return new RuntimeTile(node.Alias, Checking, "Checking", null, [new RuntimeTileLine("waiting for the health checks", "muted")], null, $"{node.Name}: waiting for the health checks of the web apps that use it.");
+            return new RuntimeTile(node.Alias, TileState.Checking.Word(), "Checking", null, [new RuntimeTileLine("waiting for the health checks", "muted")], null, $"{node.Name}: waiting for the health checks of the web apps that use it.");
         }
 
         return NeutralTile(
@@ -599,7 +595,7 @@ public static class RuntimePayloadBuilder
     }
 
     private static RuntimeTile NeutralTile(RuntimeNode node, string label, string line, string title) =>
-        new(node.Alias, Neutral, label, null, line.Length > 0 ? [new RuntimeTileLine(line, "muted")] : [], null, title);
+        new(node.Alias, TileState.Neutral.Word(), label, null, line.Length > 0 ? [new RuntimeTileLine(line, "muted")] : [], null, title);
 
     /// <summary>No app this page checks uses the database.</summary>
     private static RuntimeTile DatabaseUnprobed(RuntimeNode node, HealthSource health)
@@ -626,7 +622,7 @@ public static class RuntimePayloadBuilder
                 : string.Create(CultureInfo.InvariantCulture, $"health checks of {passed.Count} container apps passed");
             return new RuntimeTile(
                 node.Alias,
-                Healthy,
+                TileState.Healthy.Word(),
                 "Reachable",
                 null,
                 [new RuntimeTileLine(line, "ok")],
@@ -638,7 +634,7 @@ public static class RuntimePayloadBuilder
         {
             return new RuntimeTile(
                 node.Alias,
-                Checking,
+                TileState.Checking.Word(),
                 "Checking",
                 null,
                 [new RuntimeTileLine("waiting for the health checks", "muted")],
@@ -833,9 +829,8 @@ public static class RuntimePayloadBuilder
         var facts = last switch
         {
             null => "not checked yet",
-            { StatusCode: { } status, LatencyMs: { } latency } => string.Create(CultureInfo.InvariantCulture, $"HTTP {status} · {latency} ms"),
-            { StatusCode: { } status } => string.Create(CultureInfo.InvariantCulture, $"HTTP {status}"),
-            _ => "no answer",
+            { StatusCode: null } => "no answer",
+            _ => HistoryText.ResultFacts(last, " · "),
         };
         var title = new List<string> { $"{node.Name}: {HealthClassifier.Label(target.State)}", target.Url.AbsoluteUri };
         if (last is not null)
@@ -882,11 +877,11 @@ public static class RuntimePayloadBuilder
         ArgumentNullException.ThrowIfNull(deployable);
         if (LinkText.Release(deployable.Info.ProjectUrl, version) is { } release)
         {
-            return new RuntimeLink(release.AbsoluteUri, LinkText.ReleaseTitle(deployable.Info.Name, version));
+            return RuntimeLink.To(release, LinkText.ReleaseTitle(deployable.Info.Name, version));
         }
 
         return deployable.Build is { CommitUrl: { } commit, Commit: { } sha } build && string.Equals(build.Version, version, StringComparison.OrdinalIgnoreCase)
-            ? new RuntimeLink(commit.AbsoluteUri, LinkText.CommitTitle(sha))
+            ? RuntimeLink.To(commit, LinkText.CommitTitle(sha))
             : null;
     }
 
@@ -898,7 +893,7 @@ public static class RuntimePayloadBuilder
             return null;
         }
 
-        var label = target.Region ?? target.Name;
+        var label = target.Label;
         bool Has(IReadOnlyList<NodeVersion> nodes) => nodes.Any(node => node.Label == label);
         return versions.State switch
         {
@@ -920,13 +915,8 @@ public static class RuntimePayloadBuilder
         if (apps.Count == 0)
         {
             var others = region.Roles
-                .Where(role => !(databaseReachable && role == "data"))
-                .Select(role => role switch
-                {
-                    "data" => "database",
-                    "static" => "static sites",
-                    _ => role,
-                })
+                .Where(role => !(databaseReachable && role == RuntimeRegionRole.Data))
+                .Select(RuntimeRegionRole.Words)
                 .ToList();
             var parts = new List<string>();
             if (databaseReachable)
@@ -976,21 +966,21 @@ public static class RuntimePayloadBuilder
                 var role = to is { Assessment.IsRotation: true, Target.IsPrimary: true } ? "in the rotation, while healthy"
                     : edge.Priority == 1 ? "first, while healthy"
                     : "when priority 1 is down";
-                var state = to is null ? Neutral : Carries(to);
+                var state = to is null ? EdgeState.Neutral : Carries(to);
                 var telemetry = to?.Target.Telemetry;
                 var text = telemetry is { FrontDoorProbes: > 0 } ? string.Create(CultureInfo.InvariantCulture, $"{role} · {telemetry.FrontDoorProbes} probes") : role;
                 var counted = telemetry is null
                     ? "Calls per minute: the web app reports none."
                     : string.Create(CultureInfo.InvariantCulture, $"Last minute, counted by the web app: {telemetry.FromFrontDoor} requests forwarded by Front Door, {telemetry.FrontDoorProbes} Front Door health probes.");
                 return new RuntimeEdgeMark(
-                    edge.Id,
-                    state,
-                    Number(telemetry?.FromFrontDoor),
-                    CallsUnit,
-                    text,
-                    $"Front Door to {edge.To}, origin priority {edge.Priority?.ToString(CultureInfo.InvariantCulture) ?? "not known"}: {role}. {Words(state)} {counted}",
-                    to is null || telemetry is null ? null : Link(to.Target, LinkSet.Performance, to.Target.Name),
-                    to is null ? null : RuntimeTrend.Of(Trends.FromFrontDoor(to.Target)));
+                    Id: edge.Id,
+                    State: state.Word(),
+                    Number: Number(telemetry?.FromFrontDoor),
+                    Unit: CallsUnit,
+                    Text: text,
+                    Title: $"Front Door to {edge.To}, origin priority {edge.Priority?.ToString(CultureInfo.InvariantCulture) ?? "not known"}: {role}. {state.Sentence()} {counted}",
+                    Link: to is null || telemetry is null ? null : Link(to.Target, LinkSet.Performance, to.Target.Name),
+                    Trend: to is null ? null : RuntimeTrend.Of(Trends.FromFrontDoor(to.Target)));
             }
 
             case RuntimeEdgeKind.Sql:
@@ -1001,8 +991,8 @@ public static class RuntimePayloadBuilder
                 }
 
                 // A web app that is down sends no queries: the database is not the reason, so the line is idle.
-                var carries = from is null ? Neutral : Carries(from);
-                var state = carries == "down" ? "idle" : carries;
+                var carries = from is null ? EdgeState.Neutral : Carries(from);
+                var state = carries == EdgeState.Down ? EdgeState.Idle : carries;
                 var telemetry = from?.Target.Telemetry;
                 var latency = telemetry?.SqlP95Ms is { } p95 ? string.Create(CultureInfo.InvariantCulture, $", p95 {p95} ms") : string.Empty;
                 var counted = telemetry switch
@@ -1014,21 +1004,21 @@ public static class RuntimePayloadBuilder
                 // Short words: they stand under the number, in the narrow column between two frames of the diagram.
                 const string Queries = "app queries";
                 return new RuntimeEdgeMark(
-                    edge.Id,
-                    state,
-                    Number(telemetry?.SqlOfTraffic),
-                    CallsUnit,
-                    telemetry is { SplitsSql: true } ? string.Create(CultureInfo.InvariantCulture, $"{Queries} · {telemetry.SqlBackground} background") : Queries,
-                    $"{edge.From} to the database. {Words(state)} {counted}",
-                    from is null || telemetry is null ? null : Link(from.Target, LinkSet.Dependencies, from.Target.Name),
-                    from is null ? null : RuntimeTrend.Of(Trends.Sql(from.Target)));
+                    Id: edge.Id,
+                    State: state.Word(),
+                    Number: Number(telemetry?.SqlOfTraffic),
+                    Unit: CallsUnit,
+                    Text: telemetry is { SplitsSql: true } ? string.Create(CultureInfo.InvariantCulture, $"{Queries} · {telemetry.SqlBackground} background") : Queries,
+                    Title: $"{edge.From} to the database. {state.Sentence()} {counted}",
+                    Link: from is null || telemetry is null ? null : Link(from.Target, LinkSet.Dependencies, from.Target.Name),
+                    Trend: from is null ? null : RuntimeTrend.Of(Trends.Sql(from.Target)));
             }
 
             case RuntimeEdgeKind.Dependency:
             {
                 // As to the database: a web app that is down calls nothing, and the dependency is not the reason.
-                var carries = from is null ? Neutral : Carries(from);
-                var state = carries == "down" ? "idle" : carries;
+                var carries = from is null ? EdgeState.Neutral : Carries(from);
+                var state = carries == EdgeState.Down ? EdgeState.Idle : carries;
                 var telemetry = from?.Target.Telemetry;
 
                 // The app counts its outgoing HTTP calls as one number: it is this dependency's only when the web app
@@ -1041,30 +1031,38 @@ public static class RuntimePayloadBuilder
                     _ => string.Create(CultureInfo.InvariantCulture, $"Last minute, counted by the web app: {telemetry.Http} outgoing HTTP calls, all of them (it has this one dependency)."),
                 };
                 return new RuntimeEdgeMark(
-                    edge.Id,
-                    state,
-                    only ? Number(telemetry?.Http) : NoNumber,
-                    CallsUnit,
-                    only ? "outgoing HTTP calls" : "not counted apart",
-                    $"{edge.From} to {manifest.Nodes.FirstOrDefault(node => node.Alias == edge.To)?.Name ?? edge.To}. {Words(state)} {counted}",
-                    null,
-                    only && from is not null ? RuntimeTrend.Of(Trends.Http(from.Target)) : null);
+                    Id: edge.Id,
+                    State: state.Word(),
+                    Number: only ? Number(telemetry?.Http) : NoNumber,
+                    Unit: CallsUnit,
+                    Text: only ? "outgoing HTTP calls" : "not counted apart",
+                    Title: $"{edge.From} to {manifest.Nodes.FirstOrDefault(node => node.Alias == edge.To)?.Name ?? edge.To}. {state.Sentence()} {counted}",
+                    Link: null,
+                    Trend: only && from is not null ? RuntimeTrend.Of(Trends.Http(from.Target)) : null);
             }
 
             case RuntimeEdgeKind.Public:
             {
                 var target = to ?? from;
-                var state = target is null ? Neutral : target.Target.State switch
+                var state = target is null ? EdgeState.Neutral : target.Target.State switch
                 {
-                    HealthState.Healthy => "active",
-                    HealthState.Pending => Checking,
-                    _ => "down",
+                    HealthState.Healthy => EdgeState.Active,
+                    HealthState.Pending => EdgeState.Checking,
+                    _ => EdgeState.Down,
                 };
                 var (number, counted, trend) = PublicCalls(edge, manifest, byAlias);
                 var requests = number == NoNumber || target is null
                     ? null
                     : RuntimeLink.To(target.Deployable.Info.Links?[LinkSet.Logs], LinkText.For(LinkSet.Logs, target.Deployable.Info.Name));
-                return new RuntimeEdgeMark(edge.Id, state, number, CallsUnit, null, $"The browser to {edge.To}: {Words(state)} {counted}", requests, RuntimeTrend.Of(trend));
+                return new RuntimeEdgeMark(
+                    Id: edge.Id,
+                    State: state.Word(),
+                    Number: number,
+                    Unit: CallsUnit,
+                    Text: null,
+                    Title: $"The browser to {edge.To}: {state.Sentence()} {counted}",
+                    Link: requests,
+                    Trend: RuntimeTrend.Of(trend));
             }
 
             case RuntimeEdgeKind.Dashboard when to is not null:
@@ -1072,21 +1070,33 @@ public static class RuntimePayloadBuilder
                 // A dashboard the topology lists as a node (another home of this page): the arrow says whether it answers.
                 var state = to.Target.State switch
                 {
-                    HealthState.Healthy => "active",
-                    HealthState.Pending => Checking,
-                    _ => "down",
+                    HealthState.Healthy => EdgeState.Active,
+                    HealthState.Pending => EdgeState.Checking,
+                    _ => EdgeState.Down,
                 };
                 var words = state switch
                 {
-                    "active" => "It answers.",
-                    Checking => "Being checked.",
+                    EdgeState.Active => "It answers.",
+                    EdgeState.Checking => "Being checked.",
                     _ => "Down: it does not answer.",
                 };
-                return new RuntimeEdgeMark(edge.Id, state, null, null, null, $"The browser to {to.Target.Name}: {words}");
+                return new RuntimeEdgeMark(
+                    Id: edge.Id,
+                    State: state.Word(),
+                    Number: null,
+                    Unit: null,
+                    Text: null,
+                    Title: $"The browser to {to.Target.Name}: {words}");
             }
 
             default:
-                return new RuntimeEdgeMark(edge.Id, Neutral, null, null, null, $"{edge.From} to {edge.To}");
+                return new RuntimeEdgeMark(
+                    Id: edge.Id,
+                    State: EdgeState.Neutral.Word(),
+                    Number: null,
+                    Unit: null,
+                    Text: null,
+                    Title: $"{edge.From} to {edge.To}");
         }
     }
 
@@ -1120,43 +1130,34 @@ public static class RuntimePayloadBuilder
     /// </summary>
     private static RuntimeEdgeMark ContainerSqlEdge(RuntimeEdge edge, ContainerAppStatus? status)
     {
-        var (state, words) = status is null ? (Checking, "Being checked.") : SqlWords(status.State);
+        var state = status is null ? EdgeState.Checking : SqlState(status.State);
         return new RuntimeEdgeMark(
-            edge.Id,
-            state,
-            NoNumber,
-            CallsUnit,
-            null,
-            $"{edge.From} to the database. {words} Queries per minute: this page does not count a container app's SQL commands.");
+            Id: edge.Id,
+            State: state.Word(),
+            Number: NoNumber,
+            Unit: CallsUnit,
+            Text: null,
+            Title: $"{edge.From} to the database. {state.Sentence()} Queries per minute: this page does not count a container app's SQL commands.");
     }
 
-    /// <summary>The words of a container app's SQL arrow, one arm per state so a new state fails the build.</summary>
-    private static (string State, string Words) SqlWords(ContainerAppState state) => state switch
+    /// <summary>The state of a container app's SQL arrow, one arm per state so a new state fails the build.</summary>
+    private static EdgeState SqlState(ContainerAppState state) => state switch
     {
-        ContainerAppState.Healthy => ("active", "Carries the traffic."),
-        ContainerAppState.Unhealthy => ("idle", "Idle: no traffic expected."),
-        ContainerAppState.NotResponding => ("idle", "Idle: no traffic expected."),
-        ContainerAppState.Probing => (Checking, "Being checked."),
-        ContainerAppState.Waking => (Checking, "Being checked."),
-        ContainerAppState.Responding => (Neutral, "Not checked."),
+        ContainerAppState.Healthy => EdgeState.Active,
+        ContainerAppState.Unhealthy => EdgeState.Idle,
+        ContainerAppState.NotResponding => EdgeState.Idle,
+        ContainerAppState.Probing => EdgeState.Checking,
+        ContainerAppState.Waking => EdgeState.Checking,
+        ContainerAppState.Responding => EdgeState.Neutral,
         _ => throw new ArgumentOutOfRangeException(nameof(state), state, null),
     };
 
     /// <summary>Whether the traffic of a node's deployable goes through this node, by the serving decision.</summary>
-    private static string Carries(Entry entry) =>
-        entry.Serves ? "active"
-        : entry.Target.State == HealthState.Healthy ? "idle"
-        : entry.Target.State == HealthState.Pending ? Checking
-        : "down";
-
-    private static string Words(string state) => state switch
-    {
-        "active" => "Carries the traffic.",
-        "idle" => "Idle: no traffic expected.",
-        "down" => "Down: its end is not healthy.",
-        Checking => "Being checked.",
-        _ => "Not checked.",
-    };
+    private static EdgeState Carries(Entry entry) =>
+        entry.Serves ? EdgeState.Active
+        : entry.Target.State == HealthState.Healthy ? EdgeState.Idle
+        : entry.Target.State == HealthState.Pending ? EdgeState.Checking
+        : EdgeState.Down;
 
     private static bool SameSite(Uri site, Uri page) =>
         string.Equals(site.Host, page.Host, StringComparison.OrdinalIgnoreCase) && site.Port == page.Port;

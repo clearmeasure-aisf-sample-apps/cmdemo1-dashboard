@@ -292,4 +292,28 @@ public class ResourceUseEdgeCaseTests
         Assert.Null(fromNothing.Allocatable);
         Assert.NotEqual(ResourceUse.None, fromNothing);
     }
+
+    // --------------------------------------------------------------------- the shared words
+
+    /// <summary>The words the record says about itself when every part is the nothing it was given: the constant
+    /// that every edge-case file pins through interpolation, named once in <see cref="RecordWords" /> and read
+    /// here from the instance the test builds itself. The bytes are the pinned bytes; the test says so by
+    /// comparing the constant to the words of <see cref="ResourceUse.None" />.</summary>
+    [Fact]
+    public void TheRecordWordsConstantIsTheWordsOfANothingUse()
+    {
+        Assert.Equal(RecordWords.EmptyResourceUse, ResourceUse.None.ToString());
+    }
+
+    /// <summary>The constant is not only the words of <see cref="ResourceUse.None" />: it is the words of any use
+    /// built with no parts said, the same string the cell, the sum and the row all stand on. A use that says one
+    /// part is not the constant - the constant is for the all-nothing use alone.</summary>
+    [Fact]
+    public void TheConstantIsTheWordsOfAnyUseWithNoPartsSaid()
+    {
+        Assert.Equal(RecordWords.EmptyResourceUse, new ResourceUse(null, null, null).ToString());
+        Assert.Equal(RecordWords.EmptyResourceUse, new ResourceUse(null, null, null, null).ToString());
+        Assert.NotEqual(RecordWords.EmptyResourceUse, new ResourceUse(0, null, null, null).ToString());
+        Assert.NotEqual(RecordWords.EmptyResourceUse, Full.ToString());
+    }
 }

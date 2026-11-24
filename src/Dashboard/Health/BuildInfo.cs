@@ -55,7 +55,7 @@ public sealed record BuildInfo(
                 ComplexityFacts.Read(JsonRead.Section(root, "complexity")),
                 CrapFacts.Read(JsonRead.Section(root, "crap")),
                 JsonRead.Count(JsonRead.Section(root, "analysis"), "qodanaProblems"));
-            return build.MeasuredNothing ? null : build;
+            return MeasuredFacts.OrNone(build, build.MeasuredNothing);
         }
         catch (JsonException)
         {
@@ -74,6 +74,13 @@ public sealed record BuildInfo(
 /// <summary>The one rule of the build's facts for "nothing measured": every part came back without a value.</summary>
 internal static class MeasuredFacts
 {
+    /// <summary>
+    /// The record as read; null when it measured nothing, so the card shows nothing for it: a record of nothing is no
+    /// record. The record says what "nothing" is for its parts; this says what follows from it, once.
+    /// </summary>
+    internal static T? OrNone<T>(T facts, bool measuredNothing)
+        where T : class => measuredNothing ? null : facts;
+
     /// <summary>True when every part is null: the build measured nothing there, and there is no record.</summary>
     internal static bool None(params ReadOnlySpan<object?> parts)
     {
@@ -109,7 +116,7 @@ public sealed record CodeSize(long? LinesOfCode, int? Files, IReadOnlyList<Langu
             .ToList();
         var lines = JsonRead.Long(section, "linesOfCode") ?? (languages.Count > 0 ? languages.Sum(language => language.Lines) : null);
         var code = new CodeSize(lines, JsonRead.Count(section, "files"), languages);
-        return code.MeasuredNothing ? null : code;
+        return MeasuredFacts.OrNone(code, code.MeasuredNothing);
     }
 
     /// <summary>No lines, no files and no languages: the build measured no code.</summary>
@@ -130,7 +137,7 @@ public sealed record TestCounts(int? Unit, int? Integration, int? Acceptance)
     internal static TestCounts? Read(JsonElement? section)
     {
         var tests = new TestCounts(JsonRead.Count(section, "unit"), JsonRead.Count(section, "integration"), JsonRead.Count(section, "acceptance"));
-        return tests.MeasuredNothing ? null : tests;
+        return MeasuredFacts.OrNone(tests, tests.MeasuredNothing);
     }
 
     internal bool MeasuredNothing => MeasuredFacts.None(Unit, Integration, Acceptance);
@@ -141,7 +148,7 @@ public sealed record CoverageFacts(double? LinePercent, double? BranchPercent)
     internal static CoverageFacts? Read(JsonElement? section)
     {
         var coverage = new CoverageFacts(JsonRead.Number(section, "linePercent"), JsonRead.Number(section, "branchPercent"));
-        return coverage.MeasuredNothing ? null : coverage;
+        return MeasuredFacts.OrNone(coverage, coverage.MeasuredNothing);
     }
 
     internal bool MeasuredNothing => MeasuredFacts.None(LinePercent, BranchPercent);
@@ -153,7 +160,7 @@ public sealed record ComplexityFacts(double? Average, int? Max, int? Methods)
     internal static ComplexityFacts? Read(JsonElement? section)
     {
         var complexity = new ComplexityFacts(JsonRead.Number(section, "average"), JsonRead.Count(section, "max"), JsonRead.Count(section, "methods"));
-        return complexity.MeasuredNothing ? null : complexity;
+        return MeasuredFacts.OrNone(complexity, complexity.MeasuredNothing);
     }
 
     internal bool MeasuredNothing => MeasuredFacts.None(Average, Max, Methods);
@@ -165,7 +172,7 @@ public sealed record CrapFacts(double? Max, double? Threshold, int? OverThreshol
     internal static CrapFacts? Read(JsonElement? section)
     {
         var crap = new CrapFacts(JsonRead.Number(section, "max"), JsonRead.Number(section, "threshold"), JsonRead.Count(section, "overThreshold"));
-        return crap.MeasuredNothing ? null : crap;
+        return MeasuredFacts.OrNone(crap, crap.MeasuredNothing);
     }
 
     internal bool MeasuredNothing => MeasuredFacts.None(Max, Threshold, OverThreshold);
@@ -255,76 +262,57 @@ public static class BuildText
     public static string Tests(TestCounts tests)
     {
         ArgumentNullException.ThrowIfNull(tests);
-        var parts = new (int? Count, string Kind)[] { (tests.Unit, "unit"), (tests.Integration, "integration"), (tests.Acceptance, "acceptance") }
-            .Where(part => part.Count is not null)
-            .Select(part => $"{Count(part.Count!.Value)} {part.Kind}")
-            .ToList();
-        return parts.Count == 1 ? parts[0] : $"{Count(tests.Total)}: {string.Join(", ", parts)}";
+        var parts = new CardParts()
+            .Add(Counted(tests.Unit, "unit"))
+            .Add(Counted(tests.Integration, "integration"))
+            .Add(Counted(tests.Acceptance, "acceptance"));
+        return parts.Count == 1 ? parts.Join() : $"{Count(tests.Total)}: {parts.Join()}";
     }
 
     /// <summary><c>81.2 % of lines, 70.1 % of branches</c>.</summary>
     public static string Coverage(CoverageFacts coverage)
     {
         ArgumentNullException.ThrowIfNull(coverage);
-        var parts = new List<string>();
-        if (coverage.LinePercent is { } lines)
-        {
-            parts.Add($"{Percent(lines)} of lines");
-        }
-
-        if (coverage.BranchPercent is { } branches)
-        {
-            parts.Add($"{Percent(branches)} of branches");
-        }
-
-        return string.Join(", ", parts);
+        return new CardParts()
+            .Add(coverage.LinePercent is { } lines ? $"{Percent(lines)} of lines" : null)
+            .Add(coverage.BranchPercent is { } branches ? $"{Percent(branches)} of branches" : null)
+            .Join();
     }
 
     /// <summary><c>average 1.9, worst 34 (5,210 methods)</c>.</summary>
     public static string Complexity(ComplexityFacts complexity)
     {
         ArgumentNullException.ThrowIfNull(complexity);
-        var parts = new List<string>();
-        if (complexity.Average is { } average)
-        {
-            parts.Add($"average {Number(average)}");
-        }
-
-        if (complexity.Max is { } max)
-        {
-            parts.Add($"worst {Count(max)}");
-        }
-
-        var text = string.Join(", ", parts);
-        return complexity.Methods is { } methods ? $"{text} ({Count(methods)} methods)".TrimStart() : text;
+        return new CardParts()
+            .Add(complexity.Average is { } average ? $"average {Number(average)}" : null)
+            .Add(complexity.Max is { } max ? $"worst {Count(max)}" : null)
+            .Join(complexity.Methods is { } methods ? $"({Count(methods)} methods)" : null);
     }
 
     /// <summary><c>worst 28.5, none over 30</c>; <c>worst 41, 3 methods over 30</c>.</summary>
     public static string Crap(CrapFacts crap)
     {
         ArgumentNullException.ThrowIfNull(crap);
-        var parts = new List<string>();
-        if (crap.Max is { } max)
-        {
-            parts.Add($"worst {Number(max)}");
-        }
+        return new CardParts()
+            .Add(crap.Max is { } max ? $"worst {Number(max)}" : null)
+            .Add(CrapOver(crap) ?? (crap.Threshold is { } threshold ? $"threshold {Number(threshold)}" : null))
+            .Join();
+    }
 
+    /// <summary><c>1,009 unit</c>; null when the build did not count that kind.</summary>
+    private static string? Counted(int? count, string kind) => count is { } value ? $"{Count(value)} {kind}" : null;
+
+    /// <summary><c>none over 30</c>, <c>1 method over 30</c>, <c>3 methods over the threshold</c>; null when not counted.</summary>
+    private static string? CrapOver(CrapFacts crap)
+    {
         var limit = crap.Threshold is { } threshold ? $"over {Number(threshold)}" : "over the threshold";
-        if (crap.OverThreshold is { } over)
+        return crap.OverThreshold switch
         {
-            parts.Add(over switch
-            {
-                0 => $"none {limit}",
-                1 => $"1 method {limit}",
-                _ => $"{Count(over)} methods {limit}",
-            });
-        }
-        else if (crap.Threshold is { } only)
-        {
-            parts.Add($"threshold {Number(only)}");
-        }
-
-        return string.Join(", ", parts);
+            null => null,
+            0 => $"none {limit}",
+            1 => $"1 method {limit}",
+            { } over => $"{Count(over)} methods {limit}",
+        };
     }
 
     /// <summary>True when a method's CRAP score is over the threshold: the card marks it.</summary>

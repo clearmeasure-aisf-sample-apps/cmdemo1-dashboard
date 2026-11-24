@@ -35,7 +35,7 @@ public sealed record SourceReading<T>(SourceState State, T? Value = null, string
 public sealed class ClusterReader(HttpClient http, TimeProvider time)
 {
     /// <summary>How long the answer may take: as long as a node's.</summary>
-    public TimeSpan Timeout { get; init; } = NodeProber.DefaultTimeout;
+    public TimeSpan Timeout { get; init; } = ProbeDefaults.DefaultTimeout;
 
     /// <summary>
     /// Never throws for a file that cannot be read: that is the result Missing, Unavailable or Malformed. Only the
@@ -74,7 +74,7 @@ public sealed class ClusterReader(HttpClient http, TimeProvider time)
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return new SourceReading<T>(SourceState.Unavailable, Detail: $"no answer within {Timeout.TotalSeconds:0} s");
+            return new SourceReading<T>(SourceState.Unavailable, Detail: ProbeDefaults.NoAnswerWithin(Timeout));
         }
         catch (HttpRequestException)
         {

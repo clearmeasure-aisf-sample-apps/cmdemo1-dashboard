@@ -40,10 +40,7 @@ internal static class JsonRead
 
     /// <summary>Any finite number, also below zero (such as a refund); null for anything else.</summary>
     public static double? Signed(JsonElement? parent, string name) =>
-        parent is { ValueKind: JsonValueKind.Object } value && value.TryGetProperty(name, out var number) && number.ValueKind == JsonValueKind.Number
-            && number.TryGetDouble(out var real) && double.IsFinite(real)
-            ? real
-            : null;
+        Real(parent, name) is { } real && double.IsFinite(real) ? real : null;
 
     /// <summary>True or false; null for anything else.</summary>
     public static bool? Flag(JsonElement? parent, string name) =>
@@ -59,6 +56,14 @@ internal static class JsonRead
     /// <summary>A count: a number that is not negative, rounded.</summary>
     public static int? Count(JsonElement? parent, string name) =>
         Number(parent, name) is { } number && number <= int.MaxValue ? (int)Math.Round(number) : null;
+
+    /// <summary>
+    /// A count as a node's telemetry says it: a number that is not negative, rounded, and one past the reach of an
+    /// <see cref="int" /> - even one too large for a <see cref="double" /> - held at <see cref="int.MaxValue" />
+    /// rather than refused as <see cref="Count" /> refuses it.
+    /// </summary>
+    public static int? SaturatedCount(JsonElement? parent, string name) =>
+        Real(parent, name) is { } real and >= 0 ? (int)Math.Min(Math.Round(real), int.MaxValue) : null;
 
     /// <summary>A large count, such as seconds or lines of code.</summary>
     public static long? Long(JsonElement? parent, string name) =>
@@ -81,6 +86,17 @@ internal static class JsonRead
 
     /// <summary>An absolute http or https address: the only kind the dashboard links to.</summary>
     public static Uri? Address(JsonElement? parent, string name) => Address(Text(parent, name));
+
+    /// <summary>The number under <paramref name="name"/> as a <see cref="double" />, infinite when it is too large for one; null for anything else.</summary>
+    private static double? Real(JsonElement? parent, string name) =>
+        parent is { ValueKind: JsonValueKind.Object } value && value.TryGetProperty(name, out var number) && number.ValueKind == JsonValueKind.Number
+            && number.TryGetDouble(out var real)
+            ? real
+            : null;
+
+    /// <summary>True when the value under <paramref name="name"/> is an array; false when there is no such name or it is not an array.</summary>
+    public static bool HasArray(JsonElement? parent, string name) =>
+        parent is { ValueKind: JsonValueKind.Object } value && value.TryGetProperty(name, out var part) && part.ValueKind == JsonValueKind.Array;
 
     public static Uri? Address(string? text) =>
         Uri.TryCreate(text, UriKind.Absolute, out var address) && (address.Scheme == Uri.UriSchemeHttp || address.Scheme == Uri.UriSchemeHttps)

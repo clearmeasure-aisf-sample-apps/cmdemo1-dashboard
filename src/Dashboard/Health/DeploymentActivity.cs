@@ -23,6 +23,38 @@ public sealed record DeploymentWait(string Kind, string? Title, DateTimeOffset? 
     /// <summary>True for a title that says no more than the kind does (<c>Sign-off</c> for a sign-off).</summary>
     public bool TitleIsTheKind => Title is null || string.Equals(Title.Replace(" ", "-", StringComparison.Ordinal), Kind.Replace(" ", "-", StringComparison.Ordinal), StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// The kind as a noun: <c>the question after a failed step</c>, <c>the sign-off</c>, else the file's own word.
+    /// With <see cref="Asks"/> and <see cref="Line"/>, the one place a kind of wait is put in words.
+    /// </summary>
+    public string Noun() => IsGuidedFailure ? "the question after a failed step" : IsSignOff ? "the sign-off" : Kind;
+
+    /// <summary>The <see cref="Noun"/>, with Octopus Deploy's title quoted where it says more than the kind does.</summary>
+    public string Question() => Title is { } title && !TitleIsTheKind ? $"{Noun()} \"{title}\"" : Noun();
+
+    /// <summary>
+    /// The sentence of a deployment that waits: <c>cmdemo2-ui 2.4.43 asks what to do after a failed step in uat</c>
+    /// for a guided failure; <c>... waits for a sign-off in uat</c> for anything else, and where the file names no wait.
+    /// </summary>
+    public static string Asks(DeploymentWait? wait, string what, string where) =>
+        wait is { IsGuidedFailure: true }
+            ? $"{what} asks what to do after a failed step in {where}"
+            : $"{what} waits for a sign-off in {where}";
+
+    /// <summary>
+    /// The line of a deployment that waits, on a node: <c>2.4.43 failed a step: ops decides</c>, <c>2.4.43 failed a
+    /// step and waits</c>, <c>2.4.43 waits for ops</c>, else <c>2.4.43 waits for a sign-off</c> and the
+    /// <paramref name="waited"/> words after it.
+    /// </summary>
+    public static string Line(DeploymentWait? wait, string release, string waited) =>
+        (wait?.IsGuidedFailure ?? false, wait?.Responsible) switch
+        {
+            (true, { } who) => $"{release} failed a step: {who} decides",
+            (true, null) => $"{release} failed a step and waits",
+            (false, { } who) => $"{release} waits for {who}",
+            _ => $"{release} waits for a sign-off{waited}",
+        };
+
     /// <summary>Null for an entry without the field, or without a kind.</summary>
     internal static DeploymentWait? Read(JsonElement? element) =>
         element is { ValueKind: JsonValueKind.Object } && JsonRead.Text(element, "kind") is { } kind
@@ -63,11 +95,23 @@ public sealed record RecentDeployment(
 }
 
 /// <summary>A deployment freeze of the Octopus Deploy instance that covers the system (an entry of <c>freezes</c>).</summary>
-/// <param name="From">When it begins; null when the file's time does not parse.</param>
+/// <remarks>
+/// The two name lists are the caller's: the record keeps the very references it is handed, copies neither and
+/// refuses neither being null. So what it <see cref="Covers"/> follows any change the caller makes to them, and its
+/// equality and hash compare them as references, not by the names they hold. <see cref="Read"/> gives every entry
+/// two lists of its own that nothing else holds; a caller that shares a list, or changes one after handing it over,
+/// takes that on itself.
+/// </remarks>
+/// <param name="From">
+/// When it begins; null when the file's time does not parse. A freeze that <see cref="ComesAt"/> a moment always has a
+/// known start, and so does one <see cref="InForceAt"/> a moment unless the file's <c>active</c> decided it: so the
+/// words that say a freeze from its start (<see cref="DeploymentActivity"/>) say it only of one that comes, and the
+/// record itself never refuses a null.
+/// </param>
 /// <param name="To">When it ends.</param>
 /// <param name="Active">Whether it was in force when the system read it: used only where <paramref name="From"/> is not known.</param>
-/// <param name="Environments">The environments it covers, by name.</param>
-/// <param name="Projects">The Octopus projects of the system it covers, by name.</param>
+/// <param name="Environments">The environments it covers, by name: the caller's list itself, never copied.</param>
+/// <param name="Projects">The Octopus projects of the system it covers, by name: the caller's list itself, never copied.</param>
 public sealed record DeploymentFreeze(
     string Name,
     DateTimeOffset? From,
@@ -85,7 +129,7 @@ public sealed record DeploymentFreeze(
     /// <summary>In force at <paramref name="now"/>, by the browser's clock: begun and not ended.</summary>
     public bool InForceAt(DateTimeOffset now) => now < To && (From is { } from ? from <= now : Active);
 
-    /// <summary>Not begun at <paramref name="now"/>, and beginning within <see cref="Ahead"/>.</summary>
+    /// <summary>Not begun at <paramref name="now"/>, and beginning within <see cref="Ahead"/>. True only where <see cref="From"/> is known.</summary>
     public bool ComesAt(DateTimeOffset now) => From is { } from && from > now && from - now <= Ahead && now < To;
 
     /// <summary>True when it covers the environment, and the project when one is asked for.</summary>
@@ -177,22 +221,39 @@ public static class DeploymentActivity
         }
 
         var project = $"{slug}-{deployable}";
-        bool Own(string name, string where) =>
-            string.Equals(name, project, StringComparison.OrdinalIgnoreCase) && string.Equals(where, environment, StringComparison.OrdinalIgnoreCase);
 
-        var lines = new List<ActivityLine>();
-        lines.AddRange(report.Deployments
-            .Where(deployment => deployment.InFlight && Own(deployment.Project, deployment.Environment))
-            .OrderBy(DeploymentsReport.Rank)
-            .Select(deployment => InFlight(deployment, now)));
-        lines.AddRange(Freezes(report, environment, project, now).Select(freeze => OfFreeze(freeze, now, zone, Brief(freeze, now, zone))));
-        if (report.Recent.FirstOrDefault(recent => Own(recent.Project, recent.Environment)) is { } last)
-        {
-            lines.Add(Last(last, now, zone, Brief(last, now)));
-        }
-
-        return [.. lines.Take(MostLines).Select(line => line with { Text = Cut(line.Text, NodeLength) })];
+        // The order of the lines, said once: what is in flight (a wait first), then the freezes, then the last that ended.
+        return OnNode([
+            .. MarkLines(report, environment, project, now),
+            .. FreezeLines(report, environment, project, now, zone),
+            .. LastLines(report, environment, project, now, zone),
+        ]);
     }
+
+    /// <summary>The lines in the order they are given, <see cref="MostLines"/> at most, each cut to <see cref="NodeLength"/>.</summary>
+    private static List<ActivityLine> OnNode(IEnumerable<ActivityLine> lines) =>
+        [.. lines.Take(MostLines).Select(line => line with { Text = Cut(line.Text, NodeLength) })];
+
+    /// <summary>True for an entry of the deployable's own project in its own environment, in any case.</summary>
+    private static bool Owns(string project, string environment, string entryProject, string entryEnvironment) =>
+        string.Equals(entryProject, project, StringComparison.OrdinalIgnoreCase) && string.Equals(entryEnvironment, environment, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The deployments of the project in flight in the environment, the most urgent first (<see cref="DeploymentsReport.Rank"/>).</summary>
+    private static IEnumerable<ActivityLine> MarkLines(DeploymentsReport report, string environment, string project, DateTimeOffset now) =>
+        report.Deployments
+            .Where(deployment => deployment.InFlight && Owns(project, environment, deployment.Project, deployment.Environment))
+            .OrderBy(DeploymentsReport.Rank)
+            .Select(deployment => InFlight(deployment, now));
+
+    /// <summary>The freezes that cover the project in the environment, briefly: in force first, then by their start.</summary>
+    private static IEnumerable<ActivityLine> FreezeLines(DeploymentsReport report, string environment, string project, DateTimeOffset now, TimeZoneInfo zone) =>
+        Freezes(report, environment, project, now).Select(freeze => OfFreeze(freeze, now, zone, Brief(freeze, now, zone)));
+
+    /// <summary>The last deployment of the project to the environment that ended, briefly; none when the file names none.</summary>
+    private static IEnumerable<ActivityLine> LastLines(DeploymentsReport report, string environment, string project, DateTimeOffset now, TimeZoneInfo zone) =>
+        report.Recent.FirstOrDefault(recent => Owns(project, environment, recent.Project, recent.Environment)) is { } last
+            ? [Last(last, now, zone, Brief(last, now))]
+            : [];
 
     /// <summary>
     /// What follows the marks under an environment's name, <see cref="MostLines"/> at most: the freeze that covers
@@ -214,7 +275,7 @@ public static class DeploymentActivity
             var more = freezes.Count > 1 ? string.Create(CultureInfo.InvariantCulture, $", and {freezes.Count - 1} more") : string.Empty;
             var words = first.InForceAt(now)
                 ? $"deployment freeze {first.Name}: {Names(first.Projects)} frozen until {When(first.To, now, zone)}{more}"
-                : $"deployment freeze {first.Name}: {Names(first.Projects)} frozen from {When(first.From!.Value, now, zone)} until {When(first.To, now, zone)}{more}";
+                : $"deployment freeze {first.Name}: {Names(first.Projects)} frozen from {When(Begins(first), now, zone)} until {When(first.To, now, zone)}{more}";
             lines.Add(OfFreeze(first, now, zone, words) with { Title = string.Join('\n', freezes.Select(freeze => FreezeTitle(freeze, now, zone))) });
         }
 
@@ -242,28 +303,28 @@ public static class DeploymentActivity
         switch (deployment.State)
         {
             case DeploymentState.Waiting:
-            {
-                var wait = deployment.WaitsFor;
-                var waited = wait?.Since is { } asked ? $", {DeploymentText.Age(now - asked)}" : age is null ? string.Empty : $", {age}";
-                var words = (wait?.IsGuidedFailure ?? false, wait?.Responsible) switch
-                {
-                    (true, { } who) => $"{deployment.Release} failed a step: {who} decides",
-                    (true, null) => $"{deployment.Release} failed a step and waits",
-                    (false, { } who) => $"{deployment.Release} waits for {who}",
-                    _ => $"{deployment.Release} waits for a sign-off{waited}",
-                };
-                return new ActivityLine(ActivityKind.Waiting, words, title, deployment.Url);
-            }
+                return OfWait(deployment, now, age, title);
 
             case DeploymentState.Executing:
-                return new ActivityLine(ActivityKind.Deploying, $"deploying {deployment.Release}{(age is null ? string.Empty : $", {age}")}{By(deployment.StartedBy, ", by ")}", title, deployment.Url);
+                return new ActivityLine(ActivityKind.Deploying, $"deploying {deployment.Release}{After(age)}{By(deployment.StartedBy, ", by ")}", title, deployment.Url);
 
             case DeploymentState.Queued:
-                return new ActivityLine(ActivityKind.Queued, $"{deployment.Release} queued{(age is null ? string.Empty : $", {age}")}", title, deployment.Url);
+                return new ActivityLine(ActivityKind.Queued, $"{deployment.Release} queued{After(age)}", title, deployment.Url);
 
             default:
                 return new ActivityLine(ActivityKind.Queued, $"{deployment.Release}: {deployment.StateText}", title, deployment.Url);
         }
+    }
+
+    /// <summary>
+    /// The line of a deployment stopped for a person: what it waits for and who is responsible, with the age of the
+    /// question when the file gives one, else the age of the deployment.
+    /// </summary>
+    private static ActivityLine OfWait(Deployment deployment, DateTimeOffset now, string? age, string title)
+    {
+        var wait = deployment.WaitsFor;
+        var waited = After(wait?.Since is { } asked ? DeploymentText.Age(now - asked) : age);
+        return new ActivityLine(ActivityKind.Waiting, DeploymentWait.Line(wait, deployment.Release, waited), title, deployment.Url);
     }
 
     private static ActivityLine OfFreeze(DeploymentFreeze freeze, DateTimeOffset now, TimeZoneInfo zone, string words) =>
@@ -273,17 +334,24 @@ public static class DeploymentActivity
     private static string Brief(DeploymentFreeze freeze, DateTimeOffset now, TimeZoneInfo zone) =>
         freeze.InForceAt(now)
             ? $"frozen until {When(freeze.To, now, zone)}: {freeze.Name}"
-            : $"freeze from {When(freeze.From!.Value, now, zone)}: {freeze.Name}";
+            : $"freeze from {When(Begins(freeze), now, zone)}: {freeze.Name}";
 
     private static string FreezeTitle(DeploymentFreeze freeze, DateTimeOffset now, TimeZoneInfo zone)
     {
         var from = freeze.From is { } begins ? $" from {TimeText.DateAndTime(begins, zone)}" : string.Empty;
         var state = freeze.InForceAt(now)
             ? "In force now"
-            : $"Begins in {TimeText.Span(freeze.From!.Value - now)}";
+            : $"Begins in {TimeText.Span(Begins(freeze) - now)}";
         return $"Deployment freeze {freeze.Name}: no deployment of {Names(freeze.Projects)} to {Names(freeze.Environments)}{from} until {TimeText.DateAndTime(freeze.To, zone)}. {state}. "
             + "A freeze belongs to the Octopus Deploy instance; a person with the right may override it for one deployment.";
     }
+
+    /// <summary>
+    /// The start of a freeze the page says of that is not in force: one of <see cref="Freezes"/>, so one that
+    /// <see cref="DeploymentFreeze.ComesAt"/> the moment, which only a freeze with a known
+    /// <see cref="DeploymentFreeze.From"/> does. The caller holds that; the record does not.
+    /// </summary>
+    private static DateTimeOffset Begins(DeploymentFreeze freeze) => freeze.From!.Value;
 
     private static ActivityLine Last(RecentDeployment last, DateTimeOffset now, TimeZoneInfo zone, string words) =>
         new(
@@ -307,7 +375,7 @@ public static class DeploymentActivity
             DeploymentState.Canceled => "canceled",
             _ => last.ResultText,
         };
-        return $"{last.Release} {result} {DeploymentText.Age(now - last.Finished)} ago{By(last.StartedBy, " by ")}";
+        return $"{last.Release} {result} {DeploymentText.Ago(now - last.Finished)}{By(last.StartedBy, " by ")}";
     }
 
     /// <summary>
@@ -316,11 +384,14 @@ public static class DeploymentActivity
     /// </summary>
     private static string By(string? startedBy, string words) => startedBy is { } who ? $"{words}{who}" : string.Empty;
 
+    /// <summary>An age after the words of a line (<c>, 3 min</c>); nothing when there is no age to say.</summary>
+    private static string After(string? age) => age is null ? string.Empty : $", {age}";
+
     /// <summary>The words of a mark that ended, for the last deployment: <c>cmdemo2-ui 2.4.43 reached uat 5 h ago</c>.</summary>
     private static string Sentence(RecentDeployment last, DateTimeOffset now)
     {
         var what = $"{last.Project} {last.Release}";
-        var ago = $"{DeploymentText.Age(now - last.Finished)} ago";
+        var ago = DeploymentText.Ago(now - last.Finished);
         return last.Result switch
         {
             DeploymentState.Succeeded => $"{what} reached {last.Environment} {ago}",

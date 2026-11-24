@@ -40,7 +40,40 @@ internal static class ClusterFixture
             new ResourceUse(10, 100, 500),
             new ResourceUse(100 * 1024 * 1024, 268435456, 536870912));
 
+    /// <summary>
+    /// A pod that says as little as the record allows: no workload, no kind, no node, no containers, no reason, no
+    /// start and no measurement, so the only thing it brings is its name and the word its phase stands on. The one
+    /// home of that pod, said with every argument named so a swap of two of the same type shows as the swap it is - the
+    /// workload, the kind and the node are three words in a row and the cpu and the memory are two resources in a row.
+    /// <para>
+    /// The phase is the one part a caller names, because the two all-nothing pods the tests stand on are apart there:
+    /// the row of a pod that says nothing holds the phase the pod is said to be in, <see cref="ClusterPod.Running"/>,
+    /// while the pod a file barely names lands on the fallback the parser writes, <see cref="ClusterPod.Unknown"/>.
+    /// Everything else is the nothing it is: the readiness the false that is no nothing, the restarts the zero that is
+    /// no nothing, and both resources the resource that says no number at all.
+    /// </para>
+    /// </summary>
+    /// <param name="name">The name the pod carries; the pod having no workload, it is the word the page calls it by.</param>
+    /// <param name="phase">The word the phase is said in; <see cref="ClusterPod.Running"/> unless the caller stands on the parser's own fallback.</param>
+    public static ClusterPod SilentPod(string name, string phase = ClusterPod.Running) =>
+        new(
+            Name: name,
+            Workload: null,
+            Kind: null,
+            Node: null,
+            Phase: phase,
+            Ready: false,
+            Containers: null,
+            ContainersReady: null,
+            Restarts: 0,
+            Reason: null,
+            StartedAt: null,
+            Cpu: ResourceUse.None,
+            Memory: ResourceUse.None);
+
     public static ClusterNamespace Space(string name, params ClusterPod[] pods) => new(name, pods, []);
+
+    public static ClusterNamespace Space(string name, IReadOnlyList<ClusterVolume> volumes, params ClusterPod[] pods) => new(name, pods, volumes);
 
     public static ClusterStatus Status(IReadOnlyList<ClusterNode>? nodes = null, params ClusterNamespace[] spaces) =>
         new(Generated, 15, "v1.33.3", nodes ?? [Node()], spaces);

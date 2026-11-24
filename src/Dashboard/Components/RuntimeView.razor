@@ -12,7 +12,7 @@
 <section class="runtime" aria-labelledby="runtime-title">
     <header class="runtime__header">
         <h2 id="runtime-title">Runtime@(Current is { } shown ? $": {shown.Name}" : string.Empty)</h2>
-        @if (_index?.Index is { } index && index.Environments.Count > 0)
+        @if (_index is { HasEnvironments: true, Index: { } index })
         {
             <div class="runtime__environments" role="group" aria-label="Environment">
                 @foreach (var entry in index.Environments)
@@ -49,14 +49,14 @@
     {
         <p class="empty" role="status">Loading the runtime diagrams</p>
     }
-    else if (_index.Availability == RuntimeAvailability.NotDeployed)
+    else if (_index.IsNotDeployed)
     {
         <p class="empty runtime__absent" role="status">
             The runtime diagram is not available for this deployment: the site has no <code>runtime/</code> folder. The
             deployment of a newer dashboard release renders it. The Health view shows every node.
         </p>
     }
-    else if (_index.Index is not { } loaded)
+    else if (_index is not { IsValid: true, Index: { } loaded })
     {
         <section class="problem" role="alert">
             <h3>The runtime diagrams could not be read</h3>
@@ -68,7 +68,7 @@
             </ul>
         </section>
     }
-    else if (loaded.Environments.Count == 0)
+    else if (!_index.HasEnvironments)
     {
         <p class="empty" role="status">The deployment rendered no runtime diagram: system.json has no environment.</p>
     }
@@ -214,24 +214,25 @@
 
     /// <summary>
     /// The address names the database view of <see cref="Environment"/>. It is shown only where the deployment wrote
-    /// its files for that environment; for any other address <see cref="DatabaseChanged"/> asks for the diagram.
+    /// its files for that environment; for any other address <see cref="ZoomChanged"/> asks for the diagram.
     /// </summary>
     [Parameter]
     public bool Database { get; set; }
 
-    [Parameter]
-    public EventCallback<RuntimeDatabaseChange> DatabaseChanged { get; set; }
-
     /// <summary>
     /// The address names the application view of this deployable in <see cref="Environment"/>. It is shown only where
     /// the environment's diagram has a box of that deployable with an architecture; for any other address
-    /// <see cref="ApplicationChanged"/> asks for the diagram.
+    /// <see cref="ZoomChanged"/> asks for the diagram.
     /// </summary>
     [Parameter]
     public string? Application { get; set; }
 
+    /// <summary>
+    /// The view zooms into the database's box or a deployable's box, or back out to the diagram: a step of the history,
+    /// or an address corrected in place.
+    /// </summary>
     [Parameter]
-    public EventCallback<RuntimeApplicationChange> ApplicationChanged { get; set; }
+    public EventCallback<RuntimeZoomChange> ZoomChanged { get; set; }
 
     /// <summary>The page checks: it is neither paused nor hidden. The database view reads its live file only then.</summary>
     [Parameter]
@@ -260,7 +261,7 @@
         ? Monitor.Environments.FirstOrDefault(status => string.Equals(status.Name, diagram.Manifest!.Environment, StringComparison.OrdinalIgnoreCase))
         : null;
 
-    private RuntimeIndexEntry? Current => _index?.Index?.Environments is { Count: > 0 } entries
+    private RuntimeIndexEntry? Current => _index is { HasEnvironments: true, Index.Environments: var entries }
         ? entries.FirstOrDefault(entry => string.Equals(entry.Name, Environment, StringComparison.OrdinalIgnoreCase)) ?? entries[0]
         : null;
 
@@ -313,13 +314,13 @@
         {
             _entering = true;
             _zoomedBox = box.Alias;
-            await DatabaseChanged.InvokeAsync(new RuntimeDatabaseChange(entry.Name, Shown: true, Step: true));
+            await ZoomChanged.InvokeAsync(RuntimeZoomChange.ZoomIn(entry.Name, RuntimeZoomTarget.TheDatabase));
         }
         else if (ApplicationText.Boxes(manifest).Contains(box))
         {
             _entering = true;
             _zoomedBox = box.Alias;
-            await ApplicationChanged.InvokeAsync(new RuntimeApplicationChange(entry.Name, box.Deployable, Step: true));
+            await ZoomChanged.InvokeAsync(RuntimeZoomChange.ZoomIn(entry.Name, RuntimeZoomTarget.Box(box.Deployable)));
         }
     }
 
@@ -397,7 +398,7 @@
             {
                 // The database's box leads into the database view where the deployment wrote that view's files; a
                 // box of a deployable into its application view where the manifest names its architecture.
-                var recorded = _index?.Index?.Environments.Any(entry => entry.Database is not null && string.Equals(entry.Name, diagram.Environment, StringComparison.Ordinal)) ?? false;
+                var recorded = _index?.RecordsDatabaseOf(diagram.Environment) ?? false;
                 var boxes = RuntimeZoom.Boxes(diagram.Manifest!, recorded);
                 _zoomable = boxes.Select(box => box.Alias).ToHashSet(StringComparer.Ordinal);
                 _self ??= DotNetObjectReference.Create(this);
@@ -470,7 +471,7 @@
     {
         if (DatabaseEntry is { } entry)
         {
-            await DatabaseChanged.InvokeAsync(new RuntimeDatabaseChange(entry.Name, Shown: false, Step: true));
+            await ZoomChanged.InvokeAsync(RuntimeZoomChange.BackOut(entry.Name));
         }
     }
 
@@ -479,7 +480,7 @@
     {
         if (ApplicationBoxes is not null && Current is { } entry)
         {
-            await ApplicationChanged.InvokeAsync(new RuntimeApplicationChange(entry.Name, null, Step: true));
+            await ZoomChanged.InvokeAsync(RuntimeZoomChange.BackOut(entry.Name));
         }
     }
 
@@ -493,11 +494,11 @@
     {
         if (Database && !ShowsDatabase && _index is not null && Environment is { } named)
         {
-            await DatabaseChanged.InvokeAsync(new RuntimeDatabaseChange(named, Shown: false, Step: false));
+            await ZoomChanged.InvokeAsync(RuntimeZoomChange.CorrectInPlace(named));
         }
         else if (Application is not null && ApplicationBoxes is null && _index is not null && (Current is null || _diagram is not null) && Environment is { } shown)
         {
-            await ApplicationChanged.InvokeAsync(new RuntimeApplicationChange(shown, null, Step: false));
+            await ZoomChanged.InvokeAsync(RuntimeZoomChange.CorrectInPlace(shown));
         }
     }
 }

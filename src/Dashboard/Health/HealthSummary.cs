@@ -8,8 +8,10 @@ public enum SummaryLevel
     /// <summary>Nothing is known to be wrong, and not every endpoint has been checked.</summary>
     Pending,
 
+    /// <summary>Every endpoint has been checked, and every one of them is healthy.</summary>
     AllHealthy,
 
+    /// <summary>At least one endpoint is not healthy: it answered anything but HTTP 200, or gave no answer at all.</summary>
     Problems,
 }
 
@@ -18,22 +20,19 @@ public sealed record HealthSummary(int Total, int Healthy, int Pending)
 {
     public int NotHealthy => Total - Healthy - Pending;
 
-    public SummaryLevel Level =>
-        Total == 0 ? SummaryLevel.Empty
-        : NotHealthy > 0 ? SummaryLevel.Problems
-        : Pending > 0 ? SummaryLevel.Pending
-        : SummaryLevel.AllHealthy;
-
-    public string Text => Level switch
+    /// <summary>
+    /// The level the counts fall on, asked in order of precedence: a total of nothing outranks a problem, and a problem
+    /// outranks a pending check. The first ask that holds decides the level.
+    /// </summary>
+    public SummaryLevel Level => this switch
     {
-        SummaryLevel.Empty => "No nodes in the topology",
-        SummaryLevel.Problems => $"{NotHealthy} of {Total} {Noun} not healthy",
-        SummaryLevel.Pending when Healthy == 0 => $"Checking {Total} {Noun}",
-        SummaryLevel.Pending => $"{Healthy} of {Total} {Noun} healthy, {Pending} being checked",
-        _ => Total == 1 ? "The only node is healthy" : $"All {Total} nodes healthy",
+        _ when Total == 0 => SummaryLevel.Empty,
+        _ when NotHealthy > 0 => SummaryLevel.Problems,
+        _ when Pending > 0 => SummaryLevel.Pending,
+        _ => SummaryLevel.AllHealthy,
     };
 
-    private string Noun => Total == 1 ? "node" : "nodes";
+    public string Text => SummaryWords.Text(Level, Total, Healthy, Pending);
 
     public static HealthSummary Of(IEnumerable<HealthState> states)
     {

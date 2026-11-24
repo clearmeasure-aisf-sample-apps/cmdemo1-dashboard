@@ -11,7 +11,10 @@ namespace Dashboard.Health;
 /// <param name="Title">The text alternative: <c>requests per minute, last 12 checks: 0 to 45, now 12</c>.</param>
 public sealed record Trend(IReadOnlyList<double> Points, string Title)
 {
-    /// <summary>How many readings a node keeps: half an hour at the default interval.</summary>
+    /// <summary>
+    /// How many readings a sparkline is drawn over: half an hour at the default interval. What a buffer keeps is named
+    /// where it is kept (<see cref="TargetStatus.SampleLength"/>, <see cref="Cluster.ClusterMonitor.SampleLength"/>).
+    /// </summary>
     public const int Length = 60;
 
     /// <summary>

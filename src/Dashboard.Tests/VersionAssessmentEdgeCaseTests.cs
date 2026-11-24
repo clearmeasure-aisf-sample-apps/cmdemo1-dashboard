@@ -558,6 +558,23 @@ public class VersionAssessmentEdgeCaseTests
         Assert.Throws<InvalidOperationException>(() => VersionAssessment.Assess(Pinned, "ui", Throwing()));
     }
 
+    /// <summary>The count the in-sync sentence says is the three lists together: the unknown nodes are counted in the
+    /// total although they stand out of the comparison, and a node that differs never reaches the in-sync count.</summary>
+    [Fact]
+    public void TheTotalInTheWordsIsTheThreeListsTogether()
+    {
+        var south = new NodeVersion("southcentralus", Unreachable, "2.4.7");
+        var north = new NodeVersion("north europe", Pending, null);
+
+        var assessment = Assess(West(Healthy, "2.4.7"), south, East(Unhealthy, "2.4.7+0a1b2c3"), north);
+
+        Assert.Equal(VersionState.InSync, assessment.State);
+        Assert.Equal(4, assessment.Matching.Count + assessment.Differing.Count + assessment.Unknown.Count);
+        Assert.Equal(
+            "In sync: 2 of 4 nodes run 2.4.7; southcentralus is unreachable, north europe is being checked.",
+            assessment.Detail);
+    }
+
     private static IEnumerable<NodeVersion> Throwing()
     {
         yield return West(Healthy, "2.4.7");

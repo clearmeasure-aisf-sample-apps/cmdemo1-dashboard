@@ -6,7 +6,8 @@ namespace Dashboard.Health;
 /// <summary>Checks one endpoint: calls its probe path, classifies the answer and reads the app version.</summary>
 public sealed class NodeProber(HttpClient http, TimeProvider time)
 {
-    public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
+    /// <summary>The shared probe default (<see cref="ProbeDefaults.DefaultTimeout" />).</summary>
+    public static readonly TimeSpan DefaultTimeout = ProbeDefaults.DefaultTimeout;
 
     /// <summary>How long a node may take to answer before it counts as unreachable.</summary>
     public TimeSpan Timeout { get; init; } = DefaultTimeout;
@@ -41,7 +42,7 @@ public sealed class NodeProber(HttpClient http, TimeProvider time)
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            result = Unreachable(checkedAt, $"No answer within {Timeout.TotalSeconds:0} s.");
+            result = Unreachable(checkedAt, NoAnswer);
         }
         catch (HttpRequestException)
         {
@@ -53,6 +54,17 @@ public sealed class NodeProber(HttpClient http, TimeProvider time)
         var reported = await version;
         cancellationToken.ThrowIfCancellationRequested();
         return result with { Version = reported };
+    }
+
+    /// <summary>The shared timeout clause (<see cref="ProbeDefaults.NoAnswerWithin" />) as a sentence of its own,
+    /// capitalised and full-stopped: <c>No answer within 10 s.</c></summary>
+    private string NoAnswer
+    {
+        get
+        {
+            var clause = ProbeDefaults.NoAnswerWithin(Timeout);
+            return $"{char.ToUpperInvariant(clause[0])}{clause[1..]}.";
+        }
     }
 
     private static ProbeResult Unreachable(DateTimeOffset checkedAt, string detail) =>
@@ -108,7 +120,7 @@ public sealed class NodeProber(HttpClient http, TimeProvider time)
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return new ContainerAppAnswer(path, readsHealth, null, false, null, checkedAt, $"No answer within {Timeout.TotalSeconds:0} s.");
+            return new ContainerAppAnswer(path, readsHealth, null, false, null, checkedAt, NoAnswer);
         }
         catch (HttpRequestException)
         {
@@ -199,16 +211,15 @@ public sealed class NodeProber(HttpClient http, TimeProvider time)
 
     /// <summary>
     /// The build of the dashboard itself (<see cref="BuildInfo"/>): a file of its own site, read from the page's own
-    /// address (the path is taken from the site's root, as <c>topology.json</c> is, whatever it starts with; an
-    /// address of another site is not read). A courtesy like a node's build: no file, or anything but the expected
-    /// JSON, is no build facts.
+    /// address through <see cref="ProbeUrl.ResolveRelative"/> (the path is taken from the site's root, as
+    /// <c>topology.json</c> is, whatever it starts with; a path that names another site is no address, and nothing
+    /// is read). A courtesy like a node's build: no file, or anything but the expected JSON, is no build facts.
     /// </summary>
     public Task<BuildInfo?> ReadOwnBuildAsync(string buildPath, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(buildPath);
-        return Uri.TryCreate(buildPath.TrimStart('/'), UriKind.Relative, out var address)
-            ? ReadAsync(address, BuildInfo.Parse, cancellationToken)
-            : Task.FromResult<BuildInfo?>(null);
+        var own = ProbeUrl.ResolveRelative(http.BaseAddress, buildPath);
+        return own is null ? Task.FromResult<BuildInfo?>(null) : ReadAsync(own, BuildInfo.Parse, cancellationToken);
     }
 
     /// <summary>The system's delivery facts (<see cref="DeliveryReport"/>), from the address the topology gives.</summary>

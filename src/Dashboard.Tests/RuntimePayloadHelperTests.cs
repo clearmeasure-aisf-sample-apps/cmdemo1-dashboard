@@ -192,6 +192,48 @@ public class RuntimePayloadHelperTests
         Assert.Equal((ContainerAppState)7, ex.ActualValue);
     }
 
+    // ---------------------------------------------------------------- StateOf (HealthState)
+
+    /// <summary>
+    /// Each current state of a health check, pinned to the word <see cref="RuntimePayloadBuilder.StateOf"/>
+    /// gives it: Healthy gives healthy, Unhealthy gives unhealthy, Unreachable gives unreachable, and Pending
+    /// gives checking.
+    /// </summary>
+    [Theory]
+    [InlineData(HealthState.Pending, "checking")]
+    [InlineData(HealthState.Healthy, "healthy")]
+    [InlineData(HealthState.Unhealthy, "unhealthy")]
+    [InlineData(HealthState.Unreachable, "unreachable")]
+    public void TheWordOfEachHealthStateIsPinned(HealthState state, string word) =>
+        Assert.Equal(word, RuntimePayloadBuilder.StateOf(state));
+
+    /// <summary>
+    /// Every state of a health check yields a word that is not empty, and a value outside the enum is no
+    /// state of it: the builder throws, naming the value it was given.
+    /// </summary>
+    [Fact]
+    public void EveryHealthStateYieldsAWordAndAValueOutsideTheEnumThrows()
+    {
+        Assert.All(
+            Enum.GetValues<HealthState>(),
+            state => Assert.False(string.IsNullOrWhiteSpace(RuntimePayloadBuilder.StateOf(state))));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => RuntimePayloadBuilder.StateOf((HealthState)999));
+    }
+
+    /// <summary>
+    /// A state the health check cannot record is no state of the enum: the word of it is not a fall-through but an error
+    /// naming the value. <see cref="HealthCheck.Record"/> produces only the enum's own states, so in
+    /// production no undefined state reaches the word.
+    /// </summary>
+    [Fact]
+    public void AnUndefinedHealthStateThrowsWithTheValueItWasGiven()
+    {
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => RuntimePayloadBuilder.StateOf((HealthState)7));
+
+        Assert.Equal((HealthState)7, ex.ActualValue);
+    }
+
     // ---------------------------------------------------------------- VersionLink
 
     /// <summary>A deployable of the topology, with the project's page in Octopus Deploy and the build its node reports.</summary>

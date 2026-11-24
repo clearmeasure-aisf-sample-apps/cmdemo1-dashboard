@@ -5,7 +5,73 @@ namespace Dashboard.Cluster;
 /// <summary>One row of a namespace's table: a pod and what the view says about it.</summary>
 public sealed record PodRow(ClusterPod Pod, PodState State);
 
-/// <summary>A namespace as the view shows it: its pods in the order of the table, its volumes and its sums.</summary>
+/// <summary>
+/// The rows of a namespace's table counted in one walk: how many are in each state, the restarts they carry and the
+/// CPU and memory they use. Every count and sum of a <see cref="NamespaceGroup" /> is read off one of these, so the
+/// four counts come from one <c>switch</c> and cannot fall out of step with one another.
+/// </summary>
+public sealed class PodTally
+{
+    private readonly int restarts;
+    private readonly bool restartsPastAnInt;
+
+    /// <summary>Walks <paramref name="rows" /> once.</summary>
+    public PodTally(IEnumerable<PodRow> rows)
+    {
+        ArgumentNullException.ThrowIfNull(rows);
+        foreach (var row in rows)
+        {
+            Rows++;
+            switch (row.State)
+            {
+                case PodState.Ready: Ready++; break;
+                case PodState.Starting: Starting++; break;
+                case PodState.Unhealthy: Unhealthy++; break;
+                case PodState.Finished: Finished++; break;
+            }
+
+            // A checked sum: past an int on the way is past it for good, as Enumerable.Sum would throw there.
+            if (!restartsPastAnInt)
+            {
+                var sum = (long)restarts + row.Pod.Restarts;
+                restartsPastAnInt = sum is > int.MaxValue or < int.MinValue;
+                restarts = (int)sum;
+            }
+
+            CpuUsage = Sums.Add(CpuUsage, row.Pod.Cpu.Usage);
+            MemoryUsage = Sums.Add(MemoryUsage, row.Pod.Memory.Usage);
+        }
+    }
+
+    /// <summary>Every row, whatever its state.</summary>
+    public int Rows { get; }
+
+    public int Ready { get; }
+
+    public int Starting { get; }
+
+    public int Unhealthy { get; }
+
+    /// <summary>The finished jobs: counted on their own, and in no <see cref="Total" />.</summary>
+    public int Finished { get; }
+
+    /// <summary>The pods that count: every pod but the finished ones.</summary>
+    public int Total => Rows - Finished;
+
+    /// <summary>The restarts of every row, counted in an <see cref="int" />.</summary>
+    /// <exception cref="OverflowException">The count went past an <see cref="int" /> on the way.</exception>
+    public int Restarts => restartsPastAnInt
+        ? throw new OverflowException("The restarts of the rows add up to more than an int holds.")
+        : restarts;
+
+    /// <summary>The CPU the rows use, in millicores; null when none reports a usage.</summary>
+    public double? CpuUsage { get; }
+
+    /// <summary>The memory the rows use, in bytes; null when none reports a usage.</summary>
+    public double? MemoryUsage { get; }
+}
+
+/// <summary>A namespace as the view shows it:its pods in the order of the table, its volumes and its sums.</summary>
 /// <param name="Environment">The environment of the topology whose pods the namespace holds; null for a namespace of the platform.</param>
 /// <param name="Found">False for an environment's namespace that the status file does not list.</param>
 /// <param name="Pods">The pods that are not ready and not finished first, then the ready ones, then the finished; each by name.</param>
@@ -16,24 +82,28 @@ public sealed record NamespaceGroup(
     IReadOnlyList<PodRow> Pods,
     IReadOnlyList<ClusterVolume> Volumes)
 {
+    // Each member below counts the rows afresh, in one walk, rather than keeping a count: the group is a record whose
+    // equality, clones and shared lists the tests pin, and a kept count would take part in all three. A reader that
+    // wants several numbers builds one PodTally of the Pods and reads them all off it (ClusterText.Summary does).
+
     /// <summary>The pods that are ready.</summary>
-    public int Ready => Pods.Count(row => row.State == PodState.Ready);
+    public int Ready => new PodTally(Pods).Ready;
 
     /// <summary>The pods that count: every pod but the finished ones.</summary>
-    public int Total => Pods.Count(row => row.State != PodState.Finished);
+    public int Total => new PodTally(Pods).Total;
 
     /// <summary>The finished jobs: counted on their own, in neither number above.</summary>
-    public int Finished => Pods.Count(row => row.State == PodState.Finished);
+    public int Finished => new PodTally(Pods).Finished;
 
-    public int Unhealthy => Pods.Count(row => row.State == PodState.Unhealthy);
+    public int Unhealthy => new PodTally(Pods).Unhealthy;
 
-    public int Restarts => Pods.Sum(row => row.Pod.Restarts);
+    public int Restarts => new PodTally(Pods).Restarts;
 
     /// <summary>The CPU its pods use, in millicores; null when none reports a usage.</summary>
-    public double? CpuUsage => Sum(Pods.Select(row => row.Pod.Cpu.Usage));
+    public double? CpuUsage => new PodTally(Pods).CpuUsage;
 
     /// <summary>The memory its pods use, in bytes; null when none reports a usage.</summary>
-    public double? MemoryUsage => Sum(Pods.Select(row => row.Pod.Memory.Usage));
+    public double? MemoryUsage => new PodTally(Pods).MemoryUsage;
 
     internal static NamespaceGroup Of(ClusterNamespace space, EnvironmentInfo? environment, DateTimeOffset asOf) =>
         new(
@@ -46,12 +116,6 @@ public sealed record NamespaceGroup(
                 .ThenBy(row => row.Pod.Label, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(row => row.Pod.Name, StringComparer.OrdinalIgnoreCase)],
             space.Volumes);
-
-    internal static double? Sum(IEnumerable<double?> numbers)
-    {
-        var known = numbers.OfType<double>().ToList();
-        return known.Count == 0 ? null : known.Sum();
-    }
 
     private static int Order(PodState state) => state switch
     {
@@ -76,15 +140,14 @@ public sealed record ClusterGroups(IReadOnlyList<NamespaceGroup> Environments, I
     {
         ArgumentNullException.ThrowIfNull(status);
         ArgumentNullException.ThrowIfNull(environments);
-        var named = environments.Where(environment => environment.Namespace is not null).ToList();
-        var taken = named.Select(environment => environment.Namespace!).ToHashSet(StringComparer.Ordinal);
+        var index = EnvironmentIndex.Of(environments);
         return new ClusterGroups(
-            [.. named.Select(environment =>
+            [.. index.Named.Select(environment =>
                 status.Namespaces.FirstOrDefault(space => string.Equals(space.Name, environment.Namespace, StringComparison.Ordinal)) is { } space
                     ? NamespaceGroup.Of(space, environment, asOf)
                     : new NamespaceGroup(environment.Namespace!, environment, false, [], []))],
             [.. status.Namespaces
-                .Where(space => !taken.Contains(space.Name))
+                .Where(space => !index.Namespaces.Contains(space.Name))
                 .OrderBy(space => space.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(space => NamespaceGroup.Of(space, null, asOf))]);
     }
@@ -123,8 +186,8 @@ public sealed record ClusterTotals(
             states.Count(state => state == PodState.Finished),
             Sum(status.Nodes.Select(node => node.Cpu)),
             Sum(status.Nodes.Select(node => node.Memory)),
-            (int?)NamespaceGroup.Sum(status.Nodes.Select(node => (double?)node.Pods)),
-            (int?)NamespaceGroup.Sum(status.Nodes.Select(node => (double?)node.PodCapacity)),
+            Sums.Of(status.Nodes.Select(node => node.Pods)),
+            Sums.Of(status.Nodes.Select(node => node.PodCapacity)),
             status.Pods.Sum(entry => entry.Pod.Restarts));
     }
 
@@ -132,10 +195,10 @@ public sealed record ClusterTotals(
     {
         var all = uses.ToList();
         return new ResourceUse(
-            NamespaceGroup.Sum(all.Select(use => use.Usage)),
-            NamespaceGroup.Sum(all.Select(use => use.Requests)),
-            NamespaceGroup.Sum(all.Select(use => use.Limits)),
-            NamespaceGroup.Sum(all.Select(use => use.Allocatable)));
+            Sums.Of(all.Select(use => use.Usage)),
+            Sums.Of(all.Select(use => use.Requests)),
+            Sums.Of(all.Select(use => use.Limits)),
+            Sums.Of(all.Select(use => use.Allocatable)));
     }
 }
 
@@ -148,7 +211,7 @@ public sealed record ClusterSample(double? CpuMillicores, double? MemoryBytes)
     {
         ArgumentNullException.ThrowIfNull(status);
         return new ClusterSample(
-            NamespaceGroup.Sum(status.Nodes.Select(node => node.Cpu.Usage)),
-            NamespaceGroup.Sum(status.Nodes.Select(node => node.Memory.Usage)));
+            Sums.Of(status.Nodes.Select(node => node.Cpu.Usage)),
+            Sums.Of(status.Nodes.Select(node => node.Memory.Usage)));
     }
 }

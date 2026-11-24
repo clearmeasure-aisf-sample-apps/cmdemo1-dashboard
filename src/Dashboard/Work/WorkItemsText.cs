@@ -3,22 +3,6 @@ using Dashboard.Health;
 
 namespace Dashboard.Work;
 
-/// <summary>Whether the work items view has a file to show.</summary>
-public enum WorkItemsAvailability
-{
-    /// <summary>The address is known and the first read has not finished.</summary>
-    Loading,
-
-    /// <summary>The topology names no delivery file, so there is no sibling to read.</summary>
-    NoAddress,
-
-    /// <summary>The read found nothing: the file is not published yet, or it is not this file.</summary>
-    NotPublished,
-
-    /// <summary>A file was read.</summary>
-    Ready,
-}
-
 /// <summary>One column of the work-in-progress strip and how many items the file counts there.</summary>
 public sealed record WorkWip(string Column, int Count);
 
@@ -75,14 +59,28 @@ public static class WorkItemsText
         : !asked ? WorkItemsAvailability.Loading
         : WorkItemsAvailability.NotPublished;
 
-    public static string Unavailable(WorkItemsAvailability availability) => availability switch
+    /// <summary>
+    /// The sentence a state stands for. A value the enum does not name is refused by name first, so the switch
+    /// underneath says the four states and nothing else: a fifth state of the enum is a build error (CS8509, and
+    /// warnings are errors) rather than a paragraph that says nothing on the page.
+    /// </summary>
+    public static string Unavailable(WorkItemsAvailability availability)
     {
-        WorkItemsAvailability.Loading => Loading,
-        WorkItemsAvailability.NoAddress => NoAddress,
-        WorkItemsAvailability.NotPublished => NotPublished,
-        WorkItemsAvailability.Ready => string.Empty,
-        _ => throw new ArgumentOutOfRangeException(nameof(availability), availability, "A work items state has no sentence."),
-    };
+        if (!Enum.IsDefined(availability))
+        {
+            throw new ArgumentOutOfRangeException(nameof(availability), availability, "A work items state has no sentence.");
+        }
+
+#pragma warning disable CS8524 // Every named state has its arm below; the guard refused every value that is not one.
+        return availability switch
+        {
+            WorkItemsAvailability.Loading => Loading,
+            WorkItemsAvailability.NoAddress => NoAddress,
+            WorkItemsAvailability.NotPublished => NotPublished,
+            WorkItemsAvailability.Ready => string.Empty, // The board is on the page, so there is nothing to say.
+        };
+#pragma warning restore CS8524
+    }
 
     /// <summary>
     /// The words of one audience: its name on the strip, its segment of the address, and the worker whose items it
@@ -158,7 +156,7 @@ public static class WorkItemsText
             WorkAudience.All => report.Stats,
             _ => throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no stats."),
         };
-        return published ?? (audience == WorkAudience.All ? report.Stats : WorkBotText.FromItems(Select(report.Items, audience)));
+        return published ?? WorkBotText.FromItems(Select(report.Items, audience));
     }
 
     /// <summary>

@@ -1,23 +1,45 @@
 namespace Dashboard.Health;
 
-public enum TargetKind
-{
-    /// <summary>The public address of a deployable in an environment.</summary>
-    FrontDoor,
-
-    /// <summary>One regional web app behind the public address.</summary>
-    Node,
-}
-
 /// <summary>One tile of the dashboard: an endpoint, its last check and the checks before it.</summary>
 public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? region = null, string? role = null, LinkSet? links = null)
 {
     public const int HistoryLength = 30;
 
+    /// <summary>
+    /// How many readings of the node's telemetry <see cref="Samples"/> keeps: half an hour at the default interval.
+    /// It is the length of a drawn <see cref="Trend"/> today, named here so the readings kept and the line drawn are
+    /// two facts even while their value is one.
+    /// </summary>
+    public const int SampleLength = Trend.Length;
+
+    /// <summary>The one word for a deployable's public address: the name and the label of its tile.</summary>
+    public const string FrontDoorName = "Front Door";
+
+    /// <summary>The tile of a node of the topology: its name, region, role, address and links, each from its own part.</summary>
+    public static TargetStatus ForNode(NodeInfo node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        return new TargetStatus(TargetKind.Node, node.Name, node.Url, region: node.Region, role: node.Role, links: node.Links);
+    }
+
+    /// <summary>
+    /// The tile of a deployable's Front Door endpoint, with the deployable's links; null when the deployable has none.
+    /// </summary>
+    public static TargetStatus? ForFrontDoor(DeployableInfo deployable)
+    {
+        ArgumentNullException.ThrowIfNull(deployable);
+        return deployable.FrontDoor is null
+            ? null
+            : new TargetStatus(TargetKind.FrontDoor, FrontDoorName, deployable.FrontDoor, links: deployable.Links);
+    }
+
     /// <summary>Where the tile's numbers lead: a node's own links; for the Front Door endpoint, the deployable's.</summary>
     public LinkSet Links { get; } = links ?? LinkSet.None;
 
     public TargetKind Kind { get; } = kind;
+
+    /// <summary>What the tile's kind means for a check: what it reads, whether it is a node, what it is called.</summary>
+    public TargetKindBehavior Behavior { get; } = TargetKindBehavior.For(kind);
 
     public string Name { get; } = name;
 
@@ -29,10 +51,22 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
 
     public bool IsPrimary => NodeRole.IsPrimary(Role);
 
-    /// <summary>The last <see cref="HistoryLength"/> checks, oldest first.</summary>
+    /// <summary>What the tile and its events call it: <see cref="FrontDoorName"/> for the endpoint, a node's region or else its name.</summary>
+    public string Label => Behavior.LabelFor(Name, Region);
+
+    /// <summary>The word a node answers to: the region the topology wrote, or the node's own name when it wrote none.</summary>
+    public static string NodeLabel(string name, string? region) => region ?? name;
+
+    /// <summary>The last <see cref="HistoryLength"/> checks, oldest first; read the other end for <see cref="Last"/>.</summary>
     public HistoryBuffer<ProbeResult> History { get; } = new(HistoryLength);
 
-    public ProbeResult? Last { get; private set; }
+    /// <summary>
+    /// The last check, null while the tile has none. It is <see cref="History"/> read by its other end rather than a
+    /// second memory of the check: <see cref="Record"/> keeps a check in one place, so the two cannot drift, and they
+    /// never differ - the history holds the last <see cref="HistoryLength"/> checks and so ends with the check written
+    /// last, whatever it dropped at the other end to make room for it.
+    /// </summary>
+    public ProbeResult? Last => History.Last;
 
     public HealthState State => Last?.State ?? HealthState.Pending;
 
@@ -62,10 +96,10 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
     }
 
     /// <summary>
-    /// The last <see cref="Trend.Length"/> readings of the node's telemetry, oldest first, for the sparklines: one per
+    /// The last <see cref="SampleLength"/> readings of the node's telemetry, oldest first, for the sparklines: one per
     /// check, null where the node reported none.
     /// </summary>
-    public HistoryBuffer<TelemetrySnapshot?> Samples { get; } = new(Trend.Length);
+    public HistoryBuffer<TelemetrySnapshot?> Samples { get; } = new(SampleLength);
 
     /// <summary>Records the telemetry of one check. A node that never reported any keeps no readings.</summary>
     public void RecordTelemetry(TelemetrySnapshot? telemetry)
@@ -84,176 +118,16 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
         return Trend.Of(Samples.Select(sample => sample is null ? null : number(sample)), what, unit);
     }
 
+    /// <summary>Records one check: the answer is kept once, at the end of <see cref="History"/>, and a version it
+    /// carries replaces the version known - a check that says no version leaves the one known where it was.</summary>
     public void Record(ProbeResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
-        Last = result;
         Version = result.Version ?? Version;
         History.Add(result);
     }
 
     public NodeHealth ToNodeHealth() => new(Name, Region, IsPrimary, State);
 
-    public NodeVersion ToNodeVersion() => new(Region ?? Name, State, Version);
-}
-
-/// <summary>A deployable of an environment with the state of its endpoints.</summary>
-public sealed class DeployableStatus
-{
-    public DeployableStatus(DeployableInfo info)
-    {
-        ArgumentNullException.ThrowIfNull(info);
-        Info = info;
-        FrontDoor = info.FrontDoor is null ? null : new TargetStatus(TargetKind.FrontDoor, "Front Door", info.FrontDoor, links: info.Links);
-        Nodes = [.. info.Nodes.Select(node => new TargetStatus(TargetKind.Node, node.Name, node.Url, node.Region, node.Role, node.Links))];
-        BuildSource = info.BuildPath is null ? null : Nodes.FirstOrDefault(node => node.IsPrimary) ?? (Nodes.Count > 0 ? Nodes[0] : null);
-        Pinned = info.PinUrl is null ? null : PinnedVersions.Pending;
-    }
-
-    /// <summary>
-    /// The last reading of the deployable's own pin (<c>pinUrl</c>, a Kustomize file); a failed reading replaces a good
-    /// one. Null when the topology names none: the environment's <c>versions.json</c> then holds the pin.
-    /// </summary>
-    public PinnedVersions? Pinned { get; private set; }
-
-    /// <summary>The last reading of the deployable's own pin that succeeded: what a new reading is compared with to find a new pin.</summary>
-    public PinnedVersions? LastReadPinned { get; private set; }
-
-    public void RecordPin(PinnedVersions pinned)
-    {
-        ArgumentNullException.ThrowIfNull(pinned);
-        Pinned = pinned;
-    }
-
-    public void RememberPin(PinnedVersions pinned) => LastReadPinned = pinned;
-
-    /// <summary>The node asked for the build facts: the primary; null when the topology names no <c>buildPath</c>.</summary>
-    public TargetStatus? BuildSource { get; }
-
-    /// <summary>The build the deployable runs in this environment, as its primary node reports it; null when it reports none.</summary>
-    public BuildInfo? Build { get; private set; }
-
-    /// <summary>True once the build endpoint was asked.</summary>
-    public bool BuildWasRead { get; private set; }
-
-    /// <summary>The version the node ran when the build endpoint was asked: another version is another build.</summary>
-    public string? BuildReadForVersion { get; private set; }
-
-    /// <summary>The serving decision at the end of the last round of checks; null before the first.</summary>
-    public ServingAssessment? LastServing { get; private set; }
-
-    /// <summary>
-    /// True when the build endpoint should be asked now: it was not asked yet, or the node reports another version
-    /// than when it was. Not every round: the answer changes only with a deployment.
-    /// </summary>
-    public bool BuildIsDue(string? version) =>
-        !BuildWasRead || !string.Equals(version, BuildReadForVersion, StringComparison.OrdinalIgnoreCase);
-
-    public void RecordBuild(BuildInfo? build, string? version)
-    {
-        Build = build;
-        BuildWasRead = true;
-        BuildReadForVersion = version;
-    }
-
-    public void RecordServing(ServingAssessment assessment) => LastServing = assessment;
-
-    public DeployableInfo Info { get; }
-
-    public TargetStatus? FrontDoor { get; }
-
-    /// <summary>True when the deployable has a Front Door endpoint: what a tile says about Front Door is shown only then.</summary>
-    public bool HasFrontDoor => FrontDoor is not null;
-
-    public IReadOnlyList<TargetStatus> Nodes { get; }
-
-    /// <summary>The Front Door endpoint first, then the nodes in the order of the topology.</summary>
-    public IEnumerable<TargetStatus> Targets => FrontDoor is null ? Nodes : Nodes.Prepend(FrontDoor);
-
-    public ServingAssessment Assess() => Assess(out _);
-
-    /// <summary>The serving decision, and the tile of the node it expects to serve the traffic (if any).</summary>
-    public ServingAssessment Assess(out TargetStatus? expected)
-    {
-        var assessment = AssessServing(out IReadOnlyList<TargetStatus> serving);
-        expected = serving.Count > 0 ? serving[0] : null;
-        return assessment;
-    }
-
-    /// <summary>
-    /// The serving decision, and the tiles of the nodes it expects to serve the traffic: every healthy primary of a
-    /// rotation, and otherwise one node or none.
-    /// </summary>
-    public ServingAssessment AssessServing(out IReadOnlyList<TargetStatus> serving)
-    {
-        var healths = Nodes.Select(node => node.ToNodeHealth()).ToList();
-        var assessment = ServingAssessment.Assess(healths, FrontDoor?.State);
-        var expected = assessment.Serving;
-        serving = [.. Nodes.Where((_, index) => expected.Any(health => ReferenceEquals(health, healths[index])))];
-        return assessment;
-    }
-}
-
-/// <summary>An environment with the state of its deployables and the versions the deployments pinned for it in Git.</summary>
-public sealed class EnvironmentStatus
-{
-    public EnvironmentStatus(EnvironmentInfo info)
-    {
-        ArgumentNullException.ThrowIfNull(info);
-        Info = info;
-        Deployables = [.. info.Deployables.Select(deployable => new DeployableStatus(deployable))];
-        Pinned = info.VersionsUrl is null ? PinnedVersions.NotTracked : PinnedVersions.Pending;
-    }
-
-    public EnvironmentInfo Info { get; }
-
-    public string Name => Info.Name;
-
-    public string? Tier => Info.Tier;
-
-    public IReadOnlyList<DeployableStatus> Deployables { get; }
-
-    /// <summary>The last reading of the environment's <c>versions.json</c>; a failed reading replaces a good one.</summary>
-    public PinnedVersions Pinned { get; private set; }
-
-    /// <summary>True when a deployable of this environment has a node that runs another version than the pinned one.</summary>
-    public bool VersionsDiffer => Deployables.Any(deployable => AssessVersions(deployable) is { Differs: true });
-
-    /// <summary>The last reading that succeeded: what a new reading is compared with to find a new pin.</summary>
-    public PinnedVersions? LastReadPinned { get; private set; }
-
-    public void Record(PinnedVersions pinned)
-    {
-        ArgumentNullException.ThrowIfNull(pinned);
-        Pinned = pinned;
-    }
-
-    public void RememberPinned(PinnedVersions pinned) => LastReadPinned = pinned;
-
-    /// <summary>
-    /// The pinned version of a deployable next to the versions its nodes run: from the deployable's own pin where the
-    /// topology names one (<c>pinUrl</c>), from the environment's <c>versions.json</c> otherwise; null when the
-    /// topology names neither.
-    /// </summary>
-    public VersionAssessment? AssessVersions(DeployableStatus deployable)
-    {
-        ArgumentNullException.ThrowIfNull(deployable);
-        var nodes = deployable.Nodes.Select(node => node.ToNodeVersion());
-        if (deployable.Pinned is { } own)
-        {
-            return VersionAssessment.Assess(own, deployable.Info.Name, nodes, deployable.Info.PinFile);
-        }
-
-        return Info.VersionsUrl is null ? null : VersionAssessment.Assess(Pinned, deployable.Info.Name, nodes);
-    }
-
-    /// <summary>
-    /// The page with the history of a deployable's pin: the deployable's own (<c>pinHistoryUrl</c>), or else the
-    /// history of the environment's <c>versions.json</c>; null without both.
-    /// </summary>
-    public Uri? PinHistoryOf(DeployableStatus deployable)
-    {
-        ArgumentNullException.ThrowIfNull(deployable);
-        return deployable.Info.PinHistoryUrl ?? Info.VersionsHistoryUrl;
-    }
+    public NodeVersion ToNodeVersion() => new(Label, State, Version);
 }

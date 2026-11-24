@@ -63,21 +63,37 @@ public sealed record TrafficPlan(string Environment, IReadOnlyList<Uri> Addresse
         var targets = new List<string>();
         foreach (var deployable in environment.Deployables)
         {
-            var publicAddress = deployable.FrontDoor
-                ?? deployable.Nodes.FirstOrDefault(node => node.IsPrimary)?.Url
-                ?? (deployable.Nodes.Count > 0 ? deployable.Nodes[0].Url : null);
-            // An empty list of traffic paths is said on purpose: a deployable that takes no generated traffic (a
-            // dashboard the topology lists as a node). Without the key, the start page is called.
-            if (publicAddress is null || deployable.TrafficPaths is { Count: 0 })
+            if (PublicAddressOf(deployable) is not { } publicAddress || PathsOf(deployable) is not { } paths)
             {
                 continue;
             }
 
             targets.Add($"{deployable.Name} at {publicAddress.Host}");
-            var paths = deployable.TrafficPaths is { Count: > 0 } configured ? configured : DefaultPaths;
             addresses.AddRange(paths.Select(path => ProbeUrl.Combine(publicAddress, path)));
         }
 
         return addresses.Count == 0 ? null : new TrafficPlan(environment.Name, addresses, targets);
     }
+
+    /// <summary>
+    /// Where a user reaches a deployable: the Front Door endpoint where there is one, the primary node's own address
+    /// otherwise, and the first node's where none is primary. Null when it has neither Front Door nor nodes.
+    /// </summary>
+    private static Uri? PublicAddressOf(DeployableInfo deployable) =>
+        deployable.FrontDoor
+        ?? deployable.Nodes.FirstOrDefault(node => node.IsPrimary)?.Url
+        ?? (deployable.Nodes.Count > 0 ? deployable.Nodes[0].Url : null);
+
+    /// <summary>
+    /// The paths the traffic button calls on a deployable: its traffic paths, or the start page without the key. Null
+    /// when the list is empty, which is said on purpose: a deployable that takes no generated traffic (a dashboard the
+    /// topology lists as a node).
+    /// </summary>
+    private static IReadOnlyList<string>? PathsOf(DeployableInfo deployable) =>
+        deployable.TrafficPaths switch
+        {
+            null => DefaultPaths,
+            { Count: 0 } => null,
+            var configured => configured,
+        };
 }

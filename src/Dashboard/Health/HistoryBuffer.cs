@@ -18,6 +18,8 @@ public sealed class HistoryBuffer<T> : IReadOnlyList<T>
 
     public int Count { get; private set; }
 
+    private int Slot(int offset) => (_start + offset) % Capacity;
+
     /// <summary>The item at <paramref name="index"/>, where 0 is the oldest item kept.</summary>
     public T this[int index]
     {
@@ -25,22 +27,29 @@ public sealed class HistoryBuffer<T> : IReadOnlyList<T>
         {
             ArgumentOutOfRangeException.ThrowIfNegative(index);
             ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Count);
-            return _items[(_start + index) % Capacity];
+            return _items[Slot(index)];
         }
     }
+
+    /// <summary>
+    /// The newest item kept: the one <see cref="Add"/> wrote last, the item at index <see cref="Count"/> minus one.
+    /// A buffer that holds nothing has no newest item and answers with <see langword="default"/>, the same answer a
+    /// buffer whose newest item is <see langword="default"/> itself gives - <see cref="Count"/> tells them apart.
+    /// </summary>
+    public T? Last => Count > 0 ? this[Count - 1] : default;
 
     /// <summary>Adds an item; when the buffer is full, the oldest item is dropped.</summary>
     public void Add(T item)
     {
+        _items[Slot(Count)] = item;
         if (Count < Capacity)
         {
-            _items[(_start + Count) % Capacity] = item;
             Count++;
-            return;
         }
-
-        _items[_start] = item;
-        _start = (_start + 1) % Capacity;
+        else
+        {
+            _start = Slot(1);
+        }
     }
 
     public IEnumerator<T> GetEnumerator()

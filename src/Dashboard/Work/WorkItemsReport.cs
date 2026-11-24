@@ -125,9 +125,9 @@ public sealed record WorkItemsStats(
         || MergeToProdHours is not null;
 
     /// <summary>
-    /// <paramref name="section"/> is <c>stats</c>. <c>stats.all</c> is the whole board, and the same fields written
-    /// beside it (the older shape) are that same board. <c>stats.bot</c> and <c>stats.team</c> are the split; null
-    /// when that object is missing or empty.
+    /// <paramref name="section"/> is <c>stats</c>: the whole board, which of its two shapes is meant is
+    /// <see cref="WholeBoard"/>, and the <c>bot</c> and <c>team</c> split of it - each of the three null-ready parts
+    /// read by <see cref="ReadSlice"/>, so an object that says nothing is absent.
     /// </summary>
     internal static (WorkItemsStats All, WorkItemsStats? Bot, WorkItemsStats? Team) ReadSet(JsonElement? section)
     {
@@ -136,26 +136,36 @@ public sealed record WorkItemsStats(
             return (Empty, null, null);
         }
 
-        var legacy = Read(section);
-        var nested = JsonRead.Section(section, "all");
-        var all = nested is null ? legacy : Read(nested);
-        if (!all.HasAny && legacy.HasAny)
-        {
-            all = legacy;
-        }
-
-        return (all, Split(JsonRead.Section(section, "bot")), Split(JsonRead.Section(section, "team")));
+        return (WholeBoard(section), ReadSlice(section, "bot"), ReadSlice(section, "team"));
     }
 
-    private static WorkItemsStats? Split(JsonElement? section)
+    /// <summary>
+    /// Which object of <c>stats</c> is the whole board, named in one place: the nested <c>stats.all</c> when it
+    /// carries a count, and the same fields written beside it (the older shape - <c>stats.wipByColumn</c> and the
+    /// rest) when it carries none or is not there at all.
+    /// <para>
+    /// A mixed file is therefore read from beside it: <c>{ "stats": { "all": { }, "wipByColumn": { "Todo": 2 } } }</c>
+    /// is a board with two items in Todo, because the empty <c>all</c> says nothing and the counts beside it answer.
+    /// The same file with nothing beside it - <c>{ "stats": { "all": { } } }</c> - is an empty count: the file did
+    /// start arriving, so the page shows it and computes what it can from the items.
+    /// </para>
+    /// </summary>
+    private static WorkItemsStats WholeBoard(JsonElement? stats) => ReadSlice(stats, "all") ?? Read(stats);
+
+    /// <summary>
+    /// The counts of the object of <paramref name="name"/> under <paramref name="stats"/> - the whole board's
+    /// <c>all</c>, or one side of the <c>bot</c>/<c>team</c> split; null when there is no such object or it says
+    /// nothing. An object that says nothing is treated as absent, so the page can compute that part from the items.
+    /// </summary>
+    private static WorkItemsStats? ReadSlice(JsonElement? stats, string name)
     {
-        if (section is null)
+        if (JsonRead.Section(stats, name) is not { } section)
         {
             return null;
         }
 
-        var stats = Read(section);
-        return stats.HasAny ? stats : null;
+        var slice = Read(section);
+        return slice.HasAny ? slice : null;
     }
 
     internal static WorkItemsStats Read(JsonElement? section)
@@ -165,18 +175,20 @@ public sealed record WorkItemsStats(
             return Empty;
         }
 
-        var throughput = ReadThroughput(section);
         return new WorkItemsStats(
-            Counts(section, "wipByColumn"),
-            WorkDuration.Read(JsonRead.Section(section, "cycleTimeHours")),
-            WorkDuration.Read(JsonRead.Section(section, "leadTimeHours")),
-            [.. JsonRead.Items(section, "perWeek").Select(WorkWeek.Read).OfType<WorkWeek>()],
-            WorkRework.Read(JsonRead.Section(section, "rework")),
-            WorkCost.Read(JsonRead.Section(section, "cost")),
-            ColumnTimes(section),
-            throughput,
-            WorkDuration.Read(JsonRead.Section(section, "mergeToProdHours")));
+            WipByColumn: Counts(section, "wipByColumn"),
+            CycleTimeHours: Duration(section, "cycleTimeHours"),
+            LeadTimeHours: Duration(section, "leadTimeHours"),
+            PerWeek: [.. JsonRead.Items(section, "perWeek").Select(WorkWeek.Read).OfType<WorkWeek>()],
+            Rework: WorkRework.Read(JsonRead.Section(section, "rework")),
+            Cost: WorkCost.Read(JsonRead.Section(section, "cost")),
+            TimePerColumnHours: ColumnTimes(section),
+            Throughput: ReadThroughput(section),
+            MergeToProdHours: Duration(section, "mergeToProdHours"));
     }
+
+    /// <summary>The duration object of <paramref name="name"/> under <paramref name="section"/>; null when it says nothing.</summary>
+    private static WorkDuration? Duration(JsonElement? section, string name) => WorkDuration.Read(JsonRead.Section(section, name));
 
     private static List<WorkThroughput>? ReadThroughput(JsonElement? section)
     {
@@ -297,6 +309,22 @@ public sealed record WorkCost(double? TotalUsd, string? Note)
         var cost = new WorkCost(JsonRead.Number(section, "totalUsd"), JsonRead.Text(section, "note"));
         return cost == new WorkCost(null, null) ? null : cost;
     }
+}
+
+/// <summary>Whether the work items view has a file to show.</summary>
+public enum WorkItemsAvailability
+{
+    /// <summary>The address is known and the first read has not finished.</summary>
+    Loading,
+
+    /// <summary>The topology names no delivery file, so there is no sibling to read.</summary>
+    NoAddress,
+
+    /// <summary>The read found nothing: the file is not published yet, or it is not this file.</summary>
+    NotPublished,
+
+    /// <summary>A file was read.</summary>
+    Ready,
 }
 
 /// <summary>Who is doing the work. Unknown when the file does not say: the item stays in All and in neither filter.</summary>
@@ -442,6 +470,7 @@ public sealed record WorkItem(
             : WorkRework.Read(JsonRead.Section(element, "rework"));
     }
 
+    /// <summary>The first note found, in order: <c>latestStatusComment</c>, <c>blocker</c>, <c>comment</c>, then <c>status</c> with <c>statusUrl</c> and <c>statusAt</c>.</summary>
     private static WorkNote? Note(JsonElement element) =>
         StatusComment(JsonRead.Section(element, "latestStatusComment"))
         ?? WorkNote.Read(JsonRead.Section(element, "blocker"))

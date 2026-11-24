@@ -1,47 +1,5 @@
 namespace Dashboard.Health;
 
-/// <summary>What one regional node says about its version, as the comparison with the pinned version needs it.</summary>
-/// <param name="Label">The region, or the node's name when the topology gives no region.</param>
-/// <param name="State">The node's last check.</param>
-/// <param name="Version">The version the node last reported.</param>
-public sealed record NodeVersion(string Label, HealthState State, string? Version)
-{
-    /// <summary>
-    /// The version the node runs now, without build metadata; null when that is not known. A node that did not answer
-    /// its last check is not known, although the dashboard remembers the version it reported before.
-    /// </summary>
-    public string? Running => State is HealthState.Healthy or HealthState.Unhealthy ? VersionText.Display(Version) : null;
-
-    /// <summary>Why the running version is not known, as the end of a sentence that starts with the label.</summary>
-    public string UnknownReason => State switch
-    {
-        HealthState.Pending => "is being checked",
-        HealthState.Unreachable => "is unreachable",
-        _ => "reports no version",
-    };
-}
-
-public enum VersionState
-{
-    /// <summary>The file with the pin (the environment's <c>versions.json</c>, or the deployable's own) has not been read yet.</summary>
-    Pending,
-
-    /// <summary>The file could not be read: the pinned version is not known.</summary>
-    PinnedUnknown,
-
-    /// <summary>The file was not found or has no entry for the deployable: nothing was deployed.</summary>
-    NotDeployed,
-
-    /// <summary>The pinned version is known, and no node's running version is.</summary>
-    NodesUnknown,
-
-    /// <summary>Every node whose running version is known runs the pinned version.</summary>
-    InSync,
-
-    /// <summary>At least one node runs another version than the pinned one.</summary>
-    Differs,
-}
-
 /// <summary>
 /// The version the deployment pinned in Git for one deployable of one environment, next to the versions its nodes
 /// run. Versions are compared without build metadata (the part from <c>+</c>) and without regard to case. A node whose
@@ -98,21 +56,15 @@ public sealed record VersionAssessment(
                 $"{file} has no entry for {deployable}: it was not deployed here yet.");
         }
 
-        var all = nodes.ToList();
-        var unknown = all.Where(node => node.Running is null).ToList();
-        var matching = all.Where(node => Same(node.Running, version)).ToList();
-        var differing = all.Where(node => node.Running is not null && !Same(node.Running, version)).ToList();
-        var state = differing.Count > 0 ? VersionState.Differs
-            : matching.Count > 0 ? VersionState.InSync
-            : VersionState.NodesUnknown;
+        var tally = Tally(nodes, version);
         return new VersionAssessment(
-            state,
+            tally.State,
             version,
-            matching,
-            differing,
-            unknown,
+            tally.Matching,
+            tally.Differing,
+            tally.Unknown,
             $"Pinned {version}",
-            Describe(state, version, all.Count, matching, differing, unknown));
+            Describe(tally, version));
     }
 
     private static VersionAssessment Without(VersionState state, string headline, string? detail) =>
@@ -121,14 +73,28 @@ public sealed record VersionAssessment(
     private static bool Same(string? running, string pinned) =>
         string.Equals(running, pinned, StringComparison.OrdinalIgnoreCase);
 
-    private static string Describe(
-        VersionState state,
-        string version,
-        int total,
-        List<NodeVersion> matching,
-        List<NodeVersion> differing,
-        List<NodeVersion> unknown)
+    /// <summary>Walks the nodes once, reads each node's running version once and puts the node in its list.</summary>
+    private static NodeTally Tally(IEnumerable<NodeVersion> nodes, string pinned)
     {
+        var tally = new NodeTally([], [], []);
+        foreach (var node in nodes)
+        {
+            var list = node.Running switch
+            {
+                null => tally.Unknown,
+                var running when Same(running, pinned) => tally.Matching,
+                _ => tally.Differing,
+            };
+            list.Add(node);
+        }
+
+        return tally;
+    }
+
+    private static string Describe(NodeTally tally, string version)
+    {
+        var (matching, differing, unknown) = tally;
+        var (total, state) = (tally.Total, tally.State);
         var known = state switch
         {
             VersionState.Differs => $"Differs: {string.Join(", ", differing.Select(node => $"{node.Label} runs {node.Running}"))}",
@@ -146,17 +112,17 @@ public sealed record VersionAssessment(
         var separator = state == VersionState.NodesUnknown ? ": " : "; ";
         return $"{known}{separator}{string.Join(", ", unknown.Select(node => $"{node.Label} {node.UnknownReason}"))}.";
     }
-}
 
-/// <summary>The second line of the header: shown only when the versions differ somewhere.</summary>
-public sealed record VersionSummary(int EnvironmentsThatDiffer)
-{
-    public bool Differs => EnvironmentsThatDiffer > 0;
-
-    /// <summary><c>Versions differ in 1 environment</c>, counted through <see cref="Plural" />; null when they differ nowhere.</summary>
-    public string? Text => EnvironmentsThatDiffer switch
+    /// <summary>
+    /// The nodes sorted, in one walk, by what each runs next to the pinned version: every node stands in exactly one
+    /// list, in the order it was handed, and the total is the three lists together.
+    /// </summary>
+    private sealed record NodeTally(List<NodeVersion> Matching, List<NodeVersion> Differing, List<NodeVersion> Unknown)
     {
-        <= 0 => null,
-        _ => $"Versions differ in {Plural.Of(EnvironmentsThatDiffer, "environment")}",
-    };
+        public int Total => Matching.Count + Differing.Count + Unknown.Count;
+
+        public VersionState State => Differing.Count > 0 ? VersionState.Differs
+            : Matching.Count > 0 ? VersionState.InSync
+            : VersionState.NodesUnknown;
+    }
 }

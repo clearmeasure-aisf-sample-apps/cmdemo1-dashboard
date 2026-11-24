@@ -245,4 +245,49 @@ public class JsonReadTests
     [InlineData("3")]
     public void ThereIsNoPresentRecordWithoutAnObject(string? json) =>
         Assert.Null(JsonRead.Present(json is null ? null : Root(json), static _ => new Named("x", null)));
+
+    [Theory]
+    [InlineData("pools", true)]
+    [InlineData("empty", true)]
+    [InlineData("metrics", false)] // an object, not an array
+    [InlineData("name", false)]   // text
+    [InlineData("count", false)]  // a number
+    [InlineData("nothere", false)]
+    public void HasArrayRecognisesAnArrayByItsName(string name, bool expected) =>
+        Assert.Equal(expected, JsonRead.HasArray(Root(Answer), name));
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("3")]
+    [InlineData("\"text\"")]
+    [InlineData("{ }")]
+    public void HasArrayOnANonObjectParentIsFalse(string json) =>
+        Assert.False(JsonRead.HasArray(Root(json), "x"));
+
+    [Fact]
+    public void HasArrayOnANullParentIsFalse() =>
+        Assert.False(JsonRead.HasArray(null, "x"));
+
+    [Theory]
+    [InlineData("""{ "n": 2.6 }""", 3)] // rounded
+    [InlineData("""{ "n": 2.5 }""", 2)] // a half to the even neighbour
+    [InlineData("""{ "n": 3.5 }""", 4)]
+    [InlineData("""{ "n": 0.4 }""", 0)]
+    [InlineData("""{ "n": 0 }""", 0)]
+    [InlineData("""{ "n": 2147483647.4 }""", int.MaxValue)]
+    [InlineData("""{ "n": 3000000000 }""", int.MaxValue)] // past int.MaxValue: held at the top, not refused
+    [InlineData("""{ "n": 1e12 }""", int.MaxValue)]
+    [InlineData("""{ "n": 1e21 }""", int.MaxValue)]
+    [InlineData("""{ "n": 1e400 }""", int.MaxValue)] // too large for a double: held at the top too
+    [InlineData("""{ "n": -1 }""", null)]
+    [InlineData("""{ "n": -0.5 }""", null)]
+    [InlineData("""{ "n": "3" }""", null)]
+    [InlineData("""{ "n": null }""", null)]
+    [InlineData("""{ }""", null)]
+    public void ASaturatedCountHoldsANumberPastAnIntAtItsTop(string json, int? expected) =>
+        Assert.Equal(expected, JsonRead.SaturatedCount(Root(json), "n"));
+
+    [Fact]
+    public void ASaturatedCountOnANullParentIsNull() =>
+        Assert.Null(JsonRead.SaturatedCount(null, "n"));
 }

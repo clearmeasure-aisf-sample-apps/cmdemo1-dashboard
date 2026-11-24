@@ -49,16 +49,23 @@ public sealed class ClusterMonitor
     public SourceReading<AksService>? Service { get; private set; }
 
     /// <summary>
-    /// The last <see cref="Trend.Length"/> readings of the cluster's CPU and memory, oldest first, for the trend
+    /// How many readings of the cluster <see cref="Samples"/> keeps: half an hour at the default interval. It is the
+    /// length of a drawn <see cref="Trend"/> today, named here so the readings kept and the line drawn are two facts
+    /// even while their value is one.
+    /// </summary>
+    public const int SampleLength = Trend.Length;
+
+    /// <summary>
+    /// The last <see cref="SampleLength"/> readings of the cluster's CPU and memory, oldest first, for the trend
     /// lines: one per check, null where the status was not read or was stale. Nothing is stored beyond the page.
     /// </summary>
-    public HistoryBuffer<ClusterSample?> Samples { get; } = new(Trend.Length);
+    public HistoryBuffer<ClusterSample?> Samples { get; } = new(SampleLength);
 
     /// <summary>The trend of the CPU the nodes use, in cores; null with fewer than two readings.</summary>
-    public Trend? CpuTrend => Trend.Of(Samples.Select(sample => sample?.CpuMillicores / 1000), "CPU used in the cluster", " cores");
+    public Trend? CpuTrend => Trend.Of(Samples.Select(sample => sample?.CpuMillicores / ClusterText.MillicoresPerCore), "CPU used in the cluster", " cores");
 
     /// <summary>The trend of the memory the nodes use, in GiB; null with fewer than two readings.</summary>
-    public Trend? MemoryTrend => Trend.Of(Samples.Select(sample => sample?.MemoryBytes / (1024d * 1024 * 1024)), "Memory used in the cluster", " GiB");
+    public Trend? MemoryTrend => Trend.Of(Samples.Select(sample => sample?.MemoryBytes / ClusterText.Gibibyte), "Memory used in the cluster", " GiB");
 
     /// <summary>Reads both files at the same time; each is recorded as it arrives.</summary>
     public Task CheckAsync(CancellationToken cancellationToken) =>

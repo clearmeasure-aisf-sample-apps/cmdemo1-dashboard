@@ -493,4 +493,16 @@ public class ClusterGroupsEdgeCaseTests
     [Fact]
     public void AStatusWithoutNodesHasNoSample() =>
         Assert.Equal(new ClusterSample(null, null), ClusterSample.Of(ClusterFixture.Status([], [])));
+
+    /// <summary>The totals that are not there say the one word the all-nothing use says: the constant that every
+    /// edge-case file names instead of repeating the string twice. The test builds the totals of a status with no
+    /// nodes and checks that its words carry the constant where the resource sums stand.</summary>
+    [Fact]
+    public void TheTotalsOfNoNodesSayTheEmptyResourceUseConstant()
+    {
+        var totals = ClusterTotals.Of(ClusterFixture.Status([], []), Generated);
+
+        Assert.Contains($"Cpu = {RecordWords.EmptyResourceUse}", totals.ToString(), StringComparison.Ordinal);
+        Assert.Contains($"Memory = {RecordWords.EmptyResourceUse}", totals.ToString(), StringComparison.Ordinal);
+    }
 }

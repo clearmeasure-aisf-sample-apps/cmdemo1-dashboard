@@ -82,7 +82,14 @@ public static class TopologyParser
             dashboard = ReadDashboard(system);
         }
 
-        return new SystemInfo(slug, name ?? (slug.Length > 0 ? slug : "System"), repository, delivery, cost, dashboard, deployments);
+        return new SystemInfo(
+            Slug: slug,
+            Name: name ?? (slug.Length > 0 ? slug : "System"),
+            Repository: repository,
+            DeliveryUrl: delivery,
+            CostUrl: cost,
+            Dashboard: dashboard,
+            DeploymentsUrl: deployments);
     }
 
     /// <summary>
@@ -97,8 +104,8 @@ public static class TopologyParser
             return null;
         }
 
-        return ReadText(dashboard, "buildPath") is { } build
-            ? new DashboardInfo(ReadText(dashboard, "name") ?? DashboardInfo.DefaultName, AsPath(build))
+        return ReadOptionalPath(dashboard, "buildPath") is { } build
+            ? new DashboardInfo(ReadText(dashboard, "name") ?? DashboardInfo.DefaultName, build)
             : null;
     }
 
@@ -111,16 +118,8 @@ public static class TopologyParser
             return environments;
         }
 
-        var index = 0;
-        foreach (var element in array.EnumerateArray())
+        foreach (var (element, path, _) in Objects(array, "environments", errors))
         {
-            var path = $"environments[{index++}]";
-            if (element.ValueKind != JsonValueKind.Object)
-            {
-                errors.Add($"{path}: not an object.");
-                continue;
-            }
-
             var name = ReadText(element, "name");
             if (name is null)
             {
@@ -216,36 +215,28 @@ public static class TopologyParser
             return deployables;
         }
 
-        var index = 0;
-        foreach (var element in array.EnumerateArray())
+        foreach (var (element, path, _) in Objects(array, $"{environmentPath}.deployables", errors))
         {
-            var path = $"{environmentPath}.deployables[{index++}]";
-            if (element.ValueKind != JsonValueKind.Object)
-            {
-                errors.Add($"{path}: not an object.");
-                continue;
-            }
-
             var project = ReadOptionalAddress(element, "projectUrl", path, errors);
             var frontDoor = ReadOptionalAddress(element, "frontDoor", path, errors);
             var pin = ReadOptionalAddress(element, "pinUrl", path, errors);
             var pinHistory = ReadOptionalAddress(element, "pinHistoryUrl", path, errors);
             var nodes = ReadNodes(element, path, errors);
             deployables.Add(new DeployableInfo(
-                ReadText(element, "name") ?? "app",
-                frontDoor,
-                ReadPath(element, "healthPath", DeployableInfo.DefaultHealthPath),
-                ReadPath(element, "alivePath", DeployableInfo.DefaultAlivePath),
-                ReadPath(element, "versionPath", DeployableInfo.DefaultVersionPath),
-                nodes,
-                project,
-                ReadText(element, "telemetryPath") is { Length: > 0 } telemetry ? AsPath(telemetry) : null,
-                ReadPaths(element, "trafficPaths", path, errors),
-                ReadText(element, "buildPath") is { Length: > 0 } build ? AsPath(build) : null,
-                ReadLinks(element),
-                pin,
-                pinHistory,
-                ReadText(element, "healthDetailPath") is { Length: > 0 } detail ? AsPath(detail) : null));
+                Name: ReadText(element, "name") ?? "app",
+                FrontDoor: frontDoor,
+                HealthPath: ReadPath(element, "healthPath", DeployableInfo.DefaultHealthPath),
+                AlivePath: ReadPath(element, "alivePath", DeployableInfo.DefaultAlivePath),
+                VersionPath: ReadPath(element, "versionPath", DeployableInfo.DefaultVersionPath),
+                Nodes: nodes,
+                ProjectUrl: project,
+                TelemetryPath: ReadOptionalPath(element, "telemetryPath"),
+                TrafficPaths: ReadPaths(element, "trafficPaths", path, errors),
+                BuildPath: ReadOptionalPath(element, "buildPath"),
+                Links: ReadLinks(element),
+                PinUrl: pin,
+                PinHistoryUrl: pinHistory,
+                HealthDetailPath: ReadOptionalPath(element, "healthDetailPath")));
         }
 
         return deployables;
@@ -262,7 +253,7 @@ public static class TopologyParser
         var address = ReadAddress(value);
         if (address is null)
         {
-            errors.Add($"{parentPath}.{property}: not an absolute http or https address.");
+            errors.Add(Messages.Address(parentPath, property, required: false));
         }
 
         return address;
@@ -276,27 +267,17 @@ public static class TopologyParser
             return nodes;
         }
 
-        var index = 0;
-        foreach (var element in array.EnumerateArray())
+        foreach (var (element, path, _) in Objects(array, $"{deployablePath}.nodes", errors))
         {
-            var position = index++;
-            var path = $"{deployablePath}.nodes[{position}]";
-            if (element.ValueKind != JsonValueKind.Object)
-            {
-                errors.Add($"{path}: not an object.");
-                continue;
-            }
-
             var url = element.TryGetProperty("url", out var value) ? ReadAddress(value) : null;
             if (url is null)
             {
-                errors.Add($"{path}.url: missing or not an absolute http or https address.");
+                errors.Add(Messages.Address(path, "url", required: true));
                 continue;
             }
 
-            // Without a role, the order of the file decides: the first node is the primary.
-            var role = ReadText(element, "role")?.ToLowerInvariant()
-                ?? (position == 0 ? NodeInfo.PrimaryRole : NodeInfo.StandbyRole);
+            // Without a role, the order of the nodes read decides: the first node read is the primary.
+            var role = ReadText(element, "role")?.ToLowerInvariant() ?? NodeRole.Default(nodes.Count);
             nodes.Add(new NodeInfo(ReadText(element, "name") ?? url.Host, ReadText(element, "region"), role, url, ReadLinks(element)));
         }
 
@@ -325,6 +306,41 @@ public static class TopologyParser
         }
 
         return found.Count == 0 ? null : new LinkSet(found);
+    }
+
+    /// <summary>
+    /// The objects of an array, each with the place it stands in (<c>{arrayPath}[{index}]</c>) and its index among all
+    /// the entries; an entry that is no object is refused by that place, once, and not handed on.
+    /// </summary>
+    private static IEnumerable<(JsonElement Element, string Path, int Index)> Objects(
+        JsonElement array,
+        string arrayPath,
+        List<string> errors)
+    {
+        var index = 0;
+        foreach (var element in array.EnumerateArray())
+        {
+            var position = index++;
+            var path = $"{arrayPath}[{position}]";
+            if (element.ValueKind != JsonValueKind.Object)
+            {
+                errors.Add($"{path}: not an object.");
+                continue;
+            }
+
+            yield return (element, path, position);
+        }
+    }
+
+    /// <summary>The sentences the page says a refused part of the file in; the tests pin them letter for letter.</summary>
+    private static class Messages
+    {
+        /// <summary>
+        /// An address that is not one: a required one may also be missing, an optional one that is missing is fine.
+        /// </summary>
+        internal static string Address(string parentPath, string property, bool required) => required
+            ? $"{parentPath}.{property}: missing or not an absolute http or https address."
+            : $"{parentPath}.{property}: not an absolute http or https address.";
     }
 
     /// <summary>False when the array is absent (fine: it is empty) or of the wrong type (an error).</summary>
@@ -361,9 +377,11 @@ public static class TopologyParser
     }
 
     private static string ReadPath(JsonElement parent, string property, string fallback) =>
-        AsPath(ReadText(parent, property) ?? fallback);
+        ReadOptionalPath(parent, property) ?? fallback;
 
-    private static string AsPath(string path) => path.StartsWith('/') ? path : $"/{path}";
+    /// <summary>An optional path, or none: <see cref="ReadText"/> answers null for anything but a word.</summary>
+    private static string? ReadOptionalPath(JsonElement parent, string property) =>
+        SitePath.Parse(ReadText(parent, property));
 
     /// <summary>An optional array of paths; null when absent, an error for anything but strings.</summary>
     private static List<string>? ReadPaths(JsonElement parent, string property, string parentPath, List<string> errors)
@@ -382,7 +400,8 @@ public static class TopologyParser
                 return null;
             }
 
-            paths.Add(AsPath(element.GetString()!));
+            // Deliberately untrimmed (#1041): a padded entry stays the path it was written as.
+            paths.Add(SitePath.WithFront(element.GetString()!));
         }
 
         return paths;

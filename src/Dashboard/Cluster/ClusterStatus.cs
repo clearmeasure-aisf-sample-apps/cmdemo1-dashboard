@@ -52,13 +52,14 @@ public sealed record ClusterStatus(
 
     /// <summary>
     /// Reads the file. It must be a JSON object with <c>nodes</c> or <c>namespaces</c>; a node, a namespace, a pod or
-    /// a volume without a name is left out, and unknown fields are ignored.
+    /// a volume without a name is left out, and unknown fields are ignored. If a field is spelled more than once, the
+    /// last spelling is the one the reader takes - the fact it gives is the fact the file gives last.
     /// </summary>
     public static Parsed<ClusterStatus> Parse(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
         {
-            return new Parsed<ClusterStatus>(null, "the file is empty");
+            return new Parsed<ClusterStatus>(null, FileProblems.Empty);
         }
 
         try
@@ -67,10 +68,10 @@ public sealed record ClusterStatus(
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
             {
-                return new Parsed<ClusterStatus>(null, "the file does not contain a JSON object");
+                return new Parsed<ClusterStatus>(null, FileProblems.NotAnObject);
             }
 
-            if (!HasArray(root, "nodes") && !HasArray(root, "namespaces"))
+            if (!JsonRead.HasArray(root, "nodes") && !JsonRead.HasArray(root, "namespaces"))
             {
                 return new Parsed<ClusterStatus>(null, "the file has neither nodes nor namespaces");
             }
@@ -84,7 +85,7 @@ public sealed record ClusterStatus(
         }
         catch (JsonException)
         {
-            return new Parsed<ClusterStatus>(null, "the file is not valid JSON");
+            return new Parsed<ClusterStatus>(null, FileProblems.Broken);
         }
     }
 
@@ -98,9 +99,6 @@ public sealed record ClusterStatus(
 
     /// <summary>The field that names a node, a namespace, a pod or a volume: the one part without which there is no row.</summary>
     private const string RowName = "name";
-
-    private static bool HasArray(JsonElement root, string name) =>
-        root.TryGetProperty(name, out var array) && array.ValueKind == JsonValueKind.Array;
 }
 
 /// <summary>One resource (CPU in millicores, or memory in bytes) of a node or a pod. Each number may be absent.</summary>
@@ -174,8 +172,15 @@ public sealed record ClusterNode(
 }
 
 /// <summary>One namespace with its pods and its volume claims.</summary>
+/// <exception cref="ArgumentNullException"><paramref name="Pods"/> or <paramref name="Volumes"/> is null.</exception>
 public sealed record ClusterNamespace(string Name, IReadOnlyList<ClusterPod> Pods, IReadOnlyList<ClusterVolume> Volumes)
 {
+    /// <summary>The pods of the namespace; never null.</summary>
+    public IReadOnlyList<ClusterPod> Pods { get; init; } = Pods ?? throw new ArgumentNullException(nameof(Pods));
+
+    /// <summary>The volume claims of the namespace; never null.</summary>
+    public IReadOnlyList<ClusterVolume> Volumes { get; init; } = Volumes ?? throw new ArgumentNullException(nameof(Volumes));
+
     internal static ClusterNamespace Read(string name, JsonElement element) =>
         new(
             name,

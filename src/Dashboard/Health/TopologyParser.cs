@@ -118,16 +118,8 @@ public static class TopologyParser
             return environments;
         }
 
-        var index = 0;
-        foreach (var element in array.EnumerateArray())
+        foreach (var (element, path, _) in Objects(array, "environments", errors))
         {
-            var path = $"environments[{index++}]";
-            if (element.ValueKind != JsonValueKind.Object)
-            {
-                errors.Add($"{path}: not an object.");
-                continue;
-            }
-
             var name = ReadText(element, "name");
             if (name is null)
             {
@@ -223,16 +215,8 @@ public static class TopologyParser
             return deployables;
         }
 
-        var index = 0;
-        foreach (var element in array.EnumerateArray())
+        foreach (var (element, path, _) in Objects(array, $"{environmentPath}.deployables", errors))
         {
-            var path = $"{environmentPath}.deployables[{index++}]";
-            if (element.ValueKind != JsonValueKind.Object)
-            {
-                errors.Add($"{path}: not an object.");
-                continue;
-            }
-
             var project = ReadOptionalAddress(element, "projectUrl", path, errors);
             var frontDoor = ReadOptionalAddress(element, "frontDoor", path, errors);
             var pin = ReadOptionalAddress(element, "pinUrl", path, errors);
@@ -269,7 +253,7 @@ public static class TopologyParser
         var address = ReadAddress(value);
         if (address is null)
         {
-            errors.Add($"{parentPath}.{property}: not an absolute http or https address.");
+            errors.Add(Messages.Address(parentPath, property, required: false));
         }
 
         return address;
@@ -283,21 +267,12 @@ public static class TopologyParser
             return nodes;
         }
 
-        var index = 0;
-        foreach (var element in array.EnumerateArray())
+        foreach (var (element, path, position) in Objects(array, $"{deployablePath}.nodes", errors))
         {
-            var position = index++;
-            var path = $"{deployablePath}.nodes[{position}]";
-            if (element.ValueKind != JsonValueKind.Object)
-            {
-                errors.Add($"{path}: not an object.");
-                continue;
-            }
-
             var url = element.TryGetProperty("url", out var value) ? ReadAddress(value) : null;
             if (url is null)
             {
-                errors.Add($"{path}.url: missing or not an absolute http or https address.");
+                errors.Add(Messages.Address(path, "url", required: true));
                 continue;
             }
 
@@ -332,6 +307,41 @@ public static class TopologyParser
         }
 
         return found.Count == 0 ? null : new LinkSet(found);
+    }
+
+    /// <summary>
+    /// The objects of an array, each with the place it stands in (<c>{arrayPath}[{index}]</c>) and its index among all
+    /// the entries; an entry that is no object is refused by that place, once, and not handed on.
+    /// </summary>
+    private static IEnumerable<(JsonElement Element, string Path, int Index)> Objects(
+        JsonElement array,
+        string arrayPath,
+        List<string> errors)
+    {
+        var index = 0;
+        foreach (var element in array.EnumerateArray())
+        {
+            var position = index++;
+            var path = $"{arrayPath}[{position}]";
+            if (element.ValueKind != JsonValueKind.Object)
+            {
+                errors.Add($"{path}: not an object.");
+                continue;
+            }
+
+            yield return (element, path, position);
+        }
+    }
+
+    /// <summary>The sentences the page says a refused part of the file in; the tests pin them letter for letter.</summary>
+    private static class Messages
+    {
+        /// <summary>
+        /// An address that is not one: a required one may also be missing, an optional one that is missing is fine.
+        /// </summary>
+        internal static string Address(string parentPath, string property, bool required) => required
+            ? $"{parentPath}.{property}: missing or not an absolute http or https address."
+            : $"{parentPath}.{property}: not an absolute http or https address.";
     }
 
     /// <summary>False when the array is absent (fine: it is empty) or of the wrong type (an error).</summary>

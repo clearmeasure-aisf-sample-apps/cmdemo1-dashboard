@@ -224,7 +224,18 @@ public static class CostText
     /// <summary>The format of every day of a cost: the <c>asOf</c> of the file, and every date the page prints.</summary>
     public const string DayFormat = "yyyy-MM-dd";
 
+    /// <summary>The format of a month named for a viewer of a different month: <c>September</c>.</summary>
+    private const string MonthName = "MMMM";
+
+    /// <summary>The format of a month named for a viewer of a different year: <c>September 2025</c>.</summary>
+    private const string MonthNameAndYear = "MMMM yyyy";
+
     public static string Date(DateOnly day) => day.ToString(DayFormat, CultureInfo.InvariantCulture);
+
+    /// <summary>A month of the file named for a viewer who stands in another one: <c>in September</c>,
+    /// <c>in September 2025</c>. Its name is the invariant one, whatever the reader's culture, as is every day
+    /// of a cost.</summary>
+    private static string In(string format, DateOnly day) => $"in {day.ToString(format, CultureInfo.InvariantCulture)}";
 
     /// <summary>The calendar day of <paramref name="now"/> in <see cref="DayZone"/>, whatever zone its moment carries: the one day every period word of a cost is counted from.</summary>
     private static DateOnly UtcDay(DateTimeOffset now) => DateOnly.FromDateTime(now.UtcDateTime);
@@ -248,10 +259,10 @@ public static class CostText
     private static string ThisMonth() => "this month";
 
     /// <summary>The month's name alone, in the other months of the year the rendering stands in.</summary>
-    private static string InMonth(DateOnly day) => $"in {day.ToString("MMMM", CultureInfo.InvariantCulture)}";
+    private static string InMonth(DateOnly day) => In(MonthName, day);
 
     /// <summary>The month's name with its year, in every year the rendering does not stand in.</summary>
-    private static string InMonthOfYear(DateOnly day) => $"in {day.ToString("MMMM yyyy", CultureInfo.InvariantCulture)}";
+    private static string InMonthOfYear(DateOnly day) => In(MonthNameAndYear, day);
 
     /// <summary>
     /// <c>Most this month: Azure Container Apps $6.10, SQL Database $2.00</c>; null when the file names no service.

@@ -45,8 +45,7 @@ public sealed class RuntimeLoader(HttpClient http)
     public async Task<RuntimeIndexResult> LoadIndexAsync(CancellationToken cancellationToken)
     {
         var (status, text, error) = await GetAsync(IndexFile, cancellationToken);
-        // A host that answers every unknown address with the page itself (a fallback route) serves no JSON either.
-        if (status == HttpStatusCode.NotFound || (status == HttpStatusCode.OK && text is not null && text.TrimStart().StartsWith('<')))
+        if (status == HttpStatusCode.NotFound || IsServedByTheFallbackRoute(status, text))
         {
             return RuntimeIndexResult.NotDeployed;
         }
@@ -186,6 +185,12 @@ public sealed class RuntimeLoader(HttpClient http)
             return ApplicationRead.Failed;
         }
     }
+
+    /// <summary>
+    /// A host that answers every unknown address with the page itself (a fallback route) serves no JSON either.
+    /// </summary>
+    private static bool IsServedByTheFallbackRoute(HttpStatusCode? status, string? text) =>
+        status == HttpStatusCode.OK && text is not null && text.TrimStart().StartsWith('<');
 
     /// <summary>The status and the text of a file of <c>runtime/</c>; an error text when it could not be read.</summary>
     private async Task<(HttpStatusCode? Status, string? Text, string? Error)> GetAsync(string file, CancellationToken cancellationToken)

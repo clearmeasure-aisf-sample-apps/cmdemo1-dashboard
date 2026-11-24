@@ -47,6 +47,15 @@ public class RuntimeLoaderTests
     }
 
     [Fact]
+    public async Task WhitespaceBeforeTheHtmlTagIsStillAFallbackRoute()
+    {
+        var result = await Loader(new StubHandler(_ => StubHandler.Answer(HttpStatusCode.OK, "  \n  <html></html>")))
+            .LoadIndexAsync(CancellationToken.None);
+
+        Assert.Equal(RuntimeAvailability.NotDeployed, result.Availability);
+    }
+
+    [Fact]
     public async Task AnIndexThatCannotBeReadIsReportedWithItsReason()
     {
         var failed = await Loader(new StubHandler(_ => StubHandler.Answer(HttpStatusCode.InternalServerError))).LoadIndexAsync(CancellationToken.None);

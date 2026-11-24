@@ -1,4 +1,5 @@
 using System.Net;
+using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Dashboard.Health;
 using Microsoft.Extensions.Time.Testing;
@@ -233,4 +234,83 @@ public static class TelemetrySnapshots
     /// total of all its SQL commands.</summary>
     public static TelemetrySnapshot WithSplitSql(int requests, int totalSql, int sqlRequests, int sqlBackground, DateTimeOffset at) =>
         WithSql(requests, totalSql, at) with { SqlRequests = sqlRequests, SqlBackground = sqlBackground };
+}
+
+/// <summary>
+/// The two questions every markup guard asks and every markup guard used to answer with a copy of its own: how many
+/// times a word is said in a file, and where the file a test reads stands. The walk of <see cref="CountOccurrences" />
+/// was copied verbatim into ten guard files and the <c>[CallerFilePath]</c> navigation of
+/// <see cref="ComponentPath" /> into sixty-odd of them - the same twelve lines, the same
+/// <c>"..", "Dashboard", "Components"</c>, each with a name of its own and a drift waiting to happen. A guard says
+/// what it counts and which component it reads, and nothing about where the source tree is.
+/// <para>
+/// The anchor is unchanged on purpose: every path here is found from the file that asks, exactly as the copies found
+/// it, so a call site moves over one line at a time and reads the very text it always read. The equivalence of the
+/// two ways of asking is itself pinned - see <see cref="MarkupGuardSupportTests" />, which walks the assembly, invokes
+/// every copy still in it, and holds each to the answer given here.
+/// </para>
+/// </summary>
+internal static class MarkupGuards
+{
+    /// <summary>The folder of the tests, which the file that asks stands in - the way the guards have always found
+    /// the folder they read.</summary>
+    public static string TestsRoot([CallerFilePath] string here = "") => Path.GetFullPath(Path.GetDirectoryName(here)!);
+
+    /// <summary>The app's own source folder, <c>src/Dashboard</c>, as the test's folder stands beside it.</summary>
+    public static string DashboardRoot([CallerFilePath] string here = "") =>
+        Path.GetFullPath(Path.Combine(TestsRoot(here), "..", "Dashboard"));
+
+    /// <summary>A file or a folder of the app's source, named as a path inside <c>src/Dashboard</c> - <c>Health</c>,
+    /// <c>wwwroot/index.html</c>, <c>Runtime/RuntimePayloadBuilder.cs</c> - the one way the guards reach anything of
+    /// the app that is not a component.</summary>
+    public static string SourcePath(string relative, [CallerFilePath] string here = "")
+    {
+        ArgumentException.ThrowIfNullOrEmpty(relative);
+        return Path.GetFullPath(Path.Combine(DashboardRoot(here), relative));
+    }
+
+    /// <summary>A component of the page, <c>src/Dashboard/Components/&lt;component&gt;.razor</c>, by the name the page
+    /// writes for it - <c>WorkItemsView</c>, <c>StateBadge</c>, <c>DeployableFacts</c> - without a guard repeating
+    /// where the components live.</summary>
+    public static string ComponentPath(string component, [CallerFilePath] string here = "")
+    {
+        ArgumentException.ThrowIfNullOrEmpty(component);
+        return SourcePath(Path.Combine("Components", component + ".razor"), here);
+    }
+
+    /// <summary>A component's markup, as the file holds it.</summary>
+    public static string ComponentText(string component, [CallerFilePath] string here = "") =>
+        File.ReadAllText(ComponentPath(component, here));
+
+    /// <summary>The page itself, <c>src/Dashboard/App.razor</c>, which holds the header and every control of it.</summary>
+    public static string AppPath([CallerFilePath] string here = "") => SourcePath("App.razor", here);
+
+    /// <summary>The page's markup, as the file holds it.</summary>
+    public static string AppText([CallerFilePath] string here = "") => File.ReadAllText(AppPath(here));
+
+    /// <summary>How many times <paramref name="value" /> is said in <paramref name="text" />, walking past each
+    /// occurrence by its own length so a word inside a word is not counted twice. Ordinal, so the reader's culture
+    /// has nothing to say about it, and the count a guard pins is the count of letters and not of meanings.
+    /// <para>
+    /// The walk steps by <paramref name="value" />'s length, so an empty word would never move and the count would
+    /// never end; a caller that asks for the count of nothing is refused where it stands rather than hung, and
+    /// neither argument is ever nothing.</p>
+    /// </summary>
+    public static int CountOccurrences(string text, string value)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(value);
+        if (value.Length == 0)
+        {
+            throw new ArgumentException("The word to count is empty, and the walk steps by its length.", nameof(value));
+        }
+
+        var count = 0;
+        for (var index = 0; (index = text.IndexOf(value, index, StringComparison.Ordinal)) >= 0; index += value.Length)
+        {
+            count++;
+        }
+
+        return count;
+    }
 }

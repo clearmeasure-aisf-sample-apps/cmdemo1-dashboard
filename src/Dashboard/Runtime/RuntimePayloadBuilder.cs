@@ -840,9 +840,8 @@ public static class RuntimePayloadBuilder
         var facts = last switch
         {
             null => "not checked yet",
-            { StatusCode: { } status, LatencyMs: { } latency } => string.Create(CultureInfo.InvariantCulture, $"HTTP {status} · {latency} ms"),
-            { StatusCode: { } status } => string.Create(CultureInfo.InvariantCulture, $"HTTP {status}"),
-            _ => "no answer",
+            { StatusCode: null } => "no answer",
+            _ => HistoryText.ResultFacts(last, " · "),
         };
         var title = new List<string> { $"{node.Name}: {HealthClassifier.Label(target.State)}", target.Url.AbsoluteUri };
         if (last is not null)

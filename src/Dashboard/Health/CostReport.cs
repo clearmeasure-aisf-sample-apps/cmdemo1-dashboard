@@ -175,8 +175,8 @@ public static class CostText
     {
         var today = UtcDay(now);
         return asOf is not { } day || (day.Year == today.Year && day.Month == today.Month) ? "this month"
-            : day.Year == today.Year ? $"in {day.ToString("MMMM", CultureInfo.InvariantCulture)}"
-            : $"in {day.ToString("MMMM yyyy", CultureInfo.InvariantCulture)}";
+            : day.Year == today.Year ? In(MonthName, day)
+            : In(MonthNameAndYear, day);
     }
 
     /// <summary>The three amounts with their days: <c>$1.52 yesterday</c>, <c>$9.80 in 7 days</c>, <c>$11.02 this month</c>.</summary>
@@ -211,7 +211,18 @@ public static class CostText
     /// <summary>The format of every day of a cost: the <c>asOf</c> of the file, and every date the page prints.</summary>
     public const string DayFormat = "yyyy-MM-dd";
 
+    /// <summary>The format of a month named for a viewer of a different month: <c>September</c>.</summary>
+    private const string MonthName = "MMMM";
+
+    /// <summary>The format of a month named for a viewer of a different year: <c>September 2025</c>.</summary>
+    private const string MonthNameAndYear = "MMMM yyyy";
+
     public static string Date(DateOnly day) => day.ToString(DayFormat, CultureInfo.InvariantCulture);
+
+    /// <summary>A month of the file named for a viewer who stands in another one: <c>in September</c>,
+    /// <c>in September 2025</c>. Its name is the invariant one, whatever the reader's culture, as is every day
+    /// of a cost.</summary>
+    private static string In(string format, DateOnly day) => $"in {day.ToString(format, CultureInfo.InvariantCulture)}";
 
     /// <summary>The calendar day of <paramref name="now"/> in <see cref="DayZone"/>, whatever zone its moment carries: the one day every period word of a cost is counted from.</summary>
     private static DateOnly UtcDay(DateTimeOffset now) => DateOnly.FromDateTime(now.UtcDateTime);

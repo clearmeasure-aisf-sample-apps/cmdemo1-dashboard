@@ -25,8 +25,9 @@ public static class HistoryText
             .Select(state => (State: state, Count: history.Count(result => result.State == state)))
             .Where(entry => entry.Count > 0)
             .Select(entry => string.Create(CultureInfo.InvariantCulture, $"{entry.Count} {HealthClassifier.Sentence(entry.State)}"));
-        var checks = history.Count == 1 ? "Last check" : string.Create(CultureInfo.InvariantCulture, $"Last {history.Count} checks");
-        return $"{checks}: {string.Join(", ", parts)}";
+        var noun = Plural.Noun(history.Count, "check");
+        var header = history.Count == 1 ? "Last" : $"Last {history.Count}";
+        return $"{header} {noun}: {string.Join(", ", parts)}";
     }
 
     /// <summary>One check in words: <c>15:04:05 Healthy, HTTP 200, 123 ms</c>.</summary>

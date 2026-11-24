@@ -68,7 +68,7 @@ public static class AvailabilityText
 
     /// <summary><c>Healthy in 23 of 24 hourly checks (95.8 %) in 24 hours</c>.</summary>
     private static AvailabilityPart Hourly(HealthWindow window, string inWhat) =>
-        new("Healthy in ", Count(window), $" hourly {(window.Reports == 1 ? "check" : "checks")} ({Percent(window)}) in {inWhat}");
+        new("Healthy in ", Count(window), $" hourly {Plural.Noun(window.Reports, "check")} ({Percent(window)}) in {inWhat}");
 
     /// <summary><c>No hourly check ended in 7 days</c>.</summary>
     private static AvailabilityPart NoCheckEnded(string inWhat) => new("No hourly check ended in ", inWhat, string.Empty);

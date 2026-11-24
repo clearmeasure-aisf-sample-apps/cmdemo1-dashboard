@@ -171,13 +171,7 @@ public sealed record ServingAssessment(
             return $"Front Door rotates over {count} regions: all healthy";
         }
 
-        var names = stopped.Take(MostNamed).Select(node => node.Label).ToList();
-        if (stopped.Count > MostNamed)
-        {
-            names.Add($"{stopped.Count - MostNamed} more");
-        }
-
-        var listed = names.Count == 1 ? names[0] : $"{string.Join(", ", names.Take(names.Count - 1))} and {names[^1]}";
+        var listed = NamedList.Words([.. stopped.Select(node => node.Label)], MostNamed);
         return $"Front Door rotates over {count - stopped.Count} of {count} regions: {listed} {(stopped.Count == 1 ? "is" : "are")} not healthy";
     }
 

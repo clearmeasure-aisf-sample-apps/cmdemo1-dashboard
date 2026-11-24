@@ -6,7 +6,8 @@ namespace Dashboard.Health;
 /// <summary>Checks one endpoint: calls its probe path, classifies the answer and reads the app version.</summary>
 public sealed class NodeProber(HttpClient http, TimeProvider time)
 {
-    public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
+    /// <summary>The shared probe default (<see cref="ProbeDefaults.DefaultTimeout" />).</summary>
+    public static readonly TimeSpan DefaultTimeout = ProbeDefaults.DefaultTimeout;
 
     /// <summary>How long a node may take to answer before it counts as unreachable.</summary>
     public TimeSpan Timeout { get; init; } = DefaultTimeout;

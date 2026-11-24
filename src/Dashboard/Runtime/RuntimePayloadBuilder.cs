@@ -256,20 +256,9 @@ public static class RuntimePayloadBuilder
         return entries;
     }
 
-    private static Entry? Find(List<Entry> entries, RuntimeNode node)
-    {
-        var kind = node.Kind switch
-        {
-            RuntimeNodeKind.WebApp => TargetKind.Node,
-            // A dashboard the topology lists as a node (another home of this page) is checked like a web app.
-            RuntimeNodeKind.StaticSite => TargetKind.Node,
-            RuntimeNodeKind.FrontDoor => TargetKind.FrontDoor,
-            _ => (TargetKind?)null,
-        };
-        return kind is null || node.Url is null
-            ? null
-            : entries.FirstOrDefault(entry => entry.Target.Kind == kind && entry.Target.Url == node.Url);
-    }
+    /// <summary>The entry of the monitor target the node is (<see cref="TargetMatch"/>); null for a node that is none.</summary>
+    private static Entry? Find(List<Entry> entries, RuntimeNode node) =>
+        TargetMatch.Of(node) is { } match ? entries.FirstOrDefault(entry => match.Matches(entry.Target)) : null;
 
     /// <summary>Resource Health as the tiles take it: what it said of the resources a box stands for.</summary>
     private sealed record HealthSource(ResourceHealthReport? Report, DateTimeOffset? Now, TimeZoneInfo Zone)

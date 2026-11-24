@@ -42,7 +42,7 @@ public sealed class NodeProber(HttpClient http, TimeProvider time)
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            result = Unreachable(checkedAt, $"No answer within {Timeout.TotalSeconds:0} s.");
+            result = Unreachable(checkedAt, NoAnswer);
         }
         catch (HttpRequestException)
         {
@@ -54,6 +54,17 @@ public sealed class NodeProber(HttpClient http, TimeProvider time)
         var reported = await version;
         cancellationToken.ThrowIfCancellationRequested();
         return result with { Version = reported };
+    }
+
+    /// <summary>The shared timeout clause (<see cref="ProbeDefaults.NoAnswerWithin" />) as a sentence of its own,
+    /// capitalised and full-stopped: <c>No answer within 10 s.</c></summary>
+    private string NoAnswer
+    {
+        get
+        {
+            var clause = ProbeDefaults.NoAnswerWithin(Timeout);
+            return $"{char.ToUpperInvariant(clause[0])}{clause[1..]}.";
+        }
     }
 
     private static ProbeResult Unreachable(DateTimeOffset checkedAt, string detail) =>
@@ -109,7 +120,7 @@ public sealed class NodeProber(HttpClient http, TimeProvider time)
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return new ContainerAppAnswer(path, readsHealth, null, false, null, checkedAt, $"No answer within {Timeout.TotalSeconds:0} s.");
+            return new ContainerAppAnswer(path, readsHealth, null, false, null, checkedAt, NoAnswer);
         }
         catch (HttpRequestException)
         {

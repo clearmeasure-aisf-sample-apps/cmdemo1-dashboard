@@ -37,6 +37,12 @@
     <Compile Include="..\Dashboard\Health\KustomizationPinLine.cs" Link="Health\KustomizationPinLine.cs" />
   </ItemGroup>
 
+  <!-- Sums is internal to the app for the same reason: the tests pin the cluster's adding rule directly, so they
+       compile this one file too and assert against the source the app runs. -->
+  <ItemGroup>
+    <Compile Include="..\Dashboard\Sums.cs" Link="Sums.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <Using Include="Dashboard.Cluster" />
     <Using Include="Dashboard.Health" />

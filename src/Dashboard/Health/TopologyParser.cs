@@ -97,8 +97,8 @@ public static class TopologyParser
             return null;
         }
 
-        return ReadText(dashboard, "buildPath") is { } build
-            ? new DashboardInfo(ReadText(dashboard, "name") ?? DashboardInfo.DefaultName, AsPath(build))
+        return ReadOptionalPath(dashboard, "buildPath") is { } build
+            ? new DashboardInfo(ReadText(dashboard, "name") ?? DashboardInfo.DefaultName, build)
             : null;
     }
 
@@ -239,13 +239,13 @@ public static class TopologyParser
                 ReadPath(element, "versionPath", DeployableInfo.DefaultVersionPath),
                 nodes,
                 project,
-                ReadText(element, "telemetryPath") is { Length: > 0 } telemetry ? AsPath(telemetry) : null,
+                ReadOptionalPath(element, "telemetryPath"),
                 ReadPaths(element, "trafficPaths", path, errors),
-                ReadText(element, "buildPath") is { Length: > 0 } build ? AsPath(build) : null,
+                ReadOptionalPath(element, "buildPath"),
                 ReadLinks(element),
                 pin,
                 pinHistory,
-                ReadText(element, "healthDetailPath") is { Length: > 0 } detail ? AsPath(detail) : null));
+                ReadOptionalPath(element, "healthDetailPath")));
         }
 
         return deployables;
@@ -362,6 +362,10 @@ public static class TopologyParser
 
     private static string ReadPath(JsonElement parent, string property, string fallback) =>
         AsPath(ReadText(parent, property) ?? fallback);
+
+    /// <summary>An optional path, or none: <see cref="ReadText"/> already answers null for anything but a word.</summary>
+    private static string? ReadOptionalPath(JsonElement parent, string property) =>
+        ReadText(parent, property) is { } path ? AsPath(path) : null;
 
     private static string AsPath(string path) => path.StartsWith('/') ? path : $"/{path}";
 

@@ -26,7 +26,10 @@ public sealed record ProcessVitals(
     /// <summary>An uptime below this is shown as a restart.</summary>
     public static readonly TimeSpan RecentRestart = TimeSpan.FromMinutes(5);
 
-    public bool RestartedRecently => UptimeSeconds is { } seconds && seconds < RecentRestart.TotalSeconds;
+    public bool RestartedRecently => UptimeSeconds is { } seconds && IsRecentRestart(seconds);
+
+    /// <summary>The one statement of the rule: an uptime of fewer seconds than <see cref="RecentRestart" /> is a restart.</summary>
+    internal static bool IsRecentRestart(double uptimeSeconds) => uptimeSeconds < RecentRestart.TotalSeconds;
 
     /// <summary>The <c>process</c> object; null when the answer has none (an older app) or it holds no value.</summary>
     internal static ProcessVitals? Read(JsonElement root)
@@ -64,11 +67,11 @@ public static class VitalsText
             ? string.Create(CultureInfo.InvariantCulture, $"{megabytes / 1024:0.0} GB")
             : string.Create(CultureInfo.InvariantCulture, $"{megabytes:0} MB");
 
-    /// <summary><c>up 2 h</c>; below five minutes <c>restarted 3 min ago</c>.</summary>
+    /// <summary><c>up 2 h</c>; below <see cref="ProcessVitals.RecentRestart" /> <c>restarted 3 min ago</c>.</summary>
     public static string Uptime(long seconds)
     {
         var span = TimeSpan.FromSeconds(seconds);
-        return span < ProcessVitals.RecentRestart ? $"restarted {TimeText.Span(span)} ago" : $"up {TimeText.Span(span)}";
+        return ProcessVitals.IsRecentRestart(span.TotalSeconds) ?$"restarted {TimeText.Span(span)} ago" : $"up {TimeText.Span(span)}";
     }
 
     /// <summary>The memory in full, for the tooltip: <c>Working set 412 MB, of which managed heap 96 MB; 41 threads</c>.</summary>

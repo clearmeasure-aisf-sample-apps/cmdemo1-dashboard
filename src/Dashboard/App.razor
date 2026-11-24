@@ -106,8 +106,8 @@
     @if (_monitor is { } runtimeMonitor && View == DashboardView.Runtime)
     {
         <RuntimeView Monitor="runtimeMonitor" Environment="@_address.Environment" EnvironmentChanged="OnRuntimeEnvironmentChangedAsync"
-                     Database="_address.Database" DatabaseChanged="OnRuntimeDatabaseChangedAsync" Active="_poller.IsActive"
-                     Application="@_address.Application" ApplicationChanged="OnRuntimeApplicationChangedAsync"
+                     Database="_address.Database" ZoomChanged="OnRuntimeZoomChangedAsync" Active="_poller.IsActive"
+                     Application="@_address.Application"
                      ProbesDue="OnRuntimeProbesDue" Page="PageAddress" Zone="Zone" Now="Time.GetUtcNow()" />
     }
     else if (_monitor is { Cluster: { } cluster } clusterMonitor && View == DashboardView.Cluster)
@@ -398,18 +398,11 @@
         ShowAsync(new ViewAddress(DashboardView.WorkItems, Audience: audience));
 
     /// <summary>
-    /// The runtime view zooms into the environment's database, or back out: a step of the history. An address that
-    /// names a database view the deployment has no files of is corrected in place.
+    /// The runtime view zooms into the environment's database or the box of a deployable, or back out: a step of the
+    /// history. An address that names a database view the deployment has no files of, or an application view the
+    /// diagram has no box for, is corrected in place.
     /// </summary>
-    private Task OnRuntimeDatabaseChangedAsync(RuntimeDatabaseChange change) =>
-        ShowAsync(new ViewAddress(DashboardView.Runtime, change.Environment, change.Shown), change.Step);
-
-    /// <summary>
-    /// The runtime view zooms into the box of a deployable, or back out: a step of the history. An address that names
-    /// an application view the diagram has no box for is corrected in place.
-    /// </summary>
-    private Task OnRuntimeApplicationChangedAsync(RuntimeApplicationChange change) =>
-        ShowAsync(new ViewAddress(DashboardView.Runtime, change.Environment, Application: change.Deployable), change.Step);
+    private Task OnRuntimeZoomChangedAsync(RuntimeZoomChange change) => ShowAsync(change.Address, change.Step);
 
     /// <summary>A container app the runtime view shows for the first time is asked at once, unless the checks are paused or hidden.</summary>
     private void OnRuntimeProbesDue()

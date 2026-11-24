@@ -224,7 +224,7 @@ public class EnvironmentInfoEdgeCaseTests
         Assert.Equal(expected, line);
 
         // The count of the words that name a part is eight, even when one part is nothing.
-        var occurrences = CountOccurrences(line, " = ");
+        var occurrences = MarkupGuards.CountOccurrences(line, " = ");
         Assert.Equal(8, occurrences);
     }
 
@@ -242,19 +242,5 @@ public class EnvironmentInfoEdgeCaseTests
         Assert.True(absent != empty);
 
         Assert.Equal(absent.ToString(), empty.ToString());
-    }
-
-    private static int CountOccurrences(string text, string value)
-    {
-        var count = 0;
-        var index = 0;
-
-        while ((index = text.IndexOf(value, index, StringComparison.Ordinal)) >= 0)
-        {
-            count++;
-            index += value.Length;
-        }
-
-        return count;
     }
 }

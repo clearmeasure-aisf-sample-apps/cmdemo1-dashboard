@@ -1,27 +1,5 @@
 namespace Dashboard.Runtime;
 
-/// <summary>
-/// <c>runtime/index.json</c>: the environments whose runtime diagram the deployment rendered, in the order of
-/// <c>system.json</c>.
-/// </summary>
-/// <param name="Environments">One entry per environment.</param>
-/// <param name="PlantUml">The PlantUML version that rendered the diagrams.</param>
-public sealed record RuntimeIndex(IReadOnlyList<RuntimeIndexEntry> Environments, string? PlantUml = null);
-
-/// <param name="Name">The environment's name, as in <c>topology.json</c>.</param>
-/// <param name="Manifest">The manifest's file, relative to <c>runtime/</c>.</param>
-/// <param name="Svg">The diagram's file, relative to <c>runtime/</c>.</param>
-/// <param name="Database">
-/// The files of the environment's database view; null where the deployment recorded no schema (the database's box
-/// then only leads to the Azure portal).
-/// </param>
-public sealed record RuntimeIndexEntry(string Name, string Manifest, string Svg, RuntimeDatabaseFiles? Database = null);
-
-/// <summary>The two files of an environment's database view, relative to <c>runtime/</c>.</summary>
-/// <param name="Svg">The diagram of the tables.</param>
-/// <param name="Manifest">Which drawn table is which (<see cref="DatabaseManifest"/>).</param>
-public sealed record RuntimeDatabaseFiles(string Svg, string Manifest);
-
 public enum RuntimeNodeKind
 {
     /// <summary>A kind this dashboard does not know: drawn, not updated.</summary>
@@ -102,25 +80,6 @@ public sealed record RuntimeManifest(
     IReadOnlyList<RuntimeEdge> Edges,
     IReadOnlyList<RuntimeFrame>? Frames = null,
     IReadOnlyList<RuntimeUnplaced>? Unplaced = null);
-
-/// <summary>A resource of the system's resource groups that no environment tag places. Every string is untrusted text.</summary>
-/// <param name="Name">The resource's name.</param>
-/// <param name="Type">What it is, in words; null when the manifest does not say.</param>
-/// <param name="Group">Its resource group.</param>
-/// <param name="Words">Why it is in no environment: <c>no environment tag</c>, or <c>tagged zzz: no such environment</c>.</param>
-/// <param name="Ids">Its resource ids, by which the page finds what Resource Health said of it; null without one.</param>
-/// <param name="Portal">Its page in the Azure portal; null without an absolute https address.</param>
-/// <param name="Site">
-/// Its own public address (<c>links.site</c>, else <c>url</c>); null without an absolute https address.
-/// </param>
-public sealed record RuntimeUnplaced(
-    string Name,
-    string? Type = null,
-    string? Group = null,
-    string? Words = null,
-    IReadOnlyList<string>? Ids = null,
-    Uri? Portal = null,
-    Uri? Site = null);
 
 /// <param name="Alias">The element's name in the PlantUML source: the last part of its <c>data-qualified-name</c>.</param>
 /// <param name="Kind">What it is.</param>

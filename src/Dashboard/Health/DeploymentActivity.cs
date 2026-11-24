@@ -102,7 +102,12 @@ public sealed record RecentDeployment(
 /// two lists of its own that nothing else holds; a caller that shares a list, or changes one after handing it over,
 /// takes that on itself.
 /// </remarks>
-/// <param name="From">When it begins; null when the file's time does not parse.</param>
+/// <param name="From">
+/// When it begins; null when the file's time does not parse. A freeze that <see cref="ComesAt"/> a moment always has a
+/// known start, and so does one <see cref="InForceAt"/> a moment unless the file's <c>active</c> decided it: so the
+/// words that say a freeze from its start (<see cref="DeploymentActivity"/>) say it only of one that comes, and the
+/// record itself never refuses a null.
+/// </param>
 /// <param name="To">When it ends.</param>
 /// <param name="Active">Whether it was in force when the system read it: used only where <paramref name="From"/> is not known.</param>
 /// <param name="Environments">The environments it covers, by name: the caller's list itself, never copied.</param>
@@ -124,7 +129,7 @@ public sealed record DeploymentFreeze(
     /// <summary>In force at <paramref name="now"/>, by the browser's clock: begun and not ended.</summary>
     public bool InForceAt(DateTimeOffset now) => now < To && (From is { } from ? from <= now : Active);
 
-    /// <summary>Not begun at <paramref name="now"/>, and beginning within <see cref="Ahead"/>.</summary>
+    /// <summary>Not begun at <paramref name="now"/>, and beginning within <see cref="Ahead"/>. True only where <see cref="From"/> is known.</summary>
     public bool ComesAt(DateTimeOffset now) => From is { } from && from > now && from - now <= Ahead && now < To;
 
     /// <summary>True when it covers the environment, and the project when one is asked for.</summary>
@@ -270,7 +275,7 @@ public static class DeploymentActivity
             var more = freezes.Count > 1 ? string.Create(CultureInfo.InvariantCulture, $", and {freezes.Count - 1} more") : string.Empty;
             var words = first.InForceAt(now)
                 ? $"deployment freeze {first.Name}: {Names(first.Projects)} frozen until {When(first.To, now, zone)}{more}"
-                : $"deployment freeze {first.Name}: {Names(first.Projects)} frozen from {When(first.From!.Value, now, zone)} until {When(first.To, now, zone)}{more}";
+                : $"deployment freeze {first.Name}: {Names(first.Projects)} frozen from {When(Begins(first), now, zone)} until {When(first.To, now, zone)}{more}";
             lines.Add(OfFreeze(first, now, zone, words) with { Title = string.Join('\n', freezes.Select(freeze => FreezeTitle(freeze, now, zone))) });
         }
 
@@ -329,17 +334,24 @@ public static class DeploymentActivity
     private static string Brief(DeploymentFreeze freeze, DateTimeOffset now, TimeZoneInfo zone) =>
         freeze.InForceAt(now)
             ? $"frozen until {When(freeze.To, now, zone)}: {freeze.Name}"
-            : $"freeze from {When(freeze.From!.Value, now, zone)}: {freeze.Name}";
+            : $"freeze from {When(Begins(freeze), now, zone)}: {freeze.Name}";
 
     private static string FreezeTitle(DeploymentFreeze freeze, DateTimeOffset now, TimeZoneInfo zone)
     {
         var from = freeze.From is { } begins ? $" from {TimeText.DateAndTime(begins, zone)}" : string.Empty;
         var state = freeze.InForceAt(now)
             ? "In force now"
-            : $"Begins in {TimeText.Span(freeze.From!.Value - now)}";
+            : $"Begins in {TimeText.Span(Begins(freeze) - now)}";
         return $"Deployment freeze {freeze.Name}: no deployment of {Names(freeze.Projects)} to {Names(freeze.Environments)}{from} until {TimeText.DateAndTime(freeze.To, zone)}. {state}. "
             + "A freeze belongs to the Octopus Deploy instance; a person with the right may override it for one deployment.";
     }
+
+    /// <summary>
+    /// The start of a freeze the page says of that is not in force: one of <see cref="Freezes"/>, so one that
+    /// <see cref="DeploymentFreeze.ComesAt"/> the moment, which only a freeze with a known
+    /// <see cref="DeploymentFreeze.From"/> does. The caller holds that; the record does not.
+    /// </summary>
+    private static DateTimeOffset Begins(DeploymentFreeze freeze) => freeze.From!.Value;
 
     private static ActivityLine Last(RecentDeployment last, DateTimeOffset now, TimeZoneInfo zone, string words) =>
         new(

@@ -175,18 +175,20 @@ public sealed record WorkItemsStats(
             return Empty;
         }
 
-        var throughput = ReadThroughput(section);
         return new WorkItemsStats(
-            Counts(section, "wipByColumn"),
-            WorkDuration.Read(JsonRead.Section(section, "cycleTimeHours")),
-            WorkDuration.Read(JsonRead.Section(section, "leadTimeHours")),
-            [.. JsonRead.Items(section, "perWeek").Select(WorkWeek.Read).OfType<WorkWeek>()],
-            WorkRework.Read(JsonRead.Section(section, "rework")),
-            WorkCost.Read(JsonRead.Section(section, "cost")),
-            ColumnTimes(section),
-            throughput,
-            WorkDuration.Read(JsonRead.Section(section, "mergeToProdHours")));
+            WipByColumn: Counts(section, "wipByColumn"),
+            CycleTimeHours: Duration(section, "cycleTimeHours"),
+            LeadTimeHours: Duration(section, "leadTimeHours"),
+            PerWeek: [.. JsonRead.Items(section, "perWeek").Select(WorkWeek.Read).OfType<WorkWeek>()],
+            Rework: WorkRework.Read(JsonRead.Section(section, "rework")),
+            Cost: WorkCost.Read(JsonRead.Section(section, "cost")),
+            TimePerColumnHours: ColumnTimes(section),
+            Throughput: ReadThroughput(section),
+            MergeToProdHours: Duration(section, "mergeToProdHours"));
     }
+
+    /// <summary>The duration object of <paramref name="name"/> under <paramref name="section"/>; null when it says nothing.</summary>
+    private static WorkDuration? Duration(JsonElement? section, string name) => WorkDuration.Read(JsonRead.Section(section, name));
 
     private static List<WorkThroughput>? ReadThroughput(JsonElement? section)
     {

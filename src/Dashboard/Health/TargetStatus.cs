@@ -38,6 +38,9 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
 
     public TargetKind Kind { get; } = kind;
 
+    /// <summary>What the tile's kind means for a check: what it reads, whether it is a node, what it is called.</summary>
+    public TargetKindBehavior Behavior { get; } = TargetKindBehavior.For(kind);
+
     public string Name { get; } = name;
 
     public Uri Url { get; } = url;
@@ -49,7 +52,7 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
     public bool IsPrimary => NodeRole.IsPrimary(Role);
 
     /// <summary>What the tile and its events call it: <see cref="FrontDoorName"/> for the endpoint, a node's region or else its name.</summary>
-    public string Label => Kind == TargetKind.FrontDoor ? FrontDoorName : NodeLabel(Name, Region);
+    public string Label => Behavior.LabelFor(Name, Region);
 
     /// <summary>The word a node answers to: the region the topology wrote, or the node's own name when it wrote none.</summary>
     public static string NodeLabel(string name, string? region) => region ?? name;

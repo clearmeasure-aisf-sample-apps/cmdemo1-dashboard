@@ -424,15 +424,16 @@ public sealed class DashboardMonitor
     private async Task CheckAsync(EnvironmentStatus environment, DeployableStatus status, TargetStatus target, ProbeKind probe, CancellationToken cancellationToken)
     {
         var deployable = status.Info;
+        var kind = target.Behavior;
 
         // A regional node also reports its calls; a Front Door address would only answer for the node behind it.
-        var telemetry = target.Kind == TargetKind.Node && deployable.TelemetryPath is { } path
+        var telemetry = kind.ReadsTelemetry && deployable.TelemetryPath is { } path
             ? _prober.ReadTelemetryAsync(target.Url, path, cancellationToken)
             : Task.FromResult<TelemetrySnapshot?>(null);
 
         // And what its health check found, entry by entry: only with the probe Health check, because the detailed
         // check connects to the database like the health check itself, and Liveness is there to leave it alone.
-        var detail = target.Kind == TargetKind.Node && probe == ProbeKind.Health && deployable.HealthDetailPath is { } detailPath
+        var detail = kind.ReadsHealthDetail && probe == ProbeKind.Health && deployable.HealthDetailPath is { } detailPath
             ? _prober.ReadHealthDetailAsync(target.Url, detailPath, cancellationToken)
             : Task.FromResult<HealthDetail?>(null);
         var result = await _prober.ProbeAsync(target.Url, deployable.PathFor(probe), deployable.VersionPath, cancellationToken);
@@ -448,7 +449,7 @@ public sealed class DashboardMonitor
             environment.Name,
             deployable.Name,
             target.Label,
-            target.Kind == TargetKind.Node,
+            kind.IsNode,
             _time.GetUtcNow()));
         Changed?.Invoke();
 

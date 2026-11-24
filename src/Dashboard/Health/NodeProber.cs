@@ -199,16 +199,15 @@ public sealed class NodeProber(HttpClient http, TimeProvider time)
 
     /// <summary>
     /// The build of the dashboard itself (<see cref="BuildInfo"/>): a file of its own site, read from the page's own
-    /// address (the path is taken from the site's root, as <c>topology.json</c> is, whatever it starts with; an
-    /// address of another site is not read). A courtesy like a node's build: no file, or anything but the expected
-    /// JSON, is no build facts.
+    /// address through <see cref="ProbeUrl.ResolveRelative"/> (the path is taken from the site's root, as
+    /// <c>topology.json</c> is, whatever it starts with; a path that names another site is no address, and nothing
+    /// is read). A courtesy like a node's build: no file, or anything but the expected JSON, is no build facts.
     /// </summary>
     public Task<BuildInfo?> ReadOwnBuildAsync(string buildPath, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(buildPath);
-        return Uri.TryCreate(buildPath.TrimStart('/'), UriKind.Relative, out var address)
-            ? ReadAsync(address, BuildInfo.Parse, cancellationToken)
-            : Task.FromResult<BuildInfo?>(null);
+        var own = ProbeUrl.ResolveRelative(http.BaseAddress, buildPath);
+        return own is null ? Task.FromResult<BuildInfo?>(null) : ReadAsync(own, BuildInfo.Parse, cancellationToken);
     }
 
     /// <summary>The system's delivery facts (<see cref="DeliveryReport"/>), from the address the topology gives.</summary>

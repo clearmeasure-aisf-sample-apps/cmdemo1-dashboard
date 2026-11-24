@@ -158,6 +158,30 @@ public class DeploymentTextEdgeCaseTests
     [InlineData(-86400)]
     public void ALengthThatIsNoLengthIsOneMinute(int seconds) => Assert.Equal("1 min", DeploymentText.Age(TimeSpan.FromSeconds(seconds)));
 
+    /// <summary>
+    /// An age that has ended is the age and the word for it, in the age's own unit: the sentence, the detail and the
+    /// activity line all say it so, from one place.
+    /// </summary>
+    [Theory]
+    [InlineData(0, "1 min ago")]
+    [InlineData(300, "5 min ago")]
+    [InlineData(18000, "5 h ago")]
+    [InlineData(259200, "3 d ago")]
+    public void AnAgeThatHasEndedIsSaidAgo(int seconds, string expected) =>
+        Assert.Equal(expected, DeploymentText.Ago(TimeSpan.FromSeconds(seconds)));
+
+    /// <summary>
+    /// An age still running is the age and the words for it, in the age's own unit and never less than a minute: the
+    /// tooltip of a mark in flight says it so.
+    /// </summary>
+    [Theory]
+    [InlineData(0, "1 min so far")]
+    [InlineData(3, "3 min so far")]
+    [InlineData(90, "1 h so far")]
+    [InlineData(2880, "2 d so far")]
+    public void AnAgeStillRunningIsSaidSoFar(int minutes, string expected) =>
+        Assert.Equal(expected, DeploymentText.SoFar(minutes));
+
     // ------------------------------------------------------------ the title, and what it is not told
 
     /// <summary>The title is the mark's tooltip, and a tooltip needs a mark: one that is not there is refused by the

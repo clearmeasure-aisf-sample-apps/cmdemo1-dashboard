@@ -814,6 +814,30 @@ public partial class HealthHelperCoverageTests
         Assert.Equal(string.Empty, HistoryText.ResultFacts(neither, " · "));
     }
 
+    // ---------------------------------------------------------------- EnvironmentIndex.Of
+
+    /// <summary>The shared index over the environments of a topology keyed by their Kubernetes namespace, built
+    /// once for the cluster view and the cluster event detector. Keeps the first environment named when two
+    /// environments share a namespace, as the detector's words depend on that decision.</summary>
+    [Fact]
+    public void TheIndexKeepsTheFirstEnvironmentNamedWhenTwoEnvironmentsShareANamespace()
+    {
+        var environments = new[]
+        {
+            ClusterFixture.Environment("first", "shared"),
+            ClusterFixture.Environment("second", "shared"),
+            ClusterFixture.Environment("tdd", "cmdemo3-tdd"),
+        };
+
+        var index = EnvironmentIndex.Of(environments);
+
+        Assert.Equal("first", index.NameForNamespace["shared"]);
+        Assert.Equal("tdd", index.NameForNamespace["cmdemo3-tdd"]);
+        Assert.Contains("shared", index.Namespaces);
+        Assert.Contains("cmdemo3-tdd", index.Namespaces);
+        Assert.Equal(3, index.Named.Count);
+    }
+
     // ---------------------------------------------------------------- the machinery
 
     /// <summary>The eight helpers the issue found untested, as their type and their name.</summary>

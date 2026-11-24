@@ -76,15 +76,14 @@ public sealed record ClusterGroups(IReadOnlyList<NamespaceGroup> Environments, I
     {
         ArgumentNullException.ThrowIfNull(status);
         ArgumentNullException.ThrowIfNull(environments);
-        var named = environments.Where(environment => environment.Namespace is not null).ToList();
-        var taken = named.Select(environment => environment.Namespace!).ToHashSet(StringComparer.Ordinal);
+        var index = EnvironmentIndex.Of(environments);
         return new ClusterGroups(
-            [.. named.Select(environment =>
+            [.. index.Named.Select(environment =>
                 status.Namespaces.FirstOrDefault(space => string.Equals(space.Name, environment.Namespace, StringComparison.Ordinal)) is { } space
                     ? NamespaceGroup.Of(space, environment, asOf)
                     : new NamespaceGroup(environment.Namespace!, environment, false, [], []))],
             [.. status.Namespaces
-                .Where(space => !taken.Contains(space.Name))
+                .Where(space => !index.Namespaces.Contains(space.Name))
                 .OrderBy(space => space.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(space => NamespaceGroup.Of(space, null, asOf))]);
     }

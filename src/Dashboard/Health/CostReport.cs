@@ -59,7 +59,7 @@ public sealed record CostReport(DateTimeOffset? Generated, string? Currency, Dat
 
             var entries = JsonRead.Items(root, "environments").Select(CostEntry.Read).OfType<CostEntry>().ToList();
             var system = JsonRead.Section(root, "system") is { } total ? CostAmounts.Read(total) : null;
-            var asOf = DateOnly.TryParseExact(JsonRead.Text(root, "asOf"), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day) ? day : (DateOnly?)null;
+            var asOf = ReadDay(root);
             return entries.Count == 0 && system is null
                 ? null
                 : new CostReport(JsonRead.Time(root, "generated"), JsonRead.Text(root, "currency"), asOf, system, entries);
@@ -69,6 +69,12 @@ public sealed record CostReport(DateTimeOffset? Generated, string? Currency, Dat
             return null;
         }
     }
+
+    /// <summary>The <c>asOf</c> of the file as a day, in exactly <see cref="CostText.DayFormat"/>; null otherwise.</summary>
+    private static DateOnly? ReadDay(JsonElement root) =>
+        DateOnly.TryParseExact(JsonRead.Text(root, "asOf"), CostText.DayFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var day)
+            ? day
+            : null;
 }
 
 /// <summary>Three sums of complete UTC days; one that Azure did not give is null, and the page shows a dash.</summary>
@@ -202,7 +208,10 @@ public static class CostText
     /// <summary>The time zone of every day of a cost.</summary>
     public const string DayZone = "UTC";
 
-    public static string Date(DateOnly day) => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    /// <summary>The format of every day of a cost: the <c>asOf</c> of the file, and every date the page prints.</summary>
+    public const string DayFormat = "yyyy-MM-dd";
+
+    public static string Date(DateOnly day) => day.ToString(DayFormat, CultureInfo.InvariantCulture);
 
     /// <summary>
     /// <c>Most this month: Azure Container Apps $6.10, SQL Database $2.00</c>; null when the file names no service.

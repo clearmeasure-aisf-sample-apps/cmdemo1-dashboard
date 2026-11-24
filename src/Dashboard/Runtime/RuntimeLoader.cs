@@ -192,23 +192,34 @@ public sealed class RuntimeLoader(HttpClient http)
     private static bool IsServedByTheFallbackRoute(HttpStatusCode? status, string? text) =>
         status == HttpStatusCode.OK && text is not null && text.TrimStart().StartsWith('<');
 
-    /// <summary>The status and the text of a file of <c>runtime/</c>; an error text when it could not be read.</summary>
+    /// <summary>
+    /// The status and the text of a file of <c>runtime/</c>, a file of the dashboard's own site read through
+    /// <see cref="ProbeUrl.ResolveRelative"/>; an error text when it could not be read, or when its path names no file
+    /// of this site (then nothing is asked for, and the file is reported as bad).
+    /// </summary>
     private async Task<(HttpStatusCode? Status, string? Text, string? Error)> GetAsync(string file, CancellationToken cancellationToken)
     {
+        var path = Folder + file;
+        var address = ProbeUrl.ResolveRelative(http.BaseAddress, path);
+        if (address is null)
+        {
+            return (null, null, $"{path} is no path of this site.");
+        }
+
         try
         {
-            using var request = NodeProber.NewRequest(new Uri(Folder + file, UriKind.Relative));
+            using var request = NodeProber.NewRequest(address);
             using var response = await http.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
-                return (response.StatusCode, null, $"The server answered HTTP {(int)response.StatusCode} for {Folder}{file}.");
+                return (response.StatusCode, null, $"The server answered HTTP {(int)response.StatusCode} for {path}.");
             }
 
             return (response.StatusCode, await response.Content.ReadAsStringAsync(cancellationToken), null);
         }
         catch (HttpRequestException exception)
         {
-            return (null, null, $"{Folder}{file} could not be loaded: {exception.Message}");
+            return (null, null, $"{path} could not be loaded: {exception.Message}");
         }
     }
 }

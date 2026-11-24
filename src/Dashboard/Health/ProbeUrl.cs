@@ -7,8 +7,8 @@ namespace Dashboard.Health;
 /// <item><description><see cref="Combine"/> - a path onto another node's base address, for every endpoint the page
 /// probes: its health, its version, its telemetry, its detail, its build.</description></item>
 /// <item><description><see cref="ResolveRelative"/> - a path of the dashboard's own site, resolved against the
-/// address the page is served from, for the files the page ships beside itself: <c>topology.json</c>, its own
-/// build facts.</description></item>
+/// address the page is served from, for the files the page ships beside itself: <c>topology.json</c>, the files of
+/// <c>runtime/</c>, its own build facts.</description></item>
 /// </list>
 /// Neither one edits the path it is given beyond the slashes that join it: what is asked for is what was written.
 /// </summary>

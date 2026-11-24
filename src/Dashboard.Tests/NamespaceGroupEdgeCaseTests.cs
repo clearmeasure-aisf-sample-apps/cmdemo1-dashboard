@@ -189,6 +189,32 @@ public class NamespaceGroupEdgeCaseTests
         Assert.Null(bare.Volumes);
     }
 
+    /// <summary>
+    /// A group built of nothing at all has no rows to query, so every sum that would walk its rows throws
+    /// <see cref="ArgumentNullException" /> rather than reporting zero or nothing - and the one line the group says
+    /// about itself throws for the same reason. Its equality, however, works as it does for any two groups:
+    /// two bare groups are one group, and their hash codes agree. The page can never build such a group
+    /// (<see cref="ClusterGroups.Of" /> always hands two lists), so this is the record's "no validation at all"
+    /// meeting its "every sum is a query" - pinned as a fact a later refactor can keep or deliberately change.
+    /// </summary>
+    [Fact]
+    public void TheSumsAndWordsOfABareGroupThrowAndItsEqualityWorks()
+    {
+        var bare = new NamespaceGroup(null!, null, false, null!, null!);
+
+        Assert.Throws<ArgumentNullException>(() => bare.Ready);
+        Assert.Throws<ArgumentNullException>(() => bare.Total);
+        Assert.Throws<ArgumentNullException>(() => bare.Finished);
+        Assert.Throws<ArgumentNullException>(() => bare.Unhealthy);
+        Assert.Throws<ArgumentNullException>(() => bare.Restarts);
+        Assert.Throws<ArgumentNullException>(() => bare.CpuUsage);
+        Assert.Throws<ArgumentNullException>(() => bare.MemoryUsage);
+        Assert.Throws<ArgumentNullException>(bare.ToString);
+
+        Assert.Equal(bare, new NamespaceGroup(null!, null, false, null!, null!));
+        Assert.Equal(bare.GetHashCode(), new NamespaceGroup(null!, null, false, null!, null!).GetHashCode());
+    }
+
     // ---------------------------------------------------------------------- the four counts
 
     /// <summary>

@@ -184,6 +184,9 @@ public static class BuildText
     /// <summary>How many languages the bar names before the rest becomes "Other": one per colour of the bar.</summary>
     public const int NamedLanguages = 5;
 
+    /// <summary>How many characters of a commit the page shows: git's own short form.</summary>
+    private const int ShortCommitLength = 7;
+
     public const string Other = "Other";
 
     /// <summary>What the page calls itself next to the dashboard's name: the chip of its heading.</summary>
@@ -196,11 +199,11 @@ public static class BuildText
     /// <summary>Whose code the dashboard's own "Code" card is about: <c>dashboard (this page)</c>.</summary>
     public static string DashboardContext(string name) => $"{name} ({ThisPage})";
 
-    /// <summary>The first seven characters of a commit.</summary>
+    /// <summary>The first <see cref="ShortCommitLength" /> characters of a commit.</summary>
     public static string ShortCommit(string commit)
     {
         ArgumentNullException.ThrowIfNull(commit);
-        return commit.Length > 7 ? commit[..7] : commit;
+        return commit.Length > ShortCommitLength ? commit[..ShortCommitLength] : commit;
     }
 
     /// <summary><c>84,210</c>.</summary>

@@ -1,47 +1,5 @@
 namespace Dashboard.Health;
 
-/// <summary>What one regional node says about its version, as the comparison with the pinned version needs it.</summary>
-/// <param name="Label">The region, or the node's name when the topology gives no region.</param>
-/// <param name="State">The node's last check.</param>
-/// <param name="Version">The version the node last reported.</param>
-public sealed record NodeVersion(string Label, HealthState State, string? Version)
-{
-    /// <summary>
-    /// The version the node runs now, without build metadata; null when that is not known. A node that did not answer
-    /// its last check is not known, although the dashboard remembers the version it reported before.
-    /// </summary>
-    public string? Running => State is HealthState.Healthy or HealthState.Unhealthy ? VersionText.Display(Version) : null;
-
-    /// <summary>Why the running version is not known, as the end of a sentence that starts with the label.</summary>
-    public string UnknownReason => State switch
-    {
-        HealthState.Pending => "is being checked",
-        HealthState.Unreachable => "is unreachable",
-        _ => "reports no version",
-    };
-}
-
-public enum VersionState
-{
-    /// <summary>The file with the pin (the environment's <c>versions.json</c>, or the deployable's own) has not been read yet.</summary>
-    Pending,
-
-    /// <summary>The file could not be read: the pinned version is not known.</summary>
-    PinnedUnknown,
-
-    /// <summary>The file was not found or has no entry for the deployable: nothing was deployed.</summary>
-    NotDeployed,
-
-    /// <summary>The pinned version is known, and no node's running version is.</summary>
-    NodesUnknown,
-
-    /// <summary>Every node whose running version is known runs the pinned version.</summary>
-    InSync,
-
-    /// <summary>At least one node runs another version than the pinned one.</summary>
-    Differs,
-}
-
 /// <summary>
 /// The version the deployment pinned in Git for one deployable of one environment, next to the versions its nodes
 /// run. Versions are compared without build metadata (the part from <c>+</c>) and without regard to case. A node whose
@@ -167,17 +125,4 @@ public sealed record VersionAssessment(
             : Matching.Count > 0 ? VersionState.InSync
             : VersionState.NodesUnknown;
     }
-}
-
-/// <summary>The second line of the header: shown only when the versions differ somewhere.</summary>
-public sealed record VersionSummary(int EnvironmentsThatDiffer)
-{
-    public bool Differs => EnvironmentsThatDiffer > 0;
-
-    /// <summary><c>Versions differ in 1 environment</c>, counted through <see cref="Plural" />; null when they differ nowhere.</summary>
-    public string? Text => EnvironmentsThatDiffer switch
-    {
-        <= 0 => null,
-        _ => $"Versions differ in {Plural.Of(EnvironmentsThatDiffer, "environment")}",
-    };
 }

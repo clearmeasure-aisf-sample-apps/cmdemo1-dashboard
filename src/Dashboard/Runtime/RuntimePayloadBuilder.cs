@@ -984,14 +984,14 @@ public static class RuntimePayloadBuilder
                     ? "Calls per minute: the web app reports none."
                     : string.Create(CultureInfo.InvariantCulture, $"Last minute, counted by the web app: {telemetry.FromFrontDoor} requests forwarded by Front Door, {telemetry.FrontDoorProbes} Front Door health probes.");
                 return new RuntimeEdgeMark(
-                    edge.Id,
-                    state.Word(),
-                    Number(telemetry?.FromFrontDoor),
-                    CallsUnit,
-                    text,
-                    $"Front Door to {edge.To}, origin priority {edge.Priority?.ToString(CultureInfo.InvariantCulture) ?? "not known"}: {role}. {state.Sentence()} {counted}",
-                    to is null || telemetry is null ? null : Link(to.Target, LinkSet.Performance, to.Target.Name),
-                    to is null ? null : RuntimeTrend.Of(Trends.FromFrontDoor(to.Target)));
+                    Id: edge.Id,
+                    State: state.Word(),
+                    Number: Number(telemetry?.FromFrontDoor),
+                    Unit: CallsUnit,
+                    Text: text,
+                    Title: $"Front Door to {edge.To}, origin priority {edge.Priority?.ToString(CultureInfo.InvariantCulture) ?? "not known"}: {role}. {state.Sentence()} {counted}",
+                    Link: to is null || telemetry is null ? null : Link(to.Target, LinkSet.Performance, to.Target.Name),
+                    Trend: to is null ? null : RuntimeTrend.Of(Trends.FromFrontDoor(to.Target)));
             }
 
             case RuntimeEdgeKind.Sql:
@@ -1015,14 +1015,14 @@ public static class RuntimePayloadBuilder
                 // Short words: they stand under the number, in the narrow column between two frames of the diagram.
                 const string Queries = "app queries";
                 return new RuntimeEdgeMark(
-                    edge.Id,
-                    state.Word(),
-                    Number(telemetry?.SqlOfTraffic),
-                    CallsUnit,
-                    telemetry is { SplitsSql: true } ? string.Create(CultureInfo.InvariantCulture, $"{Queries} · {telemetry.SqlBackground} background") : Queries,
-                    $"{edge.From} to the database. {state.Sentence()} {counted}",
-                    from is null || telemetry is null ? null : Link(from.Target, LinkSet.Dependencies, from.Target.Name),
-                    from is null ? null : RuntimeTrend.Of(Trends.Sql(from.Target)));
+                    Id: edge.Id,
+                    State: state.Word(),
+                    Number: Number(telemetry?.SqlOfTraffic),
+                    Unit: CallsUnit,
+                    Text: telemetry is { SplitsSql: true } ? string.Create(CultureInfo.InvariantCulture, $"{Queries} · {telemetry.SqlBackground} background") : Queries,
+                    Title: $"{edge.From} to the database. {state.Sentence()} {counted}",
+                    Link: from is null || telemetry is null ? null : Link(from.Target, LinkSet.Dependencies, from.Target.Name),
+                    Trend: from is null ? null : RuntimeTrend.Of(Trends.Sql(from.Target)));
             }
 
             case RuntimeEdgeKind.Dependency:
@@ -1042,14 +1042,14 @@ public static class RuntimePayloadBuilder
                     _ => string.Create(CultureInfo.InvariantCulture, $"Last minute, counted by the web app: {telemetry.Http} outgoing HTTP calls, all of them (it has this one dependency)."),
                 };
                 return new RuntimeEdgeMark(
-                    edge.Id,
-                    state.Word(),
-                    only ? Number(telemetry?.Http) : NoNumber,
-                    CallsUnit,
-                    only ? "outgoing HTTP calls" : "not counted apart",
-                    $"{edge.From} to {manifest.Nodes.FirstOrDefault(node => node.Alias == edge.To)?.Name ?? edge.To}. {state.Sentence()} {counted}",
-                    null,
-                    only && from is not null ? RuntimeTrend.Of(Trends.Http(from.Target)) : null);
+                    Id: edge.Id,
+                    State: state.Word(),
+                    Number: only ? Number(telemetry?.Http) : NoNumber,
+                    Unit: CallsUnit,
+                    Text: only ? "outgoing HTTP calls" : "not counted apart",
+                    Title: $"{edge.From} to {manifest.Nodes.FirstOrDefault(node => node.Alias == edge.To)?.Name ?? edge.To}. {state.Sentence()} {counted}",
+                    Link: null,
+                    Trend: only && from is not null ? RuntimeTrend.Of(Trends.Http(from.Target)) : null);
             }
 
             case RuntimeEdgeKind.Public:
@@ -1065,7 +1065,15 @@ public static class RuntimePayloadBuilder
                 var requests = number == NoNumber || target is null
                     ? null
                     : RuntimeLink.To(target.Deployable.Info.Links?[LinkSet.Logs], LinkText.For(LinkSet.Logs, target.Deployable.Info.Name));
-                return new RuntimeEdgeMark(edge.Id, state.Word(), number, CallsUnit, null, $"The browser to {edge.To}: {state.Sentence()} {counted}", requests, RuntimeTrend.Of(trend));
+                return new RuntimeEdgeMark(
+                    Id: edge.Id,
+                    State: state.Word(),
+                    Number: number,
+                    Unit: CallsUnit,
+                    Text: null,
+                    Title: $"The browser to {edge.To}: {state.Sentence()} {counted}",
+                    Link: requests,
+                    Trend: RuntimeTrend.Of(trend));
             }
 
             case RuntimeEdgeKind.Dashboard when to is not null:
@@ -1083,11 +1091,23 @@ public static class RuntimePayloadBuilder
                     EdgeState.Checking => "Being checked.",
                     _ => "Down: it does not answer.",
                 };
-                return new RuntimeEdgeMark(edge.Id, state.Word(), null, null, null, $"The browser to {to.Target.Name}: {words}");
+                return new RuntimeEdgeMark(
+                    Id: edge.Id,
+                    State: state.Word(),
+                    Number: null,
+                    Unit: null,
+                    Text: null,
+                    Title: $"The browser to {to.Target.Name}: {words}");
             }
 
             default:
-                return new RuntimeEdgeMark(edge.Id, EdgeState.Neutral.Word(), null, null, null, $"{edge.From} to {edge.To}");
+                return new RuntimeEdgeMark(
+                    Id: edge.Id,
+                    State: EdgeState.Neutral.Word(),
+                    Number: null,
+                    Unit: null,
+                    Text: null,
+                    Title: $"{edge.From} to {edge.To}");
         }
     }
 
@@ -1123,12 +1143,12 @@ public static class RuntimePayloadBuilder
     {
         var state = status is null ? EdgeState.Checking : SqlState(status.State);
         return new RuntimeEdgeMark(
-            edge.Id,
-            state.Word(),
-            NoNumber,
-            CallsUnit,
-            null,
-            $"{edge.From} to the database. {state.Sentence()} Queries per minute: this page does not count a container app's SQL commands.");
+            Id: edge.Id,
+            State: state.Word(),
+            Number: NoNumber,
+            Unit: CallsUnit,
+            Text: null,
+            Title: $"{edge.From} to the database. {state.Sentence()} Queries per minute: this page does not count a container app's SQL commands.");
     }
 
     /// <summary>The state of a container app's SQL arrow, one arm per state so a new state fails the build.</summary>

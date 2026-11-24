@@ -216,22 +216,39 @@ public static class DeploymentActivity
         }
 
         var project = $"{slug}-{deployable}";
-        bool Own(string name, string where) =>
-            string.Equals(name, project, StringComparison.OrdinalIgnoreCase) && string.Equals(where, environment, StringComparison.OrdinalIgnoreCase);
 
-        var lines = new List<ActivityLine>();
-        lines.AddRange(report.Deployments
-            .Where(deployment => deployment.InFlight && Own(deployment.Project, deployment.Environment))
-            .OrderBy(DeploymentsReport.Rank)
-            .Select(deployment => InFlight(deployment, now)));
-        lines.AddRange(Freezes(report, environment, project, now).Select(freeze => OfFreeze(freeze, now, zone, Brief(freeze, now, zone))));
-        if (report.Recent.FirstOrDefault(recent => Own(recent.Project, recent.Environment)) is { } last)
-        {
-            lines.Add(Last(last, now, zone, Brief(last, now)));
-        }
-
-        return [.. lines.Take(MostLines).Select(line => line with { Text = Cut(line.Text, NodeLength) })];
+        // The order of the lines, said once: what is in flight (a wait first), then the freezes, then the last that ended.
+        return OnNode([
+            .. MarkLines(report, environment, project, now),
+            .. FreezeLines(report, environment, project, now, zone),
+            .. LastLines(report, environment, project, now, zone),
+        ]);
     }
+
+    /// <summary>The lines in the order they are given, <see cref="MostLines"/> at most, each cut to <see cref="NodeLength"/>.</summary>
+    private static List<ActivityLine> OnNode(IEnumerable<ActivityLine> lines) =>
+        [.. lines.Take(MostLines).Select(line => line with { Text = Cut(line.Text, NodeLength) })];
+
+    /// <summary>True for an entry of the deployable's own project in its own environment, in any case.</summary>
+    private static bool Owns(string project, string environment, string entryProject, string entryEnvironment) =>
+        string.Equals(entryProject, project, StringComparison.OrdinalIgnoreCase) && string.Equals(entryEnvironment, environment, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The deployments of the project in flight in the environment, the most urgent first (<see cref="DeploymentsReport.Rank"/>).</summary>
+    private static IEnumerable<ActivityLine> MarkLines(DeploymentsReport report, string environment, string project, DateTimeOffset now) =>
+        report.Deployments
+            .Where(deployment => deployment.InFlight && Owns(project, environment, deployment.Project, deployment.Environment))
+            .OrderBy(DeploymentsReport.Rank)
+            .Select(deployment => InFlight(deployment, now));
+
+    /// <summary>The freezes that cover the project in the environment, briefly: in force first, then by their start.</summary>
+    private static IEnumerable<ActivityLine> FreezeLines(DeploymentsReport report, string environment, string project, DateTimeOffset now, TimeZoneInfo zone) =>
+        Freezes(report, environment, project, now).Select(freeze => OfFreeze(freeze, now, zone, Brief(freeze, now, zone)));
+
+    /// <summary>The last deployment of the project to the environment that ended, briefly; none when the file names none.</summary>
+    private static IEnumerable<ActivityLine> LastLines(DeploymentsReport report, string environment, string project, DateTimeOffset now, TimeZoneInfo zone) =>
+        report.Recent.FirstOrDefault(recent => Owns(project, environment, recent.Project, recent.Environment)) is { } last
+            ? [Last(last, now, zone, Brief(last, now))]
+            : [];
 
     /// <summary>
     /// What follows the marks under an environment's name, <see cref="MostLines"/> at most: the freeze that covers
@@ -281,11 +298,7 @@ public static class DeploymentActivity
         switch (deployment.State)
         {
             case DeploymentState.Waiting:
-            {
-                var wait = deployment.WaitsFor;
-                var waited = After(wait?.Since is { } asked ? DeploymentText.Age(now - asked) : age);
-                return new ActivityLine(ActivityKind.Waiting, DeploymentWait.Line(wait, deployment.Release, waited), title, deployment.Url);
-            }
+                return OfWait(deployment, now, age, title);
 
             case DeploymentState.Executing:
                 return new ActivityLine(ActivityKind.Deploying, $"deploying {deployment.Release}{After(age)}{By(deployment.StartedBy, ", by ")}", title, deployment.Url);
@@ -296,6 +309,17 @@ public static class DeploymentActivity
             default:
                 return new ActivityLine(ActivityKind.Queued, $"{deployment.Release}: {deployment.StateText}", title, deployment.Url);
         }
+    }
+
+    /// <summary>
+    /// The line of a deployment stopped for a person: what it waits for and who is responsible, with the age of the
+    /// question when the file gives one, else the age of the deployment.
+    /// </summary>
+    private static ActivityLine OfWait(Deployment deployment, DateTimeOffset now, string? age, string title)
+    {
+        var wait = deployment.WaitsFor;
+        var waited = After(wait?.Since is { } asked ? DeploymentText.Age(now - asked) : age);
+        return new ActivityLine(ActivityKind.Waiting, DeploymentWait.Line(wait, deployment.Release, waited), title, deployment.Url);
     }
 
     private static ActivityLine OfFreeze(DeploymentFreeze freeze, DateTimeOffset now, TimeZoneInfo zone, string words) =>

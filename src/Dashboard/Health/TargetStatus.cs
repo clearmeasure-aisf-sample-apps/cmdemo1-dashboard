@@ -14,6 +14,27 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
 {
     public const int HistoryLength = 30;
 
+    /// <summary>The one word for a deployable's public address: the name and the label of its tile.</summary>
+    public const string FrontDoorName = "Front Door";
+
+    /// <summary>The tile of a node of the topology: its name, region, role, address and links, each from its own part.</summary>
+    public static TargetStatus ForNode(NodeInfo node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        return new TargetStatus(TargetKind.Node, node.Name, node.Url, region: node.Region, role: node.Role, links: node.Links);
+    }
+
+    /// <summary>
+    /// The tile of a deployable's Front Door endpoint, with the deployable's links; null when the deployable has none.
+    /// </summary>
+    public static TargetStatus? ForFrontDoor(DeployableInfo deployable)
+    {
+        ArgumentNullException.ThrowIfNull(deployable);
+        return deployable.FrontDoor is null
+            ? null
+            : new TargetStatus(TargetKind.FrontDoor, FrontDoorName, deployable.FrontDoor, links: deployable.Links);
+    }
+
     /// <summary>Where the tile's numbers lead: a node's own links; for the Front Door endpoint, the deployable's.</summary>
     public LinkSet Links { get; } = links ?? LinkSet.None;
 
@@ -28,6 +49,9 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
     public string? Role { get; } = role;
 
     public bool IsPrimary => NodeRole.IsPrimary(Role);
+
+    /// <summary>What the tile and its events call it: <see cref="FrontDoorName"/> for the endpoint, a node's region or else its name.</summary>
+    public string Label => Kind == TargetKind.FrontDoor ? FrontDoorName : Region ?? Name;
 
     /// <summary>The last <see cref="HistoryLength"/> checks, oldest first.</summary>
     public HistoryBuffer<ProbeResult> History { get; } = new(HistoryLength);
@@ -104,8 +128,8 @@ public sealed class DeployableStatus
     {
         ArgumentNullException.ThrowIfNull(info);
         Info = info;
-        FrontDoor = info.FrontDoor is null ? null : new TargetStatus(TargetKind.FrontDoor, "Front Door", info.FrontDoor, links: info.Links);
-        Nodes = [.. info.Nodes.Select(node => new TargetStatus(TargetKind.Node, node.Name, node.Url, node.Region, node.Role, node.Links))];
+        FrontDoor = TargetStatus.ForFrontDoor(info);
+        Nodes = [.. info.Nodes.Select(TargetStatus.ForNode)];
         BuildSource = info.BuildPath is null ? null : Nodes.FirstOrDefault(node => node.IsPrimary) ?? (Nodes.Count > 0 ? Nodes[0] : null);
         Pinned = info.PinUrl is null ? null : PinnedVersions.Pending;
     }

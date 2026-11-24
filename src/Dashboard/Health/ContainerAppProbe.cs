@@ -91,6 +91,37 @@ public sealed record ContainerAppAnswer(
     bool HealthyPayload = false)
 {
     public bool Answered => StatusCode is not null || Opaque;
+
+    /// <summary>
+    /// What the answer heard, next to the badge: <c>HTTP 200 · 85 ms</c>, <c>answered · 85 ms</c>, or for silence
+    /// <c>no answer yet</c> while <paramref name="waking"/> and <c>no answer</c> after.
+    /// </summary>
+    public string SaidShort(bool waking) => this switch
+    {
+        { StatusCode: { } code, LatencyMs: { } ms } => string.Create(CultureInfo.InvariantCulture, $"HTTP {code} · {ms} ms"),
+        { StatusCode: { } code } => string.Create(CultureInfo.InvariantCulture, $"HTTP {code}"),
+        { Opaque: true, LatencyMs: { } ms } => string.Create(CultureInfo.InvariantCulture, $"answered · {ms} ms"),
+        { Opaque: true } => "answered",
+        _ when waking => "no answer yet",
+        _ => "no answer",
+    };
+
+    /// <summary>What the answer heard, as the tooltip's sentence about the probe made at <paramref name="when"/>.</summary>
+    public string SaidIn(string when) => this switch
+    {
+        { StatusCode: { } code } => string.Create(CultureInfo.InvariantCulture, $"Last probe {when}: {Path} answered HTTP {code}."),
+        { Opaque: true } => $"Last probe {when}: {Path} answered. The app does not allow this page's origin (CORS), so the page cannot read its answer or its health; it asks without reading the answer.",
+        _ => $"Last probe {when}: {Path}, no answer. {Detail}".TrimEnd(),
+    };
+
+    /// <summary>
+    /// What the page cannot tell from the answer, or null: an answer from a path that is not a health check, or a
+    /// 404 at the health path, which means the app is down rather than responding.
+    /// </summary>
+    public string? CannotTell() =>
+        Answered && !ReadsHealth ? "The page could not classify the answer as a health check."
+        : StatusCode is 404 ? "HTTP 404 at the health path (including Azure's \"Container App - Unavailable\" page for a deleted app) means the app is down, not that it is responding."
+        : null;
 }
 
 /// <summary>A container app's state as the page last saw it.</summary>
@@ -231,53 +262,35 @@ public static class ContainerAppText
     public static string Facts(ContainerAppStatus status)
     {
         ArgumentNullException.ThrowIfNull(status);
-        return status.Last switch
-        {
-            null => "not probed yet",
-            { StatusCode: { } code, LatencyMs: { } ms } => string.Create(CultureInfo.InvariantCulture, $"HTTP {code} · {ms} ms"),
-            { StatusCode: { } code } => string.Create(CultureInfo.InvariantCulture, $"HTTP {code}"),
-            { Opaque: true, LatencyMs: { } ms } => string.Create(CultureInfo.InvariantCulture, $"answered · {ms} ms"),
-            { Opaque: true } => "answered",
-            _ when status.State == ContainerAppState.Waking => "no answer yet",
-            _ => "no answer",
-        };
+        return status.Last?.SaidShort(status.State == ContainerAppState.Waking) ?? "not probed yet";
     }
 
-    /// <summary>The tooltip: what the page asks, how often, what it found and what it cannot see.</summary>
+    /// <summary>
+    /// The tooltip: who it is, how often it is asked, what was last heard, what the page cannot tell, and what a
+    /// scale-to-zero costs.
+    /// </summary>
     public static string Title(string name, ContainerAppTarget target, ContainerAppStatus status, TimeZoneInfo zone)
     {
         ArgumentNullException.ThrowIfNull(target);
         ArgumentNullException.ThrowIfNull(status);
         ArgumentNullException.ThrowIfNull(zone);
-        var words = new List<string>
-        {
+        string?[] words =
+        [
             $"{name} ({target.Url.Host}): {Label(status.State)}.",
-            "This page asks it once a minute while it shows this diagram, and not while it is paused or hidden; nothing asks it from here while no page is open, so it can scale to zero.",
-        };
-        if (status.Last is { } last)
-        {
-            var when = TimeText.Clock(last.CheckedAt, zone);
-            words.Add(last switch
-            {
-                { StatusCode: { } code } => string.Create(CultureInfo.InvariantCulture, $"Last probe {when}: {last.Path} answered HTTP {code}."),
-                { Opaque: true } => $"Last probe {when}: {last.Path} answered. The app does not allow this page's origin (CORS), so the page cannot read its answer or its health; it asks without reading the answer.",
-                _ => $"Last probe {when}: {last.Path}, no answer. {last.Detail}".TrimEnd(),
-            });
-            if (last.Answered && !last.ReadsHealth)
-            {
-                words.Add("The page could not classify the answer as a health check.");
-            }
-            else if (last is { StatusCode: 404 })
-            {
-                words.Add("HTTP 404 at the health path (including Azure's \"Container App - Unavailable\" page for a deleted app) means the app is down, not that it is responding.");
-            }
-        }
-
-        if (status.State is ContainerAppState.Probing or ContainerAppState.Waking)
-        {
-            words.Add($"An app that scaled to zero starts on the first request: the page waits up to {ContainerAppProbe.Grace.TotalSeconds:0} seconds for its first answer before it says Not responding.");
-        }
-
-        return string.Join(' ', words);
+            AskedSentence,
+            status.Last?.SaidIn(TimeText.Clock(status.Last.CheckedAt, zone)),
+            status.Last?.CannotTell(),
+            WakeCost(status.State),
+        ];
+        return string.Join(' ', words.OfType<string>());
     }
+
+    private const string AskedSentence =
+        "This page asks it once a minute while it shows this diagram, and not while it is paused or hidden; nothing asks it from here while no page is open, so it can scale to zero.";
+
+    /// <summary>The grace an app that scaled to zero gets, while it has not answered yet; null once it has.</summary>
+    private static string? WakeCost(ContainerAppState state) =>
+        state is ContainerAppState.Probing or ContainerAppState.Waking
+            ? $"An app that scaled to zero starts on the first request: the page waits up to {ContainerAppProbe.Grace.TotalSeconds:0} seconds for its first answer before it says Not responding."
+            : null;
 }

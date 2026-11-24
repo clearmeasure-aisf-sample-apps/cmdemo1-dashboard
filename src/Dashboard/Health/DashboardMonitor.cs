@@ -447,7 +447,7 @@ public sealed class DashboardMonitor
             NodeObservation.Of(target),
             environment.Name,
             deployable.Name,
-            target.Kind == TargetKind.FrontDoor ? "Front Door" : target.Region ?? target.Name,
+            target.Label,
             target.Kind == TargetKind.Node,
             _time.GetUtcNow()));
         Changed?.Invoke();

@@ -322,8 +322,7 @@ public static class DeploymentText
         {
             DeploymentState.Queued => $"{what} is queued for {where}",
             DeploymentState.Executing => $"deploying {what} to {where}",
-            DeploymentState.Waiting when deployment.WaitsFor is { IsGuidedFailure: true } => $"{what} asks what to do after a failed step in {where}",
-            DeploymentState.Waiting => $"{what} waits for a sign-off in {where}",
+            DeploymentState.Waiting => DeploymentWait.Asks(deployment.WaitsFor, what, where),
             DeploymentState.Succeeded => $"{what} reached {where}{ago}",
             DeploymentState.Failed => $"{what} failed in {where}{ago}",
             DeploymentState.Canceled => $"{what} was canceled in {where}{ago}",
@@ -379,11 +378,11 @@ public static class DeploymentText
         {
             if (wait.Responsible is { } responsible)
             {
-                parts.Add($"{Question(wait)} is with {responsible}");
+                parts.Add($"{wait.Question()} is with {responsible}");
             }
             else if (wait.Title is not null && !wait.TitleIsTheKind)
             {
-                parts.Add(Question(wait));
+                parts.Add(wait.Question());
             }
 
             if (wait.Since is { } asked)
@@ -398,13 +397,6 @@ public static class DeploymentText
         }
 
         return parts.Count == 0 ? null : string.Join("; ", parts);
-    }
-
-    /// <summary><c>the sign-off</c>, <c>the question after a failed step</c>, each with Octopus Deploy's title of it where that says more.</summary>
-    private static string Question(DeploymentWait wait)
-    {
-        var kind = wait.IsGuidedFailure ? "the question after a failed step" : wait.IsSignOff ? "the sign-off" : wait.Kind;
-        return wait.Title is { } title && !wait.TitleIsTheKind ? $"{kind} \"{title}\"" : kind;
     }
 
     /// <summary>

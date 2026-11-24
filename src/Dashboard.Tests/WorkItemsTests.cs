@@ -400,6 +400,19 @@ public class WorkItemsTests
     }
 
     [Fact]
+    public void TheAllSliceUsesThePublishedStatsDirectly()
+    {
+        var report = WorkItemsReport.Parse("""
+            { "stats": { "cycleTimeHours": { "median": 10, "p85": 20, "n": 5 } },
+              "items": [ { "number": 1, "column": "Done" } ] }
+            """)!;
+        var slice = WorkItemsText.Slice(report, WorkAudience.All);
+
+        Assert.Same(report.Stats, slice);
+        Assert.Equal(10, slice.CycleTimeHours!.Median);
+    }
+
+    [Fact]
     public void TheFeedSampleUsesThePublishedNames()
     {
         var feed = WorkItemsReport.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "feed-workitems.json")))!;

@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Dashboard.Health;
 
 /// <summary>The history strip in words, for readers who do not see it.</summary>
@@ -22,8 +24,8 @@ public static class HistoryText
         var parts = Counted
             .Select(state => (State: state, Count: history.Count(result => result.State == state)))
             .Where(entry => entry.Count > 0)
-            .Select(entry => $"{entry.Count} {HealthClassifier.Sentence(entry.State)}");
-        var checks = history.Count == 1 ? "Last check" : $"Last {history.Count} checks";
+            .Select(entry => string.Create(CultureInfo.InvariantCulture, $"{entry.Count} {HealthClassifier.Sentence(entry.State)}"));
+        var checks = history.Count == 1 ? "Last check" : string.Create(CultureInfo.InvariantCulture, $"Last {history.Count} checks");
         return $"{checks}: {string.Join(", ", parts)}";
     }
 

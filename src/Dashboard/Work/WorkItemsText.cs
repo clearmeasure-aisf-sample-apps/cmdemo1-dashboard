@@ -75,14 +75,28 @@ public static class WorkItemsText
         : !asked ? WorkItemsAvailability.Loading
         : WorkItemsAvailability.NotPublished;
 
-    public static string Unavailable(WorkItemsAvailability availability) => availability switch
+    /// <summary>
+    /// The sentence a state stands for. A value the enum does not name is refused by name first, so the switch
+    /// underneath says the four states and nothing else: a fifth state of the enum is a build error (CS8509, and
+    /// warnings are errors) rather than a paragraph that says nothing on the page.
+    /// </summary>
+    public static string Unavailable(WorkItemsAvailability availability)
     {
-        WorkItemsAvailability.Loading => Loading,
-        WorkItemsAvailability.NoAddress => NoAddress,
-        WorkItemsAvailability.NotPublished => NotPublished,
-        WorkItemsAvailability.Ready => string.Empty,
-        _ => throw new ArgumentOutOfRangeException(nameof(availability), availability, "A work items state has no sentence."),
-    };
+        if (!Enum.IsDefined(availability))
+        {
+            throw new ArgumentOutOfRangeException(nameof(availability), availability, "A work items state has no sentence.");
+        }
+
+#pragma warning disable CS8524 // Every named state has its arm below; the guard refused every value that is not one.
+        return availability switch
+        {
+            WorkItemsAvailability.Loading => Loading,
+            WorkItemsAvailability.NoAddress => NoAddress,
+            WorkItemsAvailability.NotPublished => NotPublished,
+            WorkItemsAvailability.Ready => string.Empty, // The board is on the page, so there is nothing to say.
+        };
+#pragma warning restore CS8524
+    }
 
     /// <summary>
     /// The words of one audience: its name on the strip, its segment of the address, and the worker whose items it

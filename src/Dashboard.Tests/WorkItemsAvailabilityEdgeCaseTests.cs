@@ -591,6 +591,54 @@ public class WorkItemsAvailabilityEdgeCaseTests
         Assert.Equal(["availability"], say.GetParameters().Select(parameter => parameter.Name));
     }
 
+    /// <summary>The shape of the member that says the sentences, read out of the file it is written in: the refusal
+    /// of a value that is no state comes first, and the switch after it names the four states and answers for no
+    /// other value at all.</summary>
+    /// <para>
+    /// Why the shape and not the behaviour, which the rows above already pin: it is the compiler that has to notice
+    /// a fifth state, not the reader, who would first have to remember what the four were. Every state is therefore
+    /// named by its own arm, and there is no <c>_ =&gt;</c> to take in what the names do not: a state added to
+    /// <see cref="WorkItemsAvailability" /> is a switch that has stopped being exhaustive, which warns CS8509, and a
+    /// warning is an error in this repository (<c>Directory.Build.props</c>), so the addition cannot be merged with
+    /// its sentence unwritten. An arm for anything else would say nothing to the compiler and, worse, say something
+    /// to the page: a sentence invented for a state nobody wrote one for.
+    /// </para>
+    /// <para>
+    /// The refusal of a value the enum does not name comes before the switch, and is pinned letter for letter with
+    /// it - the argument, the value held on to, the words <c>A work items state has no sentence.</c> - because
+    /// something still has to answer for the numbers the four are not (<see
+    /// cref="AStateThatIsNoneOfTheFourHasNoSentence(int)" /> pins what it answers), and the switch answers for none
+    /// of them by design. Either the guard comes first or the switch has to answer for such a value itself; what it
+    /// must not do is run past its own arms and land on a default. So from the switch to the end of the body there
+    /// is neither a <c>_ =&gt;</c> nor a <c>throw</c> waiting under it.</para>
+    [Fact]
+    public void TheSwitchNamesEveryStateAndHasNoArmForAnyOther()
+    {
+        var source = File.ReadAllText(WorkItemsTextSource());
+        var body = MethodBody(source, "public static string Unavailable(WorkItemsAvailability availability)");
+
+        Assert.Contains("if (!Enum.IsDefined(availability))", body, StringComparison.Ordinal);
+        Assert.Contains(
+            """throw new ArgumentOutOfRangeException(nameof(availability), availability, "A work items state has no sentence.");""",
+            body,
+            StringComparison.Ordinal);
+
+        var refusal = body.IndexOf("Enum.IsDefined", StringComparison.Ordinal);
+        var arms = body.IndexOf("switch", StringComparison.Ordinal);
+        Assert.True(
+            refusal >= 0 && arms >= 0 && refusal < arms,
+            "the refusal of a value that is no state has to come before the switch, or the switch has to answer for such a value itself");
+
+        foreach (var name in Enum.GetNames<WorkItemsAvailability>())
+        {
+            Assert.Contains($"WorkItemsAvailability.{name} =>", body, StringComparison.Ordinal);
+        }
+
+        var fromTheSwitch = body[arms..];
+        Assert.DoesNotContain("_ =>", fromTheSwitch, StringComparison.Ordinal);
+        Assert.DoesNotContain("throw", fromTheSwitch, StringComparison.Ordinal);
+    }
+
     /// <summary>The view asks the three facts once, and shows the state's own sentence in the paragraph it has a
     /// status region for: no wording of its own, so the day a sentence moves the page moves with it. The state the
     /// view asks for is the one the monitor's three facts answer with - the address it has, the ask it remembers,
@@ -627,4 +675,42 @@ public class WorkItemsAvailabilityEdgeCaseTests
     /// <see cref="WorkItemsViewTests" /> reads it.</summary>
     private static string WorkItemsViewComponent([CallerFilePath] string here = "") =>
         Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here)!, "..", "Dashboard", "Components", "WorkItemsView.razor"));
+
+    /// <summary>The file the words of a state are written in, read the way <see cref="WorkItemsViewComponent" /> reads
+    /// the file they are placed in. What is guarded here is the shape of a member, which reflection cannot see: the
+    /// arms it writes, in what order, and what it leaves unwritten.</summary>
+    private static string WorkItemsTextSource([CallerFilePath] string here = "") =>
+        Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here)!, "..", "Dashboard", "Work", "WorkItemsText.cs"));
+
+    /// <summary>The text of one method: from its signature to the brace that closes it, with the braces counted, so a
+    /// block the method opens belongs to the body and the body ends where that method ends rather than at the first
+    /// brace that happens to look like it. A signature the file does not have is said out loud - a member that moved
+    /// or was renamed is a guard that reads nothing, and silence here would read as a shape that holds.</summary>
+    private static string MethodBody(string source, string signature)
+    {
+        var start = source.IndexOf(signature, StringComparison.Ordinal);
+        Assert.True(start >= 0, $"{signature} was not found where the sentences are written");
+
+        var open = source.IndexOf('{', start);
+        Assert.True(open > start, $"the body of {signature} was not found");
+
+        var depth = 0;
+        for (var index = open; index < source.Length; index++)
+        {
+            if (source[index] == '{')
+            {
+                depth++;
+            }
+            else if (source[index] == '}')
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    return source[start..(index + 1)];
+                }
+            }
+        }
+
+        throw new InvalidOperationException($"the body of {signature} never closes");
+    }
 }

@@ -8,8 +8,10 @@ public enum SummaryLevel
     /// <summary>Nothing is known to be wrong, and not every endpoint has been checked.</summary>
     Pending,
 
+    /// <summary>Every endpoint has been checked, and every one of them is healthy.</summary>
     AllHealthy,
 
+    /// <summary>At least one endpoint is not healthy: it answered anything but HTTP 200, or gave no answer at all.</summary>
     Problems,
 }
 

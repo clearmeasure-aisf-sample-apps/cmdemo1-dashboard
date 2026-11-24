@@ -30,13 +30,13 @@ public static class ClusterText
 
     /// <summary>The CPU of a node or of the cluster, in cores: <c>0.81 of 3.86 cores</c>.</summary>
     public static string CoresOf(double usedMillicores, double ofMillicores) =>
-        $"{Cores(usedMillicores)} of {Cores(ofMillicores)} {CoreUnit(ofMillicores)}";
+        $"{Cores(usedMillicores)} of {Cores(ofMillicores)} {CoresUnitOf(ofMillicores)}";
 
     /// <summary>The CPU of a pod: <c>14 m</c> (millicores, a thousandth of a core) below one core, then <c>1.25 cores</c>.</summary>
     public static string Cpu(double millicores) =>
         millicores < MillicoresPerCore
             ? string.Create(CultureInfo.InvariantCulture, $"{millicores:0} m")
-            : $"{Cores(millicores)} {CoreUnit(millicores)}";
+            : $"{Cores(millicores)} {CoresUnitOf(millicores)}";
 
     /// <summary>A pod's CPU against its limit: <c>14 of 500 m</c>, <c>38 m of 1 core</c>, <c>1.2 of 2 cores</c>.</summary>
     public static string CpuOf(double usedMillicores, double limitMillicores) =>
@@ -280,7 +280,12 @@ public static class ClusterText
     /// <summary>The <see cref="Words"/> of a reason; null when nothing is left of it.</summary>
     private static string? Said(string? detail) => Words(detail) is { Length: > 0 } words ? words : null;
 
-    private static string CoreUnit(double millicores) => millicores == MillicoresPerCore ? "core" : "cores";
+    /// <summary>
+    /// The unit a quantity of CPU is said in: <c>core</c> for a quantity of exactly one core (1000 millicores),
+    /// <c>cores</c> for every other - 0, 0.5, 1.5, NaN. The word agrees with a quantity, not with a count, so it is
+    /// deliberately not <see cref="Plural"/>: there is no "count of one" in half a core.
+    /// </summary>
+    private static string CoresUnitOf(double millicores) => millicores == MillicoresPerCore ? "core" : "cores";
 
     /// <summary>
     /// A use against a whole: null without a usage, said against the whole when it is more than zero, plain otherwise.

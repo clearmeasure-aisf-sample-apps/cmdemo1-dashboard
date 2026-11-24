@@ -65,7 +65,7 @@ public sealed record PinnedVersions(PinnedVersionsState State, IReadOnlyDictiona
     {
         if (string.IsNullOrWhiteSpace(json))
         {
-            return Unavailable("the file is empty");
+            return Unavailable(FileProblems.Empty);
         }
 
         try
@@ -74,7 +74,7 @@ public sealed record PinnedVersions(PinnedVersionsState State, IReadOnlyDictiona
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
             {
-                return Unavailable("the file does not contain a JSON object");
+                return Unavailable(FileProblems.NotAnObject);
             }
 
             var versions = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -91,7 +91,7 @@ public sealed record PinnedVersions(PinnedVersionsState State, IReadOnlyDictiona
         }
         catch (JsonException)
         {
-            return Unavailable("the file is not valid JSON");
+            return Unavailable(FileProblems.Broken);
         }
     }
 
@@ -106,7 +106,7 @@ public sealed record PinnedVersions(PinnedVersionsState State, IReadOnlyDictiona
         ArgumentNullException.ThrowIfNull(deployable);
         if (string.IsNullOrWhiteSpace(yaml))
         {
-            return Unavailable("the file is empty");
+            return Unavailable(FileProblems.Empty);
         }
 
         foreach (var line in yaml.Split('\n'))

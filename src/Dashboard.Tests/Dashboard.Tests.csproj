@@ -25,6 +25,12 @@
     <Compile Include="..\Dashboard\Health\JsonRead.cs" Link="Health\JsonRead.cs" />
   </ItemGroup>
 
+  <!-- FileProblems is internal to the app for the same reason: the tests quote the three refusal sentences by name,
+       so they compile this one file too and assert against the source the app runs. -->
+  <ItemGroup>
+    <Compile Include="..\Dashboard\Health\FileProblems.cs" Link="Health\FileProblems.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <Using Include="Dashboard.Cluster" />
     <Using Include="Dashboard.Health" />

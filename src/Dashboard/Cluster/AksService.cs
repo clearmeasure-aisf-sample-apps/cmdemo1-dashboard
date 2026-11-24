@@ -57,7 +57,7 @@ public sealed record AksService(
     {
         if (string.IsNullOrWhiteSpace(json))
         {
-            return new Parsed<AksService>(null, "the file is empty");
+            return new Parsed<AksService>(null, FileProblems.Empty);
         }
 
         try
@@ -66,7 +66,7 @@ public sealed record AksService(
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
             {
-                return new Parsed<AksService>(null, "the file does not contain a JSON object");
+                return new Parsed<AksService>(null, FileProblems.NotAnObject);
             }
 
             var service = new AksService(
@@ -87,7 +87,7 @@ public sealed record AksService(
         }
         catch (JsonException)
         {
-            return new Parsed<AksService>(null, "the file is not valid JSON");
+            return new Parsed<AksService>(null, FileProblems.Broken);
         }
     }
 }

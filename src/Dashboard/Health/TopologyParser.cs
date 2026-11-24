@@ -267,7 +267,7 @@ public static class TopologyParser
             return nodes;
         }
 
-        foreach (var (element, path, position) in Objects(array, $"{deployablePath}.nodes", errors))
+        foreach (var (element, path, _) in Objects(array, $"{deployablePath}.nodes", errors))
         {
             var url = element.TryGetProperty("url", out var value) ? ReadAddress(value) : null;
             if (url is null)
@@ -276,9 +276,8 @@ public static class TopologyParser
                 continue;
             }
 
-            // Without a role, the order of the file decides: the first node is the primary.
-            var role = ReadText(element, "role")?.ToLowerInvariant()
-                ?? (position == 0 ? NodeInfo.PrimaryRole : NodeInfo.StandbyRole);
+            // Without a role, the order of the nodes read decides: the first node read is the primary.
+            var role = ReadText(element, "role")?.ToLowerInvariant() ?? NodeRole.Default(nodes.Count);
             nodes.Add(new NodeInfo(ReadText(element, "name") ?? url.Host, ReadText(element, "region"), role, url, ReadLinks(element)));
         }
 

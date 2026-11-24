@@ -179,4 +179,12 @@ public static class NodeRole
     /// with no space trimmed; no word at all is no primary.
     /// </summary>
     public static bool IsPrimary(string? role) => string.Equals(role, NodeInfo.PrimaryRole, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The role of a node that names none: <see cref="NodeInfo.PrimaryRole"/> when no node was read before it,
+    /// <see cref="NodeInfo.StandbyRole"/> otherwise. The count is of the nodes that were read, not of the entries the
+    /// file refused, so a refused first entry does not leave the deployable without a primary.
+    /// </summary>
+    public static string Default(int nodesReadBefore) =>
+        nodesReadBefore == 0 ? NodeInfo.PrimaryRole : NodeInfo.StandbyRole;
 }

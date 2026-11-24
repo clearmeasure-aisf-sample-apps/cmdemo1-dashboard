@@ -209,4 +209,21 @@ public class ViewLinksTests
             new ViewLink("Open the diagram at full size", $"{Base}/1.0.42.svg", "The diagram of ui 1.0.42 as its repository published it (opens in a new tab)", NoReferrer: true),
             ApplicationText.DiagramLink(image, "ui", "1.0.42"));
     }
+
+    [Fact]
+    public void ViewLinkToRoutesThroughTheNamedFactoryAndRefusesRelativeAddresses()
+    {
+        // ViewLink.To is the named factory for a link (issue #1567); it must be called by name here.
+        var absolute = ViewLink.To(new Uri("https://portal.example.net/#aks"), "Open", "AKS in the portal");
+        Assert.Equal("https://portal.example.net/#aks", absolute.Href);
+        Assert.Equal("Open", absolute.Text);
+        Assert.Equal("AKS in the portal", absolute.Title);
+        Assert.False(absolute.NoReferrer);
+
+        var noReferrer = ViewLink.To(new Uri("https://raw.githubusercontent.com/o/r/a.svg"), "Diagram", "Full size", noReferrer: true);
+        Assert.True(noReferrer.NoReferrer);
+
+        // A relative address is refused by Uri itself, not by a guess here (the decision of #1556, documented in RuntimeLink.To).
+        Assert.Throws<InvalidOperationException>(() => ViewLink.To(new Uri("/relative/path", UriKind.Relative), "Link", "Relative"));
+    }
 }

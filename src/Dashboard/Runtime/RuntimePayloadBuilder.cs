@@ -888,11 +888,11 @@ public static class RuntimePayloadBuilder
         ArgumentNullException.ThrowIfNull(deployable);
         if (LinkText.Release(deployable.Info.ProjectUrl, version) is { } release)
         {
-            return new RuntimeLink(release.AbsoluteUri, LinkText.ReleaseTitle(deployable.Info.Name, version));
+            return RuntimeLink.To(release, LinkText.ReleaseTitle(deployable.Info.Name, version));
         }
 
         return deployable.Build is { CommitUrl: { } commit, Commit: { } sha } build && string.Equals(build.Version, version, StringComparison.OrdinalIgnoreCase)
-            ? new RuntimeLink(commit.AbsoluteUri, LinkText.CommitTitle(sha))
+            ? RuntimeLink.To(commit, LinkText.CommitTitle(sha))
             : null;
     }
 

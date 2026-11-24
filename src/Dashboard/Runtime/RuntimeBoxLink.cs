@@ -71,7 +71,7 @@ public static class RuntimeBoxLink
         {
             if (links[key] is { } address)
             {
-                return new RuntimeLink(address.AbsoluteUri, key switch
+                return RuntimeLink.To(address, key switch
                 {
                     LinkSet.Portal => LinkText.Portal($"{resource} in the Azure portal"),
                     Resources => LinkText.Portal($"The resources in {name}, a query in Azure Resource Graph Explorer"),

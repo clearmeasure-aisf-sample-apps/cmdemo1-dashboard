@@ -31,6 +31,12 @@
     <Compile Include="..\Dashboard\Health\FileProblems.cs" Link="Health\FileProblems.cs" />
   </ItemGroup>
 
+  <!-- KustomizationPinLine is internal to the app for the same reason: the tests pin the newTag line grammar directly,
+       so they compile this one file too and assert against the source the app runs. -->
+  <ItemGroup>
+    <Compile Include="..\Dashboard\Health\KustomizationPinLine.cs" Link="Health\KustomizationPinLine.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <Using Include="Dashboard.Cluster" />
     <Using Include="Dashboard.Health" />

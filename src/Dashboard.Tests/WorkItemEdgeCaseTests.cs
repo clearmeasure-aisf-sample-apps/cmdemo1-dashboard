@@ -49,8 +49,11 @@ namespace Dashboard.Tests;
 /// the way <see cref="WorkItemsTests.EveryPartOfAnItemIsOptionalAndABadPartIsLeftOut" /> says a bad part is left out:
 /// the item that says only its number, only its title or only its column; a number of another type, sign or reach, and
 /// the float the number it rounds to; a title or a column of another type; an address that is no address; a session, a
-/// pull request, a release candidate, an environments, a cost, a worker, a rework or a note that is not one; and the
-/// item that is no object at all.
+/// pull request, a release candidate, an environments, a cost, a worker, a rework or a note that is not one; the
+/// failures and reverts beating the older rework object; the latest status comment beating the blocker, the comment and
+/// the status, each in turn, and the comment object read into a note; the object whose only part is the cost, the worker
+/// or the environments left out, and those parts kept beside a part that identifies the item, with a cost of zero kept;
+/// and the item that is no object at all.
 /// </para>
 /// <para>
 /// Nothing here reaches the network and nothing asks a clock what time it is: every moment below is one the test
@@ -1782,6 +1785,132 @@ public class WorkItemEdgeCaseTests
         Assert.Equal(new WorkNote("Blocked", null, null, null), fromStatus.Blocker);
         Assert.Equal(new WorkNote("It failed", new Uri(Comment), At(10), null), fromBlocker.Blocker);
         Assert.Equal(new WorkNote("It failed", null, null, "blocker"), fromComment.Blocker);
+    }
+
+    /// <summary>When the file says the failures or the reverts on the item itself and also says the older rework
+    /// object, the item's own counts are the rework: the object is not read at all, so its rate and its other count do
+    /// not fill the parts the item left unsaid.</summary>
+    [Theory]
+    [InlineData("""{ "number": 490, "ftFailures": 1, "rework": { "rate": 0.25, "ftFailures": 7, "reverts": 8 } }""", 1, null)]
+    [InlineData("""{ "number": 490, "reverts": 2, "rework": { "rate": 0.25, "ftFailures": 7, "reverts": 8 } }""", null, 2)]
+    [InlineData("""{ "number": 490, "ftFailures": 0, "reverts": 0, "rework": { "rate": 0.25, "ftFailures": 7, "reverts": 8 } }""", 0, 0)]
+    public void TheFailuresAndRevertsOnTheItemBeatTheReworkObject(string item, int? failures, int? reverts)
+    {
+        var parsed = ItemsOf(item)!.Items.Single();
+
+        Assert.Equal(new WorkRework(failures, reverts, null), parsed.Rework);
+    }
+
+    /// <summary>The note the file says falls back in a fixed order: the latest status comment, then the blocker, then
+    /// the comment, then the status with its address and moment. Each item here says every source from its own place
+    /// down, so the one that wins is the first in the order, and the sources below it are not read into the note.</summary>
+    [Fact]
+    public void TheLatestStatusCommentBeatsTheBlockerTheCommentAndTheStatus()
+    {
+        var everySource = ItemsOf($$"""
+            {
+              "number": 490,
+              "latestStatusComment": { "text": "From the latest status comment", "kind": "status", "url": "{{Comment}}", "at": "2026-11-10T00:00:00Z" },
+              "blocker": { "text": "From the blocker" },
+              "comment": { "text": "From the comment" },
+              "status": "From the status",
+              "statusUrl": "{{Issue}}",
+              "statusAt": "2026-11-09T00:00:00Z"
+            }
+            """)!.Items.Single();
+        var noLatestStatusComment = ItemsOf($$"""
+            {
+              "number": 490,
+              "blocker": { "text": "From the blocker" },
+              "comment": { "text": "From the comment" },
+              "status": "From the status",
+              "statusUrl": "{{Issue}}",
+              "statusAt": "2026-11-09T00:00:00Z"
+            }
+            """)!.Items.Single();
+        var noBlocker = ItemsOf($$"""
+            {
+              "number": 490,
+              "comment": { "text": "From the comment" },
+              "status": "From the status",
+              "statusUrl": "{{Issue}}",
+              "statusAt": "2026-11-09T00:00:00Z"
+            }
+            """)!.Items.Single();
+        var statusOnly = ItemsOf($$"""
+            {
+              "number": 490,
+              "status": "From the status",
+              "statusUrl": "{{Issue}}",
+              "statusAt": "2026-11-09T00:00:00Z"
+            }
+            """)!.Items.Single();
+
+        Assert.Equal(new WorkNote("From the latest status comment", new Uri(Comment), At(10), "status"), everySource.Blocker);
+        Assert.Equal(new WorkNote("From the blocker", null, null, null), noLatestStatusComment.Blocker);
+        Assert.Equal(new WorkNote("From the comment", null, null, null), noBlocker.Blocker);
+        Assert.Equal(new WorkNote("From the status", new Uri(Issue), At(9), null), statusOnly.Blocker);
+    }
+
+    /// <summary>A latest status comment, or a blocker, that says nothing the note is made of does not stop the next
+    /// source in the order from being the note.</summary>
+    [Fact]
+    public void ASourceThatSaysNothingLetsTheNextSourceBeTheNote()
+    {
+        var emptyLatestStatusComment = ItemsOf("""{ "number": 490, "latestStatusComment": { }, "blocker": { "text": "From the blocker" } }""")!.Items.Single();
+        var emptyBlocker = ItemsOf("""{ "number": 490, "blocker": { }, "comment": { "text": "From the comment" } }""")!.Items.Single();
+
+        Assert.Equal(new WorkNote("From the blocker", null, null, null), emptyLatestStatusComment.Blocker);
+        Assert.Equal(new WorkNote("From the comment", null, null, null), emptyBlocker.Blocker);
+    }
+
+    /// <summary>The <c>comment</c> object the file says is read into a note: the word under <c>text</c>, then
+    /// <c>comment</c>, then <c>summary</c>, with the address and the moment it says, and no kind.</summary>
+    [Fact]
+    public void ACommentObjectIsReadIntoANote()
+    {
+        var byText = ItemsOf($$"""{ "number": 490, "comment": { "text": "It failed", "url": "{{Comment}}", "at": "2026-11-10T00:00:00Z" } }""")!.Items.Single();
+        var byComment = ItemsOf("""{ "number": 490, "comment": { "comment": "It failed" } }""")!.Items.Single();
+        var bySummary = ItemsOf("""{ "number": 490, "comment": { "summary": "It failed" } }""")!.Items.Single();
+
+        Assert.Equal(new WorkNote("It failed", new Uri(Comment), At(10), null), byText.Blocker);
+        Assert.Equal(new WorkNote("It failed", null, null, null), byComment.Blocker);
+        Assert.Equal(new WorkNote("It failed", null, null, null), bySummary.Blocker);
+    }
+
+    /// <summary>A part that is only the cost, only the worker or only the environments does not identify an item: the
+    /// gate is the number, the title, the address and the column together, so such an object is left out of the
+    /// report even though the part it says is a good one.</summary>
+    [Theory]
+    [InlineData("""{ "costUsd": 4.5 }""")]
+    [InlineData("""{ "costUsd": 0 }""")]
+    [InlineData("""{ "worker": "bot" }""")]
+    [InlineData("""{ "worker": "team" }""")]
+    [InlineData("""{ "environments": { "prod": { "version": "2.4.84", "deployedAt": "2026-11-08T06:00:00Z" } } }""")]
+    public void AnItemWhoseOnlyPartIsTheCostTheWorkerOrTheEnvironmentsIsNoItemAtAll(string item) =>
+        Assert.Empty(ItemsOf(item)!.Items);
+
+    /// <summary>The same parts, said beside one that does identify the item, are kept: the gate drops the object that
+    /// says only them and nothing else.</summary>
+    [Theory]
+    [InlineData("""{ "number": 490, "costUsd": 4.5 }""")]
+    [InlineData("""{ "number": 490, "worker": "bot" }""")]
+    [InlineData("""{ "number": 490, "environments": { "prod": { "version": "2.4.84" } } }""")]
+    [InlineData("""{ "url": "https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/490", "costUsd": 4.5 }""")]
+    public void TheCostTheWorkerAndTheEnvironmentsAreKeptBesideAPartThatIdentifiesTheItem(string item) =>
+        Assert.Single(ItemsOf(item)!.Items);
+
+    /// <summary>A cost of zero is a cost: the reading refuses only the negative, so an item that cost nothing says so
+    /// through the file's reading, as the zero it is and not as an unsaid cost.</summary>
+    [Theory]
+    [InlineData("0")]
+    [InlineData("0.0")]
+    public void ACostOfZeroIsTheCostOfNothingAndNotNoCost(string cost)
+    {
+        var parsed = ItemsOf($$"""{ "number": 490, "costUsd": {{cost}} }""")!.Items.Single();
+
+        Assert.Equal(0d, parsed.CostUsd);
+        Assert.Equal(490, parsed.Number);
     }
 
     /// <summary>An item the file says that is no object - a number, a word, a flag, a list or nothing - is no item:

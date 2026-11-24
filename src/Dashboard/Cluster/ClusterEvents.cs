@@ -33,7 +33,7 @@ public static class ClusterEventDetector
             return null;
         }
 
-        var reason = string.IsNullOrWhiteSpace(detail) ? string.Empty : $": {detail.TrimEnd('.')}";
+        var reason = ClusterText.Reason(detail);
         var notice = after switch
         {
             ClusterLiveness.Silent => new ClusterNotice(EventLevel.Problem, $"The cluster's status file stopped answering{reason}"),
@@ -178,7 +178,7 @@ public static class ClusterEventDetector
         var name = ClusterText.PodIn(after, space);
         if (before is not null && after.Restarts > before.Restarts)
         {
-            var reason = after.Reason is { } why && now != PodState.Ready ? $": {why}" : string.Empty;
+            var reason = now != PodState.Ready ? ClusterText.Reason(after.Reason) : string.Empty;
             return new ClusterNotice(EventLevel.Warning, $"{name} restarted ({ClusterText.Restarts(after.Restarts)}){reason}");
         }
 

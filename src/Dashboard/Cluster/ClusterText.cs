@@ -159,12 +159,12 @@ public static class ClusterText
         {
             PodState.Ready => "Ready",
             PodState.Finished => "Finished",
-            PodState.Starting => pod.Reason is { } reason ? $"Starting: {reason}" : "Starting",
+            PodState.Starting => $"Starting{Reason(pod.Reason)}",
             _ when phase.Is(PodPhaseKind.Pending) => Age(pod.StartedAt, asOf) is { } age
-                ? $"Pending for {age}{(pod.Reason is { } reason ? $": {reason}" : string.Empty)}"
-                : pod.Reason ?? ClusterPod.Pending,
-            _ when phase.Is(PodPhaseKind.Running) => pod.Reason ?? "Not ready",
-            _ => pod.Reason ?? pod.Phase,
+                ? $"Pending for {age}{Reason(pod.Reason)}"
+                : Said(pod.Reason) ?? ClusterPod.Pending,
+            _ when phase.Is(PodPhaseKind.Running) => Said(pod.Reason) ?? "Not ready",
+            _ => Said(pod.Reason) ?? pod.Phase,
         };
     }
 
@@ -244,6 +244,30 @@ public static class ClusterText
     /// <summary>The tooltip of the link to the cluster's workloads in the Azure portal.</summary>
     public static string WorkloadsTitle(string? cluster) =>
         LinkText.Portal(cluster is null ? "The cluster's workloads in the Azure portal" : $"The workloads of {cluster} in the Azure portal: deployments, pods and their logs");
+
+    /// <summary>
+    /// A reason as the end of what comes before it: <c>: CrashLoopBackOff</c>, trimmed by <see cref="Words"/>; empty
+    /// when there is nothing to say.
+    /// </summary>
+    internal static string Reason(string? detail) => Said(detail) is { } words ? $": {words}" : string.Empty;
+
+    /// <summary>
+    /// The words of a reason without the spaces around them and without the full stops they end in - a stop followed
+    /// by a space is still a stop - so the one that closes the sentence is the only one said.
+    /// </summary>
+    internal static string Words(string? detail)
+    {
+        var words = (detail ?? string.Empty).Trim();
+        while (words.EndsWith('.'))
+        {
+            words = words.TrimEnd('.').TrimEnd();
+        }
+
+        return words;
+    }
+
+    /// <summary>The <see cref="Words"/> of a reason; null when nothing is left of it.</summary>
+    private static string? Said(string? detail) => Words(detail) is { Length: > 0 } words ? words : null;
 
     private static string CoreUnit(double millicores) => millicores == MillicoresPerCore ? "core" : "cores";
 

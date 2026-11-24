@@ -35,6 +35,12 @@ public static class RuntimePayloadBuilder
     public const string NoNumber = "–";
     public const string CallsUnit = "calls/min";
 
+    /// <summary>The label of a neutral tile this page does not check.</summary>
+    private const string NotProbed = "Not probed";
+
+    /// <summary>The label of a neutral tile whose address is not known.</summary>
+    private const string NoAddress = "No address";
+
     /// <summary>How many marks of a detailed health check a tile's line holds; the entries that are not healthy come first.</summary>
     public const int MostMarks = 8;
 
@@ -98,7 +104,7 @@ public static class RuntimePayloadBuilder
                         RuntimeNodeKind.Sql => DatabaseTile(node, Clients(manifest, node, RuntimeEdgeKind.Sql, byAlias), ContainerSqlApps(manifest, node, probed), zone, environment?.Info.Links, health),
                         RuntimeNodeKind.Dependency => DependencyTile(node, Clients(manifest, node, RuntimeEdgeKind.Dependency, byAlias), zone),
                         RuntimeNodeKind.ContainerApp => ContainerAppTile(node, containerApps, hourly, now, zone, health),
-                        RuntimeNodeKind.Resource => health.Tile(node, string.Empty) ?? NeutralTile(node, "Not probed", string.Empty, node.Name),
+                        RuntimeNodeKind.Resource => health.Tile(node, string.Empty) ?? NeutralTile(node, NotProbed, string.Empty, node.Name),
                         _ => Tile(node, byAlias.GetValueOrDefault(node.Alias), environment, page, zone, health),
                     },
                     node,
@@ -301,12 +307,12 @@ public static class RuntimePayloadBuilder
         {
             RuntimeNodeKind.StaticSite => health.Tile(node, $"the dashboard of this environment{(node.Url is null ? string.Empty : $" ({node.Url.Host})")}. This page does not check it.") ?? NeutralTile(
                 node,
-                "Not probed",
+                NotProbed,
                 node.Url is null ? "its address is not in this deployment" : node.Url.Host,
                 $"{node.Name}: the dashboard of this environment. It does not check itself."),
             RuntimeNodeKind.FrontDoor when node.Url is null => NeutralTile(
                 node,
-                "No address",
+                NoAddress,
                 "endpoint not deployed yet",
                 $"{node.Name}: the deployment found no such endpoint in the Front Door profile. Deploy the dashboard again once the environment has it."),
             RuntimeNodeKind.WebApp or RuntimeNodeKind.FrontDoor => NeutralTile(
@@ -315,8 +321,8 @@ public static class RuntimePayloadBuilder
                 "not in topology.json",
                 $"{node.Name}: the topology this page loaded has no such address, so it is not checked. Reload the topology, or deploy the dashboard again."),
             // A kind this page does not know, with an address: drawn with it, never probed.
-            RuntimeNodeKind.Other when node.Url is not null => NeutralTile(node, "Not probed", node.Url.Host, $"{node.Name} ({node.Url.Host}): the dashboard does not check it."),
-            _ => health.Tile(node, string.Empty) ?? NeutralTile(node, "Not probed", string.Empty, node.Name),
+            RuntimeNodeKind.Other when node.Url is not null => NeutralTile(node, NotProbed, node.Url.Host, $"{node.Name} ({node.Url.Host}): the dashboard does not check it."),
+            _ => health.Tile(node, string.Empty) ?? NeutralTile(node, NotProbed, string.Empty, node.Name),
         };
     }
 
@@ -375,7 +381,7 @@ public static class RuntimePayloadBuilder
         if (ContainerTarget(node) is not { } target)
         {
             const string Why = "a container app without a public address this page knows: the browser cannot ask it.";
-            return health.Tile(node, Why) ?? NeutralTile(node, "No address", "no public address known", $"{node.Name}: {Why}");
+            return health.Tile(node, Why) ?? NeutralTile(node, NoAddress, "no public address known", $"{node.Name}: {Why}");
         }
 
         var status = probes?.Invoke(target) ?? ContainerAppStatus.NotYet;
@@ -444,14 +450,14 @@ public static class RuntimePayloadBuilder
     {
         if (clients.Count == 0)
         {
-            return NeutralTile(node, "Not probed", "no web app that uses it is checked", $"{node.Name}: this page checks no web app that uses it.");
+            return NeutralTile(node, NotProbed, "no web app that uses it is checked", $"{node.Name}: this page checks no web app that uses it.");
         }
 
         if (node.HealthCheck is not { } check)
         {
             return NeutralTile(
                 node,
-                "Not probed",
+                NotProbed,
                 "no health check names it",
                 $"{node.Name}: the system names no entry of the web apps' detailed health check for it (dependencies[].healthCheck in system.json), so this page cannot tell its state.");
         }
@@ -460,7 +466,7 @@ public static class RuntimePayloadBuilder
         {
             return NeutralTile(
                 node,
-                "Not probed",
+                NotProbed,
                 "probe Liveness leaves it alone",
                 $"{node.Name}: the probe is Liveness, which does not read what the web apps' health checks found. Choose Health check to see its state.");
         }
@@ -579,7 +585,7 @@ public static class RuntimePayloadBuilder
         if (clients.All(entry => entry.Target.Last is { Probe: ProbeKind.Liveness }))
         {
             const string Why = "the probe is Liveness, which does not connect to the database. Choose Health check to see whether it answers.";
-            return health.Tile(node, Why) ?? NeutralTile(node, "Not probed", "probe Liveness leaves it alone", $"{node.Name}: {Why}");
+            return health.Tile(node, Why) ?? NeutralTile(node, NotProbed, "probe Liveness leaves it alone", $"{node.Name}: {Why}");
         }
 
         if (clients.Any(entry => entry.Target.State == HealthState.Pending))
@@ -601,7 +607,7 @@ public static class RuntimePayloadBuilder
     private static RuntimeTile DatabaseUnprobed(RuntimeNode node, HealthSource health)
     {
         const string Why = "the database takes no call from a browser, and this page checks no web app that uses it.";
-        return health.Tile(node, Why) ?? NeutralTile(node, "Not probed", "not probed from the browser", $"{node.Name}: {Why}");
+        return health.Tile(node, Why) ?? NeutralTile(node, NotProbed, "not probed from the browser", $"{node.Name}: {Why}");
     }
 
     /// <summary>
@@ -646,7 +652,7 @@ public static class RuntimePayloadBuilder
         {
             var who = apps.Count == 1 ? "the container app that uses it" : "the container apps that use it";
             var why = $"{who} answered without a health check (the probe was Liveness, or the app does not allow this page's origin), so this page cannot tell whether the database answers.";
-            return health.Tile(node, why) ?? NeutralTile(node, "Not probed", "health check not read", $"{node.Name}: {why}");
+            return health.Tile(node, why) ?? NeutralTile(node, NotProbed, "health check not read", $"{node.Name}: {why}");
         }
 
         return NeutralTile(

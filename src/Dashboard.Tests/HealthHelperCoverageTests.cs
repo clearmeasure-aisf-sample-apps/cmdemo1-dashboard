@@ -135,6 +135,84 @@ public partial class HealthHelperCoverageTests
         }
     }
 
+    /// <summary>
+    /// The source scan and the assembly enumeration are two reads of the same set: neither may find what the other
+    /// misses. An attribute in front of the <c>public static</c>, a return type the source pattern cannot cross,
+    /// a type written in a form the regex does not know - the source scan would miss them, but the assembly read
+    /// does not; and the source scan would read internal helpers the assembly read skips, which is the other way a
+    /// discrepancy shows up. The two sets must be equal, both ways.
+    /// </summary>
+    [Fact]
+    public void TheSourceAndTheAssemblyDeclareTheSameHealthHelpers()
+    {
+        var sourceNames = DeclaredPublic().Select(helper => helper.Key).ToHashSet(StringComparer.Ordinal);
+        var assemblyNames = SourceScan.DeclaredInAssembly(typeof(TimeText), "Dashboard.Health");
+
+        Assert.Empty(sourceNames.Except(assemblyNames));
+        Assert.Empty(assemblyNames.Except(sourceNames));
+    }
+
+    /// <summary>
+    /// The public static methods the source of <c>src/Dashboard/Health</c> declares, per file: a <c>public
+    /// static</c> line whose name stands before the "(" that opens its parameters, read under the type the line
+    /// sits in - but only for public types, which is what the assembly read sees. An internal type (like
+    /// <c>JsonRead</c>) has its public static methods read by the scan and skipped by the assembly; this read
+    /// skips them too, so the two reads can be compared.
+    /// </summary>
+    private static List<Helper> DeclaredPublic()
+    {
+        var helpers = new List<Helper>();
+
+        foreach (var (file, text) in SourceFiles(HealthRoot()))
+        {
+            var line = 0;
+            var type = string.Empty;
+            var typeIsPublic = false;
+
+            foreach (var raw in text.Split('\n'))
+            {
+                line++;
+
+                var code = raw.Trim();
+
+                if (IsComment(code))
+                {
+                    continue;
+                }
+
+                if (TypeDeclarationPublic().Match(code) is { Success: true } declared)
+                {
+                    type = declared.Groups[1].Value;
+                    typeIsPublic = true;
+                    continue;
+                }
+
+                if (TypeDeclarationInternal().Match(code) is { Success: true } declaredInternal)
+                {
+                    type = declaredInternal.Groups[1].Value;
+                    typeIsPublic = false;
+                    continue;
+                }
+
+                if (MethodDeclaration().Match(code) is { Success: true } method)
+                {
+                    if (typeIsPublic)
+                    {
+                        helpers.Add(new Helper(file, line, type, method.Groups[1].Value));
+                    }
+                }
+            }
+        }
+
+        return helpers;
+    }
+
+    [GeneratedRegex(@"^public\s+(?:(?:sealed|static|partial|readonly|abstract)\s+)*(?:class|record|struct|enum|interface)\s+([A-Za-z_]\w*)")]
+    private static partial Regex TypeDeclarationPublic();
+
+    [GeneratedRegex(@"^internal\s+(?:(?:sealed|static|partial|readonly|abstract)\s+)*(?:class|record|struct|enum|interface)\s+([A-Za-z_]\w*)")]
+    private static partial Regex TypeDeclarationInternal();
+
     /// <summary>Only a call writes a name: a comment that quotes one names nothing, a longer name is another member,
     /// and the same method of another type is another helper - <c>AvailabilityText.Count</c> is not
     /// <c>BuildText.Count</c> any more than it is <c>AvailabilityText.Counts</c>.</summary>

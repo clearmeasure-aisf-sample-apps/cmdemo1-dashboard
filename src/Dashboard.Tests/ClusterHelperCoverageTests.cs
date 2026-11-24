@@ -226,6 +226,24 @@ public class ClusterHelperCoverageTests
         Assert.Equal("9.2 GiB", ClusterText.Memory(9876543210));
     }
 
+    /// <summary>
+    /// The source scan and the assembly enumeration are two reads of the same set: neither may find what the other
+    /// misses. An attribute in front of the <c>public static</c>, a return type the source pattern cannot cross,
+    /// a type written in a form the regex does not know - the source scan would miss them, but the assembly read
+    /// does not; and the source scan would read internal helpers the assembly read skips, which is the other way a
+    /// discrepancy shows up. The two sets must be equal, both ways.
+    /// </summary>
+    [Fact]
+    public void TheSourceAndTheAssemblyDeclareTheSameClusterHelpers()
+    {
+        var declared = Declared();
+        var sourceNames = declared.Select(method => method.Full).ToHashSet(StringComparer.Ordinal);
+        var assemblyNames = SourceScan.DeclaredInAssembly(typeof(ClusterText), HelpersNamespace);
+
+        Assert.Empty(sourceNames.Except(assemblyNames));
+        Assert.Empty(assemblyNames.Except(sourceNames));
+    }
+
     // ----- The read -----
 
     /// <summary>A public static method of a helper type, as the call spells it: <c>Type.Name</c>.</summary>

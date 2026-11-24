@@ -12,10 +12,12 @@ namespace Dashboard.Health;
 /// <param name="Generated">When the file's content last changed: the facts are as of then. It is not the time of a check.</param>
 public sealed record DeliveryReport(DateTimeOffset? Generated, IReadOnlyList<DeliveryEnvironment> Environments, FailoverTest? Failover)
 {
+    private DeliveryEnvironment? EnvironmentOf(string environment) =>
+        Environments.FirstOrDefault(entry => string.Equals(entry.Name, environment, StringComparison.OrdinalIgnoreCase));
+
     /// <summary>The entry of a deployable in an environment; null when the file has none.</summary>
     public DeliveryEntry? Find(string environment, string deployable) =>
-        Environments
-            .FirstOrDefault(entry => string.Equals(entry.Name, environment, StringComparison.OrdinalIgnoreCase))
+        EnvironmentOf(environment)
             ?.Deployables.FirstOrDefault(entry => string.Equals(entry.Name, deployable, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
@@ -27,15 +29,14 @@ public sealed record DeliveryReport(DateTimeOffset? Generated, IReadOnlyList<Del
     {
         ArgumentNullException.ThrowIfNull(shown);
         var names = shown.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var entries = Environments
-            .FirstOrDefault(entry => string.Equals(entry.Name, environment, StringComparison.OrdinalIgnoreCase))
+        var entries = EnvironmentOf(environment)
             ?.Deployables.Where(entry => !names.Contains(entry.Name)) ?? [];
         return [.. entries.OrderBy(entry => IsSystem(entry.Name) ? 0 : 1)];
     }
 
     /// <summary>What the hourly health reports of an environment found; null when the file does not say.</summary>
     public HealthReports? HealthOf(string environment) =>
-        Environments.FirstOrDefault(entry => string.Equals(entry.Name, environment, StringComparison.OrdinalIgnoreCase))?.Health;
+        EnvironmentOf(environment)?.Health;
 
     /// <summary>
     /// What the hourly health reports found for the container apps of an environment; null when the file does not say

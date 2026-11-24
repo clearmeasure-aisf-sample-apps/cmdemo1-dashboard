@@ -22,6 +22,25 @@ public enum RuntimeAvailability
 public sealed record RuntimeIndexResult(RuntimeAvailability Availability, RuntimeIndex? Index, IReadOnlyList<string> Errors)
 {
     public static RuntimeIndexResult NotDeployed { get; } = new(RuntimeAvailability.NotDeployed, null, []);
+
+    /// <summary>The index was read: available, with no errors.</summary>
+    internal static RuntimeIndexResult Read(RuntimeIndex index) => new(RuntimeAvailability.Available, index, []);
+
+    /// <summary>The files are there and cannot be read: no index, the reasons why.</summary>
+    internal static RuntimeIndexResult Failed(IReadOnlyList<string> errors) => new(RuntimeAvailability.Failed, null, errors);
+
+    /// <summary>The site has no <c>runtime/</c>: the page says so, not as a problem.</summary>
+    internal bool IsNotDeployed => Availability == RuntimeAvailability.NotDeployed;
+
+    /// <summary>There is an index to show (it may list no environment); otherwise <see cref="Errors"/> say why not.</summary>
+    internal bool IsValid => Index is not null;
+
+    /// <summary>The index lists at least one environment to pick and draw.</summary>
+    internal bool HasEnvironments => Index is { Environments.Count: > 0 };
+
+    /// <summary>Whether the index records a database view for the environment of that exact name.</summary>
+    internal bool RecordsDatabaseOf(string environment) =>
+        Index?.Environments.Any(entry => entry.Database is not null && string.Equals(entry.Name, environment, StringComparison.Ordinal)) ?? false;
 }
 
 /// <summary>One environment's diagram: its manifest and the SVG as text, or the reasons there is none.</summary>
@@ -52,13 +71,13 @@ public sealed class RuntimeLoader(HttpClient http)
 
         if (error is not null)
         {
-            return new RuntimeIndexResult(RuntimeAvailability.Failed, null, [error]);
+            return RuntimeIndexResult.Failed([error]);
         }
 
         var parsed = RuntimeManifestParser.ParseIndex(text);
         return parsed.Value is { } index
-            ? new RuntimeIndexResult(RuntimeAvailability.Available, index, [])
-            : new RuntimeIndexResult(RuntimeAvailability.Failed, null, [.. parsed.Errors.Select(problem => $"{Folder}{IndexFile}: {problem}")]);
+            ? RuntimeIndexResult.Read(index)
+            : RuntimeIndexResult.Failed([.. parsed.Errors.Select(problem => $"{Folder}{IndexFile}: {problem}")]);
     }
 
     public async Task<RuntimeDiagram> LoadDiagramAsync(RuntimeIndexEntry entry, CancellationToken cancellationToken)

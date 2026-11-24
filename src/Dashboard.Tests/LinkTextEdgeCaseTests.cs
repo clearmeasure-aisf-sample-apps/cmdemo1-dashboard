@@ -199,6 +199,52 @@ public class LinkTextEdgeCaseTests
     public void AProjectThatIsNoAddressBuildsNoRelease() =>
         Assert.Throws<InvalidOperationException>(() => LinkText.Release(new Uri("app/releases", UriKind.Relative), "2.4.15"));
 
+    /// <summary>What the doc of <see cref="LinkText.Release" /> now says out loud (#1556, the decision held once for
+    /// every link of this page): the relative project above is refused by <see cref="Uri.AbsoluteUri" /> itself, so
+    /// the caller hears the address's own sentence word for word and not which argument was wrong - neither
+    /// <c>projectUrl</c> nor <c>href</c> is named anywhere in it. The refusal is pinned as exactly
+    /// <see cref="InvalidOperationException" /> rather than one of the <see cref="ArgumentException" /> family,
+    /// because a guard of this class naming its parameter would have come from that other tree, and as the very
+    /// sentence the same <see cref="Uri" /> says when its <c>AbsoluteUri</c> is read directly - which is what the
+    /// helper does and all it does. A <em>probe's</em> base address is the caller's own argument and may be named
+    /// (#1544); a link's address is the deployment's, and the two builders of a link say this one sentence the same
+    /// way, so the diagram's <see cref="RuntimeLink.To" /> is held to the same words here.</summary>
+    [Fact]
+    public void TheRefusalOfARelativeProjectSaysTheAddresssOwnSentenceAndNamesNoArgument()
+    {
+        var relative = new Uri("app/releases", UriKind.Relative);
+
+        var refused = Assert.Throws<InvalidOperationException>(() => LinkText.Release(relative, "2.4.15"));
+
+        // Exactly the framework's exception, and so not one of the ArgumentException family - the tree a guard of this
+        // class naming its parameter would have come from - since neither of the two can derive from the other.
+        Assert.IsType<InvalidOperationException>(refused);
+        Assert.Equal("This operation is not supported for a relative URI.", refused.Message);
+        Assert.DoesNotContain("projectUrl", refused.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("href", refused.Message, StringComparison.Ordinal);
+
+        // The address's own words: read the same relative Uri directly and the sentence does not change by a letter.
+        Assert.Equal(Record.Exception(() => _ = relative.AbsoluteUri)!.Message, refused.Message);
+
+        // One decision, one sentence: the diagram's link refuses a relative address with the very same words.
+        var linkRefused = Assert.Throws<InvalidOperationException>(() => RuntimeLink.To(relative, "The project that deploys ui"));
+
+        Assert.IsType<InvalidOperationException>(linkRefused);
+        Assert.Equal(refused.Message, linkRefused.Message);
+    }
+
+    /// <summary>The two guards of <see cref="LinkText.Release" /> keep their order: while the version still decides
+    /// whether there is a release at all, nothing of the project's address is asked, so a relative project and no
+    /// version is no release rather than a refusal. The framework's sentence is met only when the helper actually
+    /// reaches for the project's absolute string - the other half of the rule above.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t")]
+    public void ARelativeProjectAndNoVersionAtAllIsNoReleaseRatherThanARefusal(string? version) =>
+        Assert.Null(LinkText.Release(new Uri("app/releases", UriKind.Relative), version));
+
     // ------------------------------------------------------------------ ReleaseTitle: the two names, as they stand
 
     /// <summary>The title of a release says a deployable and a version it was given as they come, spaces and all: the

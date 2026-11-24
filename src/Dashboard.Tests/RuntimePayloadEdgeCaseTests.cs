@@ -1199,6 +1199,39 @@ public class RuntimePayloadEdgeCaseTests
         Assert.Contains("relative", error.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>The decision held once for every link of the page (#1556), written out beside the looser line above:
+    /// a relative address is refused by <see cref="Uri.AbsoluteUri" /> itself, so the caller of
+    /// <see cref="RuntimeLink.To" /> hears the address's own sentence and not which argument was wrong - <c>href</c>
+    /// is named nowhere in it, and a guard of this record would have been one of the <see cref="ArgumentException" />
+    /// family, which is why the type is pinned as exactly <see cref="InvalidOperationException" />. The sentence is
+    /// pinned word for word, as the very sentence the same <see cref="Uri" /> says when its <c>AbsoluteUri</c> is read
+    /// directly, and as the one sentence <see cref="LinkText.Release" /> says for a release page - the two builders of
+    /// a link agreeing rather than each inventing its own refusal. A <em>probe's</em> base address is the caller's own
+    /// argument, and #1544 may name it; nothing here holds <see cref="ProbeUrl" /> to either wording.</summary>
+    [Fact]
+    public void TheRefusalOfARelativeAddressIsTheAddresssOwnSentenceInBothPlaces()
+    {
+        var relative = new Uri("/health", UriKind.Relative);
+
+        var refused = Assert.Throws<InvalidOperationException>(() => RuntimeLink.To(relative, "the health path"));
+
+        // Exactly the framework's exception, and so not one of the ArgumentException family - the tree a guard of this
+        // record naming its parameter would have come from - since neither of the two can derive from the other.
+        Assert.IsType<InvalidOperationException>(refused);
+        Assert.Equal("This operation is not supported for a relative URI.", refused.Message);
+        Assert.DoesNotContain("href", refused.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("address", refused.Message, StringComparison.Ordinal);
+
+        // The address's own words: read the same relative Uri directly and the sentence does not change by a letter.
+        Assert.Equal(Record.Exception(() => _ = relative.AbsoluteUri)!.Message, refused.Message);
+
+        // One decision, one sentence: the release page refuses a relative project address with the very same words.
+        var releaseRefused = Assert.Throws<InvalidOperationException>(() => LinkText.Release(relative, "2.4.15"));
+
+        Assert.IsType<InvalidOperationException>(releaseRefused);
+        Assert.Equal(refused.Message, releaseRefused.Message);
+    }
+
     // ---------------------------------------------------------------------- the surface of every record
 
     /// <summary>One record of the payload, with the parts it is named by in the order it declares them, the words

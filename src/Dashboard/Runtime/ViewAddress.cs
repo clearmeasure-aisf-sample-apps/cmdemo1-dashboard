@@ -97,15 +97,35 @@ public sealed record ViewAddress(DashboardView View, string? Environment = null,
     /// <summary>The hash for this view, without <c>#</c>: empty for the health view.</summary>
     public string ToHash() => View switch
     {
-        DashboardView.Runtime when Environment is { } environment && ApplicationText.IsName(Application) => $"{RuntimeName}/{environment}/{ApplicationName}/{Application}",
-        DashboardView.Runtime when Environment is { } environment && Database => $"{RuntimeName}/{environment}/{DatabaseName}",
-        DashboardView.Runtime when Environment is { } environment => $"{RuntimeName}/{environment}",
-        DashboardView.Runtime => RuntimeName,
+        DashboardView.Runtime => RuntimeHash(Environment, Database, Application),
         DashboardView.Cluster => ClusterName,
         DashboardView.WorkItems => WorkItemsHash(Audience),
         DashboardView.Health => string.Empty,
         _ => throw new ArgumentOutOfRangeException(nameof(View), View, "A view has no address."),
     };
+
+    /// <summary>
+    /// The runtime view's hash, by one rule in order: no environment is the plain word (no zoom without one); then an
+    /// application the address accepts is that deployable's view; then the database view; then the environment's
+    /// diagram. An application name <see cref="ApplicationText.IsName"/> refuses falls back to the database, then to
+    /// the diagram.
+    /// </summary>
+    private static string RuntimeHash(string? environment, bool database, string? application)
+    {
+        if (environment is null)
+        {
+            return RuntimeName;
+        }
+
+        if (ApplicationText.IsName(application))
+        {
+            return $"{RuntimeName}/{environment}/{ApplicationName}/{application}";
+        }
+
+        return database
+            ? $"{RuntimeName}/{environment}/{DatabaseName}"
+            : $"{RuntimeName}/{environment}";
+    }
 
     /// <summary>
     /// The work items view's hash: its word, then the filter's segment from <see cref="WorkItemsText.AudienceHash"/>

@@ -510,7 +510,7 @@ public static class RuntimePayloadBuilder
                     Healthy,
                     "Reachable",
                     null,
-                    [new RuntimeTileLine($"{worst.Target.Region ?? worst.Target.Name} reports it {HealthDetailText.Label(worst.Check.State).ToLowerInvariant()}", "warn")],
+                    [new RuntimeTileLine($"{worst.Target.Label} reports it {HealthDetailText.Label(worst.Check.State).ToLowerInvariant()}", "warn")],
                     null,
                     $"{reachable} Not so for {worst.Target.Name}: {HealthDetailText.Title(worst.Check)}");
             }
@@ -561,7 +561,7 @@ public static class RuntimePayloadBuilder
             var names = string.Join(", ", passed.Select(entry => entry.Target.Name));
             var latest = passed.Max(entry => entry.Target.Last!.CheckedAt);
             var line = passed.Count == 1
-                ? $"health check of {passed[0].Target.Region ?? passed[0].Target.Name} passed"
+                ? $"health check of {passed[0].Target.Label} passed"
                 : $"health checks of {passed.Count} web apps passed";
             var queries = clients.Select(entry => entry.Target.Telemetry).OfType<TelemetrySnapshot>().ToList();
 
@@ -898,7 +898,7 @@ public static class RuntimePayloadBuilder
             return null;
         }
 
-        var label = target.Region ?? target.Name;
+        var label = target.Label;
         bool Has(IReadOnlyList<NodeVersion> nodes) => nodes.Any(node => node.Label == label);
         return versions.State switch
         {

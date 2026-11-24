@@ -51,7 +51,10 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
     public bool IsPrimary => NodeRole.IsPrimary(Role);
 
     /// <summary>What the tile and its events call it: <see cref="FrontDoorName"/> for the endpoint, a node's region or else its name.</summary>
-    public string Label => Kind == TargetKind.FrontDoor ? FrontDoorName : Region ?? Name;
+    public string Label => Kind == TargetKind.FrontDoor ? FrontDoorName : NodeLabel(Name, Region);
+
+    /// <summary>The word a node answers to: the region the topology wrote, or the node's own name when it wrote none.</summary>
+    public static string NodeLabel(string name, string? region) => region ?? name;
 
     /// <summary>The last <see cref="HistoryLength"/> checks, oldest first.</summary>
     public HistoryBuffer<ProbeResult> History { get; } = new(HistoryLength);
@@ -118,7 +121,7 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
 
     public NodeHealth ToNodeHealth() => new(Name, Region, IsPrimary, State);
 
-    public NodeVersion ToNodeVersion() => new(Region ?? Name, State, Version);
+    public NodeVersion ToNodeVersion() => new(Label, State, Version);
 }
 
 /// <summary>A deployable of an environment with the state of its endpoints.</summary>

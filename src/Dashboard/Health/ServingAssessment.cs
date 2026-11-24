@@ -4,7 +4,7 @@ namespace Dashboard.Health;
 public sealed record NodeHealth(string Name, string? Region, bool IsPrimary, HealthState State)
 {
     /// <summary>The region, or the node's name when the topology gives no region.</summary>
-    public string Label => Region ?? Name;
+    public string Label => TargetStatus.NodeLabel(Name, Region);
 }
 
 public enum ServingState

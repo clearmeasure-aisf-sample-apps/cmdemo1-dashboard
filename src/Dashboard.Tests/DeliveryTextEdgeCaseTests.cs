@@ -126,6 +126,20 @@ public class DeliveryTextEdgeCaseTests
     public void ALeadTimeOfTwoDaysOnCountsItselfInDays(double hours, string expected) =>
         Assert.Equal(expected, DeliveryText.LeadTime(hours));
 
+    /// <summary>
+    /// The two unit boundaries of a lead time, each at its edge: just under one hour is still minutes, one hour
+    /// exactly is already hours; just under forty-eight hours is still hours, forty-eight hours exactly is already
+    /// days. The thresholds are the documented constants of <see cref="DeliveryText" /> and this pins them at their
+    /// edges.
+    /// </summary>
+    [Theory]
+    [InlineData(0.9999999, "60 min")]
+    [InlineData(1, "1 h")]
+    [InlineData(47.9999, "48 h")]
+    [InlineData(48, "2 d")]
+    public void TheUnitBoundariesOfALeadTimeArePinned(double hours, string expected) =>
+        Assert.Equal(expected, DeliveryText.LeadTime(hours));
+
     // ---------------------------------------------------------------- DeliveryText.Context
 
     /// <summary>

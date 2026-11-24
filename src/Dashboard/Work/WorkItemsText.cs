@@ -158,7 +158,7 @@ public static class WorkItemsText
             WorkAudience.All => report.Stats,
             _ => throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no stats."),
         };
-        return published ?? (audience == WorkAudience.All ? report.Stats : WorkBotText.FromItems(Select(report.Items, audience)));
+        return published ?? WorkBotText.FromItems(Select(report.Items, audience));
     }
 
     /// <summary>

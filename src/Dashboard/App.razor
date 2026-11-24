@@ -16,7 +16,7 @@
         </div>
         <div class="page-header__status">
             @* Only the summary is announced: the tiles change on every check. *@
-            <p class="summary summary--@Summary.Level.ToString().ToLowerInvariant()" role="status" aria-live="polite">
+            <p class="summary summary--@SummaryWords.CssClass(Summary.Level)" role="status" aria-live="polite">
                 <StateIcon State="SummaryState" />
                 <span>@SummaryText</span>
             </p>
@@ -284,13 +284,7 @@
 
     private string SummaryText => _monitor is not null ? Summary.Text : _errors is not null ? "No topology" : LoadingText;
 
-    private HealthState SummaryState => Summary.Level switch
-    {
-        SummaryLevel.AllHealthy => HealthState.Healthy,
-        SummaryLevel.Problems => HealthState.Unhealthy,
-        _ when _errors is not null => HealthState.Unhealthy,
-        _ => HealthState.Pending,
-    };
+    private HealthState SummaryState => SummaryWords.BadgeState(Summary.Level, _errors is not null);
 
     private string PollingState => _poller.IsPaused ? "Paused" : _poller.IsVisible ? "Live" : "Hidden";
 

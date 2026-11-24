@@ -213,4 +213,64 @@ public sealed class PollerTests : IAsyncDisposable
     [InlineData(-5)]
     public void AnIntervalMustBePositive(int seconds) =>
         Assert.Throws<ArgumentOutOfRangeException>(() => _poller.SetInterval(TimeSpan.FromSeconds(seconds)));
+
+    [Theory]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    public void IsActiveOnlyWhenNotPausedAndVisible(bool paused, bool visible, bool expected)
+    {
+        if (paused)
+        {
+            _poller.Pause();
+        }
+        else
+        {
+            _poller.Resume();
+        }
+
+        _poller.SetVisible(visible);
+
+        Assert.Equal(paused, _poller.IsPaused);
+        Assert.Equal(visible, _poller.IsVisible);
+        Assert.Equal(expected, _poller.IsActive);
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    public async Task ARequestedCheckIsNotAnActiveState(bool paused, bool visible)
+    {
+        await StartAndWaitForTheFirstIntervalAsync();
+        if (paused)
+        {
+            _poller.Pause();
+        }
+
+        _poller.SetVisible(visible);
+
+        _poller.CheckNow();
+        Assert.False(_poller.IsActive);
+        await CheckRanAsync();
+
+        Assert.False(_poller.IsActive);
+    }
+
+    [Fact]
+    public async Task CheckNowRunsOneCheckWhileHidden()
+    {
+        await StartAndWaitForTheFirstIntervalAsync();
+        _poller.SetVisible(false);
+
+        _poller.CheckNow();
+        await CheckRanAsync();
+
+        Assert.Equal(2, _count);
+        Assert.False(await _time.TimerCreatedWithinAsync(Quiet), "After the requested check, a hidden poller waits again.");
+        _time.Advance(Interval * 10);
+        Assert.False(await _checks.WaitAsync(Quiet), "A hidden poller must not check again after an interval.");
+        Assert.Equal(2, _count);
+    }
 }

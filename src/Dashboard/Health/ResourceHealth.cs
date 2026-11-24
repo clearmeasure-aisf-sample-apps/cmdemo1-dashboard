@@ -250,10 +250,10 @@ public static class ResourceHealthText
     private static string Title(List<(string Id, ResourceHealthReading? Reading)> readings, DateTimeOffset? now, TimeZoneInfo zone)
     {
         var title = new List<string> { Source };
-        title.AddRange(readings.Take(MostNamed).Select(entry => Describe(entry.Id, entry.Reading, now, zone)));
-        if (readings.Count > MostNamed)
+        title.AddRange(NamedList.Named(readings.Select(entry => Describe(entry.Id, entry.Reading, now, zone)), MostNamed));
+        if (NamedList.More(readings.Count, MostNamed) is { } more)
         {
-            title.Add(string.Create(CultureInfo.InvariantCulture, $"And {readings.Count - MostNamed} more."));
+            title.Add($"And {more}.");
         }
 
         return string.Join('\n', title);

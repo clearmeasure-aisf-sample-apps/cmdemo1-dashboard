@@ -606,6 +606,20 @@ public class ClusterPodEdgeCaseTests
         Assert.Equal(one.Label, (one with { Phase = ClusterPod.Failed, Reason = null, StartedAt = null }).Label);
     }
 
+    // --------------------------------------------------------------------- the shared words
+
+    /// <summary>A pod whose resource parts are the nothing it was given says the one word the all-nothing use says:
+    /// the constant that every edge-case file names instead of repeating the string twice. The test builds a pod
+    /// with no resource parts said and checks that its words carry the constant where the resource parts stand.</summary>
+    [Fact]
+    public void APodWithNoResourcePartsSaidSaysTheEmptyResourceUseConstant()
+    {
+        var pod = new ClusterPod("web-1", null, null, null, ClusterPod.Unknown, false, null, null, 0, null, null, ResourceUse.None, ResourceUse.None);
+
+        Assert.Contains($"Cpu = {RecordWords.EmptyResourceUse}", Words(pod), StringComparison.Ordinal);
+        Assert.Contains($"Memory = {RecordWords.EmptyResourceUse}", Words(pod), StringComparison.Ordinal);
+    }
+
     // ---------------------------------------------------------------------------------- the machinery
 
     /// <summary>The public members the pod declares itself: its properties and the methods that are not the get and

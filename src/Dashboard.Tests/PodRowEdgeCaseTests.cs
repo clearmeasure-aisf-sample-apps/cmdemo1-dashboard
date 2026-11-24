@@ -222,6 +222,20 @@ public class PodRowEdgeCaseTests
         Assert.EndsWith(", ", SilentPodWords, StringComparison.Ordinal);
     }
 
+    /// <summary>The silent pod's two resource parts say the one word the all-nothing use says: the constant that
+    /// every edge-case file names instead of repeating the string twice. The file's own block is built from the
+    /// constant, so the bytes the block says are the bytes the constant says - a change to the record's print
+    /// shape moves the constant and the block moves with it.</summary>
+    [Fact]
+    public void TheSilentPodWordsContainTheEmptyResourceUseConstantTwice()
+    {
+        var cpuPart = $"Cpu = {RecordWords.EmptyResourceUse}, ";
+        var memoryPart = $"Memory = {RecordWords.EmptyResourceUse}, Label =  ";
+
+        Assert.Contains(cpuPart, SilentPodWords, StringComparison.Ordinal);
+        Assert.Contains(memoryPart, SilentPodWords, StringComparison.Ordinal);
+    }
+
     /// <summary>A row whose pod is not there still says it is a row: the pod is said as the empty word and the
     /// state is said as the row holds it - by the name it gives when the enum names it and by its number when it
     /// does not.</summary>

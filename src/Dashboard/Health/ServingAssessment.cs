@@ -1,45 +1,5 @@
 namespace Dashboard.Health;
 
-/// <summary>The state of one regional node, as the serving decision needs it.</summary>
-public sealed record NodeHealth(string Name, string? Region, bool IsPrimary, HealthState State)
-{
-    /// <summary>The region, or the node's name when the topology gives no region.</summary>
-    public string Label => TargetStatus.NodeLabel(Name, Region);
-}
-
-public enum ServingState
-{
-    /// <summary>The deployable has no nodes.</summary>
-    NoNodes,
-
-    /// <summary>A node that could be the serving one has not been checked yet.</summary>
-    Pending,
-
-    /// <summary>A primary node is healthy and serves; in a rotation, every healthy primary node does.</summary>
-    Primary,
-
-    /// <summary>No primary node is healthy; a standby is, and serves.</summary>
-    FailedOver,
-
-    /// <summary>No node is healthy.</summary>
-    Down,
-}
-
-public enum FrontDoorAgreement
-{
-    /// <summary>The deployable has no Front Door endpoint.</summary>
-    NotPresent,
-
-    /// <summary>The Front Door endpoint or the nodes have not been checked yet.</summary>
-    Pending,
-
-    /// <summary>Front Door is healthy exactly when a node is.</summary>
-    Agrees,
-
-    /// <summary>Front Door is healthy and no node is, or the other way around.</summary>
-    Disagrees,
-}
-
 /// <summary>
 /// Which node is expected to serve a deployable's traffic: the first healthy node in priority order (primary nodes,
 /// then the others, each in the order of the topology), and whether the Front Door endpoint agrees. A deployable with

@@ -82,6 +82,15 @@ internal static class RecordSurface
     public static bool IsNullable(ParameterInfo parameter) =>
         new NullabilityInfoContext().Create(parameter).WriteState == NullabilityState.Nullable;
 
+    /// <summary>For each part the record's one public constructor names, in the order it names them, whether the
+    /// signature says that part may be nothing - the flags every <c>*EdgeCaseTests</c> file's own
+    /// <see cref="NullabilityInfoContext" /> block pins.</summary>
+    public static bool[] NullableParts(Type type) =>
+        [.. type.GetConstructors().Single().GetParameters().Select(IsNullable)];
+
+    /// <summary>The flags of <see cref="NullableParts(Type)" /> for the record named as the type argument.</summary>
+    public static bool[] NullableParts<T>() => NullableParts(typeof(T));
+
     /// <summary>Both positional parts are read once and written only as the record is made.</summary>
     public static void AssertPartsAreInitOnly(Type type, params string[] names)
     {

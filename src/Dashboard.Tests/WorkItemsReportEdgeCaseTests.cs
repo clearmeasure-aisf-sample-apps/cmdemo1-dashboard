@@ -148,6 +148,40 @@ public class WorkItemsReportEdgeCaseTests
         Assert.Null(report.TeamStats);
     }
 
+    // ------------------------------- Which object of stats is the whole board: all, or the older fields beside it
+
+    [Fact]
+    public void AnEmptyAllLeavesTheWholeBoardToTheCountsWrittenBesideIt()
+    {
+        var report = WorkItemsReport.Parse("""{ "stats": { "all": { }, "wipByColumn": { "Todo": 2 } } }""")!;
+
+        Assert.True(report.Stats.HasAny);
+        Assert.Equal(2, report.Stats.WipByColumn["Todo"]);
+    }
+
+    [Fact]
+    public void AnEmptyAllWithNothingBesideItIsAnEmptyBoardOfItsOwn()
+    {
+        var report = WorkItemsReport.Parse("""{ "stats": { "all": { } } }""")!;
+
+        Assert.NotSame(WorkItemsStats.Empty, report.Stats);
+        Assert.False(report.Stats.HasAny);
+        Assert.Empty(report.Stats.WipByColumn);
+        Assert.Null(report.BotStats);
+        Assert.Null(report.TeamStats);
+    }
+
+    [Fact]
+    public void AnAllThatCarriesACountIsTheBoardAndTheSameCountsBesideItAreNotReadIntoIt()
+    {
+        var report = WorkItemsReport.Parse("""
+            { "stats": { "all": { "wipByColumn": { "Todo": 7 } }, "wipByColumn": { "Todo": 2 }, "cycleTimeHours": { "median": 5, "n": 1 } } }
+            """)!;
+
+        Assert.Equal(7, report.Stats.WipByColumn["Todo"]);
+        Assert.Null(report.Stats.CycleTimeHours);
+    }
+
     [Fact]
     public void ItemsAndReleasesThatAreNotObjectsAreLeftOutAndTheRestKeepTheFileOrder()
     {

@@ -52,7 +52,8 @@ public sealed record ClusterStatus(
 
     /// <summary>
     /// Reads the file. It must be a JSON object with <c>nodes</c> or <c>namespaces</c>; a node, a namespace, a pod or
-    /// a volume without a name is left out, and unknown fields are ignored.
+    /// a volume without a name is left out, and unknown fields are ignored. If a field is spelled more than once, the
+    /// last spelling is the one the reader takes - the fact it gives is the fact the file gives last.
     /// </summary>
     public static Parsed<ClusterStatus> Parse(string? json)
     {

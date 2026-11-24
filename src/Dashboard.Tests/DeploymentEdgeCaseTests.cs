@@ -938,6 +938,45 @@ public class DeploymentEdgeCaseTests
             [.. deconstruct.GetParameters().Select(parameter => parameter.ParameterType)]);
     }
 
+    /// <summary>The deployment's non-public declared instance members as it stands: the one it declares itself,
+    /// <c>CountsFrom</c>, and no other. The compiler's <c>EqualityContract</c> and <c>PrintMembers</c> are walked past
+    /// as the record's private machinery that every record carries, not the record's own declaration. A second
+    /// internal member added to the deployment has to be written down here as well, which is the point: the
+    /// record's declared non-public surface is pinned exactly as it is, the way
+    /// <see cref="TheDeploymentHasTenPartsTheFlightAndTheMembersEveryRecordIsAsked" /> pins the public surface.</summary>
+    [Fact]
+    public void TheDeploymentHasOneNonPublicDeclaredInstanceMemberAndItIsCountsFrom()
+    {
+        Assert.Equal(["CountsFrom"], NonPublicSurface());
+
+        // The one member is the read-only internal moment the mark counts from, not in the public list.
+        var member = typeof(Deployment)
+            .GetProperties(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
+            .Single(property => property.Name == "CountsFrom");
+
+        Assert.Equal(typeof(DateTimeOffset?), member.PropertyType);
+        Assert.True(member.CanRead);
+        Assert.False(member.CanWrite);
+        Assert.True(member.GetMethod!.IsAssembly);
+        Assert.False(member.GetMethod!.IsPublic);
+
+        // And it is not in the public list, which is what keeps the two pins saying the same thing.
+        Assert.DoesNotContain("CountsFrom", PublicSurface());
+    }
+
+    /// <summary>The non-public instance members the deployment declares itself: the read-only internal properties and
+    /// methods, the compiler's private ones walked past. The <c>Read</c> and <c>Of</c> methods are static, so they
+    /// stand in the file's own test and not here.</summary>
+    private static List<string> NonPublicSurface() =>
+        [.. typeof(Deployment)
+            .GetMembers(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
+            .Where(member => member is PropertyInfo
+                             || member is MethodInfo method && !method.IsSpecialName)
+            .Where(member => member.Name != "EqualityContract" && member.Name != "PrintMembers")
+            .Select(member => member.Name)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)];
+
     /// <summary>The public members the deployment declares itself: its properties and the methods that are not the get
     /// and the set of one - the two operators kept although the compiler names them specially, since they are the
     /// <c>==</c> and the <c>!=</c> a caller writes - with the record's compiler-named clone walked past. The

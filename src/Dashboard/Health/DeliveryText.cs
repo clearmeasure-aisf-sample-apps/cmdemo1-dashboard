@@ -115,12 +115,28 @@ public sealed record AvailabilityPart(string Before, string Strong, string After
 /// <summary>The delivery facts in the words of the "Delivery" card.</summary>
 public static class DeliveryText
 {
-    /// <summary><c>5.2 h</c>; under an hour <c>40 min</c>; from two days on <c>3.5 d</c>.</summary>
+    /// <summary>A lead time is said in minutes below this many hours.</summary>
+    private const double OneHour = 1.0;
+
+    /// <summary>A lead time is said in hours below this many hours (two days), then in days.</summary>
+    private const double HoursBeforeDays = 48.0;
+
+    /// <summary>Minutes per hour, for converting lead times under one hour.</summary>
+    private const double MinutesPerHour = 60.0;
+
+    /// <summary>Hours per day, for converting lead times of two days or more.</summary>
+    private const double HoursPerDay = 24.0;
+
+    /// <summary>
+    /// <c>5.2 h</c>; under an hour <c>40 min</c>; from two days on <c>3.5 d</c>. Unlike
+    /// <see cref="DeploymentText.Age" />, a lead time keeps its tenth (the format <c>0.#</c>) rather than
+    /// rounding to whole units.
+    /// </summary>
     public static string LeadTime(double hours) => hours switch
     {
-        < 1 => string.Create(CultureInfo.InvariantCulture, $"{Math.Round(hours * 60):0} min"),
-        < 48 => string.Create(CultureInfo.InvariantCulture, $"{hours:0.#} h"),
-        _ => string.Create(CultureInfo.InvariantCulture, $"{hours / 24:0.#} d"),
+        < OneHour => string.Create(CultureInfo.InvariantCulture, $"{Math.Round(hours * MinutesPerHour):0} min"),
+        < HoursBeforeDays => string.Create(CultureInfo.InvariantCulture, $"{hours:0.#} h"),
+        _ => string.Create(CultureInfo.InvariantCulture, $"{hours / HoursPerDay:0.#} d"),
     };
 
     /// <summary>Whose delivery a card shows: <c>ui in uat</c>; the system project by what it is.</summary>

@@ -164,7 +164,7 @@ public static class CostText
     /// </summary>
     public static string Day(DateOnly? asOf, DateTimeOffset now) =>
         asOf is not { } day ? "in the last full day"
-        : day == DateOnly.FromDateTime(now.UtcDateTime).AddDays(-1) ? "yesterday"
+        : day == UtcDay(now).AddDays(-1) ? "yesterday"
         : $"on {Date(day)}";
 
     /// <summary>
@@ -173,7 +173,7 @@ public static class CostText
     /// </summary>
     public static string Month(DateOnly? asOf, DateTimeOffset now)
     {
-        var today = DateOnly.FromDateTime(now.UtcDateTime);
+        var today = UtcDay(now);
         return asOf is not { } day || (day.Year == today.Year && day.Month == today.Month) ? "this month"
             : day.Year == today.Year ? $"in {day.ToString("MMMM", CultureInfo.InvariantCulture)}"
             : $"in {day.ToString("MMMM yyyy", CultureInfo.InvariantCulture)}";
@@ -212,6 +212,9 @@ public static class CostText
     public const string DayFormat = "yyyy-MM-dd";
 
     public static string Date(DateOnly day) => day.ToString(DayFormat, CultureInfo.InvariantCulture);
+
+    /// <summary>The calendar day of <paramref name="now"/> in <see cref="DayZone"/>, whatever zone its moment carries: the one day every period word of a cost is counted from.</summary>
+    private static DateOnly UtcDay(DateTimeOffset now) => DateOnly.FromDateTime(now.UtcDateTime);
 
     /// <summary>
     /// <c>Most this month: Azure Container Apps $6.10, SQL Database $2.00</c>; null when the file names no service.

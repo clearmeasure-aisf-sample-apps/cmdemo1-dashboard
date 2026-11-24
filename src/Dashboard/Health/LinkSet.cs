@@ -110,7 +110,21 @@ public static class LinkText
     /// <summary>
     /// The page of one release in Octopus Deploy, from the project's page and the version a node runs:
     /// <c>&lt;projectUrl&gt;/deployments/releases/&lt;version&gt;</c>. Null without either.
+    /// <para>
+    /// A project address that is relative to a page is refused by the address itself, naming no argument, and that is
+    /// the rule for every place a <em>link</em> is built (#1556): <see cref="Uri.AbsoluteUri"/> answers with its own
+    /// <see cref="InvalidOperationException"/>, <c>This operation is not supported for a relative URI.</c> A link is
+    /// the address the deployment wrote and nothing else - <see cref="LinkText"/> holds no <see cref="UriKind"/> of
+    /// its own and no page of its own to resolve against, so it has no better word for the address than the address
+    /// has, and guessing a release under a host nobody named is the one thing a link on this page must never do. The
+    /// other half of the decision is a <em>probe</em>: there the caller owns the base it requests at, which is why
+    /// #1544 would have <see cref="ProbeUrl.Combine"/> name <c>baseAddress</c>. Both builders of a link say this one
+    /// sentence, and <see cref="Dashboard.Runtime.RuntimeLink.To"/> says it for the diagram.
+    /// </para>
     /// </summary>
+    /// <param name="projectUrl">The project's page in Octopus Deploy; null when the topology names none, and a
+    /// <em>relative</em> one is refused by <see cref="Uri"/> itself rather than by a guess of this class.</param>
+    /// <param name="version">The version a node runs; null, empty or nothing but spaces is no version.</param>
     public static Uri? Release(Uri? projectUrl, string? version) =>
         projectUrl is null || string.IsNullOrWhiteSpace(version)
             ? null

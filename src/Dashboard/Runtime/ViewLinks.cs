@@ -9,7 +9,17 @@ namespace Dashboard.Runtime;
 /// <param name="Href">An absolute https address.</param>
 /// <param name="Title">Where it goes, and that it opens a new tab.</param>
 /// <param name="NoReferrer">The destination is not told which page the reader came from (a file on another origin).</param>
-public sealed record ViewLink(string Text, string Href, string Title, bool NoReferrer = false);
+public sealed record ViewLink(string Text, string Href, string Title, bool NoReferrer = false)
+{
+    /// <summary>
+    /// The link with <paramref name="text" /> that leads to <paramref name="address" /> and carries
+    /// <paramref name="title" />. An address that is relative to a page is refused by the address itself,
+    /// naming no argument, with <see cref="InvalidOperationException" /> - the rule for every place a <em>link</em>
+    /// is built (#1556, #1567). See <see cref="RuntimeLink.To" /> for the full decision.
+    /// </summary>
+    public static ViewLink To(Uri address, string text, string title, bool noReferrer = false) =>
+        new(text, address.AbsoluteUri, title, noReferrer);
+}
 
 /// <summary>
 /// The boxes of the runtime diagram that lead into a view of the page. Such a box is one control: its whole area

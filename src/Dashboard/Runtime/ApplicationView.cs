@@ -357,9 +357,9 @@ public static class ApplicationText
     /// </summary>
     private static ViewLink? SiteOf(RuntimeNode box, bool alone) =>
         (box.Links?[RuntimeBoxLink.Site] ?? box.Url) is { } site && site.Scheme == Uri.UriSchemeHttps
-            ? new ViewLink(
+            ? ViewLink.To(
+                site,
                 alone ? "Open the app" : $"Open {box.Name}",
-                site.AbsoluteUri,
                 $"{box.Name}: {site.Host}, as a browser opens it{RuntimeBoxLink.NewTabSuffix}")
             : null;
 
@@ -370,9 +370,9 @@ public static class ApplicationText
     /// </summary>
     private static ViewLink? PortalOf(RuntimeNode box, TargetStatus? node, bool alone) =>
         (node?.Links[LinkSet.Portal] ?? box.Links?[LinkSet.Portal]) is { } portal
-            ? new ViewLink(
+            ? ViewLink.To(
+                portal,
                 alone ? "Open in the Azure portal" : $"{box.Name} in the Azure portal",
-                portal.AbsoluteUri,
                 LinkText.Portal($"{box.Name} in the Azure portal"))
             : null;
 
@@ -391,11 +391,11 @@ public static class ApplicationText
     public static ViewLink DiagramLink(Uri image, string deployable, string version)
     {
         ArgumentNullException.ThrowIfNull(image);
-        return new ViewLink(
+        return ViewLink.To(
+            image,
             "Open the diagram at full size",
-            image.AbsoluteUri,
             $"The diagram of {deployable} {version} as its repository published it{RuntimeBoxLink.NewTabSuffix}",
-            NoReferrer: true);
+            noReferrer: true);
     }
 
     /// <summary>A package as the list names it: <c>Serilog 4.0.1</c>.</summary>

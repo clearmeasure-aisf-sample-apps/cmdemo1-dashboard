@@ -275,6 +275,23 @@ public class CostTextEdgeCaseTests
             CostText.OtherHelp("retired"));
     }
 
+    /// <summary>The two sentences of the help, character for character, with and without the day the file names:
+    /// rewording them is a deliberate act, and the zone they name is <see cref="CostText.DayZone" />.</summary>
+    [Fact]
+    public void TheHelpIsPinnedCharacterForCharacter()
+    {
+        Assert.Equal(
+            "Not live: what Azure Cost Management reported for complete UTC days up to 2026-10-03, by the tag \"environment\" of the resources. "
+            + "Azure's cost arrives hours late and is amended for a day or two; a workflow of the system repository reads it hourly until the day is complete, then every six hours.",
+            CostText.Help(Report));
+        Assert.Equal(
+            "Not live: what Azure Cost Management reported for complete UTC days, by the tag \"environment\" of the resources. "
+            + "Azure's cost arrives hours late and is amended for a day or two; a workflow of the system repository reads it hourly until the day is complete, then every six hours.",
+            CostText.Help(Report with { AsOf = null }));
+        Assert.Contains($"complete {CostText.DayZone} days up to 2026-10-03,", CostText.Help(Report), StringComparison.Ordinal);
+        Assert.Contains($"complete {CostText.DayZone} days,", CostText.Help(Report with { AsOf = null }), StringComparison.Ordinal);
+    }
+
     /// <summary>The methods that read a report refuse the one that is not there, by name, rather than answering a
     /// viewer with the words of an empty file: a missing amount is the dash, a missing report is a bug.</summary>
     [Fact]

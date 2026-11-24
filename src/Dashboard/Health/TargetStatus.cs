@@ -47,10 +47,16 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
     /// <summary>The word a node answers to: the region the topology wrote, or the node's own name when it wrote none.</summary>
     public static string NodeLabel(string name, string? region) => region ?? name;
 
-    /// <summary>The last <see cref="HistoryLength"/> checks, oldest first.</summary>
+    /// <summary>The last <see cref="HistoryLength"/> checks, oldest first; read the other end for <see cref="Last"/>.</summary>
     public HistoryBuffer<ProbeResult> History { get; } = new(HistoryLength);
 
-    public ProbeResult? Last { get; private set; }
+    /// <summary>
+    /// The last check, null while the tile has none. It is <see cref="History"/> read by its other end rather than a
+    /// second memory of the check: <see cref="Record"/> keeps a check in one place, so the two cannot drift, and they
+    /// never differ - the history holds the last <see cref="HistoryLength"/> checks and so ends with the check written
+    /// last, whatever it dropped at the other end to make room for it.
+    /// </summary>
+    public ProbeResult? Last => History.Last;
 
     public HealthState State => Last?.State ?? HealthState.Pending;
 
@@ -102,10 +108,11 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
         return Trend.Of(Samples.Select(sample => sample is null ? null : number(sample)), what, unit);
     }
 
+    /// <summary>Records one check: the answer is kept once, at the end of <see cref="History"/>, and a version it
+    /// carries replaces the version known - a check that says no version leaves the one known where it was.</summary>
     public void Record(ProbeResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
-        Last = result;
         Version = result.Version ?? Version;
         History.Add(result);
     }

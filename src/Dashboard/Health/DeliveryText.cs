@@ -11,6 +11,17 @@ public static class AvailabilityText
     /// <summary>Said next to the numbers, so nobody reads them as monitoring.</summary>
     public const string Note = "Hourly checks by the pipeline, not continuous monitoring.";
 
+    /// <summary>
+    /// The day's window word: the last 24 hours, as the hourly reports count them (<c>ContainerAppReports</c> names
+    /// the same window <c>Day</c>).
+    /// </summary>
+    private const string DayWindow = "24 hours";
+
+    /// <summary>
+    /// The week's window word: the last seven days (<c>ContainerAppReports</c> names the same window <c>Week</c>).
+    /// </summary>
+    private const string WeekWindow = "7 days";
+
     /// <summary>The tooltip: who counts, what a check is, and what the count misses.</summary>
     public static string Help(DateTimeOffset? changed, TimeZoneInfo zone)
     {
@@ -29,7 +40,7 @@ public static class AvailabilityText
         var parts = new List<AvailabilityPart>();
         if (reports.Last24Hours is { } day)
         {
-            parts.Add(day.Reports == 0 ? NoCheckEnded("24 hours") : Hourly(day, "24 hours"));
+            parts.Add(day.Reports == 0 ? NoCheckEnded(DayWindow) : Hourly(day, DayWindow));
         }
 
         if (reports.Last7Days is { } week)
@@ -43,7 +54,7 @@ public static class AvailabilityText
         }
         else if (reports.Last7Days is { Reports: > 0, AllHealthy: true })
         {
-            parts.Add(new AvailabilityPart("no failure in ", "7 days", string.Empty));
+            parts.Add(new AvailabilityPart("no failure in ", WeekWindow, string.Empty));
         }
 
         return parts;
@@ -59,11 +70,11 @@ public static class AvailabilityText
         if (afterTheDay)
         {
             return noneEnded
-                ? new AvailabilityPart(string.Empty, "none", " in 7 days")
-                : new AvailabilityPart(string.Empty, Count(week), " in 7 days", $"{Percent(week)} of the hourly checks of the last 7 days");
+                ? new AvailabilityPart(string.Empty, "none", $" in {WeekWindow}")
+                : new AvailabilityPart(string.Empty, Count(week), $" in {WeekWindow}", $"{Percent(week)} of the hourly checks of the last {WeekWindow}");
         }
 
-        return noneEnded ? NoCheckEnded("7 days") : Hourly(week, "7 days");
+        return noneEnded ? NoCheckEnded(WeekWindow) : Hourly(week, WeekWindow);
     }
 
     /// <summary>

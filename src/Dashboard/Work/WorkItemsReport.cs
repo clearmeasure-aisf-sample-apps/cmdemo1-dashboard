@@ -470,6 +470,7 @@ public sealed record WorkItem(
             : WorkRework.Read(JsonRead.Section(element, "rework"));
     }
 
+    /// <summary>The first note found, in order: <c>latestStatusComment</c>, <c>blocker</c>, <c>comment</c>, then <c>status</c> with <c>statusUrl</c> and <c>statusAt</c>.</summary>
     private static WorkNote? Note(JsonElement element) =>
         StatusComment(JsonRead.Section(element, "latestStatusComment"))
         ?? WorkNote.Read(JsonRead.Section(element, "blocker"))

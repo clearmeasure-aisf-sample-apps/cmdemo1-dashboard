@@ -88,6 +88,18 @@ public sealed record HealthDetail(IReadOnlyList<HealthCheckEntry> Entries, DateT
 /// <summary>The entries of a detailed health check in the words of the tiles.</summary>
 public static class HealthDetailText
 {
+    /// <summary>The milliseconds in one second: the boundary and the divisor are the same fact.</summary>
+    private const double MillisecondsPerSecond = 1000;
+
+    /// <summary>
+    /// The smallest duration shown in digits: below this the one-decimal format rounds to 0.1, so these durations are
+    /// said as "under 0.1 ms" instead - half of 0.1, the tie to the format and the word in the text is explicit here.
+    /// </summary>
+    private const double SmallestShown = 0.05;
+
+    /// <summary>How many characters of a failing entry's name the one-line summary holds.</summary>
+    private const int NameLength = 20;
+
     /// <summary>The state's word: a mark is never colour alone.</summary>
     public static string Label(CheckState state) => state switch
     {
@@ -135,9 +147,13 @@ public static class HealthDetailText
 
     /// <summary><c>42.1 ms</c>; under a tenth of a millisecond <c>under 0.1 ms</c>; from a second on <c>1.2 s</c>.</summary>
     public static string Duration(double milliseconds) =>
-        milliseconds < 0.05 ? "under 0.1 ms"
-        : milliseconds < 1000 ? string.Create(CultureInfo.InvariantCulture, $"{milliseconds:0.#} ms")
-        : string.Create(CultureInfo.InvariantCulture, $"{milliseconds / 1000:0.#} s");
+        milliseconds < SmallestShown ? "under 0.1 ms"
+        : milliseconds < MillisecondsPerSecond ? OneDecimal(milliseconds, "ms")
+        : OneDecimal(milliseconds / MillisecondsPerSecond, "s");
+
+    /// <summary>A number to one decimal place in the invariant culture, with its unit: <c>42.1 ms</c>, <c>1.5 s</c>.</summary>
+    private static string OneDecimal(double value, string unit) =>
+        string.Create(CultureInfo.InvariantCulture, $"{value:0.#} {unit}");
 
     /// <summary>
     /// One short line for all entries: <c>4 checks healthy</c>; the one that is not, by name, <c>DataAccess
@@ -151,7 +167,7 @@ public static class HealthDetailText
         return failing.Count switch
         {
             0 => Plural.Of(count, "check healthy", "checks healthy"),
-            1 => $"{Brief(failing[0].Name, 20)} {Label(failing[0].State).ToLowerInvariant()}",
+            1 => $"{Brief(failing[0].Name, NameLength)} {Label(failing[0].State).ToLowerInvariant()}",
             _ => string.Create(CultureInfo.InvariantCulture, $"{failing.Count} of {count} checks not healthy"),
         };
     }

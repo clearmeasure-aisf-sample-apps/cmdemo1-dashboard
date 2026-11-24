@@ -172,8 +172,15 @@ public sealed record ClusterNode(
 }
 
 /// <summary>One namespace with its pods and its volume claims.</summary>
+/// <exception cref="ArgumentNullException"><paramref name="Pods"/> or <paramref name="Volumes"/> is null.</exception>
 public sealed record ClusterNamespace(string Name, IReadOnlyList<ClusterPod> Pods, IReadOnlyList<ClusterVolume> Volumes)
 {
+    /// <summary>The pods of the namespace; never null.</summary>
+    public IReadOnlyList<ClusterPod> Pods { get; init; } = Pods ?? throw new ArgumentNullException(nameof(Pods));
+
+    /// <summary>The volume claims of the namespace; never null.</summary>
+    public IReadOnlyList<ClusterVolume> Volumes { get; init; } = Volumes ?? throw new ArgumentNullException(nameof(Volumes));
+
     internal static ClusterNamespace Read(string name, JsonElement element) =>
         new(
             name,

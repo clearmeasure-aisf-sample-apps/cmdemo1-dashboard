@@ -297,7 +297,7 @@ public static class DeploymentActivity
 
     private static ActivityLine InFlight(Deployment deployment, DateTimeOffset now)
     {
-        var age = deployment.Since is { } since ? DeploymentText.Age(now - since) : null;
+        var age = deployment.CountsFrom is { } since ? DeploymentText.Age(now - since) : null;
         var sentence = DeploymentText.Sentence(deployment, now);
         var title = DeploymentText.Detail(deployment, now) is { } detail ? $"{sentence} ({detail})" : sentence;
         switch (deployment.State)

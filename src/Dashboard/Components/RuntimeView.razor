@@ -214,24 +214,25 @@
 
     /// <summary>
     /// The address names the database view of <see cref="Environment"/>. It is shown only where the deployment wrote
-    /// its files for that environment; for any other address <see cref="DatabaseChanged"/> asks for the diagram.
+    /// its files for that environment; for any other address <see cref="ZoomChanged"/> asks for the diagram.
     /// </summary>
     [Parameter]
     public bool Database { get; set; }
 
-    [Parameter]
-    public EventCallback<RuntimeDatabaseChange> DatabaseChanged { get; set; }
-
     /// <summary>
     /// The address names the application view of this deployable in <see cref="Environment"/>. It is shown only where
     /// the environment's diagram has a box of that deployable with an architecture; for any other address
-    /// <see cref="ApplicationChanged"/> asks for the diagram.
+    /// <see cref="ZoomChanged"/> asks for the diagram.
     /// </summary>
     [Parameter]
     public string? Application { get; set; }
 
+    /// <summary>
+    /// The view zooms into the database's box or a deployable's box, or back out to the diagram: a step of the history,
+    /// or an address corrected in place.
+    /// </summary>
     [Parameter]
-    public EventCallback<RuntimeApplicationChange> ApplicationChanged { get; set; }
+    public EventCallback<RuntimeZoomChange> ZoomChanged { get; set; }
 
     /// <summary>The page checks: it is neither paused nor hidden. The database view reads its live file only then.</summary>
     [Parameter]
@@ -313,13 +314,13 @@
         {
             _entering = true;
             _zoomedBox = box.Alias;
-            await DatabaseChanged.InvokeAsync(new RuntimeDatabaseChange(entry.Name, Shown: true, Step: true));
+            await ZoomChanged.InvokeAsync(new RuntimeZoomChange(entry.Name, RuntimeZoomTarget.TheDatabase, Step: true));
         }
         else if (ApplicationText.Boxes(manifest).Contains(box))
         {
             _entering = true;
             _zoomedBox = box.Alias;
-            await ApplicationChanged.InvokeAsync(new RuntimeApplicationChange(entry.Name, box.Deployable, Step: true));
+            await ZoomChanged.InvokeAsync(new RuntimeZoomChange(entry.Name, RuntimeZoomTarget.Box(box.Deployable), Step: true));
         }
     }
 
@@ -470,7 +471,7 @@
     {
         if (DatabaseEntry is { } entry)
         {
-            await DatabaseChanged.InvokeAsync(new RuntimeDatabaseChange(entry.Name, Shown: false, Step: true));
+            await ZoomChanged.InvokeAsync(new RuntimeZoomChange(entry.Name, RuntimeZoomTarget.Diagram, Step: true));
         }
     }
 
@@ -479,7 +480,7 @@
     {
         if (ApplicationBoxes is not null && Current is { } entry)
         {
-            await ApplicationChanged.InvokeAsync(new RuntimeApplicationChange(entry.Name, null, Step: true));
+            await ZoomChanged.InvokeAsync(new RuntimeZoomChange(entry.Name, RuntimeZoomTarget.Diagram, Step: true));
         }
     }
 
@@ -493,11 +494,11 @@
     {
         if (Database && !ShowsDatabase && _index is not null && Environment is { } named)
         {
-            await DatabaseChanged.InvokeAsync(new RuntimeDatabaseChange(named, Shown: false, Step: false));
+            await ZoomChanged.InvokeAsync(new RuntimeZoomChange(named, RuntimeZoomTarget.Diagram, Step: false));
         }
         else if (Application is not null && ApplicationBoxes is null && _index is not null && (Current is null || _diagram is not null) && Environment is { } shown)
         {
-            await ApplicationChanged.InvokeAsync(new RuntimeApplicationChange(shown, null, Step: false));
+            await ZoomChanged.InvokeAsync(new RuntimeZoomChange(shown, RuntimeZoomTarget.Diagram, Step: false));
         }
     }
 }

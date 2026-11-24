@@ -95,11 +95,18 @@ public sealed record RecentDeployment(
 }
 
 /// <summary>A deployment freeze of the Octopus Deploy instance that covers the system (an entry of <c>freezes</c>).</summary>
+/// <remarks>
+/// The two name lists are the caller's: the record keeps the very references it is handed, copies neither and
+/// refuses neither being null. So what it <see cref="Covers"/> follows any change the caller makes to them, and its
+/// equality and hash compare them as references, not by the names they hold. <see cref="Read"/> gives every entry
+/// two lists of its own that nothing else holds; a caller that shares a list, or changes one after handing it over,
+/// takes that on itself.
+/// </remarks>
 /// <param name="From">When it begins; null when the file's time does not parse.</param>
 /// <param name="To">When it ends.</param>
 /// <param name="Active">Whether it was in force when the system read it: used only where <paramref name="From"/> is not known.</param>
-/// <param name="Environments">The environments it covers, by name.</param>
-/// <param name="Projects">The Octopus projects of the system it covers, by name.</param>
+/// <param name="Environments">The environments it covers, by name: the caller's list itself, never copied.</param>
+/// <param name="Projects">The Octopus projects of the system it covers, by name: the caller's list itself, never copied.</param>
 public sealed record DeploymentFreeze(
     string Name,
     DateTimeOffset? From,

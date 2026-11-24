@@ -536,8 +536,23 @@ public static class WorkItemsText
         return path.Length > 0 ? path : url.Host;
     }
 
+    /// <summary>A rate at or below this is a fraction (see <see cref="WorkRework.Rate"/>) and is shown as a percent.</summary>
+    private const double LargestFraction = 1.0;
+
+    /// <summary>The percent scale: a whole is this many percent.</summary>
+    private const double PercentPerWhole = 100.0;
+
+    /// <summary>A percent keeps this many decimals; <see cref="PercentFormat"/> says the same.</summary>
+    private const int PercentDecimals = 1;
+
+    /// <summary>A percent is shown to one decimal, without a trailing zero.</summary>
+    private const string PercentFormat = "0.#";
+
+    /// <summary>A rate above one is shown as the file gave it, to two decimals.</summary>
+    private const string KeptFormat = "0.##";
+
     private static string Rate(double rate) =>
-        rate <= 1
-            ? string.Create(CultureInfo.InvariantCulture, $"{Math.Round(rate * 100, 1):0.#} %")
-            : rate.ToString("0.##", CultureInfo.InvariantCulture);
+        rate <= LargestFraction
+            ? Math.Round(rate * PercentPerWhole, PercentDecimals).ToString(PercentFormat, CultureInfo.InvariantCulture) + " %"
+            : rate.ToString(KeptFormat, CultureInfo.InvariantCulture);
 }

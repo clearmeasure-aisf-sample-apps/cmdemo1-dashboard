@@ -7,9 +7,10 @@ namespace Dashboard.Tests;
 /// namespace's counts, its order in the table and its sums, and <see cref="PodStateEdgeCaseTests"/> the state it
 /// carries - and what they leave open is pinned here: the row keeping the very pod and the very state it is given,
 /// the pod as the row holds it when the pod says little, the row that is not there, the row of the pod that is not
-/// there, the two rows that are one while the pod and the state are, the row's words in the order the record says
-/// them, the row falling apart into its parts and coming back together as a copy, and the ends of the state and of
-/// the restart count as the row holds them.
+/// there and its words, the two rows that are one while the pod and the state are, the row's words in the order the
+/// record says them, the row falling apart into its parts and coming back together as a copy, the copy of the row
+/// of the pod that is not there, the copy that names the pod as not there and its words, and the ends of the state
+/// and of the restart count as the row holds them.
 /// <para>
 /// Nothing here reaches the network or asks a clock what time it is: every pod is one the test builds, and the
 /// moment it says it started is the fixed moment the test's fixture stands on.
@@ -33,7 +34,6 @@ public class PodRowEdgeCaseTests
         var pod = ClusterFixture.Pod("ui", restarts: 3);
 
         Assert.Same(pod, new PodRow(pod, PodState.Ready).Pod);
-        Assert.NotNull(new PodRow(pod, PodState.Ready).Pod);
 
         foreach (var state in new[] { PodState.Ready, PodState.Starting, PodState.Unhealthy, PodState.Finished })
         {
@@ -118,6 +118,14 @@ public class PodRowEdgeCaseTests
         Assert.True(row != new PodRow(Silent("ui-0"), PodState.Ready));
     }
 
+    /// <summary>The words of the row of the pod that is not there are the row's own: the pod not there is said as the
+    /// empty word and the state is said by the name it gives, in the order the record declares them.</summary>
+    [Fact]
+    public void TheRowOfNoPodSaysItsWords()
+    {
+        Assert.Equal("PodRow { Pod = , State = Unhealthy }", new PodRow(null!, PodState.Unhealthy).ToString());
+    }
+
     // ----- the row and its equal
 
     /// <summary>Two rows are one while the pod and the state are - the pod's own equality, which is the equality of
@@ -182,6 +190,16 @@ public class PodRowEdgeCaseTests
             new PodRow(Silent(""), (PodState)4).ToString());
     }
 
+    /// <summary>A row whose pod is not there still says it is a row: the pod is said as the empty word and the
+    /// state is said as the row holds it - by the name it gives when the enum names it and by its number when it
+    /// does not.</summary>
+    [Fact]
+    public void TheRowOfNoPodSaysItsWordsWithThePodSaidAsNothing()
+    {
+        Assert.Equal("PodRow { Pod = , State = Ready }", new PodRow(null!, PodState.Ready).ToString());
+        Assert.Equal("PodRow { Pod = , State = 4 }", new PodRow(null!, (PodState)4).ToString());
+    }
+
     // ----- the row falls apart and is copied
 
     /// <summary>The row falls apart into the pod and the state it holds - the pod the same instance the row was
@@ -215,6 +233,70 @@ public class PodRowEdgeCaseTests
         var repack = row with { Pod = row.Pod, State = row.State };
         Assert.Equal(row, repack);
         Assert.NotSame(row, repack);
+    }
+
+    /// <summary>The copy of the row of the pod that is not there is the row again: the <c>with</c> that names no part
+    /// keeps the state the row was told, the pod is still not there in the copy, and the copy is not the same
+    /// reference, is the row's equal, and stands on the row's hash code.</summary>
+    [Fact]
+    public void TheCopyOfTheRowOfNoPodIsTheRowAgain()
+    {
+        var row = new PodRow(null!, PodState.Ready);
+        var copy = row with {};
+
+        Assert.NotSame(row, copy);
+        Assert.Equal(row, copy);
+        Assert.Null(copy.Pod);
+        Assert.Equal(row.State, copy.State);
+        Assert.Equal(row.GetHashCode(), copy.GetHashCode());
+    }
+
+    /// <summary>The copy that names the pod as not there is the row of the pod that is not there: the <c>with</c>
+    /// that names the pod no pod leaves the state as told and not the same reference, stands on the no-pod row's
+    /// equality and hash code, and says the record's words with the pod as the empty word.</summary>
+    [Fact]
+    public void TheCopyThatNamesThePodNotThereIsTheRowOfNoPod()
+    {
+        var row = new PodRow(ClusterFixture.Pod("ui"), PodState.Ready);
+        var copy = row with { Pod = null! };
+
+        Assert.NotSame(row, copy);
+        Assert.Null(copy.Pod);
+        Assert.Equal(row.State, copy.State);
+
+        var noPod = new PodRow(null!, row.State);
+        Assert.True(copy == noPod);
+        Assert.False(copy != noPod);
+        Assert.Equal(noPod, copy);
+        Assert.Equal(copy.GetHashCode(), noPod.GetHashCode());
+        Assert.False(copy == row);
+        Assert.Equal("PodRow { Pod = , State = Ready }", copy.ToString());
+    }
+
+    /// <summary>The copy that names the pod as not there is the no-pod row of the row's state, and the row stands
+    /// unchanged: the <c>with</c> that names the pod no pod leaves the state as told and the pod not there in the
+    /// copy, the copy is the no-pod row of that state - the <c>==</c> and <c>Equals</c> say so and the hash code
+    /// stands on it - it is not the no-pod row of another state and not the row itself, and the row keeps the very
+    /// pod it was built with, the same reference.</summary>
+    [Fact]
+    public void TheCopyThatNamesThePodNotThereKeepsTheRowUnchanged()
+    {
+        var pod = ClusterFixture.Pod("ui");
+        var row = new PodRow(pod, PodState.Ready);
+        var copy = row with { Pod = null! };
+
+        Assert.Null(copy.Pod);
+        Assert.Equal(row.State, copy.State);
+
+        var noPod = new PodRow(null!, row.State);
+        Assert.True(copy == noPod);
+        Assert.True(copy.Equals((object)noPod));
+        Assert.Equal(copy.GetHashCode(), noPod.GetHashCode());
+
+        Assert.NotEqual(copy, new PodRow(null!, PodState.Starting));
+        Assert.False(copy == row);
+
+        Assert.Same(pod, row.Pod);
     }
 
     // ----- the ends

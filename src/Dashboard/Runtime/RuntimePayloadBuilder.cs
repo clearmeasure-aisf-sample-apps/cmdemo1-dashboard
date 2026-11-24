@@ -920,13 +920,8 @@ public static class RuntimePayloadBuilder
         if (apps.Count == 0)
         {
             var others = region.Roles
-                .Where(role => !(databaseReachable && role == "data"))
-                .Select(role => role switch
-                {
-                    "data" => "database",
-                    "static" => "static sites",
-                    _ => role,
-                })
+                .Where(role => !(databaseReachable && role == RuntimeRegionRole.Data))
+                .Select(RuntimeRegionRole.Words)
                 .ToList();
             var parts = new List<string>();
             if (databaseReachable)

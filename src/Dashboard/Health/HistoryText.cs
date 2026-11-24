@@ -3,6 +3,13 @@ namespace Dashboard.Health;
 /// <summary>The history strip in words, for readers who do not see it.</summary>
 public static class HistoryText
 {
+    /// <summary>
+    /// The states a history is counted by, in the order the sentence reads them: healthy first, then the two ways
+    /// a check can fail - an answer that was not healthy, then no answer at all. <see cref="HealthState.Pending" />
+    /// is left out on purpose: a check not yet answered counts in the total but names no state.
+    /// </summary>
+    private static readonly HealthState[] Counted = [HealthState.Healthy, HealthState.Unhealthy, HealthState.Unreachable];
+
     /// <summary><c>Last 12 checks: 10 healthy, 2 unreachable</c>.</summary>
     public static string Describe(IReadOnlyCollection<ProbeResult> history)
     {
@@ -12,10 +19,10 @@ public static class HistoryText
             return "No checks yet";
         }
 
-        var parts = new[] { HealthState.Healthy, HealthState.Unhealthy, HealthState.Unreachable }
+        var parts = Counted
             .Select(state => (State: state, Count: history.Count(result => result.State == state)))
             .Where(entry => entry.Count > 0)
-            .Select(entry => $"{entry.Count} {HealthClassifier.Label(entry.State).ToLowerInvariant()}");
+            .Select(entry => $"{entry.Count} {HealthClassifier.Sentence(entry.State)}");
         var checks = history.Count == 1 ? "Last check" : $"Last {history.Count} checks";
         return $"{checks}: {string.Join(", ", parts)}";
     }

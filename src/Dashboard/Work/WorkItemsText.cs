@@ -3,22 +3,6 @@ using Dashboard.Health;
 
 namespace Dashboard.Work;
 
-/// <summary>Whether the work items view has a file to show.</summary>
-public enum WorkItemsAvailability
-{
-    /// <summary>The address is known and the first read has not finished.</summary>
-    Loading,
-
-    /// <summary>The topology names no delivery file, so there is no sibling to read.</summary>
-    NoAddress,
-
-    /// <summary>The read found nothing: the file is not published yet, or it is not this file.</summary>
-    NotPublished,
-
-    /// <summary>A file was read.</summary>
-    Ready,
-}
-
 /// <summary>One column of the work-in-progress strip and how many items the file counts there.</summary>
 public sealed record WorkWip(string Column, int Count);
 

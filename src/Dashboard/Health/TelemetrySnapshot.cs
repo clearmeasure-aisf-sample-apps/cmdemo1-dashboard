@@ -58,31 +58,30 @@ public sealed record TelemetrySnapshot(
         {
             using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
-            if (root.ValueKind != JsonValueKind.Object
-                || !root.TryGetProperty("requests", out var requests) || requests.ValueKind != JsonValueKind.Object)
+            if (JsonRead.Section(root, "requests") is not { } requests)
             {
                 return null;
             }
 
-            var probes = Section(root, "probes");
-            var sql = Section(root, "sql");
-            var http = Section(root, "http");
+            var probes = JsonRead.Section(root, "probes");
+            var sql = JsonRead.Section(root, "sql");
+            var http = JsonRead.Section(root, "http");
             return new TelemetrySnapshot(
-                Count(requests, "perMinute"),
-                Count(requests, "frontDoor"),
-                Count(requests, "direct"),
-                Count(requests, "errors"),
-                Optional(requests, "p95Ms"),
-                Count(probes, "perMinute"),
-                Count(probes, "frontDoor"),
-                Count(sql, "perMinute"),
-                Optional(sql, "p95Ms"),
-                Count(http, "perMinute"),
+                JsonRead.SaturatedCount(requests, "perMinute") ?? 0,
+                JsonRead.SaturatedCount(requests, "frontDoor") ?? 0,
+                JsonRead.SaturatedCount(requests, "direct") ?? 0,
+                JsonRead.SaturatedCount(requests, "errors") ?? 0,
+                JsonRead.SaturatedCount(requests, "p95Ms"),
+                JsonRead.SaturatedCount(probes, "perMinute") ?? 0,
+                JsonRead.SaturatedCount(probes, "frontDoor") ?? 0,
+                JsonRead.SaturatedCount(sql, "perMinute") ?? 0,
+                JsonRead.SaturatedCount(sql, "p95Ms"),
+                JsonRead.SaturatedCount(http, "perMinute") ?? 0,
                 readAt)
             {
                 Process = ProcessVitals.Read(root),
-                SqlRequests = Optional(sql, "requests"),
-                SqlBackground = Optional(sql, "background"),
+                SqlRequests = JsonRead.SaturatedCount(sql, "requests"),
+                SqlBackground = JsonRead.SaturatedCount(sql, "background"),
                 StartedAt = JsonRead.Time(root, "startedAt"),
             };
         }
@@ -91,15 +90,4 @@ public sealed record TelemetrySnapshot(
             return null;
         }
     }
-
-    private static JsonElement? Section(JsonElement root, string name) =>
-        root.TryGetProperty(name, out var section) && section.ValueKind == JsonValueKind.Object ? section : null;
-
-    private static int Count(JsonElement? section, string name) => Optional(section, name) ?? 0;
-
-    private static int? Optional(JsonElement? section, string name) =>
-        section is { } value && value.TryGetProperty(name, out var number) && number.ValueKind == JsonValueKind.Number
-            && number.TryGetDouble(out var real) && real >= 0
-            ? (int)Math.Round(real)
-            : null;
 }

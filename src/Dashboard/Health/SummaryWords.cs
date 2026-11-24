@@ -44,9 +44,11 @@ public static class SummaryWords
     };
 
     /// <summary>
-    /// The CSS class name the summary element carries, the part after <c>summary--</c>. The four are fixed words the
-    /// stylesheet matches; renaming a level here would rename a style, so the words are named and not derived from
-    /// <see cref="SummaryLevel.ToString" />.
+    /// The CSS class name the summary element carries, the part after <c>summary--</c>. The four are fixed words, named
+    /// here and not derived from <see cref="SummaryLevel.ToString" />, so renaming a level never changes the markup.
+    /// The style sheet gives them no rule today (the icon and the sentence carry the state); they are a stable hook,
+    /// and any <c>.summary--*</c> rule <c>app.css</c> adds must name one of these words (pinned by
+    /// <c>SummaryClassGuardTests</c>).
     /// </summary>
     public static string CssClass(SummaryLevel level) => level switch
     {

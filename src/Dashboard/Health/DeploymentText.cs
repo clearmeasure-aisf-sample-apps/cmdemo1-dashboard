@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace Dashboard.Health;
 
 /// <summary>
@@ -45,16 +43,17 @@ public static class DeploymentText
     }
 
     /// <summary>
-    /// <c>5 min</c> under an hour and never less than <c>1 min</c>, <c>5 h</c> under two days, then <c>3 d</c>.
+    /// <c>5 min</c> under an hour and never less than <c>1 min</c>, <c>5 h</c> under two days, then <c>3 d</c>. The
+    /// boundaries are the deployment's own; the words of a count of whole units are <see cref="TimeText"/>'s.
     /// </summary>
     public static string Age(TimeSpan span)
     {
         if (span.TotalMinutes < MinutesBeforeHours)
         {
-            return Whole(Math.Max(FewestMinutes, span.TotalMinutes), "min");
+            return TimeText.Whole(Math.Max(FewestMinutes, span.TotalMinutes), "min");
         }
 
-        return span.TotalHours < HoursBeforeDays ? Whole(span.TotalHours, "h") : Whole(span.TotalDays, "d");
+        return span.TotalHours < HoursBeforeDays ? TimeText.Whole(span.TotalHours, "h") : TimeText.Whole(span.TotalDays, "d");
     }
 
     /// <summary>An age that has ended: <c>5 min ago</c>.</summary>
@@ -62,10 +61,6 @@ public static class DeploymentText
 
     /// <summary>An age still running, for a deployment in flight: <c>3 min so far</c>.</summary>
     public static string SoFar(int minutes) => $"{Age(TimeSpan.FromMinutes(minutes))} so far";
-
-    /// <summary>The whole units the length falls in, truncated: <c>5 h</c> for five and a half hours.</summary>
-    private static string Whole(double units, string unit) =>
-        string.Create(CultureInfo.InvariantCulture, $"{(int)units} {unit}");
 
     /// <summary>
     /// The sentence, and for a deployment in flight for how long it has been so (<c>deploying cmdemo2-ui 2.4.43 to

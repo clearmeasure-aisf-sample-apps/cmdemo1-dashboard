@@ -14,7 +14,19 @@ namespace Dashboard.Health;
 /// </summary>
 public static class ProbeUrl
 {
-    /// <summary>The address of an endpoint: a node's base address and a path, joined with exactly one slash.</summary>
+    /// <summary>
+    /// The address of an endpoint: a node's base address and a path, joined with exactly one slash.
+    /// <para>
+    /// The refusals answer in this order: what is missing is said before what is wrong. A base address that is not
+    /// there is refused first, then a path that is not there, and only then a base address that is relative to a
+    /// page. So a relative base brought with no path is refused by the name <c>path</c>, and no base brought with no
+    /// path is refused by the name <c>baseAddress</c>.
+    /// </para>
+    /// </summary>
+    /// <param name="baseAddress">The node's base address. It must be absolute.</param>
+    /// <param name="path">The path of the endpoint, with or without its front slash.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="baseAddress"/> is null, or else <paramref name="path"/> is.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="baseAddress"/> is relative, and neither argument is null.</exception>
     public static Uri Combine(Uri baseAddress, string path)
     {
         ArgumentNullException.ThrowIfNull(baseAddress);

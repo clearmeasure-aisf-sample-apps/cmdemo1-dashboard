@@ -6,7 +6,7 @@ namespace Dashboard.Runtime;
 /// <summary>A row of the list "In no environment": a resource, and what Resource Health last said of it.</summary>
 /// <param name="Entry">The resource, as the manifest names it.</param>
 /// <param name="Health">The words of its health: <c>Available · Resource Health, 40 min ago</c>, or <see cref="UnplacedText.NotRead"/>.</param>
-/// <param name="HealthTone"><c>plain</c> for a recent reading, <c>muted</c> otherwise.</param>
+/// <param name="HealthTone"><see cref="Health.HealthTone.Plain"/> for a recent reading, <see cref="Health.HealthTone.Muted"/> otherwise.</param>
 /// <param name="HealthTitle">The tooltip of the words: where they come from and when.</param>
 public sealed record UnplacedRow(RuntimeUnplaced Entry, string Health, string HealthTone, string HealthTitle);
 
@@ -50,5 +50,5 @@ public static class UnplacedText
     private static UnplacedRow Row(RuntimeUnplaced entry, ResourceHealthReport? report, DateTimeOffset? now, TimeZoneInfo zone) =>
         ResourceHealthText.Of(entry.Ids, report, now, zone) is { } words
             ? new UnplacedRow(entry, $"{words.Label} · {words.Line}", words.Tone, words.Title)
-            : new UnplacedRow(entry, NotRead, "muted", NotReadTitle);
+            : new UnplacedRow(entry, NotRead, Health.HealthTone.Muted, NotReadTitle);
 }

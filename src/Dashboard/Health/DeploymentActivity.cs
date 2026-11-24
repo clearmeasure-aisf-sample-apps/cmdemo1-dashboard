@@ -244,7 +244,7 @@ public static class DeploymentActivity
             case DeploymentState.Waiting:
             {
                 var wait = deployment.WaitsFor;
-                var waited = wait?.Since is { } asked ? $", {DeploymentText.Age(now - asked)}" : age is null ? string.Empty : $", {age}";
+                var waited = After(wait?.Since is { } asked ? DeploymentText.Age(now - asked) : age);
                 var words = (wait?.IsGuidedFailure ?? false, wait?.Responsible) switch
                 {
                     (true, { } who) => $"{deployment.Release} failed a step: {who} decides",
@@ -256,10 +256,10 @@ public static class DeploymentActivity
             }
 
             case DeploymentState.Executing:
-                return new ActivityLine(ActivityKind.Deploying, $"deploying {deployment.Release}{(age is null ? string.Empty : $", {age}")}{By(deployment.StartedBy, ", by ")}", title, deployment.Url);
+                return new ActivityLine(ActivityKind.Deploying, $"deploying {deployment.Release}{After(age)}{By(deployment.StartedBy, ", by ")}", title, deployment.Url);
 
             case DeploymentState.Queued:
-                return new ActivityLine(ActivityKind.Queued, $"{deployment.Release} queued{(age is null ? string.Empty : $", {age}")}", title, deployment.Url);
+                return new ActivityLine(ActivityKind.Queued, $"{deployment.Release} queued{After(age)}", title, deployment.Url);
 
             default:
                 return new ActivityLine(ActivityKind.Queued, $"{deployment.Release}: {deployment.StateText}", title, deployment.Url);
@@ -307,7 +307,7 @@ public static class DeploymentActivity
             DeploymentState.Canceled => "canceled",
             _ => last.ResultText,
         };
-        return $"{last.Release} {result} {DeploymentText.Age(now - last.Finished)} ago{By(last.StartedBy, " by ")}";
+        return $"{last.Release} {result} {DeploymentText.Ago(now - last.Finished)}{By(last.StartedBy, " by ")}";
     }
 
     /// <summary>
@@ -316,11 +316,14 @@ public static class DeploymentActivity
     /// </summary>
     private static string By(string? startedBy, string words) => startedBy is { } who ? $"{words}{who}" : string.Empty;
 
+    /// <summary>An age after the words of a line (<c>, 3 min</c>); nothing when there is no age to say.</summary>
+    private static string After(string? age) => age is null ? string.Empty : $", {age}";
+
     /// <summary>The words of a mark that ended, for the last deployment: <c>cmdemo2-ui 2.4.43 reached uat 5 h ago</c>.</summary>
     private static string Sentence(RecentDeployment last, DateTimeOffset now)
     {
         var what = $"{last.Project} {last.Release}";
-        var ago = $"{DeploymentText.Age(now - last.Finished)} ago";
+        var ago = DeploymentText.Ago(now - last.Finished);
         return last.Result switch
         {
             DeploymentState.Succeeded => $"{what} reached {last.Environment} {ago}",

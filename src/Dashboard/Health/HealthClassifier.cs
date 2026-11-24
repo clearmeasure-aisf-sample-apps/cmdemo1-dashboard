@@ -15,4 +15,13 @@ public static class HealthClassifier
         HealthState.Unreachable => "Unreachable",
         _ => "Checking",
     };
+
+    /// <summary>The state in the words of a sentence: the lowercase of the label, except the unchecked one, which is not checking.</summary>
+    public static string Sentence(HealthState? state) => state switch
+    {
+        HealthState.Healthy => "healthy",
+        HealthState.Unhealthy => "unhealthy",
+        HealthState.Unreachable => "unreachable",
+        _ => "not checked",
+    };
 }

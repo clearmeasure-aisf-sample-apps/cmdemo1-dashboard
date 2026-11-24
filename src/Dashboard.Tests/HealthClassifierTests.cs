@@ -24,4 +24,19 @@ public class HealthClassifierTests
     [InlineData(HealthState.Pending, "Checking")]
     public void EveryStateHasATextLabel(HealthState state, string label) =>
         Assert.Equal(label, HealthClassifier.Label(state));
+
+    /// <summary>The lowercase words a state is said in, as the sentences of the page need them. The unchecked one is
+    /// not checking: it has not been checked yet, so it cannot be said to be checking.</summary>
+    [Theory]
+    [InlineData(HealthState.Healthy, "healthy")]
+    [InlineData(HealthState.Unhealthy, "unhealthy")]
+    [InlineData(HealthState.Unreachable, "unreachable")]
+    [InlineData(HealthState.Pending, "not checked")]
+    public void EveryStateHasASentenceWord(HealthState state, string word) =>
+        Assert.Equal(word, HealthClassifier.Sentence(state));
+
+    /// <summary>A null state is the same as a state the enum does not name: not checked, because no check settled it.</summary>
+    [Fact]
+    public void AStateThatIsNotThereIsNotChecked() =>
+        Assert.Equal("not checked", HealthClassifier.Sentence(null));
 }

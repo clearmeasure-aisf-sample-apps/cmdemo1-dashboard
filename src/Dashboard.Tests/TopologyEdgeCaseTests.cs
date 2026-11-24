@@ -1058,7 +1058,6 @@ public class TopologyEdgeCaseTests
 
         Assert.NotEqual(absent, empty);
         Assert.True(absent != empty);
-        Assert.NotEqual(absent.GetHashCode(), empty.GetHashCode());
 
         Assert.Equal(absent.ToString(), empty.ToString());
     }

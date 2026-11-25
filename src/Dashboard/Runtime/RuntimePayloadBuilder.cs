@@ -67,6 +67,15 @@ public static class RuntimePayloadBuilder
     /// <summary>The label of a tile a passing health check reached; the browser itself calls neither the database nor a dependency.</summary>
     private const string Reachable = "Reachable";
 
+    // The nouns naming which apps a tile waits for or was reached through (#1708): WaitingTile and PassedLine say the
+    // same pair in two sentences, so each noun has one name here and a typo cannot split them.
+
+    /// <summary>The apps a web app's health check speaks for, as a tile's words name them.</summary>
+    private const string WebApps = "web apps";
+
+    /// <summary>The apps a container app's probe speaks for, as a tile's words name them.</summary>
+    private const string ContainerApps = "container apps";
+
     /// <summary>How many marks of a detailed health check a tile's line holds; the entries that are not healthy come first.</summary>
     public const int MostMarks = 8;
 
@@ -527,7 +536,7 @@ public static class RuntimePayloadBuilder
         {
             if (clients.Any(entry => entry.Target.State == HealthState.Pending))
             {
-                return WaitingTile(node, "web apps");
+                return WaitingTile(node, WebApps);
             }
 
             return clients.Any(entry => entry.Target.HealthDetail is not null)
@@ -610,7 +619,7 @@ public static class RuntimePayloadBuilder
         {
             var names = string.Join(", ", passed.Select(entry => entry.Target.Name));
             var latest = passed.Max(entry => entry.Target.Last!.CheckedAt);
-            var line = PassedLine(passed.Count, passed[0].Target.Label, "web apps");
+            var line = PassedLine(passed.Count, passed[0].Target.Label, WebApps);
             var queries = clients.Select(entry => entry.Target.Telemetry).OfType<TelemetrySnapshot>().ToList();
 
             // The queries the traffic causes; what the apps run in the background (the message bus polling) is said in
@@ -636,7 +645,7 @@ public static class RuntimePayloadBuilder
 
         if (clients.Any(entry => entry.Target.State == HealthState.Pending))
         {
-            return WaitingTile(node, "web apps");
+            return WaitingTile(node, WebApps);
         }
 
         return NeutralTile(
@@ -657,7 +666,7 @@ public static class RuntimePayloadBuilder
     private static RuntimeTile UnprobedNodeTile(RuntimeNode node, HealthSource health) =>
         health.Tile(node, string.Empty) ?? NotProbedTile(node, string.Empty, node.Name);
 
-    /// <summary>A tile still waiting for the health checks of the apps that use the node; <paramref name="users"/> names those apps ("web apps", "container apps").</summary>
+    /// <summary>A tile still waiting for the health checks of the apps that use the node; <paramref name="users"/> names those apps (<see cref="WebApps"/>, <see cref="ContainerApps"/>).</summary>
     private static RuntimeTile WaitingTile(RuntimeNode node, string users) =>
         new(node.Alias, TileState.Checking.Word(), CheckingLabel, null, [new RuntimeTileLine("waiting for the health checks", "muted")], null, $"{node.Name}: waiting for the health checks of the {users} that use it.");
 
@@ -681,7 +690,7 @@ public static class RuntimePayloadBuilder
         {
             var names = string.Join(", ", passed.Select(app => app.App.Name));
             var latest = passed.Max(app => app.Status!.Last!.CheckedAt);
-            var line = PassedLine(passed.Count, passed[0].App.Name, "container apps");
+            var line = PassedLine(passed.Count, passed[0].App.Name, ContainerApps);
             return new RuntimeTile(
                 node.Alias,
                 TileState.Healthy.Word(),
@@ -694,7 +703,7 @@ public static class RuntimePayloadBuilder
 
         if (apps.Any(app => app.Status is null or { State: ContainerAppState.Probing or ContainerAppState.Waking }))
         {
-            return WaitingTile(node, "container apps");
+            return WaitingTile(node, ContainerApps);
         }
 
         if (apps.All(app => app.Status!.State == ContainerAppState.Responding))

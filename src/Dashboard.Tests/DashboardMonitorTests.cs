@@ -208,6 +208,43 @@ public class DashboardMonitorTests
     }
 
     /// <summary>
+    /// The serving decision of every deployable is assessed once per round, at the end of it: before a round ends the
+    /// deployable has no serving decision of its own yet, and after it does - and it is compared with the last round's
+    /// decision exactly once. A failover seen in the first round is not repeated by the second, because the second is
+    /// compared with the first's recorded decision, not with nothing.
+    /// </summary>
+    [Fact]
+    public async Task TheServingDecisionIsAssessedOncePerRoundAndComparedWithTheLast()
+    {
+        // uat-west is the primary; make it unreachable so the standby uat-east serves. uat-east stays healthy.
+        var handler = new StubHandler(request => request.RequestUri!.Host == "uat-west.example.net"
+            ? StubHandler.Answer(HttpStatusCode.InternalServerError)
+            : Healthy(request));
+        var monitor = Monitor(handler);
+        var uat = monitor.Environments.Single(environment => environment.Name == "uat").Deployables[0];
+
+        // Before any round the serving decision stands null.
+        Assert.Null(uat.LastServing);
+
+        var round = monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
+        await round.WaitAsync(Patience);
+
+        // After the round the decision is recorded, and it failed over to the standby.
+        Assert.Equal(ServingState.FailedOver, uat.LastServing!.State);
+        Assert.Equal("uat-east", uat.LastServing.Expected?.Name);
+        var afterFirst = monitor.Events.Newest.Count(entry => entry.Kind == EventKind.Serving);
+        Assert.Equal(1, afterFirst);
+
+        // The second round sees the same states: the decision is compared with the recorded one, not with nothing, so
+        // no new serving event is added.
+        await monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
+
+        Assert.Equal(ServingState.FailedOver, uat.LastServing!.State);
+        Assert.Equal("uat-east", uat.LastServing.Expected?.Name);
+        Assert.Equal(1, monitor.Events.Newest.Count(entry => entry.Kind == EventKind.Serving));
+    }
+
+    /// <summary>
     /// The monitor's file reads are on the one owner the database view's live-file read is on (#1804): each read
     /// keeps the stamp of its last asking in an <c>IntervalRead</c>, not in a private <c>DateTimeOffset?</c>
     /// field, so the stamp-when-due rule and the keep of the last good answer stand in one place on the page's

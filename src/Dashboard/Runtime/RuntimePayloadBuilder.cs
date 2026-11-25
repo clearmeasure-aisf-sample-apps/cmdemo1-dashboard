@@ -498,6 +498,10 @@ public static class RuntimePayloadBuilder
             .Select(edge => byAlias.GetValueOrDefault(edge.From))
             .OfType<Entry>()];
 
+    /// <summary>True when every client that reports was probed for liveness only, so none of them read what the node answers.</summary>
+    private static bool OnlyProbesLiveness(List<Entry> clients) =>
+        clients.All(entry => entry.Target.Last is { Probe: ProbeKind.Liveness });
+
     /// <summary>
     /// A dependency from the detailed health checks of the web apps that use it: the entry the manifest names says its
     /// state. Reachable when that entry is healthy on a web app that passes its health check; degraded or unhealthy as
@@ -519,7 +523,7 @@ public static class RuntimePayloadBuilder
                 $"{node.Name}: the system names no entry of the web apps' detailed health check for it (dependencies[].healthCheck in system.json), so this page cannot tell its state.");
         }
 
-        if (clients.All(entry => entry.Target.Last is { Probe: ProbeKind.Liveness }))
+        if (OnlyProbesLiveness(clients))
         {
             return NotProbedTile(
                 node,
@@ -637,7 +641,7 @@ public static class RuntimePayloadBuilder
                 $"{node.Name}: reachable. The database takes no call from a browser; the health check of {names} connected to it (last {TimeText.Clock(latest, zone)}).{background}");
         }
 
-        if (clients.All(entry => entry.Target.Last is { Probe: ProbeKind.Liveness }))
+        if (OnlyProbesLiveness(clients))
         {
             const string Why = "the probe is Liveness, which does not connect to the database. Choose Health check to see whether it answers.";
             return health.Tile(node, Why) ?? NotProbedTile(node, "probe Liveness leaves it alone", $"{node.Name}: {Why}");

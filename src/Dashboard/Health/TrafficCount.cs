@@ -4,8 +4,8 @@ namespace Dashboard.Health;
 
 /// <summary>
 /// What the traffic button counted at one reading (<c>status</c> of <c>js/traffic.js</c>). Every request sent is in
-/// one of four places: answered, failed (the browser reports a network failure), given up with no answer within
-/// <see cref="TrafficPlan.AnswerWithinSeconds"/> s, or still on its way. A run is over when nothing more is sent and
+/// one of four places: answered, failed (the browser reports a network failure), given up after
+/// <see cref="TrafficPlan.AnswerWithinSeconds"/> s with no answer (said as <see cref="ProbeDefaults.NoAnswerWithin"/> says it), or still on its way. A run is over when nothing more is sent and
 /// nothing is on its way, not when the sending stops: an answer that arrives after the last request was sent is
 /// counted like any other, so a slow answer never reads as a lost one.
 /// </summary>
@@ -33,29 +33,29 @@ public sealed record TrafficCount(int Sent, int Answered, int Failed, int Unansw
     {
         get
         {
-            var parts = new List<string>
-            {
-                string.Create(CultureInfo.InvariantCulture, $"{Sent} sent"),
-                string.Create(CultureInfo.InvariantCulture, $"{Answered} answered"),
-            };
+            var parts = new List<string> { Part(Sent, "sent"), Part(Answered, "answered") };
             if (Failed > 0)
             {
-                parts.Add(string.Create(CultureInfo.InvariantCulture, $"{Failed} failed"));
+                parts.Add(Part(Failed, "failed"));
             }
 
             if (Unanswered > 0)
             {
-                parts.Add(string.Create(CultureInfo.InvariantCulture, $"{Unanswered} with no answer within {TrafficPlan.AnswerWithinSeconds} s"));
+                parts.Add(Part(Unanswered, "with " + ProbeDefaults.NoAnswerWithin(TimeSpan.FromSeconds(TrafficPlan.AnswerWithinSeconds))));
             }
 
             if (OnTheirWay > 0)
             {
-                parts.Add(string.Create(CultureInfo.InvariantCulture, $"{OnTheirWay} {Plural.Noun(OnTheirWay, "on its way", "on their way")}"));
+                parts.Add(Part(OnTheirWay, Plural.Noun(OnTheirWay, "on its way", "on their way")));
             }
 
             return string.Join(", ", parts);
         }
     }
+
+    /// <summary>One number of <see cref="Counts" /> and its words, the number in the invariant culture: <c>119 sent</c>.</summary>
+    private static string Part(int count, string words) =>
+        string.Create(CultureInfo.InvariantCulture, $"{count} {words}");
 
     /// <summary>
     /// The line next to the button: the numbers with the seconds left while requests are sent, then what the panel

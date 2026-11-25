@@ -215,6 +215,21 @@ public static class BuildText
     /// </summary>
     private const double SmallShareBound = 1d;
 
+    /// <summary>The format of a count: a whole number with group separators, <c>84,210</c>.</summary>
+    private const string CountFormat = "N0";
+
+    /// <summary>
+    /// The format of a percent and of a number: at most one decimal, none for a whole number - <c>81.2</c>, <c>80</c>.
+    /// <see cref="Percent" /> and <see cref="Number" /> both read it, so they round the same way.
+    /// </summary>
+    private const string OneDecimalFormat = "0.#";
+
+    /// <summary>The format of the whole percentage <see cref="SharePercent" /> writes after rounding: <c>73</c>.</summary>
+    private const string WholeFormat = "0";
+
+    /// <summary>What every percent word ends with: a space and the sign, <c>81.2 %</c>.</summary>
+    private const string PercentSign = " %";
+
     /// <summary>What the page calls itself next to the dashboard's name: the chip of its heading.</summary>
     public const string ThisPage = "this page";
 
@@ -233,12 +248,13 @@ public static class BuildText
     }
 
     /// <summary><c>84,210</c>.</summary>
-    public static string Count(long number) => number.ToString("N0", CultureInfo.InvariantCulture);
+    public static string Count(long number) => number.ToString(CountFormat, CultureInfo.InvariantCulture);
 
     /// <summary><c>81.2 %</c>.</summary>
-    public static string Percent(double percent) => string.Create(CultureInfo.InvariantCulture, $"{percent:0.#} %");
+    public static string Percent(double percent) => Number(percent) + PercentSign;
 
-    public static string Number(double number) => number.ToString("0.#", CultureInfo.InvariantCulture);
+    /// <summary><c>4.2</c>.</summary>
+    public static string Number(double number) => number.ToString(OneDecimalFormat, CultureInfo.InvariantCulture);
 
     /// <summary><c>84,210 lines in 1,203 files</c>.</summary>
     public static string? Size(CodeSize code)
@@ -293,7 +309,9 @@ public static class BuildText
 
     /// <summary>A share as a whole percentage; a share above zero and below the <see cref="SmallShareBound" /> as <c>&lt;1 %</c>.</summary>
     public static string SharePercent(double percent) =>
-        percent is > 0 and < SmallShareBound ?"<1 %" : string.Create(CultureInfo.InvariantCulture, $"{Math.Round(percent):0} %");
+        percent is > 0 and < SmallShareBound
+            ? "<1" + PercentSign
+            : Math.Round(percent).ToString(WholeFormat, CultureInfo.InvariantCulture) + PercentSign;
 
     /// <summary><c>1,417: 1,009 unit, 240 integration, 168 acceptance</c>.</summary>
     public static string Tests(TestCounts tests)

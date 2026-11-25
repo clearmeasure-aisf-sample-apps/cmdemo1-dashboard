@@ -326,7 +326,7 @@ public static class ApplicationText
     /// The links of the view's heading row: where the names of the deployable's boxes led before the boxes zoomed.
     /// Per box its own address (<c>links.site</c>, else <c>url</c>) and, where it has one, its page in the Azure
     /// portal (<c>links.portal</c> of its node in the topology, else of the manifest). One box: "Open the app" and
-    /// "Open in the Azure portal"; several: each link names its box.
+    /// <see cref="LinkText.OpenInPortal"/>; several: each link names its box.
     /// </summary>
     /// <param name="boxes">The deployable's boxes, as <see cref="Boxes(RuntimeManifest, string?)"/> orders them.</param>
     /// <param name="environment">The monitor's environment of the diagram; null when the topology has none.</param>
@@ -365,14 +365,14 @@ public static class ApplicationText
 
     /// <summary>
     /// The link to a box's page in the Azure portal: <c>links.portal</c> of its <paramref name="node" /> in the
-    /// topology, else of the box. Named "Open in the Azure portal" when the box is <paramref name="alone" /> in its
+    /// topology, else of the box. Named <see cref="LinkText.OpenInPortal"/> when the box is <paramref name="alone" /> in its
     /// row, else after the box.
     /// </summary>
     private static ViewLink? PortalOf(RuntimeNode box, TargetStatus? node, bool alone) =>
         (node?.Links[LinkSet.Portal] ?? box.Links?[LinkSet.Portal]) is { } portal
             ? ViewLink.To(
                 portal,
-                alone ? "Open in the Azure portal" : $"{box.Name} in the Azure portal",
+                alone ? LinkText.OpenInPortal : $"{box.Name} in the Azure portal",
                 LinkText.Portal($"{box.Name} in the Azure portal"))
             : null;
 

@@ -68,6 +68,12 @@ public sealed class LinkSet
 public static class LinkText
 {
     public const string PortalSuffix = " (opens in a new tab; the Azure portal asks you to sign in)";
+
+    /// <summary>
+    /// The visible label of a heading-row link to a resource's page in the Azure portal, used when the link needs no
+    /// box name.
+    /// </summary>
+    internal const string OpenInPortal = "Open in the Azure portal";
     public const string OctopusSuffix = " (opens in a new tab; Octopus Deploy asks you to sign in)";
     public const string GitHubSuffix = " (opens in a new tab)";
 

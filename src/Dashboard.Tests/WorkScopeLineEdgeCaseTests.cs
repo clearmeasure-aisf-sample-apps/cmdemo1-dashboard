@@ -681,6 +681,98 @@ public class WorkScopeLineEdgeCaseTests
         Assert.Equal(line.Title, Reader(SignedAndGroupedDifferently, () => line.Title));
     }
 
+    // ------------------------------------------------------- the factory the read makes its line with
+
+    /// <summary>The line the record makes of three parts is the record's own decision and not the read's: the
+    /// factory returns the line while the label or the number stands, and nothing at all when both are unsaid - the
+    /// address alone, with no name to show and no number to say, is not a line, since an address gives no words of
+    /// its own to either. The empty word still counts as a word, the way the record's parts always have: a line of
+    /// the empty label and the empty number is a line, and the line that comes back is the one its three parts make,
+    /// holding the very word and the very address the factory was told.</summary>
+    [Theory]
+    [InlineData(null, null, null)]
+    [InlineData(null, Address, null)]
+    [InlineData(Name, null, null)]
+    [InlineData(Name, Address, null)]
+    [InlineData(null, Address, Number)]
+    [InlineData(null, null, Number)]
+    [InlineData("", null, null)]
+    [InlineData("", Address, "")]
+    public void TheFactoryMakesTheLineOrNothingWhenBothTheNameAndTheNumberAreUnsaid(string? label, string? address, string? project)
+    {
+        var line = Of(label, address, project);
+
+        if (label is null && project is null)
+        {
+            Assert.Null(line);
+        }
+        else
+        {
+            var expected = new WorkScopeLine(label, address is null ? null : new Uri(address), project);
+            Assert.Equal(expected, line);
+            Assert.Equal(label, line!.Label);
+            Assert.Equal(project, line.Project);
+        }
+    }
+
+    /// <summary>The factory hands each part to the part of its own name - the word held as the very instance it was
+    /// told, the address held as the address it parses to - and says nothing of the title beyond the parts it holds:
+    /// the title stands only while the label and the address do, exactly as the line's own rule says.</summary>
+    [Fact]
+    public void TheFactoryHoldsThePartsItIsToldAndSaysNoMoreThanTheyDo()
+    {
+        var label = Own(Name);
+        var address = new Uri(Address);
+        var project = Own(Number);
+
+        var line = Of(label, address.ToString(), project);
+
+        Assert.NotNull(line);
+        Assert.Equal(label, line!.Label);
+        Assert.Equal(address, line.Url);
+        Assert.Same(project, line.Project);
+        Assert.Equal(Name + NewTab, line.Title);
+
+        // The address alone says nothing, and the name alone has a title of no words but the page's own.
+        Assert.Null(Of(null, Address, null));
+
+        var named = Of(label, null, null);
+
+        Assert.NotNull(named);
+        Assert.Null(named!.Url);
+        Assert.Null(named.Title);
+
+        // The empty word is still a word: the line of empty words comes back, unsaid though it is.
+        var empty = Of(string.Empty, null, string.Empty);
+
+        Assert.NotNull(empty);
+        Assert.Equal(string.Empty, empty!.Label);
+        Assert.Equal(string.Empty, empty.Project);
+        Assert.Null(empty.Title);
+    }
+
+    /// <summary>The factory is the record's and not the page's: a static of the record, kept internal by an app
+    /// that declares no <c>InternalsVisibleTo</c> (as <c>Dashboard.Tests.csproj</c> notes of the app's other
+    /// internal reads), so the test reaches it by name in the app's assembly the way those reads are pinned. It
+    /// takes the three parts in the order the constructor names them and hands back the line or the nothing.</summary>
+    [Fact]
+    public void TheFactoryIsTheRecordsOwnStaticKeptToItself()
+    {
+        var method = typeof(WorkScopeLine)
+            .GetMethod("Of", BindingFlags.NonPublic | BindingFlags.Static, [typeof(string), typeof(Uri), typeof(string)]);
+
+        Assert.NotNull(method);
+        Assert.True(method!.IsStatic, "the factory stands on the record and takes no line to work on");
+        Assert.False(method.IsPublic, "the app keeps the factory to itself, the way it keeps its other reads");
+        Assert.Equal(typeof(WorkScopeLine), method.ReturnType);
+        Assert.True(Nullable.GetUnderlyingType(method.ReturnType) is null, "a reference type's nothing is an annotation, not another kind");
+        Assert.Equal(["label", "url", "project"], [.. method.GetParameters().Select(parameter => parameter.Name!)]);
+
+        // The list the public-surface test pins is public members only: the factory beside the record's parts is
+        // not of it, so the list that test says stands as it stood.
+        Assert.DoesNotContain(PublicSurface(), name => name == "Of");
+    }
+
     // --------------------------------------------------------------------------- the machinery
 
     /// <summary>The public members the line declares itself: its properties and the methods that are not the get and
@@ -700,6 +792,19 @@ public class WorkScopeLineEdgeCaseTests
     /// <summary>The one public constructor of the record: the three parts, in the order the page names them.</summary>
     private static ConstructorInfo Constructor() =>
         typeof(WorkScopeLine).GetConstructor([typeof(string), typeof(Uri), typeof(string)])!;
+
+    /// <summary>The record's factory, by name in the app's assembly: the app keeps it internal and declares no
+    /// <c>InternalsVisibleTo</c>, so the test reaches it the way the app's other internal reads are pinned, and
+    /// asks it for the line the three parts make - the address spoken as a word turned to the address it is.</summary>
+    private static WorkScopeLine? Of(string? label, string? address, string? project)
+    {
+        var method = typeof(WorkScopeLine)
+            .GetMethod("Of", BindingFlags.NonPublic | BindingFlags.Static, [typeof(string), typeof(Uri), typeof(string)]);
+
+        Assert.True(method is not null, "the record's factory was not read: the guard would be checking nothing");
+
+        return (WorkScopeLine?)method!.Invoke(null, [label, address is null ? null : new Uri(address), project]);
+    }
 
     /// <summary>True for the kinds of moment a line would have to be told about, or would have to go and ask a clock
     /// for - none of which a line holds, takes, or hands back.</summary>

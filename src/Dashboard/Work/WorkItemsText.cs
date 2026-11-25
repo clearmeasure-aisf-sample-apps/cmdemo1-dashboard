@@ -16,6 +16,14 @@ public sealed record WorkColumnGroup(string Column, IReadOnlyList<WorkItem> Item
 public sealed record WorkScopeLine(string? Label, Uri? Url, string? Project)
 {
     public string? Title => Url is null || Label is null ? null : Label + LinkText.GitHubSuffix;
+
+    /// <summary>
+    /// The line these three parts make - or nothing at all, when the line would say nothing: no label and no
+    /// project, whatever the address between them. The address alone is not a line, since the words of a line are
+    /// the label and the number, and an address gives no words of its own to either.
+    /// </summary>
+    internal static WorkScopeLine? Of(string? label, Uri? url, string? project) =>
+        label is null && project is null ? null : new WorkScopeLine(label, url, project);
 }
 
 /// <summary>One week of the chart: the two counts, and the sentence a reader of the bar hears.</summary>
@@ -419,7 +427,7 @@ public static class WorkItemsText
         var url = JsonRead.Address(scope.Repo);
         var label = url is null ? scope.Repo : RepoLabel(url);
         var project = scope.Project is { } number ? number.ToString(CultureInfo.InvariantCulture) : null;
-        return label is null && project is null ? null : new WorkScopeLine(label, url, project);
+        return WorkScopeLine.Of(label, url, project);
     }
 
     /// <summary>

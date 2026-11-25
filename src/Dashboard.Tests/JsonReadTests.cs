@@ -290,4 +290,59 @@ public class JsonReadTests
     [Fact]
     public void ASaturatedCountOnANullParentIsNull() =>
         Assert.Null(JsonRead.SaturatedCount(null, "n"));
+
+    // ----- The strings of a list -----
+
+    /// <summary>The strings of the list: each is trimmed, the empty ones are left out, and the rest stand in the
+    /// order written - and a list of no words at all is no list, one <c>null</c>, not an empty one.</summary>
+    [Fact]
+    public void TheStringsOfAListAreItsTrimmedWordsInTheOrderWritten()
+    {
+        var strings = JsonRead.Strings(Root("""{ "ids": [ "  a  ", "", "b", 7, null, true, {}, [], "   ", "c" ] }"""), "ids");
+
+        Assert.NotNull(strings);
+        Assert.Equal(["a", "b", "c"], strings);
+    }
+
+    [Theory]
+    [InlineData("""{ }""")] // no such name
+    [InlineData("""{ "ids": [] }""")] // an array with nothing in it
+    [InlineData("""{ "ids": [ "" ] }""")] // the empty word only
+    [InlineData("""{ "ids": [ "   ", "\t" ] }""")] // words of nothing but room
+    [InlineData("""{ "ids": [ "\u00A0" ] }""")] // a word of only no-break spaces is no word
+    [InlineData("""{ "ids": [ 7, null, true, {}, [] ] }""")] // nothing that is a string
+    [InlineData("""{ "ids": { "a": 1 } }""")] // an object, not an array
+    [InlineData("""{ "ids": "a" }""")] // text, not an array
+    [InlineData("""{ "ids": 7 }""")] // a number, not an array
+    [InlineData("""{ "ids": null }""")]
+    public void AnythingElseIsNoStrings(string json) =>
+        Assert.Null(JsonRead.Strings(Root(json), "ids"));
+
+    [Theory]
+    [InlineData("""[ { "ids": [ "a" ] } ]""")] // the parent is an array: it has no properties
+    [InlineData("\"ids\"")]
+    [InlineData("3")]
+    public void StringsAreTakenFromAnObjectOnly(string json) =>
+        Assert.Null(JsonRead.Strings(Root(json), "ids"));
+
+    [Fact]
+    public void StringsOnANullParentAreNull() =>
+        Assert.Null(JsonRead.Strings(null, "ids"));
+
+    /// <summary>
+    /// Every string that stands is kept, in the order written: the helper knows no most, and capping a list is the
+    /// business of the reader that reads it - the most ids of one box is the runtime manifest's, and is pinned beside
+    /// it.
+    /// </summary>
+    [Fact]
+    public void EveryStringThatStandsIsKeptForTheReaderToCap()
+    {
+        var written = string.Join(",", Enumerable.Range(0, 300).Select(number => $"""" "i{number}" """"));
+
+        var strings = JsonRead.Strings(Root($$"""{ "ids": [ {{written}} ] }"""), "ids");
+
+        Assert.NotNull(strings);
+        Assert.Equal(300, strings.Count);
+        Assert.Equal("i199", strings[199]);
+    }
 }

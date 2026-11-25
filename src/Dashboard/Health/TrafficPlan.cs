@@ -18,9 +18,10 @@ public sealed record TrafficPlan(string Environment, IReadOnlyList<Uri> Addresse
 
     /// <summary>
     /// How long a request waits for its answer before the browser gives it up: as long as a check of the page waits
-    /// (<see cref="NodeProber.DefaultTimeout"/>). So a run is over this long after its last request at the latest.
+    /// (the shared <see cref="ProbeDefaults.DefaultTimeoutSeconds"/>). So a run is over this long after its last
+    /// request at the latest. Whole seconds, because the browser call and the sentence about it take it that way.
     /// </summary>
-    public const int AnswerWithinSeconds = 10;
+    public const int AnswerWithinSeconds = ProbeDefaults.DefaultTimeoutSeconds;
 
     /// <summary>How often the page checks while the traffic runs, so the numbers follow it.</summary>
     public const int CheckEverySeconds = 10;

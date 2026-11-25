@@ -480,7 +480,7 @@ public static class RuntimePayloadBuilder
         {
             if (clients.Any(entry => entry.Target.State == HealthState.Pending))
             {
-                return new RuntimeTile(node.Alias, TileState.Checking.Word(), "Checking", null, [new RuntimeTileLine("waiting for the health checks", "muted")], null, $"{node.Name}: waiting for the health checks of the web apps that use it.");
+                return WaitingTile(node, "web apps");
             }
 
             return clients.Any(entry => entry.Target.HealthDetail is not null)
@@ -590,7 +590,7 @@ public static class RuntimePayloadBuilder
 
         if (clients.Any(entry => entry.Target.State == HealthState.Pending))
         {
-            return new RuntimeTile(node.Alias, TileState.Checking.Word(), "Checking", null, [new RuntimeTileLine("waiting for the health checks", "muted")], null, $"{node.Name}: waiting for the health checks of the web apps that use it.");
+            return WaitingTile(node, "web apps");
         }
 
         return NeutralTile(
@@ -610,6 +610,10 @@ public static class RuntimePayloadBuilder
     /// <summary>A node with nothing of its own to say: what Resource Health said of it, or not probed under its name.</summary>
     private static RuntimeTile UnprobedNodeTile(RuntimeNode node, HealthSource health) =>
         health.Tile(node, string.Empty) ?? NotProbedTile(node, string.Empty, node.Name);
+
+    /// <summary>A tile still waiting for the health checks of the apps that use the node; <paramref name="users"/> names those apps ("web apps", "container apps").</summary>
+    private static RuntimeTile WaitingTile(RuntimeNode node, string users) =>
+        new(node.Alias, TileState.Checking.Word(), "Checking", null, [new RuntimeTileLine("waiting for the health checks", "muted")], null, $"{node.Name}: waiting for the health checks of the {users} that use it.");
 
     /// <summary>No app this page checks uses the database.</summary>
     private static RuntimeTile DatabaseUnprobed(RuntimeNode node, HealthSource health)
@@ -646,14 +650,7 @@ public static class RuntimePayloadBuilder
 
         if (apps.Any(app => app.Status is null or { State: ContainerAppState.Probing or ContainerAppState.Waking }))
         {
-            return new RuntimeTile(
-                node.Alias,
-                TileState.Checking.Word(),
-                "Checking",
-                null,
-                [new RuntimeTileLine("waiting for the health checks", "muted")],
-                null,
-                $"{node.Name}: waiting for the health checks of the container apps that use it.");
+            return WaitingTile(node, "container apps");
         }
 
         if (apps.All(app => app.Status!.State == ContainerAppState.Responding))

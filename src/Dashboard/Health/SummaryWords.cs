@@ -25,7 +25,7 @@ public static class SummaryWords
             SummaryLevel.Problems => $"{notHealthy} of {total} {noun} not healthy",
             SummaryLevel.Pending when healthy == 0 => $"Checking {total} {noun}",
             SummaryLevel.Pending => $"{healthy} of {total} {noun} healthy, {pending} being checked",
-            SummaryLevel.AllHealthy => total == 1 ? $"The only {noun} is healthy" : $"All {total} {noun} healthy",
+            SummaryLevel.AllHealthy => Plural.Noun(total, $"The only {noun} is healthy", $"All {total} {noun} healthy"),
             _ => throw new ArgumentOutOfRangeException(nameof(level), level, null),
         };
     }

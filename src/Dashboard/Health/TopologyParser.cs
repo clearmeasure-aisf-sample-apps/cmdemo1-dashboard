@@ -69,7 +69,7 @@ public static class TopologyParser
 
         return new SystemInfo(
             Slug: slug,
-            Name: name ?? (slug.Length > 0 ? slug : "System"),
+            Name: name ?? (slug.Length > 0 ? slug : SystemInfo.DefaultName),
             Repository: repository,
             DeliveryUrl: delivery,
             CostUrl: cost,

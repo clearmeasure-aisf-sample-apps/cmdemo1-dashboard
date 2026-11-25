@@ -118,4 +118,29 @@ public class RuntimeFilesPairTests
 
         Assert.Equal(["/runtime/tdd.database.json", "/runtime/tdd.database.svg"], asked.Order(StringComparer.Ordinal));
     }
+
+    /// <summary>
+    /// #1684: <see cref="RuntimeLoaders.ServingPair" /> answers what this file's own <see cref="Serving" />
+    /// answers - the manifest at its path, one picture for any SVG - on the one base address its
+    /// <see cref="Loader" /> builds the client on, pinned beside the copies it stands in for so that the lane which
+    /// takes them out rewrites nothing the tests do not already hold. The copies stay until then.
+    /// </summary>
+    [Fact]
+    public async Task TheSharedFixtureAnswersThePairAsThisFilesServingDoes()
+    {
+        var files = new RuntimeDatabaseFiles("tdd.database.svg", "tdd.database.json");
+
+        var viaFixture = await RuntimeLoaders.From(RuntimeLoaders.ServingPair("/runtime/tdd.database.json", DatabaseManifest, Picture))
+            .LoadDatabaseAsync(files, CancellationToken.None);
+        var viaTheCopy = await Loader(Serving("/runtime/tdd.database.json", DatabaseManifest, Picture))
+            .LoadDatabaseAsync(files, CancellationToken.None);
+
+        Assert.True(viaFixture.IsValid);
+        Assert.Equal(viaTheCopy.Manifest!.Database, viaFixture.Manifest!.Database);
+        Assert.Equal(viaTheCopy.Manifest.Tables.Select(table => table.Alias), viaFixture.Manifest.Tables.Select(table => table.Alias));
+        Assert.Equal(Picture, viaFixture.Svg);
+        Assert.Equal(viaTheCopy.Svg, viaFixture.Svg);
+        Assert.Equal(viaTheCopy.Errors, viaFixture.Errors);
+        Assert.Empty(viaFixture.Errors);
+    }
 }

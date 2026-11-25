@@ -83,6 +83,16 @@ public class NodeProberTests
         Assert.Equal("No answer within 10 s.", result.Detail);
     }
 
+    /// <summary>The node's default wait, said through the shared wait: <see cref="NodeProber.DefaultTimeout" /> and
+    /// the timeout of a prober made without a named timeout stand at <see cref="ProbeWait.SharedWait" />, the one
+    /// value the node, both readers and the app's other probes hold, beside the literal the test above still pins.</summary>
+    [Fact]
+    public void TheDefaultTimeoutStandsAtTheSharedProbeWait()
+    {
+        Assert.Equal(ProbeWait.SharedWait(), NodeProber.DefaultTimeout);
+        Assert.Equal(ProbeWait.SharedWait(), Prober(new StubHandler(_ => StubHandler.Answer(HttpStatusCode.NotFound))).Timeout);
+    }
+
     [Fact]
     public async Task TheTimeoutCanBeSet()
     {

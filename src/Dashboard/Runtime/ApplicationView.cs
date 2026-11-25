@@ -67,25 +67,9 @@ public static class ApplicationParser
     private const int MostEntries = 1000;
     private const int LongestText = 300;
 
-    private static readonly JsonDocumentOptions Options = new()
-    {
-        AllowTrailingCommas = true,
-        CommentHandling = JsonCommentHandling.Skip,
-    };
-
     public static ApplicationArchitecture? Parse(string? json)
     {
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return null;
-        }
-
-        JsonDocument document;
-        try
-        {
-            document = JsonDocument.Parse(json, Options);
-        }
-        catch (JsonException)
+        if (!RuntimeManifestParser.TryOpen(json, out var document, out _))
         {
             return null;
         }
@@ -93,11 +77,6 @@ public static class ApplicationParser
         using (document)
         {
             var root = document.RootElement;
-            if (root.ValueKind != JsonValueKind.Object)
-            {
-                return null;
-            }
-
             var entry = Text(root, "entry");
             var assemblies = new List<ApplicationAssembly>();
             foreach (var element in JsonRead.Items(root, "assemblies").Take(MostAssemblies))

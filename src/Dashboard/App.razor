@@ -500,8 +500,7 @@
 
     private void OnIntervalChanged(ChangeEventArgs change)
     {
-        if (int.TryParse(change.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var seconds)
-            && IntervalChoices.Contains(seconds))
+        if (SelectChange.TryRead<int>(change, SelectChange.Whole, IntervalChoices.Contains, out var seconds))
         {
             _poller.SetInterval(TimeSpan.FromSeconds(seconds));
         }
@@ -509,7 +508,7 @@
 
     private void OnProbeChanged(ChangeEventArgs change)
     {
-        if (Enum.TryParse<ProbeKind>(change.Value?.ToString(), out var probe) && probe != _probe)
+        if (SelectChange.TryRead<ProbeKind>(change, Enum.TryParse, Enum.IsDefined, out var probe) && probe != _probe)
         {
             _probe = probe;
             _poller.CheckNow();

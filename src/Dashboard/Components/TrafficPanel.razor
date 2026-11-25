@@ -37,6 +37,13 @@
     private const string StopHelp = "Stops sending requests now; answers already on their way still count";
     private const string EnvironmentLockedHelp = "Stop traffic to choose another environment";
 
+    /// <summary>
+    /// One press as one value (<see cref="TrafficRun"/>): the three numbers the browser call and the sentences below
+    /// take, so they cannot reach <c>js/traffic.js</c> as three ints in the wrong order (#1742). How often the page
+    /// checks while the run lasts is not one of them, and stays <see cref="TrafficPlan.CheckEverySeconds"/>.
+    /// </summary>
+    private static TrafficRun Run { get; } = TrafficRun.Default;
+
     private readonly CancellationTokenSource _stopping = new();
     private IReadOnlyList<TrafficPlan> _plans = [];
     private string? _environment;
@@ -91,7 +98,7 @@
                 return Selected is null ? "No environment has an address to call." : string.Empty;
             }
 
-            return _count.Status(Math.Max(0, TrafficPlan.Seconds - (int)(Time.GetUtcNow() - _started!.Value).TotalSeconds));
+            return _count.Status(Math.Max(0, Run.Seconds - (int)(Time.GetUtcNow() - _started!.Value).TotalSeconds));
         }
     }
 
@@ -118,8 +125,8 @@
         }
 
         _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/traffic.js");
-        await _module.InvokeVoidAsync(
-            "start", plan.Addresses.Select(address => address.AbsoluteUri).ToArray(), TrafficPlan.PerSecond, TrafficPlan.Seconds, TrafficPlan.AnswerWithinSeconds);
+        string[] addresses = [.. plan.Addresses.Select(address => address.AbsoluteUri)];
+        await _module.InvokeVoidAsync("start", addresses, Run.PerSecond, Run.Seconds, Run.AnswerWithinSeconds);
         _pressed = true;
         _started = Time.GetUtcNow();
         _count = TrafficCount.Started;
@@ -127,7 +134,7 @@
         _running = plan;
         Events?.Add(EventDetector.Traffic(
             plan.Environment,
-            $"Traffic started: {TrafficPlan.PerSecond} requests a second for {TrafficPlan.Seconds} s to {string.Join(", ", plan.Targets)}",
+            $"Traffic started: {Run.PerSecond} requests a second for {Run.Seconds} s to {string.Join(", ", plan.Targets)}",
             _started.Value));
         await RunningChanged.InvokeAsync(true);
         _ = FollowAsync();

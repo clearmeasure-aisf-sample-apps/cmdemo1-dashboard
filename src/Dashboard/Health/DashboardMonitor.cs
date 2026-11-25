@@ -304,14 +304,10 @@ public sealed class DashboardMonitor
         Changed?.Invoke();
     }
 
-    /// <summary>True when nothing was asked yet, or at least <paramref name="interval"/> has passed since <paramref name="last"/>.</summary>
-    private static bool IsDue(DateTimeOffset? last, DateTimeOffset now, TimeSpan interval) =>
-        last is not { } at || now - at >= interval;
-
     private async Task ReadDeliveryAsync(CancellationToken cancellationToken)
     {
         var now = _time.GetUtcNow();
-        if (Topology.System.DeliveryUrl is not { } address || !IsDue(_deliveryReadAt, now, DeliveryInterval))
+        if (Topology.System.DeliveryUrl is not { } address || !IntervalDue.IsDue(_deliveryReadAt, now, DeliveryInterval))
         {
             return;
         }
@@ -331,7 +327,7 @@ public sealed class DashboardMonitor
     private async Task ReadWorkItemsAsync(CancellationToken cancellationToken)
     {
         var now = _time.GetUtcNow();
-        if (Topology.System.WorkItemsUrl is not { } address || !IsDue(_workItemsReadAt, now, DeliveryInterval))
+        if (Topology.System.WorkItemsUrl is not { } address || !IntervalDue.IsDue(_workItemsReadAt, now, DeliveryInterval))
         {
             return;
         }
@@ -349,7 +345,7 @@ public sealed class DashboardMonitor
     private async Task ReadCostAsync(CancellationToken cancellationToken)
     {
         var now = _time.GetUtcNow();
-        if (Topology.System.CostUrl is not { } address || !IsDue(_costReadAt, now, CostInterval))
+        if (Topology.System.CostUrl is not { } address || !IntervalDue.IsDue(_costReadAt, now, CostInterval))
         {
             return;
         }
@@ -369,7 +365,7 @@ public sealed class DashboardMonitor
     private async Task ReadDeploymentsAsync(CancellationToken cancellationToken)
     {
         var now = _time.GetUtcNow();
-        if (Topology.System.DeploymentsUrl is not { } address || !IsDue(_deploymentsReadAt, now, DeploymentsInterval))
+        if (Topology.System.DeploymentsUrl is not { } address || !IntervalDue.IsDue(_deploymentsReadAt, now, DeploymentsInterval))
         {
             return;
         }
@@ -395,7 +391,7 @@ public sealed class DashboardMonitor
     {
         var now = _time.GetUtcNow();
         if (!_resourceHealthWanted || Topology.System.ContainersUrl is not { } address
-            || !IsDue(_resourceHealthReadAt, now, DeliveryInterval))
+            || !IntervalDue.IsDue(_resourceHealthReadAt, now, DeliveryInterval))
         {
             return;
         }
@@ -412,7 +408,7 @@ public sealed class DashboardMonitor
     {
         var now = _time.GetUtcNow();
         if (Topology.System.Dashboard is not { } dashboard || DashboardBuild is not null
-            || !IsDue(_dashboardBuildAskedAt, now, DashboardBuildRetry))
+            || !IntervalDue.IsDue(_dashboardBuildAskedAt, now, DashboardBuildRetry))
         {
             return;
         }

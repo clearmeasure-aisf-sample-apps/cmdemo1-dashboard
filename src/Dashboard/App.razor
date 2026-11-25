@@ -251,8 +251,14 @@
     private const string ReloadTopologyHelp =
         "Reads the system's environments, resources and links again and redraws the views; Check now only re-checks health";
 
-    private static readonly int[] IntervalChoices = [10, 30, 60];
-    private static readonly TimeSpan DefaultInterval = TimeSpan.FromSeconds(30);
+    /// <summary>
+    /// The seconds the page opens on: one of <see cref="IntervalChoices"/>, and the one home of the default, which
+    /// the choices and <see cref="DefaultInterval"/> are both built from, so the default is a named choice of the
+    /// list and never a second copy of its seconds that has to keep agreeing with it.
+    /// </summary>
+    private const int DefaultIntervalSeconds = 30;
+    private static readonly int[] IntervalChoices = [10, DefaultIntervalSeconds, 60];
+    private static readonly TimeSpan DefaultInterval = TimeSpan.FromSeconds(DefaultIntervalSeconds);
     private static readonly string DashboardVersion = VersionText.OfAssembly(typeof(App).Assembly);
 
     private readonly CancellationTokenSource _stopping = new();

@@ -199,6 +199,25 @@ public class RuntimePayloadBuilderTests
     }
 
     [Fact]
+    public void TheNotConfirmedDatabaseTitlesNameTheAppKindThatUsesItAndTheOtherPossibleCause()
+    {
+        // The web apps' tail: a failed check may be the web app, so the web app is the other possible cause.
+        var web = Tile(Build(Uat(frontDoor: 503, primary: 503, standby: 0)), "sqldb");
+        var webName = Manifest("uat").Nodes.Single(node => node.Alias == "sqldb").Name;
+        Assert.Equal(
+            $"{webName}: no web app that uses it passes its health check, so this page cannot tell whether it answers: the database or the web app may be the cause.",
+            web.Title);
+
+        // The container apps' tail: a failed check may be the app, so the cause is the app.
+        var containerManifest = Shipped("uat");
+        var container = Tile(RuntimePayloadBuilder.Build(containerManifest, null, Page, TimeZoneInfo.Utc, containerApps: _ => HealthOf(ContainerAppState.Unhealthy, 503)), "sqldb");
+        var containerName = containerManifest.Nodes.Single(node => node.Alias == "sqldb").Name;
+        Assert.Equal(
+            $"{containerName}: no container app that uses it passes its health check, so this page cannot tell whether it answers: the database or the app may be the cause.",
+            container.Title);
+    }
+
+    [Fact]
     public void TheLivenessProbeLeavesTheDatabaseNotProbed()
     {
         var uat = Environment("uat");

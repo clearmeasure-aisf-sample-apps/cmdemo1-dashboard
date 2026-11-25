@@ -12,6 +12,21 @@ public static class ClusterText
     /// <summary>The millicores in one core: the cluster reads CPU in millicores and says it in cores.</summary>
     internal const double MillicoresPerCore = 1000;
 
+    /// <summary>The format of a pod's CPU below one core: a whole number of millicores.</summary>
+    private const string MillicoreFormat = "0";
+
+    /// <summary>The unit a number of millicores is said with: <c>14 m</c>.</summary>
+    private const string MillicoreUnit = "m";
+
+    /// <summary>The format of a number of cores: at most two digits after the point.</summary>
+    private const string CoresFormat = "0.##";
+
+    /// <summary>The word a quantity of CPU is said in: <c>0.81 cores</c>, <c>1.5 cores</c>.</summary>
+    private const string CoresUnit = "cores";
+
+    /// <summary>The word the quantity of exactly one core is said in: <c>1 core</c>.</summary>
+    private const string CoreUnit = "core";
+
     private const double Kibibyte = 1024;
     private const double Mebibyte = Kibibyte * 1024;
 
@@ -30,7 +45,7 @@ public static class ClusterText
     ];
 
     /// <summary>Millicores as cores, without the unit: <c>0.81</c>, <c>3.86</c>, <c>12.5</c>.</summary>
-    public static string Cores(double millicores) => (millicores / MillicoresPerCore).ToString("0.##", CultureInfo.InvariantCulture);
+    public static string Cores(double millicores) => (millicores / MillicoresPerCore).ToString(CoresFormat, CultureInfo.InvariantCulture);
 
     /// <summary>The CPU of a node or of the cluster, in cores: <c>0.81 of 3.86 cores</c>.</summary>
     public static string CoresOf(double usedMillicores, double ofMillicores) =>
@@ -39,14 +54,14 @@ public static class ClusterText
     /// <summary>The CPU of a pod: <c>14 m</c> (millicores, a thousandth of a core) below one core, then <c>1.25 cores</c>.</summary>
     public static string Cpu(double millicores) =>
         millicores < MillicoresPerCore
-            ? string.Create(CultureInfo.InvariantCulture, $"{millicores:0} m")
+            ? $"{Millicores(millicores)} {MillicoreUnit}"
             : $"{Cores(millicores)} {CoresUnitOf(millicores)}";
 
     /// <summary>A pod's CPU against its limit: <c>14 of 500 m</c>, <c>38 m of 1 core</c>, <c>1.2 of 2 cores</c>.</summary>
     public static string CpuOf(double usedMillicores, double limitMillicores) =>
         (usedMillicores < MillicoresPerCore, limitMillicores < MillicoresPerCore) switch
         {
-            (true, true) => string.Create(CultureInfo.InvariantCulture, $"{usedMillicores:0} of {limitMillicores:0} m"),
+            (true, true) => $"{Millicores(usedMillicores)} of {Millicores(limitMillicores)} {MillicoreUnit}",
             (false, false) => CoresOf(usedMillicores, limitMillicores),
             _ => $"{Cpu(usedMillicores)} of {Cpu(limitMillicores)}",
         };
@@ -69,7 +84,7 @@ public static class ClusterText
     public static string? NodeCpu(ResourceUse cpu)
     {
         ArgumentNullException.ThrowIfNull(cpu);
-        return UseAgainst(cpu.Usage, cpu.Allocatable, CoresOf, used => $"{Cores(used)} cores");
+        return UseAgainst(cpu.Usage, cpu.Allocatable, CoresOf, used => $"{Cores(used)} {CoresUnit}");
     }
 
     /// <summary>The memory of a node or of all nodes against what they offer; null without a usage.</summary>
@@ -294,7 +309,10 @@ public static class ClusterText
     /// <c>cores</c> for every other - 0, 0.5, 1.5, NaN. The word agrees with a quantity, not with a count, so it is
     /// deliberately not <see cref="Plural"/>: there is no "count of one" in half a core.
     /// </summary>
-    private static string CoresUnitOf(double millicores) => millicores == MillicoresPerCore ? "core" : "cores";
+    private static string CoresUnitOf(double millicores) => millicores == MillicoresPerCore ? CoreUnit : CoresUnit;
+
+    /// <summary>A number of millicores in its format, without the unit: <c>14</c>, <c>1000</c>.</summary>
+    private static string Millicores(double millicores) => millicores.ToString(MillicoreFormat, CultureInfo.InvariantCulture);
 
     /// <summary>
     /// A use against a whole: null without a usage, said against the whole when it is more than zero, plain otherwise.

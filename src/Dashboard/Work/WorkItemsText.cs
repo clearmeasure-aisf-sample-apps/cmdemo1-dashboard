@@ -1,4 +1,3 @@
-using System.Globalization;
 using Dashboard.Health;
 
 namespace Dashboard.Work;
@@ -32,6 +31,14 @@ public sealed record WorkPlace(string Name, string? Version, DateTimeOffset? Dep
 public sealed record WorkComparison(WorkDuration? BotCycle, WorkDuration? TeamCycle, WorkWeekChart? BotWeeks, WorkWeekChart? TeamWeeks);
 
 /// <summary>The work items file in the words of the page. The view only places them.</summary>
+/// <summary>
+/// The work items domain's one door for the page, in the house style of <see cref="DeliveryText"/>: the fixed
+/// sentences and the availability of the board are said here, and every other word is forwarded to the class that
+/// owns its concern - <see cref="WorkAudienceText"/> (the All / Bot / Team filter), <see cref="WorkBoardText"/> (columns,
+/// work in progress, recently done), <see cref="WorkMeasureText"/> (durations, rework, cost), <see cref="WorkWeekText"/>
+/// (the weekly chart), <see cref="WorkScopeText"/> (the header's scope and a release's carries) and
+/// <see cref="WorkRowText"/> (one row's number, people, pulls, sessions and places).
+/// </summary>
 public static class WorkItemsText
 {
     public const string Loading = "Loading work items";
@@ -82,486 +89,115 @@ public static class WorkItemsText
 #pragma warning restore CS8524
     }
 
-    /// <summary>
-    /// The words of one audience: its name on the strip, its segment of the address, and the worker whose items it
-    /// holds. The segment is also that worker's word on a row. All holds no one worker, so it has none.
-    /// </summary>
-    private sealed record AudienceWords(WorkAudience Audience, string Label, string Segment, WorkWorker? Worker);
+    // ---- the All / Bot / Team filter: WorkAudienceText ----
 
-    /// <summary>The one table of audience words. A new audience is one more row here.</summary>
-    private static readonly AudienceWords[] Audiences =
-    [
-        new(WorkAudience.All, "All", string.Empty, Worker: null),
-        new(WorkAudience.Bot, "Bot", "bot", WorkWorker.Bot),
-        new(WorkAudience.Team, "Team", "team", WorkWorker.Team),
-    ];
-
-    private static AudienceWords? WordsOf(WorkAudience audience) => Array.Find(Audiences, words => words.Audience == audience);
-
-    public static string AudienceLabel(WorkAudience audience) =>
-        WordsOf(audience)?.Label
-        ?? throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no name.");
+    public static string AudienceLabel(WorkAudience audience) => WorkAudienceText.Label(audience);
 
     /// <summary>The first segment after <c>work-items</c> in the address: <c>bot</c>, <c>team</c>, or anything else for all.</summary>
-    public static WorkAudience AudienceOf(string? segment) => WordsFor(segment)?.Audience ?? WorkAudience.All;
+    public static WorkAudience AudienceOf(string? segment) => WorkAudienceText.Of(segment);
 
-    /// <summary>
-    /// The file's <c>worker</c> word on an item: <c>bot</c>, <c>team</c>, or anything else for
-    /// <see cref="WorkWorker.Unknown"/>. Read from the same table as <see cref="AudienceOf"/>, so an item's worker and a
-    /// filter's audience are always the same words.
-    /// </summary>
-    internal static WorkWorker WorkerOf(string? word) => WordsFor(word)?.Worker ?? WorkWorker.Unknown;
-
-    /// <summary>The audience words whose segment is <paramref name="word"/>, trimmed and in any case; null when none is.</summary>
-    private static AudienceWords? WordsFor(string? word)
-    {
-        var trimmed = word?.Trim();
-        return Array.Find(Audiences, words => string.Equals(words.Segment, trimmed, StringComparison.OrdinalIgnoreCase));
-    }
-
-    public static string AudienceHash(WorkAudience audience) =>
-        WordsOf(audience)?.Segment
-        ?? throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no address.");
+    public static string AudienceHash(WorkAudience audience) => WorkAudienceText.Hash(audience);
 
     /// <summary>The items of one filter, in the file's order. An item with no worker is only in All.</summary>
-    public static IReadOnlyList<WorkItem> Select(IReadOnlyList<WorkItem> items, WorkAudience audience)
-    {
-        ArgumentNullException.ThrowIfNull(items);
-        return audience switch
-        {
-            WorkAudience.Bot => [.. items.Where(item => item.Worker == WorkWorker.Bot)],
-            WorkAudience.Team => [.. items.Where(item => item.Worker == WorkWorker.Team)],
-            WorkAudience.All => items,
-            _ => throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no items."),
-        };
-    }
+    public static IReadOnlyList<WorkItem> Select(IReadOnlyList<WorkItem> items, WorkAudience audience) => WorkAudienceText.Select(items, audience);
 
-    public static string NoneOf(WorkAudience audience) => audience switch
-    {
-        WorkAudience.Bot => "No bot work items.",
-        WorkAudience.Team => "No team work items.",
-        WorkAudience.All => None,
-        _ => throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no empty state."),
-    };
+    public static string NoneOf(WorkAudience audience) => WorkAudienceText.NoneOf(audience);
 
     /// <summary>The worker's word on a row: its audience's address segment. Null when the file does not say who.</summary>
-    public static string? WorkerLabel(WorkWorker worker) =>
-        worker == WorkWorker.Unknown
-            ? null
-            : Array.Find(Audiences, words => words.Worker == worker)?.Segment
-              ?? throw new ArgumentOutOfRangeException(nameof(worker), worker, "A worker has no name.");
+    public static string? WorkerLabel(WorkWorker worker) => WorkAudienceText.WorkerLabel(worker);
 
-    /// <summary>
-    /// The stats strip for a filter. All is the file's board (<c>stats.all</c>, or the older top-level fields). Bot
-    /// and team use the file's slice when it has one, and otherwise what the items themselves can answer.
-    /// </summary>
-    public static WorkItemsStats Slice(WorkItemsReport report, WorkAudience audience)
-    {
-        ArgumentNullException.ThrowIfNull(report);
-        var published = audience switch
-        {
-            WorkAudience.Bot => report.BotStats,
-            WorkAudience.Team => report.TeamStats,
-            WorkAudience.All => report.Stats,
-            _ => throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no stats."),
-        };
-        return published ?? WorkBotText.FromItems(Select(report.Items, audience));
-    }
+    /// <summary>The stats strip for a filter: the file's slice when it has one, and otherwise what the items answer.</summary>
+    public static WorkItemsStats Slice(WorkItemsReport report, WorkAudience audience) => WorkAudienceText.Slice(report, audience);
 
-    /// <summary>
-    /// Bot beside team, for the All strip: cycle time and the latest week. Null when the file has no split and no
-    /// item says who did the work, or when neither side has a cycle time or a week.
-    /// </summary>
-    public static WorkComparison? Comparison(WorkItemsReport report)
-    {
-        ArgumentNullException.ThrowIfNull(report);
-        if (report.BotStats is null && report.TeamStats is null && report.Items.All(item => item.Worker == WorkWorker.Unknown))
-        {
-            return null;
-        }
+    /// <summary>Bot beside team, for the All strip; null when there is nothing to set side by side.</summary>
+    public static WorkComparison? Comparison(WorkItemsReport report) => WorkAudienceText.Comparison(report);
 
-        var bot = report.BotStats ?? WorkBotText.FromItems(Select(report.Items, WorkAudience.Bot));
-        var team = report.TeamStats ?? WorkBotText.FromItems(Select(report.Items, WorkAudience.Team));
-        var botWeeks = Chart(bot.PerWeek);
-        var teamWeeks = Chart(team.PerWeek);
-        if (bot.CycleTimeHours is null && team.CycleTimeHours is null && botWeeks is null && teamWeeks is null)
-        {
-            return null;
-        }
-
-        return new WorkComparison(bot.CycleTimeHours, team.CycleTimeHours, botWeeks, teamWeeks);
-    }
+    // ---- the board's columns: WorkBoardText ----
 
     /// <summary>Work in progress, one count per board column. Done is not work in progress.</summary>
     public static IReadOnlyList<WorkWip> Wip(WorkItemsReport report) => Wip(report.Stats, report.Items);
 
-    /// <summary>
-    /// Work in progress for one slice. The file's counts win for the board's columns; without them the items are
-    /// counted. A name that is not one of those columns is not a board column: its items are counted under
-    /// <see cref="WorkColumns.Unplaced"/>.
-    /// </summary>
-    public static IReadOnlyList<WorkWip> Wip(WorkItemsStats stats, IReadOnlyList<WorkItem> items)
-    {
-        ArgumentNullException.ThrowIfNull(stats);
-        ArgumentNullException.ThrowIfNull(items);
-        var counts = stats.WipByColumn;
-        var fromFile = counts.Count > 0;
-        var rows = new List<WorkWip>();
-        foreach (var column in WorkColumns.Active)
-        {
-            rows.Add(new WorkWip(column, fromFile ? CountOf(counts, column) : items.Count(item => WorkColumns.Same(item.Column, column))));
-        }
+    /// <summary>Work in progress for one slice; see <see cref="WorkBoardText.Wip"/>.</summary>
+    public static IReadOnlyList<WorkWip> Wip(WorkItemsStats stats, IReadOnlyList<WorkItem> items) => WorkBoardText.Wip(stats, items);
 
-        var unplaced = fromFile
-            ? counts.Where(pair => !WorkColumns.IsKnown(pair.Key)).Sum(pair => pair.Value)
-            : items.Count(item => !WorkColumns.IsKnown(item.Column) && !WorkColumns.IsDone(item.Column));
-        if (unplaced > 0)
-        {
-            rows.Add(new WorkWip(WorkColumns.Unplaced, unplaced));
-        }
-
-        return rows;
-    }
-
-    /// <summary>
-    /// The board's columns that hold work now, in order, then <see cref="WorkColumns.Unplaced"/> for any item whose
-    /// column is blank or not one of those. Done is not among them.
-    /// </summary>
-    public static IReadOnlyList<WorkColumnGroup> Active(IReadOnlyList<WorkItem> items)
-    {
-        ArgumentNullException.ThrowIfNull(items);
-        var groups = new List<WorkColumnGroup>();
-        foreach (var column in WorkColumns.Active)
-        {
-            var found = items.Where(item => WorkColumns.Same(item.Column, column)).ToList();
-            if (found.Count > 0)
-            {
-                groups.Add(new WorkColumnGroup(column, found));
-            }
-        }
-
-        var unplaced = items.Where(item => !WorkColumns.IsKnown(item.Column) && !WorkColumns.IsDone(item.Column)).ToList();
-        if (unplaced.Count > 0)
-        {
-            groups.Add(new WorkColumnGroup(WorkColumns.Unplaced, unplaced));
-        }
-
-        return groups;
-    }
+    /// <summary>The board's columns that hold work now, in order, then Unplaced. Done is not among them.</summary>
+    public static IReadOnlyList<WorkColumnGroup> Active(IReadOnlyList<WorkItem> items) => WorkBoardText.Active(items);
 
     /// <summary>The items in Done, the one that arrived there last first. An item with no arrival time is last.</summary>
-    public static IReadOnlyList<WorkItem> RecentlyDone(IReadOnlyList<WorkItem> items)
-    {
-        ArgumentNullException.ThrowIfNull(items);
-        return
-        [
-            .. items.Where(item => WorkColumns.IsDone(item.Column))
-                .OrderByDescending(item => Entered(item, WorkColumns.Done) ?? DateTimeOffset.MinValue)
-                .ThenByDescending(item => item.Number ?? int.MinValue),
-        ];
-    }
+    public static IReadOnlyList<WorkItem> RecentlyDone(IReadOnlyList<WorkItem> items) => WorkBoardText.RecentlyDone(items);
 
     /// <summary>When the item entered <paramref name="column"/>, the latest time the history gives; null when it never says.</summary>
-    public static DateTimeOffset? Entered(WorkItem item, string column)
-    {
-        ArgumentNullException.ThrowIfNull(item);
-        DateTimeOffset? found = null;
-        foreach (var visit in item.ColumnHistory)
-        {
-            if (WorkColumns.Same(visit.Column, column) && visit.EnteredAt is { } at)
-            {
-                found = at;
-            }
-        }
-
-        return found;
-    }
+    public static DateTimeOffset? Entered(WorkItem item, string column) => WorkBoardText.Entered(item, column);
 
     /// <summary><c>since 3 h ago</c>; null when the history does not say when the item entered its column.</summary>
-    public static string? Since(WorkItem item, DateTimeOffset now) =>
-        item.Column is { } column && Entered(item, column) is { } at ? $"since {TimeText.Ago(at, now)}" : null;
-
-    /// <summary><c>median 18.5 h · p85 3 d · 11 items</c>, or <see cref="NotMetered"/> when the file gives none of it.</summary>
-    public static string Duration(WorkDuration? duration)
-    {
-        if (duration is null)
-        {
-            return NotMetered;
-        }
-
-        var parts = new List<string>();
-        if (duration.Median is { } median)
-        {
-            parts.Add($"median {DeliveryText.LeadTime(median)}");
-        }
-
-        if (duration.P85 is { } p85)
-        {
-            parts.Add($"p85 {DeliveryText.LeadTime(p85)}");
-        }
-
-        if (duration.N is { } counted)
-        {
-            parts.Add(Plural.Of(counted, "item"));
-        }
-
-        return parts.Count == 0 ? NotMetered : string.Join(" · ", parts);
-    }
-
-    /// <summary>
-    /// <c>2 functional-test failures · 1 revert · 12.5 %</c>. <see cref="WorkRework.Rate"/> at most 1 is a fraction and
-    /// is shown as a percent; a larger number is shown as the file gave it. <see cref="NotMetered"/> when nothing is there.
-    /// </summary>
-    public static string Rework(WorkRework? rework)
-    {
-        if (rework is null)
-        {
-            return NotMetered;
-        }
-
-        var parts = new List<string>();
-        if (rework.FtFailures is { } failures)
-        {
-            parts.Add(Plural.Of(failures, "functional-test failure"));
-        }
-
-        if (rework.Reverts is { } reverts)
-        {
-            parts.Add(Plural.Of(reverts, "revert"));
-        }
-
-        if (rework.Rate is { } rate)
-        {
-            parts.Add(Rate(rate));
-        }
-
-        return parts.Count == 0 ? NotMetered : string.Join(" · ", parts);
-    }
-
-    /// <summary>
-    /// True when at least one item carries a metered Cursor agent cost. The cost tile is shown only then: a note
-    /// without a metered amount is not a cost source.
-    /// </summary>
-    public static bool HasMeteredCost(IReadOnlyList<WorkItem> items)
-    {
-        ArgumentNullException.ThrowIfNull(items);
-        return items.Any(item => item.CostUsd is not null);
-    }
-
-    /// <summary>
-    /// <c>$2.00 per item · $18.00 total</c> when at least one of <paramref name="items"/> was metered. Null when none
-    /// was: the tile stays off, and a note without a total is not shown as "n/a". Per item is the total divided by how
-    /// many items the filter lists, Done included. The published total wins; without one the metered item amounts are
-    /// summed. The file's note is kept only with a published total.
-    /// </summary>
-    public static string? Cost(WorkCost? cost, IReadOnlyList<WorkItem> items)
-    {
-        ArgumentNullException.ThrowIfNull(items);
-        if (!HasMeteredCost(items))
-        {
-            return null;
-        }
-
-        var total = cost?.TotalUsd ?? items.Sum(item => item.CostUsd ?? 0);
-        var amount = CostText.Money(total, "USD");
-        var text = $"{CostText.Money(total / items.Count, "USD")} per item · {amount} total";
-        return cost?.TotalUsd is not null && cost.Note is { } why ? $"{text} · {why}" : text;
-    }
-
-    /// <summary>What an item's own cost cell says: the amount, or <see cref="NotMetered"/>.</summary>
-    public static string ItemCost(double? costUsd) => costUsd is { } cost ? CostText.Money(cost, "USD") : NotMetered;
-
-    /// <summary>The weekly chart; null when the file gives no week.</summary>
-    public static WorkWeekChart? Chart(IReadOnlyList<WorkWeek> weeks)
-    {
-        ArgumentNullException.ThrowIfNull(weeks);
-        if (weeks.Count == 0)
-        {
-            return null;
-        }
-
-        var bars = weeks.Select(week =>
-        {
-            var merged = week.Merged ?? 0;
-            var deployed = week.DeployedProd ?? 0;
-            var label = week.WeekStart is { } start
-                ? string.Create(CultureInfo.InvariantCulture, $"Week of {start.UtcDateTime:yyyy-MM-dd}")
-                : "Week";
-            return new WorkWeekBar(
-                label,
-                merged,
-                deployed,
-                string.Create(CultureInfo.InvariantCulture, $"{label}: {merged} merged, {deployed} deployed to prod"));
-        }).ToList();
-        var scale = Math.Max(1, bars.Max(bar => Math.Max(bar.Merged, bar.DeployedProd)));
-        return new WorkWeekChart(bars, scale, "Merged and deployed to prod per week. " + string.Join(" ", bars.Select(bar => bar.Title)));
-    }
-
-    /// <summary>How tall a bar is in the chart's units. Zero stays zero, so a week with nothing is a gap, not a sliver.</summary>
-    public static double BarHeight(int value, int scale) =>
-        scale <= 0 || value <= 0 ? 0 : Math.Round(ChartHeight * value / scale, 2);
-
-    /// <summary>The newest week, in words under the chart.</summary>
-    public static string LatestWeek(WorkWeekChart chart)
-    {
-        ArgumentNullException.ThrowIfNull(chart);
-        var last = chart.Bars[^1];
-        return $"{last.Label}: {last.Merged} merged, {last.DeployedProd} deployed to prod";
-    }
-
-    public static WorkScopeLine? Scope(WorkItemsScope? scope)
-    {
-        if (scope is null)
-        {
-            return null;
-        }
-
-        var url = JsonRead.Address(scope.Repo);
-        var label = url is null ? scope.Repo : RepoLabel(url);
-        var project = scope.Project is { } number ? number.ToString(CultureInfo.InvariantCulture) : null;
-        return label is null && project is null ? null : new WorkScopeLine(label, url, project);
-    }
-
-    /// <summary>
-    /// <c>carries #12, #15</c>, the work items of the release this version is, lowest number first. Null when the
-    /// work items file names no such release, or the release carries none. The <c>+</c> build metadata of a version
-    /// is ignored, as it is everywhere else on the page.
-    /// </summary>
-    public static string? Carries(WorkItemsReport? report, string? version)
-    {
-        var shown = VersionText.Display(version);
-        if (report is null || shown is null)
-        {
-            return null;
-        }
-
-        var numbers = report.Releases
-            .Where(release => string.Equals(VersionText.Display(release.Version), shown, StringComparison.OrdinalIgnoreCase))
-            .SelectMany(release => release.Items)
-            .Distinct()
-            .Order()
-            .ToList();
-        return numbers.Count == 0 ? null : "carries " + string.Join(", ", numbers.Select(number => $"#{number.ToString(CultureInfo.InvariantCulture)}"));
-    }
+    public static string? Since(WorkItem item, DateTimeOffset now) => WorkBoardText.Since(item, now);
 
     /// <summary>An element id for a column heading: <c>work-col-in-progress</c>.</summary>
-    public static string ColumnId(string column)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(column);
-        var slug = new string(column.Trim().ToLowerInvariant().Select(character => char.IsAsciiLetterOrDigit(character) ? character : '-').ToArray());
-        return "work-col-" + string.Join('-', slug.Split('-', StringSplitOptions.RemoveEmptyEntries));
-    }
+    public static string ColumnId(string column) => WorkBoardText.ColumnId(column);
 
-    public static string Number(WorkItem item) =>
-        item.Number is { } number ? "#" + number.ToString(CultureInfo.InvariantCulture) : "Item";
+    // ---- the measures: WorkMeasureText ----
 
-    public static string IssueTitle(WorkItem item)
-    {
-        ArgumentNullException.ThrowIfNull(item);
-        var name = item.Number is { } number ? $"Work item #{number.ToString(CultureInfo.InvariantCulture)}" : "Work item";
-        return item.State is { } state ? $"{name}, {state}{LinkText.GitHubSuffix}" : name + LinkText.GitHubSuffix;
-    }
+    /// <summary><c>median 18.5 h · p85 3 d · 11 items</c>, or <see cref="NotMetered"/> when the file gives none of it.</summary>
+    public static string Duration(WorkDuration? duration) => WorkMeasureText.Duration(duration);
+
+    /// <summary><c>2 functional-test failures · 1 revert · 12.5 %</c>, or <see cref="NotMetered"/> when nothing is there.</summary>
+    public static string Rework(WorkRework? rework) => WorkMeasureText.Rework(rework);
+
+    /// <summary>True when at least one item carries a metered Cursor agent cost.</summary>
+    public static bool HasMeteredCost(IReadOnlyList<WorkItem> items) => WorkMeasureText.HasMeteredCost(items);
+
+    /// <summary><c>$2.00 per item · $18.00 total</c>; null when no item was metered.</summary>
+    public static string? Cost(WorkCost? cost, IReadOnlyList<WorkItem> items) => WorkMeasureText.Cost(cost, items);
+
+    /// <summary>What an item's own cost cell says: the amount, or <see cref="NotMetered"/>.</summary>
+    public static string ItemCost(double? costUsd) => WorkMeasureText.ItemCost(costUsd);
+
+    // ---- the weekly chart: WorkWeekText ----
+
+    /// <summary>The weekly chart; null when the file gives no week.</summary>
+    public static WorkWeekChart? Chart(IReadOnlyList<WorkWeek> weeks) => WorkWeekText.Chart(weeks);
+
+    /// <summary>How tall a bar is in the chart's units. Zero stays zero, so a week with nothing is a gap, not a sliver.</summary>
+    public static double BarHeight(int value, int scale) => WorkWeekText.BarHeight(value, scale);
+
+    /// <summary>The newest week, in words under the chart.</summary>
+    public static string LatestWeek(WorkWeekChart chart) => WorkWeekText.LatestWeek(chart);
+
+    // ---- the header's scope and a release's carries: WorkScopeText ----
+
+    public static WorkScopeLine? Scope(WorkItemsScope? scope) => WorkScopeText.Scope(scope);
+
+    /// <summary><c>carries #12, #15</c>; null when the file names no such release, or it carries none.</summary>
+    public static string? Carries(WorkItemsReport? report, string? version) => WorkScopeText.Carries(report, version);
+
+    // ---- one row: WorkRowText ----
+
+    public static string Number(WorkItem item) => WorkRowText.Number(item);
+
+    public static string IssueTitle(WorkItem item) => WorkRowText.IssueTitle(item);
 
     /// <summary>The bot handling the item, or who it is assigned to when no bot is named.</summary>
-    public static string Agent(WorkItem item) => item.Agent ?? item.Assignee ?? Missing;
+    public static string Agent(WorkItem item) => WorkRowText.Agent(item);
 
     /// <summary>Who it is assigned to, when that is someone other than the bot; null otherwise.</summary>
-    public static string? Assignee(WorkItem item) =>
-        item.Assignee is { } who && !string.Equals(who, item.Agent, StringComparison.Ordinal) ? who : null;
+    public static string? Assignee(WorkItem item) => WorkRowText.Assignee(item);
 
-    public static string PullLabel(WorkPullRequest pull) =>
-        pull.Number is { } number ? "#" + number.ToString(CultureInfo.InvariantCulture) : "Pull request";
+    public static string PullLabel(WorkPullRequest pull) => WorkRowText.PullLabel(pull);
 
-    public static string PullTitle(WorkPullRequest pull)
-    {
-        ArgumentNullException.ThrowIfNull(pull);
-        var name = pull.Number is { } number ? $"Pull request #{number.ToString(CultureInfo.InvariantCulture)}" : "Pull request";
-        var when = pull.MergedAt is { } merged ? $", merged {TimeText.Iso(merged)}" : string.Empty;
-        return name + when + LinkText.GitHubSuffix;
-    }
+    public static string PullTitle(WorkPullRequest pull) => WorkRowText.PullTitle(pull);
 
-    public static bool IsMerged(string? state) => string.Equals(state, "merged", StringComparison.OrdinalIgnoreCase);
+    public static bool IsMerged(string? state) => WorkRowText.IsMerged(state);
 
-    public static string SessionTitle(int index, int count) =>
-        (count == 1 ? "Cursor session" : string.Create(CultureInfo.InvariantCulture, $"Cursor session {index}")) + LinkText.GitHubSuffix;
+    public static string SessionTitle(int index, int count) => WorkRowText.SessionTitle(index, count);
 
-    public static string SessionLabel(int index, int count) =>
-        count == 1 ? "Session" : string.Create(CultureInfo.InvariantCulture, $"Session {index}");
+    public static string SessionLabel(int index, int count) => WorkRowText.SessionLabel(index, count);
 
     /// <summary>tdd, then uat, then prod, and only the environments the item has reached.</summary>
-    public static IReadOnlyList<WorkPlace> Places(WorkItem item)
-    {
-        ArgumentNullException.ThrowIfNull(item);
-        var places = new List<WorkPlace>(3);
-        Add(places, "tdd", item.Environments.Tdd);
-        Add(places, "uat", item.Environments.Uat);
-        Add(places, "prod", item.Environments.Prod);
-        return places;
-    }
+    public static IReadOnlyList<WorkPlace> Places(WorkItem item) => WorkRowText.Places(item);
 
-    public static string PlaceLabel(WorkPlace place) =>
-        place.Version is { } version ? $"{place.Name} {version}" : place.Name;
+    public static string PlaceLabel(WorkPlace place) => WorkRowText.PlaceLabel(place);
 
-    public static string PlaceTitle(WorkPlace place, DateTimeOffset now)
-    {
-        ArgumentNullException.ThrowIfNull(place);
-        var version = place.Version is { } deployed ? $" as {deployed}" : string.Empty;
-        var when = place.DeployedAt is { } at ? $", {TimeText.Ago(at, now)}" : string.Empty;
-        return $"Deployed to {place.Name}{version}{when}";
-    }
+    public static string PlaceTitle(WorkPlace place, DateTimeOffset now) => WorkRowText.PlaceTitle(place, now);
 
-    public static string? CandidateTitle(ReleaseCandidate candidate, DateTimeOffset now)
-    {
-        ArgumentNullException.ThrowIfNull(candidate);
-        return candidate.CreatedAt is { } at
-            ? $"Octopus release, cut {TimeText.Ago(at, now)}"
-            : "Octopus release";
-    }
-
-    private static void Add(List<WorkPlace> places, string name, WorkDeployment? deployment)
-    {
-        if (deployment is not null)
-        {
-            places.Add(new WorkPlace(name, deployment.Version, deployment.DeployedAt));
-        }
-    }
-
-    private static int CountOf(IReadOnlyDictionary<string, int> counts, string column)
-    {
-        foreach (var (name, count) in counts)
-        {
-            if (WorkColumns.Same(name, column))
-            {
-                return count;
-            }
-        }
-
-        return 0;
-    }
-
-    private static string RepoLabel(Uri url)
-    {
-        var path = url.AbsolutePath.Trim('/');
-        return path.Length > 0 ? path : url.Host;
-    }
-
-    /// <summary>A rate at or below this is a fraction (see <see cref="WorkRework.Rate"/>) and is shown as a percent.</summary>
-    private const double LargestFraction = 1.0;
-
-    /// <summary>The percent scale: a whole is this many percent.</summary>
-    private const double PercentPerWhole = 100.0;
-
-    /// <summary>A percent keeps this many decimals; <see cref="PercentFormat"/> says the same.</summary>
-    private const int PercentDecimals = 1;
-
-    /// <summary>A percent is shown to one decimal, without a trailing zero.</summary>
-    private const string PercentFormat = "0.#";
-
-    /// <summary>A rate above one is shown as the file gave it, to two decimals.</summary>
-    private const string KeptFormat = "0.##";
-
-    private static string Rate(double rate) =>
-        rate <= LargestFraction
-            ? Math.Round(rate * PercentPerWhole, PercentDecimals).ToString(PercentFormat, CultureInfo.InvariantCulture) + " %"
-            : rate.ToString(KeptFormat, CultureInfo.InvariantCulture);
+    public static string? CandidateTitle(ReleaseCandidate candidate, DateTimeOffset now) => WorkRowText.CandidateTitle(candidate, now);
 }

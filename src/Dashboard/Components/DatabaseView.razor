@@ -34,7 +34,7 @@
     }
     else if (_diagram.Manifest is { } read)
     {
-        if (DatabaseText.ReadLine(read, _live, Now) is { } line)
+        if (DatabaseText.ReadLine(read, Live, Now) is { } line)
         {
             <p class="database__note" title="@ReadTitle(read)">@line</p>
         }
@@ -44,7 +44,7 @@
             <p class="database__note">@first</p>
         }
 
-        if (DatabaseText.HasSchemaChanged(read, _live))
+        if (DatabaseText.HasSchemaChanged(read, Live))
         {
             <p class="database__changed" role="status">@DatabaseText.SchemaChanged</p>
         }
@@ -76,7 +76,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var row in DatabaseText.List(manifest, _live))
+                        @foreach (var row in DatabaseText.List(manifest, Live))
                         {
                             <tr>
                                 <th scope="row" class="grid__name">@row.Name</th>
@@ -87,7 +87,7 @@
                     </tbody>
                 </table>
             </div>
-            @if (_live is { } live && live.Tables.Any(table => table.Columns.Count > 0))
+            @if (Live is { } live && live.Tables.Any(table => table.Columns.Count > 0))
             {
                 <div class="table-scroll" role="region" aria-label="Columns of the tables of @manifest.Database" tabindex="0">
                     <table class="grid">
@@ -125,9 +125,8 @@
 
 @code {
     private readonly CancellationTokenSource _stopping = new();
+    private readonly IntervalRead<DatabaseLive> _liveRead = new(DatabaseRefresh.Interval);
     private DatabaseDiagram? _diagram;
-    private DatabaseLive? _live;
-    private DateTimeOffset? _lastRead;
     private bool _reading;
     private IJSObjectReference? _module;
     private ElementReference _section;
@@ -207,29 +206,29 @@
 
     /// <summary>
     /// Every round of the page's checks renders the view again: that is when the live file is read, by the rule of
-    /// <see cref="DatabaseRefresh"/>. A read that fails keeps what the view shows.
+    /// <see cref="DatabaseRefresh"/> on the read's own home (<see cref="Health.IntervalRead{T}"/>). The stamp of the
+    /// last asking and the keep of the last good answer stand there; a read that fails keeps what the view shows.
     /// </summary>
     protected override async Task OnParametersSetAsync()
     {
-        if (_reading || _diagram?.Manifest?.Source is not { } source || !DatabaseRefresh.IsDue(Active, _lastRead, Now))
+        if (_reading || _diagram?.Manifest?.Source is not { } source || !DatabaseRefresh.IsDue(Active, _liveRead.LastAsked, Now))
         {
             return;
         }
 
         _reading = true;
-        _lastRead = Now;
         try
         {
-            if (await Loader.ReadLiveDatabaseAsync(source, _stopping.Token) is { } live)
-            {
-                _live = live;
-            }
+            await _liveRead.ReadIfDueAsync(Now, token => Loader.ReadLiveDatabaseAsync(source, token), _stopping.Token);
         }
         finally
         {
             _reading = false;
         }
     }
+
+    /// <summary>The live file, as the read's home last kept it: a read that answers nothing keeps the last good one.</summary>
+    private DatabaseLive? Live => _liveRead.Last;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -259,7 +258,7 @@
             return;
         }
 
-        var counts = DatabaseText.Counts(diagram.Manifest!, _live);
+        var counts = DatabaseText.Counts(diagram.Manifest!, Live);
         var drawn = string.Join('\n', counts.Select(count => $"{count.QualifiedName}\t{count.Text}"));
         if (drawn == _drawn)
         {
@@ -273,7 +272,7 @@
     /// <summary>The line's tooltip: the moments in full, and what is how old.</summary>
     private string? ReadTitle(DatabaseManifest manifest)
     {
-        var (at, live) = DatabaseText.ReadAt(manifest, _live);
+        var (at, live) = DatabaseText.ReadAt(manifest, Live);
         if (at is not { } moment)
         {
             return null;

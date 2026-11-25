@@ -7,16 +7,12 @@ public class ServingAssessmentTests
     private const HealthState Unreachable = HealthState.Unreachable;
     private const HealthState Pending = HealthState.Pending;
 
-    private static NodeHealth Primary(HealthState state, string region = "westus3") => new($"app-{region}", region, true, state);
-
-    private static NodeHealth Standby(HealthState state, string region = "eastus2") => new($"app-{region}", region, false, state);
-
     [Fact]
     public void ARotationIsBuiltWithEveryPartInItsPlace()
     {
-        var west = Primary(Unhealthy, "westus3");
-        var east = Primary(Healthy, "eastus2");
-        var standby = Standby(Healthy, "centralus");
+        var west = NodeHealths.Primary(Unhealthy, "westus3");
+        var east = NodeHealths.Primary(Healthy, "eastus2");
+        var standby = NodeHealths.Standby(Healthy, "centralus");
 
         var assessment = ServingAssessment.Assess([standby, west, east], frontDoor: Unreachable);
 
@@ -36,8 +32,8 @@ public class ServingAssessmentTests
     [Fact]
     public void AFailedOverDeployableIsBuiltWithEveryPartInItsPlace()
     {
-        var west = Primary(Unreachable, "westus3");
-        var east = Standby(Healthy, "eastus2");
+        var west = NodeHealths.Primary(Unreachable, "westus3");
+        var east = NodeHealths.Standby(Healthy, "eastus2");
 
         var assessment = ServingAssessment.Assess([west, east], frontDoor: Healthy);
 
@@ -56,7 +52,7 @@ public class ServingAssessmentTests
     [Fact]
     public void AnOnlyNodeWithoutFrontDoorIsBuiltWithEveryPartInItsPlace()
     {
-        var only = Primary(Healthy, "westus3");
+        var only = NodeHealths.Primary(Healthy, "westus3");
 
         var assessment = ServingAssessment.Assess([only], frontDoor: null);
 
@@ -75,7 +71,7 @@ public class ServingAssessmentTests
     [Fact]
     public void AHealthyPrimaryServes()
     {
-        var assessment = ServingAssessment.Assess([Primary(Healthy), Standby(Healthy)], frontDoor: Healthy);
+        var assessment = ServingAssessment.Assess([NodeHealths.Primary(Healthy), NodeHealths.Standby(Healthy)], frontDoor: Healthy);
 
         Assert.Equal(ServingState.Primary, assessment.State);
         Assert.Equal("westus3", assessment.Expected?.Region);
@@ -89,7 +85,7 @@ public class ServingAssessmentTests
     [InlineData(Unreachable, "Primary westus3 is unreachable; eastus2 is expected to serve traffic.")]
     public void AStandbyServesWhenThePrimaryIsNotHealthy(HealthState primary, string detail)
     {
-        var assessment = ServingAssessment.Assess([Primary(primary), Standby(Healthy)], frontDoor: Healthy);
+        var assessment = ServingAssessment.Assess([NodeHealths.Primary(primary), NodeHealths.Standby(Healthy)], frontDoor: Healthy);
 
         Assert.Equal(ServingState.FailedOver, assessment.State);
         Assert.True(assessment.IsFailedOver);
@@ -102,7 +98,7 @@ public class ServingAssessmentTests
     [Fact]
     public void TheFirstHealthyStandbyInTopologyOrderServes()
     {
-        var nodes = new[] { Primary(Unreachable), Standby(Unhealthy, "eastus2"), Standby(Healthy, "centralus"), Standby(Healthy, "northeurope") };
+        var nodes = new[] { NodeHealths.Primary(Unreachable), NodeHealths.Standby(Unhealthy, "eastus2"), NodeHealths.Standby(Healthy, "centralus"), NodeHealths.Standby(Healthy, "northeurope") };
 
         var assessment = ServingAssessment.Assess(nodes, frontDoor: null);
 
@@ -113,7 +109,7 @@ public class ServingAssessmentTests
     [Fact]
     public void APrimaryListedAfterAStandbyStillHasPriority()
     {
-        var assessment = ServingAssessment.Assess([Standby(Healthy), Primary(Healthy)], frontDoor: null);
+        var assessment = ServingAssessment.Assess([NodeHealths.Standby(Healthy), NodeHealths.Primary(Healthy)], frontDoor: null);
 
         Assert.Equal(ServingState.Primary, assessment.State);
         Assert.Equal("westus3", assessment.Expected?.Region);
@@ -122,7 +118,7 @@ public class ServingAssessmentTests
     [Fact]
     public void NoHealthyNodeMeansNothingServes()
     {
-        var assessment = ServingAssessment.Assess([Primary(Unreachable), Standby(Unhealthy)], frontDoor: Unreachable);
+        var assessment = ServingAssessment.Assess([NodeHealths.Primary(Unreachable), NodeHealths.Standby(Unhealthy)], frontDoor: Unreachable);
 
         Assert.Equal(ServingState.Down, assessment.State);
         Assert.Null(assessment.Expected);
@@ -133,7 +129,7 @@ public class ServingAssessmentTests
     [Fact]
     public void ASingleHealthyPrimaryServesWithoutAStandby()
     {
-        var assessment = ServingAssessment.Assess([Primary(Healthy)], frontDoor: Healthy);
+        var assessment = ServingAssessment.Assess([NodeHealths.Primary(Healthy)], frontDoor: Healthy);
 
         Assert.Equal(ServingState.Primary, assessment.State);
     }
@@ -141,7 +137,7 @@ public class ServingAssessmentTests
     [Fact]
     public void AnUncheckedPrimaryIsNotAFailover()
     {
-        var assessment = ServingAssessment.Assess([Primary(Pending), Standby(Healthy)], frontDoor: Healthy);
+        var assessment = ServingAssessment.Assess([NodeHealths.Primary(Pending), NodeHealths.Standby(Healthy)], frontDoor: Healthy);
 
         Assert.Equal(ServingState.Pending, assessment.State);
         Assert.Null(assessment.Expected);
@@ -151,7 +147,7 @@ public class ServingAssessmentTests
     [Fact]
     public void AHealthyPrimaryServesWhileTheStandbyIsStillUnchecked()
     {
-        var assessment = ServingAssessment.Assess([Primary(Healthy), Standby(Pending)], frontDoor: null);
+        var assessment = ServingAssessment.Assess([NodeHealths.Primary(Healthy), NodeHealths.Standby(Pending)], frontDoor: null);
 
         Assert.Equal(ServingState.Primary, assessment.State);
     }
@@ -192,12 +188,12 @@ public class ServingAssessmentTests
 
     [Fact]
     public void TheOnlyNodeIsNamedByItsRegionWhenTheTopologyGivesOne() =>
-        Assert.Equal("Serves traffic: westus3", ServingAssessment.Assess([Primary(Healthy)], frontDoor: null).Headline);
+        Assert.Equal("Serves traffic: westus3", ServingAssessment.Assess([NodeHealths.Primary(Healthy)], frontDoor: null).Headline);
 
     [Fact]
     public void AnOnlyNodeWhoseRoleIsNotPrimaryDidNotFailOver()
     {
-        var assessment = ServingAssessment.Assess([Standby(Healthy)], frontDoor: null);
+        var assessment = ServingAssessment.Assess([NodeHealths.Standby(Healthy)], frontDoor: null);
 
         Assert.Equal("Serves traffic: eastus2", assessment.Headline);
         Assert.Null(assessment.FailoverDetail);
@@ -210,7 +206,7 @@ public class ServingAssessmentTests
     [InlineData(false, 0)]
     public void ADeployableWithAFrontDoorOrSeveralNodesKeepsItsWords(bool frontDoor, int nodes)
     {
-        NodeHealth[] all = [Primary(Healthy), Standby(Healthy)];
+        NodeHealth[] all = [NodeHealths.Primary(Healthy), NodeHealths.Standby(Healthy)];
 
         var assessment = ServingAssessment.Assess(all.Take(nodes), frontDoor ? Healthy : null);
 
@@ -221,7 +217,7 @@ public class ServingAssessmentTests
     [Fact]
     public void WithoutAFrontDoorThereIsNothingToCompare()
     {
-        var assessment = ServingAssessment.Assess([Primary(Healthy)], frontDoor: null);
+        var assessment = ServingAssessment.Assess([NodeHealths.Primary(Healthy)], frontDoor: null);
 
         Assert.Equal(FrontDoorAgreement.NotPresent, assessment.FrontDoor);
         Assert.Null(assessment.FrontDoorText);
@@ -243,7 +239,7 @@ public class ServingAssessmentTests
         FrontDoorAgreement agreement,
         string text)
     {
-        var assessment = ServingAssessment.Assess([Primary(primary), Standby(standby)], frontDoor);
+        var assessment = ServingAssessment.Assess([NodeHealths.Primary(primary), NodeHealths.Standby(standby)], frontDoor);
 
         Assert.Equal(agreement, assessment.FrontDoor);
         Assert.Equal(text, assessment.FrontDoorText);

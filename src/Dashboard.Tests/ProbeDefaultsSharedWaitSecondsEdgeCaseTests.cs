@@ -65,6 +65,30 @@ public class ProbeDefaultsSharedWaitSecondsEdgeCaseTests
     }
 
     /// <summary>
+    /// The stronger guard beside <see cref="TheTrafficWaitIsTheSharedWholeSecondsAndStaysAPublicConstInt" /> (#1777):
+    /// the wait a traffic run gives a request is declared on the run itself now, and the wait it carries is the
+    /// shared whole seconds - the const the run declares, the const the guard above pins on the plan and the
+    /// page's probe wait all say the one wait, so the browser call and the sentence about it still read the shared
+    /// ten seconds.
+    /// </summary>
+    [Fact]
+    public void TheTrafficWaitOnTheRunIsTheSharedWholeSeconds()
+    {
+        var field = typeof(TrafficRun.Values).GetField(nameof(TrafficRun.Values.AnswerWithinSeconds), BindingFlags.Public | BindingFlags.Static);
+
+        Assert.NotNull(field);
+        Assert.True(field!.IsLiteral, "The wait is a const on the run, so no caller keeps a copy of the number.");
+        Assert.True(field.IsPublic);
+        Assert.Equal(typeof(int), field.FieldType);
+        Assert.Equal(SharedDefaultSeconds(), (int)field.GetRawConstantValue()!);
+
+        // The run's wait and the const the guard above pins on the plan say the same wait, and it is the page's.
+        Assert.Equal(TrafficPlan.AnswerWithinSeconds, TrafficRun.Values.AnswerWithinSeconds);
+        Assert.Equal(SharedDefault(), TimeSpan.FromSeconds(TrafficRun.Values.AnswerWithinSeconds));
+        Assert.Equal(NodeProber.DefaultTimeout, TimeSpan.FromSeconds(TrafficRun.Values.AnswerWithinSeconds));
+    }
+
+    /// <summary>
     /// The wait the traffic button gives a request is the wait a check of the page gives, as its doc says: the same
     /// ten seconds the node prober waits by default.
     /// </summary>

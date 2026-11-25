@@ -13,7 +13,7 @@ internal static class ProbeDefaults
     /// The shared probe wait in its whole-second form: ten, the number <see cref="DefaultTimeout" /> is made of. A
     /// caller that cannot hold a <see cref="TimeSpan" /> reads the wait here - the words that say it
     /// (<see cref="NoAnswerWithin" /> says it in whole seconds too, rounded, in the invariant culture) and a browser
-    /// call that takes whole seconds, as the traffic button's <see cref="TrafficPlan.AnswerWithinSeconds" /> does.
+    /// call that takes whole seconds, as the traffic button's <see cref="TrafficRun.Values.AnswerWithinSeconds" /> does.
     /// </summary>
     public const int DefaultTimeoutSeconds = 10;
 

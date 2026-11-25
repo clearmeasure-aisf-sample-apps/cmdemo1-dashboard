@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Dashboard.Runtime;
 
 namespace Dashboard.Health;
 
@@ -18,39 +19,17 @@ public sealed record TopologyParseResult(Topology? Topology, IReadOnlyList<strin
 /// </summary>
 public static class TopologyParser
 {
-    private static readonly JsonDocumentOptions Options = new()
-    {
-        AllowTrailingCommas = true,
-        CommentHandling = JsonCommentHandling.Skip,
-    };
-
     public static TopologyParseResult Parse(string? json)
     {
-        if (string.IsNullOrWhiteSpace(json))
+        // The app's one opener (#1784): the same three refusals, in the same words, and the same options as runtime/.
+        if (!RuntimeManifestParser.TryOpen(json, out var document, out var problem))
         {
-            return TopologyParseResult.Failed("The file is empty.");
-        }
-
-        JsonDocument document;
-        try
-        {
-            document = JsonDocument.Parse(json, Options);
-        }
-        catch (JsonException exception)
-        {
-            // Line and position, not the exception's message: the published app carries no framework message texts.
-            return TopologyParseResult.Failed(
-                $"The file is not valid JSON (line {exception.LineNumber + 1}, position {exception.BytePositionInLine + 1}).");
+            return TopologyParseResult.Failed(problem);
         }
 
         using (document)
         {
             var root = document.RootElement;
-            if (root.ValueKind != JsonValueKind.Object)
-            {
-                return TopologyParseResult.Failed("The file must contain a JSON object.");
-            }
-
             var errors = new List<string>();
             var system = ReadSystem(root, errors);
             var generated = ReadTime(root, "generated");

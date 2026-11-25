@@ -996,4 +996,34 @@ public class RuntimePayloadBuilderTests
         Assert.Contains("ca-ui, ca-worker", database.Title, StringComparison.Ordinal);
         Assert.DoesNotContain("ca-other", database.Title, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// The sentence of a reachable database has one owner (#1733): the web apps' exit and the container apps' exit
+    /// say it in the same words, each naming only the apps of its own kind, neither adding a word of its own.
+    /// </summary>
+    [Fact]
+    public void TheReachableDatabaseOfTheWebAppsAndOfTheContainerAppsIsSaidInTheSameSentence()
+    {
+        var web = Tile(Build(Uat()), "sqldb").Title;
+        var container = Tile(RuntimePayloadBuilder.Build(Shipped("uat"), null, Page, TimeZoneInfo.Utc, containerApps: _ => HealthOf(ContainerAppState.Healthy)), "sqldb").Title;
+
+        // The sentence with the names of its own diagram taken out: the two sample diagrams name the database and its
+        // apps differently, so this is the part the two exits are required to agree on word for word.
+        static string Sentence(string title)
+        {
+            var after = title.IndexOf(": reachable", StringComparison.Ordinal) + ": reachable".Length;
+            var beforeNames = title.IndexOf("the health check of ", StringComparison.Ordinal) + "the health check of ".Length;
+            var afterNames = title.IndexOf(" connected to it", StringComparison.Ordinal);
+            return title[after..beforeNames] + title[afterNames..];
+        }
+
+        Assert.Equal(". The database takes no call from a browser; the health check of  connected to it (last 22:00:00).", Sentence(web));
+        Assert.Equal(Sentence(web), Sentence(container));
+
+        // Each exit speaks of its own apps, and of nothing else: where no app reports telemetry, the sentence is all
+        // the title has.
+        Assert.DoesNotContain("container app", web, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("web app", container, StringComparison.OrdinalIgnoreCase);
+        Assert.EndsWith(" connected to it (last 22:00:00).", container, StringComparison.Ordinal);
+    }
 }

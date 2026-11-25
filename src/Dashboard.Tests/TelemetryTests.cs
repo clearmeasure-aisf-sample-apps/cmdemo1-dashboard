@@ -267,6 +267,23 @@ public class TelemetryTests
         Assert.Contains("62 while handling requests, 103 in the background (mostly the message bus polling the database)", database.Title, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The optional telemetry sentence of a reachable database follows the period of the sentence the container apps'
+    /// exit says too (#1733): the sentence itself is the same whether or not the apps tell their queries apart.
+    /// </summary>
+    [Fact]
+    public void TheBackgroundQueriesAreSaidAfterTheSentenceTheAppsWithoutTelemetrySay()
+    {
+        var told = RuntimePayloadBuilder.Build(Manifest(), Uat(Split(62, 55), Split(0, 48)), Page, TimeZoneInfo.Utc).Nodes.Single(tile => tile.Alias == "sqldb");
+        var silent = RuntimePayloadBuilder.Build(Manifest(), Uat(null, null), Page, TimeZoneInfo.Utc).Nodes.Single(tile => tile.Alias == "sqldb");
+
+        // The same sentence as the app that reports nothing, and the telemetry sentence appended after its period.
+        Assert.StartsWith(silent.Title, told.Title, StringComparison.Ordinal);
+        Assert.Equal(
+            " Queries per minute, counted by the web apps: 62 while handling requests, 103 in the background (mostly the message bus polling the database).",
+            told.Title[silent.Title.Length..]);
+    }
+
     [Fact]
     public void AnOlderAppThatDoesNotTellThemApartKeepsTheTotalOnItsArrow()
     {

@@ -34,6 +34,26 @@ internal static class JsonRead
             ? [.. array.EnumerateArray()]
             : [];
 
+    /// <summary>
+    /// The strings of the list under <paramref name="name"/>, trimmed, the empty ones left out, in the order written;
+    /// null without the list, and when it is no strings at all - an empty word is no word, as in <see cref="Text" />.
+    /// </summary>
+    public static List<string>? Strings(JsonElement? parent, string name)
+    {
+        if (parent is not { ValueKind: JsonValueKind.Object } value || !value.TryGetProperty(name, out var array) || array.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var strings = array.EnumerateArray()
+            .Where(item => item.ValueKind == JsonValueKind.String)
+            .Select(item => item.GetString()?.Trim())
+            .Where(item => !string.IsNullOrEmpty(item))
+            .Select(item => item!)
+            .ToList();
+        return strings.Count == 0 ? null : strings;
+    }
+
     /// <summary>A number that is not negative; null for anything else.</summary>
     public static double? Number(JsonElement? parent, string name) =>
         Signed(parent, name) is { } real and >= 0 ? real : null;

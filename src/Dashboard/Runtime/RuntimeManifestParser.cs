@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Dashboard.Health;
 
 namespace Dashboard.Runtime;
 
@@ -60,7 +61,7 @@ public static class RuntimeManifestParser
             foreach (var element in array.EnumerateArray())
             {
                 var path = $"environments[{index++}]";
-                var name = element.ValueKind == JsonValueKind.Object ? Text(element, "name") : null;
+                var name = element.ValueKind == JsonValueKind.Object ? JsonRead.Text(element, "name") : null;
                 if (name is null)
                 {
                     errors.Add($"{path}.name: missing or empty.");
@@ -74,7 +75,7 @@ public static class RuntimeManifestParser
 
             return errors.Count > 0
                 ? new RuntimeParseResult<RuntimeIndex>(null, errors)
-                : new RuntimeParseResult<RuntimeIndex>(new RuntimeIndex(entries, Text(root, "plantuml")), []);
+                : new RuntimeParseResult<RuntimeIndex>(new RuntimeIndex(entries, JsonRead.Text(root, "plantuml")), []);
         }
     }
 
@@ -89,7 +90,7 @@ public static class RuntimeManifestParser
         {
             var root = document.RootElement;
             var errors = new List<string>();
-            var environment = Text(root, "environment");
+            var environment = JsonRead.Text(root, "environment");
             if (environment is null)
             {
                 errors.Add("environment: missing or empty.");
@@ -97,31 +98,31 @@ public static class RuntimeManifestParser
 
             var nodes = ReadArray(root, "nodes", errors, (element, path) =>
             {
-                var alias = Text(element, "alias");
+                var alias = JsonRead.Text(element, "alias");
                 if (alias is null)
                 {
                     errors.Add($"{path}.alias: missing or empty.");
                     return null;
                 }
 
-                var url = Address(element, "url");
-                if (url is null && Text(element, "url") is not null)
+                var url = JsonRead.Address(element, "url");
+                if (url is null && JsonRead.Text(element, "url") is not null)
                 {
                     errors.Add($"{path}.url: not an absolute http or https address.");
                 }
 
-                var kind = NodeKind(Text(element, "kind"));
+                var kind = NodeKind(JsonRead.Text(element, "kind"));
                 return new RuntimeNode(
                     alias,
                     kind,
-                    Text(element, "name") ?? alias,
+                    JsonRead.Text(element, "name") ?? alias,
                     url,
-                    Text(element, "deployable"),
-                    Text(element, "role")?.ToLowerInvariant(),
-                    Text(element, "region"),
-                    Text(element, "regionAlias"),
-                    Text(element, "healthCheck"),
-                    Text(element, "dependencyKind"),
+                    JsonRead.Text(element, "deployable"),
+                    JsonRead.Text(element, "role")?.ToLowerInvariant(),
+                    JsonRead.Text(element, "region"),
+                    JsonRead.Text(element, "regionAlias"),
+                    JsonRead.Text(element, "healthCheck"),
+                    JsonRead.Text(element, "dependencyKind"),
                     Links(element),
                     HealthPath(element),
                     Ids(element),
@@ -129,7 +130,7 @@ public static class RuntimeManifestParser
             });
             var regions = ReadArray(root, "regions", errors, (element, path) =>
             {
-                var alias = Text(element, "alias");
+                var alias = JsonRead.Text(element, "alias");
                 if (alias is null)
                 {
                     errors.Add($"{path}.alias: missing or empty.");
@@ -139,24 +140,24 @@ public static class RuntimeManifestParser
                 var roles = element.TryGetProperty("roles", out var array) && array.ValueKind == JsonValueKind.Array
                     ? array.EnumerateArray().Where(role => role.ValueKind == JsonValueKind.String).Select(role => role.GetString()!).ToList()
                     : [];
-                return new RuntimeRegion(alias, Text(element, "name") ?? alias, roles, Links(element));
+                return new RuntimeRegion(alias, JsonRead.Text(element, "name") ?? alias, roles, Links(element));
             });
             var frames = ReadArray(root, "frames", errors, (element, path) =>
             {
-                var alias = Text(element, "alias");
+                var alias = JsonRead.Text(element, "alias");
                 if (alias is null)
                 {
                     errors.Add($"{path}.alias: missing or empty.");
                     return null;
                 }
 
-                return new RuntimeFrame(alias, Text(element, "kind") ?? string.Empty, Text(element, "name") ?? alias, Links(element));
+                return new RuntimeFrame(alias, JsonRead.Text(element, "kind") ?? string.Empty, JsonRead.Text(element, "name") ?? alias, Links(element));
             });
             var edges = ReadArray(root, "edges", errors, (element, path) =>
             {
-                var id = Text(element, "id");
-                var from = Text(element, "from");
-                var to = Text(element, "to");
+                var id = JsonRead.Text(element, "id");
+                var from = JsonRead.Text(element, "from");
+                var to = JsonRead.Text(element, "to");
                 if (id is null || from is null || to is null)
                 {
                     errors.Add($"{path}: id, from and to are required.");
@@ -164,7 +165,7 @@ public static class RuntimeManifestParser
                 }
 
                 int? priority = element.TryGetProperty("priority", out var number) && number.TryGetInt32(out var value) ? value : null;
-                return new RuntimeEdge(id, from, to, EdgeKind(Text(element, "kind")), priority);
+                return new RuntimeEdge(id, from, to, EdgeKind(JsonRead.Text(element, "kind")), priority);
             });
 
             return errors.Count > 0 || environment is null
@@ -251,7 +252,7 @@ public static class RuntimeManifestParser
     /// <summary>A file next to the index: a plain name, never an address or a path that leaves <c>runtime/</c>.</summary>
     private static string RelativeFile(JsonElement element, string property, string fallback, string path, List<string> errors)
     {
-        var file = Text(element, property) ?? fallback;
+        var file = JsonRead.Text(element, property) ?? fallback;
         if (!IsFileName(file))
         {
             errors.Add($"{path}.{property}: not a file name in runtime/.");
@@ -266,31 +267,13 @@ public static class RuntimeManifestParser
     /// </summary>
     private static RuntimeDatabaseFiles? Database(JsonElement entry) =>
         entry.TryGetProperty("database", out var database) && database.ValueKind == JsonValueKind.Object
-            && Text(database, "svg") is { } svg && IsFileName(svg)
-            && Text(database, "manifest") is { } manifest && IsFileName(manifest)
+            && JsonRead.Text(database, "svg") is { } svg && IsFileName(svg)
+            && JsonRead.Text(database, "manifest") is { } manifest && IsFileName(manifest)
             ? new RuntimeDatabaseFiles(svg, manifest)
             : null;
 
     private static bool IsFileName(string file) =>
         !(file.Contains('/', StringComparison.Ordinal) || file.Contains('\\', StringComparison.Ordinal) || file.Contains(':', StringComparison.Ordinal) || file.StartsWith('.'));
-
-    private static string? Text(JsonElement parent, string property)
-    {
-        if (!parent.TryGetProperty(property, out var value) || value.ValueKind != JsonValueKind.String)
-        {
-            return null;
-        }
-
-        var text = value.GetString()?.Trim();
-        return string.IsNullOrEmpty(text) ? null : text;
-    }
-
-    private static Uri? Address(JsonElement parent, string property) =>
-        Text(parent, property) is { } text
-        && Uri.TryCreate(text, UriKind.Absolute, out var address)
-        && (address.Scheme == Uri.UriSchemeHttp || address.Scheme == Uri.UriSchemeHttps)
-            ? address
-            : null;
 
     /// <summary>
     /// The <c>links</c> of an element: a map of a key to an address. Only an absolute https address is kept (a link
@@ -364,13 +347,13 @@ public static class RuntimeManifestParser
 
     /// <summary>A text of an entry of <c>unplaced</c>, cut at <see cref="LongestUnplacedText"/> characters.</summary>
     private static string? Cut(JsonElement parent, string property) =>
-        Text(parent, property) is { } text
+        JsonRead.Text(parent, property) is { } text
             ? text.Length > LongestUnplacedText ? text[..LongestUnplacedText] : text
             : null;
 
     /// <summary>An absolute https address without a user name, of a sensible length; anything else is null.</summary>
     private static Uri? Secure(JsonElement parent, string property) =>
-        Text(parent, property) is { Length: <= LongestAddress } text
+        JsonRead.Text(parent, property) is { Length: <= LongestAddress } text
         && Uri.TryCreate(text, UriKind.Absolute, out var address)
         && address.Scheme == Uri.UriSchemeHttps
         && address.UserInfo.Length == 0
@@ -386,7 +369,7 @@ public static class RuntimeManifestParser
     /// left out, never an error: the page then asks the app's root.
     /// </summary>
     private static string? HealthPath(JsonElement parent) =>
-        Text(parent, "healthPath") is { Length: <= LongestPath } path && path[0] == '/' && !path.StartsWith("//", StringComparison.Ordinal)
+        JsonRead.Text(parent, "healthPath") is { Length: <= LongestPath } path && path[0] == '/' && !path.StartsWith("//", StringComparison.Ordinal)
             && path.All(character => char.IsAsciiLetterOrDigit(character) || "/._~-".Contains(character, StringComparison.Ordinal))
             ? path
             : null;
@@ -398,30 +381,16 @@ public static class RuntimeManifestParser
     /// </summary>
     private static Uri? Architecture(JsonElement parent, RuntimeNodeKind kind) =>
         kind is RuntimeNodeKind.WebApp or RuntimeNodeKind.ContainerApp
-        && Text(parent, "architecture") is { Length: <= LongestPath * 2 } text
+        && JsonRead.Text(parent, "architecture") is { Length: <= LongestPath * 2 } text
         && Uri.TryCreate(text, UriKind.Absolute, out var address)
         && address.Scheme == Uri.UriSchemeHttps
         && address.Query.Length == 0 && address.Fragment.Length == 0 && address.UserInfo.Length == 0
             ? address
             : null;
 
-    /// <summary>A node's resource ids: the strings of its list that are not empty; null without one.</summary>
-    private static List<string>? Ids(JsonElement parent)
-    {
-        if (!parent.TryGetProperty("ids", out var array) || array.ValueKind != JsonValueKind.Array)
-        {
-            return null;
-        }
-
-        var ids = array.EnumerateArray()
-            .Where(id => id.ValueKind == JsonValueKind.String)
-            .Select(id => id.GetString()?.Trim())
-            .Where(id => !string.IsNullOrEmpty(id))
-            .Select(id => id!)
-            .Take(MostIds)
-            .ToList();
-        return ids.Count == 0 ? null : ids;
-    }
+    /// <summary>A node's resource ids: the first <see cref="MostIds"/> of the strings of its list; null without one.</summary>
+    private static List<string>? Ids(JsonElement parent) =>
+        JsonRead.Strings(parent, "ids") is { } strings ? strings.Take(MostIds).ToList() : null;
 
     private static RuntimeNodeKind NodeKind(string? kind) => kind?.ToLowerInvariant() switch
     {

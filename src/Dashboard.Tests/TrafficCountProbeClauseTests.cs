@@ -19,6 +19,21 @@ public class TrafficCountProbeClauseTests
         Assert.Equal($"119 sent, 109 answered, 10 with {clause}", TrafficCount.From([119, 109, 0, 10, 0]).Counts);
     }
 
+    /// <summary>
+    /// The given-up part is said over the wait the plan holds as a duration beside its whole seconds
+    /// (<see cref="TrafficPlan.AnswerWithin"/>, #1795): the sentence is the probe's clause for that duration, so the
+    /// words and the shared wait cannot come apart.
+    /// </summary>
+    [Fact]
+    public void TheGivenUpPartIsTheProbeClauseForThePlansDuration()
+    {
+        var type = typeof(NodeProber).Assembly.GetType("Dashboard.Health.ProbeDefaults", throwOnError: true)!;
+        var method = type.GetMethod("NoAnswerWithin", BindingFlags.Public | BindingFlags.Static, [typeof(TimeSpan)])!;
+        var clause = (string)method.Invoke(null, [TrafficPlan.AnswerWithin])!;
+
+        Assert.Equal($"119 sent, 109 answered, 10 with {clause}", TrafficCount.From([119, 109, 0, 10, 0]).Counts);
+    }
+
     [Fact]
     public void TheWordsNoAnswerWithinAreWrittenOnceInTheApp()
     {

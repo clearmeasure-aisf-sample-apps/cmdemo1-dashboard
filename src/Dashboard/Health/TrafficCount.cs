@@ -41,7 +41,7 @@ public sealed record TrafficCount(int Sent, int Answered, int Failed, int Unansw
 
             if (Unanswered > 0)
             {
-                parts.Add(Part(Unanswered, "with " + ProbeDefaults.NoAnswerWithin(TimeSpan.FromSeconds(TrafficPlan.AnswerWithinSeconds))));
+                parts.Add(Part(Unanswered, "with " + ProbeDefaults.NoAnswerWithin(TrafficPlan.AnswerWithin)));
             }
 
             if (OnTheirWay > 0)

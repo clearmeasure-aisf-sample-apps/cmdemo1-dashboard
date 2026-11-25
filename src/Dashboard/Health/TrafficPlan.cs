@@ -8,8 +8,9 @@ namespace Dashboard.Health;
 ///
 /// The three consts below that say what a press sends - <see cref="PerSecond"/>, <see cref="Seconds"/> and
 /// <see cref="AnswerWithinSeconds"/> - belong to one run and travel together as one <see cref="TrafficRun"/>;
-/// how often the page checks while a run lasts is not one of them, and lives here as one rule in both of its
-/// shapes, <see cref="CheckEverySeconds"/> whole and <see cref="CheckEvery"/> as a duration.
+/// the two rules beside them - how often the page checks while a run lasts, and how long a request waits for its
+/// answer - are not numbers of the run, and each lives here in both of its shapes: <see cref="CheckEverySeconds"/>
+/// and <see cref="CheckEvery"/>, <see cref="AnswerWithinSeconds"/> and <see cref="AnswerWithin"/>.
 /// </summary>
 public sealed record TrafficPlan(string Environment, IReadOnlyList<Uri> Addresses, IReadOnlyList<string> Targets)
 {
@@ -27,6 +28,15 @@ public sealed record TrafficPlan(string Environment, IReadOnlyList<Uri> Addresse
     /// request at the latest. Whole seconds, because the browser call and the sentence about it take it that way.
     /// </summary>
     public const int AnswerWithinSeconds = ProbeDefaults.DefaultTimeoutSeconds;
+
+    /// <summary>
+    /// That same wait as a duration: the shared probe wait, <see cref="ProbeDefaults.DefaultTimeout"/>, the length
+    /// <see cref="AnswerWithinSeconds"/> is made of - the shape <see cref="CheckEvery"/> has beside
+    /// <see cref="CheckEverySeconds"/>. The one home of the rule a caller that holds a length reads: the sentence of
+    /// <see cref="TrafficCount"/> says a request given up over it, and the words still read the whole seconds - so
+    /// the wait is never rebuilt from its seconds wherever it is needed (#1795).
+    /// </summary>
+    public static readonly TimeSpan AnswerWithin = ProbeDefaults.DefaultTimeout;
 
     /// <summary>
     /// How often the page checks while the traffic runs, so the numbers follow it, in whole seconds: the number

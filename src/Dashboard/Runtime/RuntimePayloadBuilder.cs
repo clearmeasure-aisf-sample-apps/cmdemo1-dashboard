@@ -648,11 +648,7 @@ public static class RuntimePayloadBuilder
             return WaitingTile(node, WebApps);
         }
 
-        return NeutralTile(
-            node,
-            NotConfirmed,
-            "no health check of its apps passes",
-            $"{node.Name}: no web app that uses it passes its health check, so this page cannot tell whether it answers: the database or the web app may be the cause.");
+        return DatabaseUnconfirmed(node, "web app", "web app");
     }
 
     private static RuntimeTile NeutralTile(RuntimeNode node, string label, string line, string title) =>
@@ -676,6 +672,18 @@ public static class RuntimePayloadBuilder
         const string Why = "the database takes no call from a browser, and this page checks no web app that uses it.";
         return health.Tile(node, Why) ?? NotProbedTile(node, "not probed from the browser", $"{node.Name}: {Why}");
     }
+
+    /// <summary>
+    /// The database no passing health check confirms: a failed check may be the app, not the database, so it is not
+    /// called down. <paramref name="user"/> names the apps that use it ("web app", "container app");
+    /// <paramref name="cause"/> names the other possible cause of a failed check ("web app", "app").
+    /// </summary>
+    private static RuntimeTile DatabaseUnconfirmed(RuntimeNode node, string user, string cause) =>
+        NeutralTile(
+            node,
+            NotConfirmed,
+            "no health check of its apps passes",
+            $"{node.Name}: no {user} that uses it passes its health check, so this page cannot tell whether it answers: the database or the {cause} may be the cause.");
 
     /// <summary>
     /// The database from the container apps that use it. A healthy health-path probe connected to it. An app that has
@@ -713,11 +721,7 @@ public static class RuntimePayloadBuilder
             return health.Tile(node, why) ?? NotProbedTile(node, "health check not read", $"{node.Name}: {why}");
         }
 
-        return NeutralTile(
-            node,
-            NotConfirmed,
-            "no health check of its apps passes",
-            $"{node.Name}: no container app that uses it passes its health check, so this page cannot tell whether it answers: the database or the app may be the cause.");
+        return DatabaseUnconfirmed(node, "container app", "app");
     }
 
     /// <summary>

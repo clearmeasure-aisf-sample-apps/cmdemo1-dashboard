@@ -189,6 +189,24 @@ public static class BuildText
 
     public const string Other = "Other";
 
+    /// <summary>
+    /// The scale of a share: the hundred the percent of the lines of all languages is cut from, as
+    /// <see cref="LanguageShare.Percent" /> says it.
+    /// </summary>
+    private const double PercentScale = 100d;
+
+    /// <summary>
+    /// The slot the first named language stands on, as the <see cref="LanguageShare.Slot" /> doc says it: 1 for the largest
+    /// language, the bar colour <c>langbar__part--1</c>, each of the rest on the slot after it.
+    /// </summary>
+    private const int FirstNamedSlot = 1;
+
+    /// <summary>
+    /// The slot the "Other" part stands on, as the <see cref="LanguageShare.Slot" /> doc says it: 0, the bar colour
+    /// <c>langbar__part--0</c>.
+    /// </summary>
+    private const int OtherSlot = 0;
+
     /// <summary>What the page calls itself next to the dashboard's name: the chip of its heading.</summary>
     public const string ThisPage = "this page";
 
@@ -242,16 +260,23 @@ public static class BuildText
 
         var shares = code.Languages
             .Take(NamedLanguages)
-            .Select((language, index) => new LanguageShare(language.Name, language.Lines, 100d * language.Lines / total, index + 1))
+            .Select((language, index) => new LanguageShare(language.Name, language.Lines, ShareOf(language.Lines, total), index + FirstNamedSlot))
             .ToList();
         var rest = code.Languages.Skip(NamedLanguages).Sum(language => language.Lines);
         if (rest > 0)
         {
-            shares.Add(new LanguageShare(Other, rest, 100d * rest / total, 0));
+            shares.Add(new LanguageShare(Other, rest, ShareOf(rest, total), OtherSlot));
         }
 
         return shares;
     }
+
+    /// <summary>
+    /// A part's share of the lines of all languages, as the <see cref="LanguageShare.Percent" /> doc says it: the part's
+    /// lines over the whole, on the <see cref="PercentScale" /> - the scale first, then the lines, then the whole, in the
+    /// order the bar's percents were always cut.
+    /// </summary>
+    private static double ShareOf(long lines, long total) => PercentScale * lines / total;
 
     /// <summary>The bar in words: <c>C# 73 %, Razor 12 %, Other 15 %</c>.</summary>
     public static string Describe(IEnumerable<LanguageShare> shares) =>

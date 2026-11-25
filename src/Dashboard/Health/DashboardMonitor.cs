@@ -235,21 +235,31 @@ public sealed class DashboardMonitor
             .Append(ReadResourceHealthAsync(cancellationToken))
             .Append(Cluster?.CheckAsync(cancellationToken) ?? Task.CompletedTask));
         var now = _time.GetUtcNow();
+        AssessServingRound(now);
+
+        LastRefresh = now;
+        Changed?.Invoke();
+    }
+
+    /// <summary>
+    /// Assesses and records the serving decision of every deployable. It runs once per round, when every node has
+    /// its result: in the middle of a round it would mix this round's answers with the last one's, so each
+    /// deployable's decision is compared with <see cref="DeployableStatus.LastServing"/> exactly here and nowhere
+    /// else.
+    /// </summary>
+    /// <param name="now">When the round ended: the time every serving decision is stamped and compared at.</param>
+    private void AssessServingRound(DateTimeOffset now)
+    {
         foreach (var environment in Environments)
         {
             foreach (var deployable in environment.Deployables)
             {
-                // The serving decision is compared once per round, when every node has its result: in the middle of a
-                // round it would mix this round's answers with the last one's.
                 var assessment = deployable.Assess();
                 Events.AddRange(EventDetector.ServingChanges(deployable.LastServing, assessment, environment.Name, deployable.Info.Name, now));
 
                 deployable.RecordServing(assessment);
             }
         }
-
-        LastRefresh = now;
-        Changed?.Invoke();
     }
 
     private async Task ReadPinnedVersionsAsync(EnvironmentStatus environment, CancellationToken cancellationToken)

@@ -600,6 +600,13 @@ public static class RuntimePayloadBuilder
     }
 
     /// <summary>
+    /// One reading of an app that uses the database, as either client source projects it (#1752): what the title
+    /// names it, what the tile's line calls it (a web app's label - its region or its name - and a container app's
+    /// name), and when its health check last found the database healthy.
+    /// </summary>
+    private readonly record struct Reached(string Name, string Label, DateTimeOffset CheckedAt);
+
+    /// <summary>
     /// The database from the health checks of the apps that connect to it: one that passes says the database answered.
     /// One that fails does not say it did not, since the app itself may be the cause; the liveness probe leaves the
     /// database alone. A web app's check is the one the health view reads. Where no web app uses the database, a
@@ -618,18 +625,20 @@ public static class RuntimePayloadBuilder
                 : DatabaseFromContainerApps(node, containerApps, zone, health);
         }
 
-        var passed = clients.Where(entry => entry.Target.Last is { State: HealthState.Healthy, Probe: ProbeKind.Health }).ToList();
-        if (passed.Count > 0)
+        var reached = clients
+            .Where(entry => entry.Target.Last is { State: HealthState.Healthy, Probe: ProbeKind.Health })
+            .Select(entry => new Reached(entry.Target.Name, entry.Target.Label, entry.Target.Last!.CheckedAt))
+            .ToList();
+        if (reached.Count > 0)
         {
-            var names = string.Join(", ", passed.Select(entry => entry.Target.Name));
-            var latest = passed.Max(entry => entry.Target.Last!.CheckedAt);
-            var line = PassedLine(passed.Count, passed[0].Target.Label, WebApps);
             var queries = clients.Select(entry => entry.Target.Telemetry).OfType<TelemetrySnapshot>().ToList();
             return DatabaseReachedTile(
                 node,
-                line,
+                reached,
+                PassedLine(reached.Count, reached[0].Label, WebApps),
                 queries.Count == 0 ? null : string.Create(CultureInfo.InvariantCulture, $"{queries.Sum(telemetry => telemetry.SqlOfTraffic)} queries/min"),
-                DatabaseReachedTitle(node, names, latest, zone, queries));
+                queries,
+                zone);
         }
 
         if (OnlyProbesLiveness(clients))
@@ -703,12 +712,18 @@ public static class RuntimePayloadBuilder
 
     /// <summary>
     /// The tile of a database a health check of its apps reached: healthy under the <see cref="Reachable"/> label, one
-    /// ok line, and the title naming the apps (<see cref="DatabaseReachedTitle"/>). Both the web apps' exit and the
-    /// container apps' exit build it (<see cref="DatabaseTile(RuntimeNode, List{Entry}, List{ContainerSqlApp}, TimeZoneInfo, HealthSource)"/>,
-    /// <see cref="DatabaseFromContainerApps"/>); only the web apps have <paramref name="facts"/> (their queries per minute).
+    /// ok line, and the title naming the apps (<see cref="DatabaseReachedTitle"/>). Written once over the readings of
+    /// the apps that use it (#1752): the names the title speaks and the latest of their health checks are read off
+    /// <paramref name="reached"/>, and the words each client source contributes stay with it - <paramref name="line"/>
+    /// is the source's <see cref="PassedLine"/>, and only the web apps have <paramref name="facts"/> (their queries
+    /// per minute, <paramref name="queries"/>).
     /// </summary>
-    private static RuntimeTile DatabaseReachedTile(RuntimeNode node, string line, string? facts, string title) =>
-        new(node.Alias, TileState.Healthy.Word(), Reachable, facts, [new RuntimeTileLine(line, RuntimeLineTone.Ok)], null, title);
+    private static RuntimeTile DatabaseReachedTile(RuntimeNode node, IReadOnlyList<Reached> reached, string line, string? facts, IReadOnlyList<TelemetrySnapshot> queries, TimeZoneInfo zone)
+    {
+        var names = string.Join(", ", reached.Select(app => app.Name));
+        var latest = reached.Max(app => app.CheckedAt);
+        return new RuntimeTile(node.Alias, TileState.Healthy.Word(), Reachable, facts, [new RuntimeTileLine(line, RuntimeLineTone.Ok)], null, DatabaseReachedTitle(node, names, latest, zone, queries));
+    }
 
     /// <summary>
     /// The database from the container apps that use it. A healthy health-path probe connected to it. An app that has
@@ -718,13 +733,13 @@ public static class RuntimePayloadBuilder
     /// </summary>
     private static RuntimeTile DatabaseFromContainerApps(RuntimeNode node, List<ContainerSqlApp> apps, TimeZoneInfo zone, HealthSource health)
     {
-        var passed = apps.Where(app => app.Status is { State: ContainerAppState.Healthy, Last: not null }).ToList();
-        if (passed.Count > 0)
+        var reached = apps
+            .Where(app => app.Status is { State: ContainerAppState.Healthy, Last: not null })
+            .Select(app => new Reached(app.App.Name, app.App.Name, app.Status!.Last!.CheckedAt))
+            .ToList();
+        if (reached.Count > 0)
         {
-            var names = string.Join(", ", passed.Select(app => app.App.Name));
-            var latest = passed.Max(app => app.Status!.Last!.CheckedAt);
-            var line = PassedLine(passed.Count, passed[0].App.Name, ContainerApps);
-            return DatabaseReachedTile(node, line, null, DatabaseReachedTitle(node, names, latest, zone, []));
+            return DatabaseReachedTile(node, reached, PassedLine(reached.Count, reached[0].Label, ContainerApps), null, [], zone);
         }
 
         if (apps.Any(app => app.Status is null or { State: ContainerAppState.Probing or ContainerAppState.Waking }))

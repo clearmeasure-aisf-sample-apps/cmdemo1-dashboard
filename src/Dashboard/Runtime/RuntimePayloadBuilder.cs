@@ -337,25 +337,43 @@ public static class RuntimePayloadBuilder
 
         return node.Kind switch
         {
-            RuntimeNodeKind.StaticSite => health.Tile(node, $"the dashboard of this environment{(node.Url is null ? string.Empty : $" ({node.Url.Host})")}. This page does not check it.") ?? NotProbedTile(
-                node,
-                node.Url is null ? "its address is not in this deployment" : node.Url.Host,
-                $"{node.Name}: the dashboard of this environment. It does not check itself."),
-            RuntimeNodeKind.FrontDoor when node.Url is null => NeutralTile(
-                node,
-                NoAddress,
-                "endpoint not deployed yet",
-                $"{node.Name}: the deployment found no such endpoint in the Front Door profile. Deploy the dashboard again once the environment has it."),
-            RuntimeNodeKind.WebApp or RuntimeNodeKind.FrontDoor => NeutralTile(
-                node,
-                NotChecked,
-                "not in topology.json",
-                $"{node.Name}: the topology this page loaded has no such address, so it is not checked. Reload the topology, or deploy the dashboard again."),
-            // A kind this page does not know, with an address: drawn with it, never probed.
-            RuntimeNodeKind.Other when node.Url is not null => NotProbedTile(node, node.Url.Host, $"{node.Name} ({node.Url.Host}): the dashboard does not check it."),
+            RuntimeNodeKind.StaticSite => UncheckedStaticSiteTile(node, health),
+            RuntimeNodeKind.FrontDoor when node.Url is null => UndeployedFrontDoorTile(node),
+            RuntimeNodeKind.WebApp or RuntimeNodeKind.FrontDoor => NotInTopologyTile(node),
+            RuntimeNodeKind.Other when node.Url is { } url => OtherNodeTile(node, url),
             _ => UnprobedNodeTile(node, health),
         };
     }
+
+    /// <summary>
+    /// The static site of the environment that is not this page: what Resource Health said of it, or not probed with
+    /// its host (or why it has none).
+    /// </summary>
+    private static RuntimeTile UncheckedStaticSiteTile(RuntimeNode node, HealthSource health) =>
+        health.Tile(node, $"the dashboard of this environment{(node.Url is null ? string.Empty : $" ({node.Url.Host})")}. This page does not check it.") ?? NotProbedTile(
+            node,
+            node.Url is null ? "its address is not in this deployment" : node.Url.Host,
+            $"{node.Name}: the dashboard of this environment. It does not check itself.");
+
+    /// <summary>A Front Door endpoint the deployment found no address for: not deployed yet.</summary>
+    private static RuntimeTile UndeployedFrontDoorTile(RuntimeNode node) =>
+        NeutralTile(
+            node,
+            NoAddress,
+            "endpoint not deployed yet",
+            $"{node.Name}: the deployment found no such endpoint in the Front Door profile. Deploy the dashboard again once the environment has it.");
+
+    /// <summary>A web app or Front Door endpoint whose address the loaded topology does not have: not checked.</summary>
+    private static RuntimeTile NotInTopologyTile(RuntimeNode node) =>
+        NeutralTile(
+            node,
+            NotChecked,
+            "not in topology.json",
+            $"{node.Name}: the topology this page loaded has no such address, so it is not checked. Reload the topology, or deploy the dashboard again.");
+
+    /// <summary>A kind this page does not know, with an address: drawn with it, never probed.</summary>
+    private static RuntimeTile OtherNodeTile(RuntimeNode node, Uri url) =>
+        NotProbedTile(node, url.Host, $"{node.Name} ({url.Host}): the dashboard does not check it.");
 
     /// <summary>The container app a node is, as the page probes it; null for another node, and for one without an address.</summary>
     public static ContainerAppTarget? ContainerTarget(RuntimeNode node)

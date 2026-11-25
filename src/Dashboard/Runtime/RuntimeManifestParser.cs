@@ -107,10 +107,8 @@ public static class RuntimeManifestParser
 
             var nodes = ReadArray(root, "nodes", errors, (element, path) =>
             {
-                var alias = JsonRead.Text(element, "alias");
-                if (alias is null)
+                if (RequiredWord(element, path, "alias", errors) is not { } alias)
                 {
-                    errors.Add($"{path}.alias: missing or empty.");
                     return null;
                 }
 
@@ -139,10 +137,8 @@ public static class RuntimeManifestParser
             });
             var regions = ReadArray(root, "regions", errors, (element, path) =>
             {
-                var alias = JsonRead.Text(element, "alias");
-                if (alias is null)
+                if (RequiredWord(element, path, "alias", errors) is not { } alias)
                 {
-                    errors.Add($"{path}.alias: missing or empty.");
                     return null;
                 }
 
@@ -153,10 +149,8 @@ public static class RuntimeManifestParser
             });
             var frames = ReadArray(root, "frames", errors, (element, path) =>
             {
-                var alias = JsonRead.Text(element, "alias");
-                if (alias is null)
+                if (RequiredWord(element, path, "alias", errors) is not { } alias)
                 {
-                    errors.Add($"{path}.alias: missing or empty.");
                     return null;
                 }
 
@@ -164,12 +158,8 @@ public static class RuntimeManifestParser
             });
             var edges = ReadArray(root, "edges", errors, (element, path) =>
             {
-                var id = JsonRead.Text(element, "id");
-                var from = JsonRead.Text(element, "from");
-                var to = JsonRead.Text(element, "to");
-                if (id is null || from is null || to is null)
+                if (RequiredWords(element, $"{path}: id, from and to are required.", errors, "id", "from", "to") is not [var id, var from, var to])
                 {
-                    errors.Add($"{path}: id, from and to are required.");
                     return null;
                 }
 
@@ -256,6 +246,29 @@ public static class RuntimeManifestParser
         }
 
         return items;
+    }
+
+    /// <summary>
+    /// The one required word of an element of a manifest's list: its text, or null with the refusal
+    /// <c>{path}.{word}: missing or empty.</c> added for the place it was asked at.
+    /// </summary>
+    private static string? RequiredWord(JsonElement element, string path, string word, List<string> errors) =>
+        RequiredWords(element, $"{path}.{word}: missing or empty.", errors, word) is [var text] ? text : null;
+
+    /// <summary>
+    /// The required words of an element of a manifest's list, in the order named: all their texts, or null with
+    /// <paramref name="refusal"/> added once when any of them is missing or empty.
+    /// </summary>
+    private static string[]? RequiredWords(JsonElement element, string refusal, List<string> errors, params string[] words)
+    {
+        var texts = words.Select(word => JsonRead.Text(element, word)).ToArray();
+        if (texts.Any(text => text is null))
+        {
+            errors.Add(refusal);
+            return null;
+        }
+
+        return texts!;
     }
 
     /// <summary>A file next to the index: a plain name, never an address or a path that leaves <c>runtime/</c>.</summary>

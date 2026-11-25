@@ -5,7 +5,7 @@ namespace Dashboard.Health;
 /// <summary>
 /// What the traffic button counted at one reading (<c>status</c> of <c>js/traffic.js</c>). Every request sent is in
 /// one of four places: answered, failed (the browser reports a network failure), given up after
-/// <see cref="TrafficPlan.AnswerWithinSeconds"/> s with no answer (said as <see cref="ProbeDefaults.NoAnswerWithin"/> says it), or still on its way. A run is over when nothing more is sent and
+/// <see cref="TrafficRun.Values.AnswerWithinSeconds"/> s with no answer (said as <see cref="ProbeDefaults.NoAnswerWithin"/> says it), or still on its way. A run is over when nothing more is sent and
 /// nothing is on its way, not when the sending stops: an answer that arrives after the last request was sent is
 /// counted like any other, so a slow answer never reads as a lost one.
 /// </summary>

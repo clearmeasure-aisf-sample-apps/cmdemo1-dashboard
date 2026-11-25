@@ -631,13 +631,10 @@ public static class RuntimePayloadBuilder
             var background = queries.Any(telemetry => telemetry.SplitsSql)
                 ? string.Create(CultureInfo.InvariantCulture, $" Queries per minute, counted by the web apps: {queries.Sum(telemetry => telemetry.SqlOfTraffic)} while handling requests, {queries.Sum(telemetry => telemetry.SqlBackground ?? 0)} in the background (mostly the message bus polling the database).")
                 : string.Empty;
-            return new RuntimeTile(
-                node.Alias,
-                TileState.Healthy.Word(),
-                Reachable,
+            return DatabaseReachedTile(
+                node,
+                line,
                 queries.Count == 0 ? null : string.Create(CultureInfo.InvariantCulture, $"{queries.Sum(telemetry => telemetry.SqlOfTraffic)} queries/min"),
-                [new RuntimeTileLine(line, RuntimeLineTone.Ok)],
-                null,
                 DatabaseReachedTitle(node, names, latest, zone, background));
         }
 
@@ -699,6 +696,15 @@ public static class RuntimePayloadBuilder
         $"{node.Name}: reachable. The database takes no call from a browser; the health check of {names} connected to it (last {TimeText.Clock(latest, zone)}).{background}";
 
     /// <summary>
+    /// The tile of a database a health check of its apps reached: healthy under the <see cref="Reachable"/> label, one
+    /// ok line, and the title naming the apps (<see cref="DatabaseReachedTitle"/>). Both the web apps' exit and the
+    /// container apps' exit build it (<see cref="DatabaseTile(RuntimeNode, List{Entry}, List{ContainerSqlApp}, TimeZoneInfo, HealthSource)"/>,
+    /// <see cref="DatabaseFromContainerApps"/>); only the web apps have <paramref name="facts"/> (their queries per minute).
+    /// </summary>
+    private static RuntimeTile DatabaseReachedTile(RuntimeNode node, string line, string? facts, string title) =>
+        new(node.Alias, TileState.Healthy.Word(), Reachable, facts, [new RuntimeTileLine(line, RuntimeLineTone.Ok)], null, title);
+
+    /// <summary>
     /// The database from the container apps that use it. A healthy health-path probe connected to it. An app that has
     /// not been asked yet, or is still waking, leaves the database waiting. An answer that is not a health check
     /// (Liveness, or an app that refuses this page's origin) leaves it alone. A failed check does not call the
@@ -712,14 +718,7 @@ public static class RuntimePayloadBuilder
             var names = string.Join(", ", passed.Select(app => app.App.Name));
             var latest = passed.Max(app => app.Status!.Last!.CheckedAt);
             var line = PassedLine(passed.Count, passed[0].App.Name, ContainerApps);
-            return new RuntimeTile(
-                node.Alias,
-                TileState.Healthy.Word(),
-                Reachable,
-                null,
-                [new RuntimeTileLine(line, RuntimeLineTone.Ok)],
-                null,
-                DatabaseReachedTitle(node, names, latest, zone, string.Empty));
+            return DatabaseReachedTile(node, line, null, DatabaseReachedTitle(node, names, latest, zone, string.Empty));
         }
 
         if (apps.Any(app => app.Status is null or { State: ContainerAppState.Probing or ContainerAppState.Waking }))

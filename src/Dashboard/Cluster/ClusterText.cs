@@ -22,7 +22,7 @@ public static class ClusterText
     private const string CoresFormat = "0.##";
 
     /// <summary>The word a quantity of CPU is said in: <c>0.81 cores</c>, <c>1.5 cores</c>.</summary>
-    private const string CoresUnit = "cores";
+    internal const string CoresUnit = "cores";
 
     /// <summary>The word the quantity of exactly one core is said in: <c>1 core</c>.</summary>
     private const string CoreUnit = "core";

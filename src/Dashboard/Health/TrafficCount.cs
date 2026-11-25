@@ -70,14 +70,15 @@ public sealed record TrafficCount(int Sent, int Answered, int Failed, int Unansw
     public string Ended(bool stopped) => $"Traffic {(stopped ? "stopped" : "ended")}: {Counts}";
 
     /// <summary>
-    /// A reading of <c>status</c>: sent, answered, failed, given up with no answer in time, and 1 while requests are
-    /// still being sent.
+    /// A reading of <c>status</c>: sent, answered, failed, given up with no answer in time, and whether requests are
+    /// still being sent. Each number is read into the member named for it, the order written once here, so a number
+    /// cannot read as its neighbour's.
     /// </summary>
     public static TrafficCount From(IReadOnlyList<int> status)
     {
         ArgumentNullException.ThrowIfNull(status);
         return status.Count == 5
-            ? new TrafficCount(status[0], status[1], status[2], status[3], status[4] != 0)
+            ? new TrafficCount(Sent: status[0], Answered: status[1], Failed: status[2], Unanswered: status[3], Sending: status[4] != 0)
             : throw new ArgumentException($"A reading of the traffic has five numbers, not {status.Count}.", nameof(status));
     }
 }

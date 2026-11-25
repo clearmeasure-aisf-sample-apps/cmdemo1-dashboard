@@ -191,9 +191,10 @@ public static class BuildText
 
     /// <summary>
     /// The scale of a share: the hundred the percent of the lines of all languages is cut from, as
-    /// <see cref="LanguageShare.Percent" /> says it.
+    /// <see cref="LanguageShare.Percent" /> says it - the one <see cref="Dashboard.Shares.PercentScale" /> every
+    /// share of the dashboard stands on.
     /// </summary>
-    private const double PercentScale = 100d;
+    private const double PercentScale = Dashboard.Shares.PercentScale;
 
     /// <summary>
     /// The slot the first named language stands on, as the <see cref="LanguageShare.Slot" /> doc says it: 1 for the largest
@@ -272,11 +273,12 @@ public static class BuildText
     }
 
     /// <summary>
-    /// A part's share of the lines of all languages, as the <see cref="LanguageShare.Percent" /> doc says it: the part's
-    /// lines over the whole, on the <see cref="PercentScale" /> - the scale first, then the lines, then the whole, in the
-    /// order the bar's percents were always cut.
+    /// A part's share of the lines of all languages, as the <see cref="LanguageShare.Percent" /> doc says it: the
+    /// <see cref="Dashboard.Shares" /> rule of the percent a part holds of a whole - the part's lines over the
+    /// whole, then the <see cref="PercentScale" /> - in the one order the dashboard's percents of a part of a whole
+    /// are cut.
     /// </summary>
-    private static double ShareOf(long lines, long total) => PercentScale * lines / total;
+    private static double ShareOf(long lines, long total) => Dashboard.Shares.Of(lines, total);
 
     /// <summary>The bar in words: <c>C# 73 %, Razor 12 %, Other 15 %</c>.</summary>
     public static string Describe(IEnumerable<LanguageShare> shares) =>

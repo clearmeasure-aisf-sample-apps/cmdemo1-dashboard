@@ -288,7 +288,7 @@ public static class CostText
         }
 
         var share = estimate.Share is { } part
-            ? string.Create(CultureInfo.InvariantCulture, $" ({Math.Round(part * 100, MidpointRounding.AwayFromZero):0} % of what all pods request)")
+            ? string.Create(CultureInfo.InvariantCulture, $" ({Math.Round(Shares.Of(part, 1d), MidpointRounding.AwayFromZero):0} % of what all pods request)")
             : string.Empty;
         return $"plus about {Money(amount, report.Currency)} {Month(report.AsOf, now)} of what the environments share{share}";
     }

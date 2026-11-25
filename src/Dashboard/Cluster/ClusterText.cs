@@ -101,9 +101,12 @@ public static class ClusterText
         return usedUnit == ofUnit ? $"{used} of {of} {ofUnit}" : $"{used} {usedUnit} of {of} {ofUnit}";
     }
 
-    /// <summary>The share of a whole in percent; null without both numbers or for a whole of zero.</summary>
+    /// <summary>
+    /// The share of a whole in percent, by the <see cref="Shares" /> rule - the part over the whole, then the
+    /// scale; null without both numbers or for a whole of zero.
+    /// </summary>
     public static double? Share(double? part, double? whole) =>
-        part is { } value && whole is { } of && of > 0 ? value / of * 100 : null;
+        part is { } value && whole is { } of && of > 0 ? Shares.Of(value, of) : null;
 
     /// <summary>A whole percentage: <c>63 %</c>.</summary>
     public static string Percent(double percent) => string.Create(CultureInfo.InvariantCulture, $"{Math.Round(percent):0} %");

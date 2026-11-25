@@ -453,12 +453,7 @@ public sealed record WorkItem(
         return addresses;
     }
 
-    private static WorkWorker ReadWorker(JsonElement element) => JsonRead.Text(element, "worker")?.ToLowerInvariant() switch
-    {
-        "bot" => WorkWorker.Bot,
-        "team" => WorkWorker.Team,
-        _ => WorkWorker.Unknown,
-    };
+    private static WorkWorker ReadWorker(JsonElement element) => WorkItemsText.WorkerOf(JsonRead.Text(element, "worker"));
 
     /// <summary><c>ftFailures</c> and <c>reverts</c> on the item. The older <c>rework</c> object is used when those are absent.</summary>
     private static WorkRework? ItemRework(JsonElement element)

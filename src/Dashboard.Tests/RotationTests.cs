@@ -155,7 +155,7 @@ public class RotationTests
     }
 
     private static string[] Events(ServingAssessment? before, ServingAssessment after) =>
-        [.. EventDetector.ServingChanges(before, after, "prod", "ui", Now).Select(entry => $"{entry.Level}: {entry.Text}")];
+        ServingEventReaders.Events(before, after, "prod", Now);
 
     [Fact]
     public void APrimaryThatLeavesTheRotationAndComesBackIsNoFailover()

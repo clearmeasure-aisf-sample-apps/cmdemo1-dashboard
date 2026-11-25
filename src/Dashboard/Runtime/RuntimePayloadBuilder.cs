@@ -50,6 +50,9 @@ public static class RuntimePayloadBuilder
     /// <summary>How many characters of a health check entry's name fit the line of a dependency's tile, where no description stands in for it.</summary>
     private const int CheckNameLength = 14;
 
+    /// <summary>The origin priority that serves first: the origin a Front Door edge says "first, while healthy" about.</summary>
+    private const int FirstPriority = 1;
+
     /// <param name="Serves">True for a node the serving decision expects to serve: one node, or every healthy primary of a rotation.</param>
     private sealed record Entry(DeployableStatus Deployable, TargetStatus Target, ServingAssessment Assessment, bool Serves);
 
@@ -562,9 +565,7 @@ public static class RuntimePayloadBuilder
         {
             var names = string.Join(", ", passed.Select(entry => entry.Target.Name));
             var latest = passed.Max(entry => entry.Target.Last!.CheckedAt);
-            var line = passed.Count == 1
-                ? $"health check of {passed[0].Target.Label} passed"
-                : $"health checks of {passed.Count} web apps passed";
+            var line = PassedLine(passed.Count, passed[0].Target.Label, "web apps");
             var queries = clients.Select(entry => entry.Target.Telemetry).OfType<TelemetrySnapshot>().ToList();
 
             // The queries the traffic causes; what the apps run in the background (the message bus polling) is said in
@@ -635,9 +636,7 @@ public static class RuntimePayloadBuilder
         {
             var names = string.Join(", ", passed.Select(app => app.App.Name));
             var latest = passed.Max(app => app.Status!.Last!.CheckedAt);
-            var line = passed.Count == 1
-                ? $"health check of {passed[0].App.Name} passed"
-                : string.Create(CultureInfo.InvariantCulture, $"health checks of {passed.Count} container apps passed");
+            var line = PassedLine(passed.Count, passed[0].App.Name, "container apps");
             return new RuntimeTile(
                 node.Alias,
                 TileState.Healthy.Word(),
@@ -655,7 +654,7 @@ public static class RuntimePayloadBuilder
 
         if (apps.All(app => app.Status!.State == ContainerAppState.Responding))
         {
-            var who = apps.Count == 1 ? "the container app that uses it" : "the container apps that use it";
+            var who = Plural.Noun(apps.Count, "the container app that uses it", "the container apps that use it");
             var why = $"{who} answered without a health check (the probe was Liveness, or the app does not allow this page's origin), so this page cannot tell whether the database answers.";
             return health.Tile(node, why) ?? NotProbedTile(node, "health check not read", $"{node.Name}: {why}");
         }
@@ -666,6 +665,12 @@ public static class RuntimePayloadBuilder
             "no health check of its apps passes",
             $"{node.Name}: no container app that uses it passes its health check, so this page cannot tell whether it answers: the database or the app may be the cause.");
     }
+
+    /// <summary>
+    /// The line of a database a health check of its apps reached: one app is named, more than one are counted.
+    /// </summary>
+    private static string PassedLine(int count, string name, string apps) =>
+        Plural.Noun(count, $"health check of {name} passed", string.Create(CultureInfo.InvariantCulture, $"health checks of {count} {apps} passed"));
 
     private static RuntimeTile WebAppTile(RuntimeNode node, Entry entry, EnvironmentStatus environment, TimeZoneInfo zone)
     {
@@ -975,7 +980,7 @@ public static class RuntimePayloadBuilder
             {
                 // In a rotation the origins of the primary nodes share the traffic: none of them is the first.
                 var role = to is { Assessment.IsRotation: true, Target.IsPrimary: true } ? "in the rotation, while healthy"
-                    : edge.Priority == 1 ? "first, while healthy"
+                    : edge.Priority == FirstPriority ? "first, while healthy"
                     : "when priority 1 is down";
                 var state = to is null ? EdgeState.Neutral : Carries(to);
                 var telemetry = to?.Target.Telemetry;

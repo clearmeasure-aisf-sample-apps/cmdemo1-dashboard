@@ -1026,4 +1026,63 @@ public class RuntimePayloadBuilderTests
         Assert.DoesNotContain("web app", container, StringComparison.OrdinalIgnoreCase);
         Assert.EndsWith(" connected to it (last 22:00:00).", container, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// The reachable database's title names the latest of its readings (#1752): one method says the reachable words
+    /// over the readings of whichever source speaks, so the moment is the last one a passing check found the
+    /// database healthy, and a check that does not pass reads no reading at all.
+    /// </summary>
+    [Fact]
+    public void TheReachableDatabaseNamesTheLatestOfItsReadingsWhenTheChecksPassAtDifferentTimes()
+    {
+        // The web apps' readings: the standby passed half an hour before the primary.
+        var uat = Environment("uat");
+        var ui = uat.Deployables[0];
+        ui.FrontDoor!.Record(Answer(200));
+        ui.Nodes[0].Record(Answer(200));
+        ui.Nodes[1].Record(new ProbeResult(HealthState.Healthy, 200, 40, Now.AddMinutes(-30), "2.4.20"));
+
+        var web = Tile(RuntimePayloadBuilder.Build(Manifest("uat"), uat, Page, TimeZoneInfo.Utc), "sqldb");
+        Assert.Equal(("healthy", "Reachable"), (web.State, web.Label));
+        Assert.Equal(new RuntimeTileLine("health checks of 2 web apps passed", "ok"), Assert.Single(web.Lines));
+        Assert.Contains("app-cmdemo2-uat-ui, app-cmdemo2-uat-ui-eastus2 connected to it (last 22:00:00)", web.Title, StringComparison.Ordinal);
+
+        // Where only the earlier check passes, its moment is the one the title names.
+        var onlyStandby = Environment("uat");
+        onlyStandby.Deployables[0].FrontDoor!.Record(Answer(200));
+        onlyStandby.Deployables[0].Nodes[0].Record(Answer(503));
+        onlyStandby.Deployables[0].Nodes[1].Record(new ProbeResult(HealthState.Healthy, 200, 40, Now.AddMinutes(-30), "2.4.20"));
+
+        var earlier = Tile(RuntimePayloadBuilder.Build(Manifest("uat"), onlyStandby, Page, TimeZoneInfo.Utc), "sqldb");
+        Assert.Equal(new RuntimeTileLine("health check of eastus2 passed", "ok"), Assert.Single(earlier.Lines));
+        Assert.Contains("app-cmdemo2-uat-ui-eastus2 connected to it (last 21:30:00)", earlier.Title, StringComparison.Ordinal);
+
+        // The container apps' readings: the worker passed half an hour before the ui.
+        var manifest = new RuntimeManifest(
+            "uat",
+            [
+                new RuntimeNode("ca_ui", RuntimeNodeKind.ContainerApp, "ca-ui", new Uri("https://ca-ui.example.io"), "ui", HealthPath: "/_healthcheck"),
+                new RuntimeNode("ca_worker", RuntimeNodeKind.ContainerApp, "ca-worker", new Uri("https://ca-worker.example.io"), "worker", HealthPath: "/_healthcheck"),
+                new RuntimeNode("sqldb", RuntimeNodeKind.Sql, "sqldb-uat"),
+            ],
+            [],
+            [
+                new RuntimeEdge("ca_ui-to-sqldb", "ca_ui", "sqldb", RuntimeEdgeKind.Sql),
+                new RuntimeEdge("ca_worker-to-sqldb", "ca_worker", "sqldb", RuntimeEdgeKind.Sql),
+            ]);
+
+        var container = Tile(
+            RuntimePayloadBuilder.Build(
+                manifest,
+                null,
+                Page,
+                TimeZoneInfo.Utc,
+                containerApps: target => new ContainerAppStatus(
+                    ContainerAppState.Healthy,
+                    new ContainerAppAnswer("/_healthcheck", true, 200, false, 40, target.Url.Host == "ca-ui.example.io" ? Now : Now.AddMinutes(-30)))),
+            "sqldb");
+        Assert.Equal(("healthy", "Reachable"), (container.State, container.Label));
+        Assert.Equal(new RuntimeTileLine("health checks of 2 container apps passed", "ok"), Assert.Single(container.Lines));
+        Assert.Contains("ca-ui, ca-worker connected to it (last 22:00:00)", container.Title, StringComparison.Ordinal);
+    }
 }

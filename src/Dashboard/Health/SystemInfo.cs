@@ -21,6 +21,12 @@ public sealed record SystemInfo(
     DashboardInfo? Dashboard = null,
     Uri? DeploymentsUrl = null)
 {
+    /// <summary>
+    /// The one word the reader of the file shows a system under when it gives neither a name nor a slug - the
+    /// reader's doing, not the record's: the record itself fills in no name of its own.
+    /// </summary>
+    internal const string DefaultName = "System";
+
     /// <summary>The name of the file Resource Health's readings are published in, next to <c>delivery.json</c>.</summary>
     internal const string ContainersFileName = "containers.json";
 

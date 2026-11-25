@@ -46,12 +46,18 @@ public sealed record Trend(IReadOnlyList<double> Points, string Title)
         var step = Points.Count > 1 ? (width - 2 * inset) / (Points.Count - 1) : 0;
         return string.Join(' ', Points.Select((point, index) => string.Create(
             CultureInfo.InvariantCulture,
-            $"{inset + index * step:0.##},{height - inset - point * (height - 2 * inset):0.##}")));
+            $"{inset + index * step:0.##},{YOf(point, height, inset):0.##}")));
     }
 
     /// <summary>Where the last reading is in that box: the dot that marks "now".</summary>
     public (double X, double Y) Last(double width, double height, double inset = 1) =>
-        (Math.Round(width - inset, 2), Math.Round(height - inset - Points[^1] * (height - 2 * inset), 2));
+        (Math.Round(width - inset, 2), Math.Round(YOf(Points[^1], height, inset), 2));
+
+    /// <summary>
+    /// The SVG y of a point in a box of the given height: 0 is the bottom of the box and 1 the top, with the line kept
+    /// <paramref name="inset"/> away from both edges.
+    /// </summary>
+    private static double YOf(double point, double height, double inset) => height - inset - point * (height - 2 * inset);
 
     /// <summary>At most one decimal; a whole reading is written without one.</summary>
     private const string NumberFormat = "0.#";

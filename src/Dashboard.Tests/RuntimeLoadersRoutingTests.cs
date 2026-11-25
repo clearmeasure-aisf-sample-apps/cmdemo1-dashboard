@@ -213,6 +213,39 @@ public class RuntimeLoadersRoutingTests
     }
 
     [Fact]
+    public async Task EverySampleOfTheRoutingAnsweredWithTwoHundredIsAnsweredAsServingSamplesAnswersIt()
+    {
+        // #1714: ServingSamples is the 200 spelling of the routing, as Serving is. Given the same samples as the
+        // Served.File entries that answer with the status ServingSamples answers with, the two routings answer
+        // every address the same: the same status, the same body, the 404 everywhere else.
+        static HttpResponseMessage Ask(Func<HttpRequestMessage, HttpResponseMessage> route, string path) =>
+            route(new HttpRequestMessage(HttpMethod.Get, new Uri(new Uri(RuntimeLoaders.Site), path)));
+
+        var samples = new[] { "tdd.json", "tdd.svg" };
+
+        var asSamples = RuntimeLoaders.ServingSamples(samples);
+        var asEntries = RuntimeLoaders.Routing([.. samples.Select(file => Served.File(RuntimeLoaders.RuntimePath(file), RuntimeManifestParserTests.Sample(file)))]);
+
+        var everyPath = new[]
+        {
+            RuntimeLoaders.RuntimePath("tdd.json"),
+            RuntimeLoaders.RuntimePath("tdd.svg"),
+            RuntimeLoaders.RuntimePath("none.json"),
+        };
+
+        foreach (var path in everyPath)
+        {
+            using var bySamples = Ask(asSamples, path);
+            using var byEntries = Ask(asEntries, path);
+
+            Assert.Equal(bySamples.StatusCode, byEntries.StatusCode);
+            Assert.Equal(
+                await bySamples.Content.ReadAsStringAsync(),
+                await byEntries.Content.ReadAsStringAsync());
+        }
+    }
+
+    [Fact]
     public async Task TheEdgeCaseOfAFileIsOneMoreEntryOfTheRoutingAndNotAHandlerOfItsOwn()
     {
         // The shape #456's edge cases ask for: one site, one base address, and each per-file case written as an

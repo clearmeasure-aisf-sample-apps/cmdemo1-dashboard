@@ -534,4 +534,22 @@ public partial class DatabaseViewTests
         Assert.Null(await Loader(new StubHandler(_ => throw new HttpRequestException("CORS"))).ReadLiveDatabaseAsync(source, CancellationToken.None));
         Assert.Null(await Loader(new StubHandler(_ => StubHandler.Answer(HttpStatusCode.OK, "<html>"))).ReadLiveDatabaseAsync(source, CancellationToken.None));
     }
+
+    /// <summary>
+    /// The live-file read is on the one owner the monitor's file reads are on (#1804): the stamp of the last
+    /// asking and the keep of the last good answer stand in <c>IntervalRead</c>, not in fields of the view. The
+    /// view keeps its own re-entrancy gate and the page's active gate, and asks the due question of the read's
+    /// home through <see cref="DatabaseRefresh"/>.
+    /// </summary>
+    [Fact]
+    public void TheLiveFileReadKeepsItsStampAndKeepOnTheSharedOwner()
+    {
+        var text = File.ReadAllText(DatabaseViewComponent());
+
+        Assert.Contains("private readonly IntervalRead<DatabaseLive> _liveRead = new(DatabaseRefresh.Interval);", text, StringComparison.Ordinal);
+        Assert.Contains("DatabaseRefresh.IsDue(Active, _liveRead.LastAsked, Now)", text, StringComparison.Ordinal);
+        Assert.Contains("await _liveRead.ReadIfDueAsync(Now, token => Loader.ReadLiveDatabaseAsync(source, token), _stopping.Token);", text, StringComparison.Ordinal);
+        Assert.Contains("private DatabaseLive? Live => _liveRead.Last;", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("private DateTimeOffset? _lastRead;", text, StringComparison.Ordinal);
+    }
 }

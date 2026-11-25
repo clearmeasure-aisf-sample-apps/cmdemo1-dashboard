@@ -206,4 +206,28 @@ public class DashboardMonitorTests
             Assert.Equal([HealthState.Healthy, HealthState.Unhealthy], target.History.Select(result => result.State)));
         Assert.Equal("5 of 5 nodes not healthy", monitor.Summary.Text);
     }
+
+    /// <summary>
+    /// The monitor's file reads are on the one owner the database view's live-file read is on (#1804): each read
+    /// keeps the stamp of its last asking in an <c>IntervalRead</c>, not in a private <c>DateTimeOffset?</c>
+    /// field, so the stamp-when-due rule and the keep of the last good answer stand in one place on the page's
+    /// half and the monitor's half of the dashboard alike.
+    /// </summary>
+    [Fact]
+    public void TheFilesReadsKeepTheirStampsOnTheSharedOwner()
+    {
+        var text = File.ReadAllText(MarkupGuards.SourcePath("Health/DashboardMonitor.cs"));
+
+        Assert.Contains("private readonly IntervalRead<DeliveryReport> _delivery = new(DeliveryInterval);", text, StringComparison.Ordinal);
+        Assert.Contains("private readonly IntervalRead<WorkItemsReport> _workItems = new(DeliveryInterval);", text, StringComparison.Ordinal);
+        Assert.Contains("private readonly IntervalRead<CostReport> _cost = new(CostInterval);", text, StringComparison.Ordinal);
+        Assert.Contains("private readonly IntervalRead<DeploymentsReport> _deployments = new(DeploymentsInterval);", text, StringComparison.Ordinal);
+        Assert.Contains("private readonly IntervalRead<BuildInfo> _dashboardBuild = new(DashboardBuildRetry);", text, StringComparison.Ordinal);
+        Assert.Contains("private readonly IntervalRead<ResourceHealthReport> _resourceHealth = new(DeliveryInterval);", text, StringComparison.Ordinal);
+
+        foreach (var stamp in new[] { "_deliveryReadAt", "_workItemsReadAt", "_costReadAt", "_deploymentsReadAt", "_dashboardBuildAskedAt", "_resourceHealthReadAt" })
+        {
+            Assert.DoesNotContain($"DateTimeOffset? {stamp}", text, StringComparison.Ordinal);
+        }
+    }
 }

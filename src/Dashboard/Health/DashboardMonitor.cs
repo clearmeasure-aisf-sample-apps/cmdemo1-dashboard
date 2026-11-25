@@ -26,14 +26,14 @@ public sealed class DashboardMonitor
     private readonly TimeProvider _time;
     private readonly List<(EnvironmentStatus Environment, DeployableStatus Deployable, TargetStatus Target)> _targets;
     private readonly Dictionary<ContainerAppTarget, ContainerAppProbe> _containerApps = [];
+    private readonly IntervalRead<DeliveryReport> _delivery = new(DeliveryInterval);
+    private readonly IntervalRead<WorkItemsReport> _workItems = new(DeliveryInterval);
+    private readonly IntervalRead<CostReport> _cost = new(CostInterval);
+    private readonly IntervalRead<DeploymentsReport> _deployments = new(DeploymentsInterval);
+    private readonly IntervalRead<BuildInfo> _dashboardBuild = new(DashboardBuildRetry);
+    private readonly IntervalRead<ResourceHealthReport> _resourceHealth = new(DeliveryInterval);
     private IReadOnlyList<ContainerAppProbe> _watched = [];
     private bool _resourceHealthWanted;
-    private DateTimeOffset? _deliveryReadAt;
-    private DateTimeOffset? _workItemsReadAt;
-    private DateTimeOffset? _costReadAt;
-    private DateTimeOffset? _deploymentsReadAt;
-    private DateTimeOffset? _dashboardBuildAskedAt;
-    private DateTimeOffset? _resourceHealthReadAt;
 
     /// <param name="events">
     /// Where the monitor writes what it observes; the page keeps one log across reloads of the topology. A log of its
@@ -96,23 +96,23 @@ public sealed class DashboardMonitor
     /// The system's delivery facts, as last read; null when the topology names no <c>deliveryUrl</c> or the file was
     /// never read. A reading that fails keeps the last good one: the file says when it was generated.
     /// </summary>
-    public DeliveryReport? Delivery { get; private set; }
+    public DeliveryReport? Delivery => _delivery.Last;
 
     /// <summary>
     /// The work items the system's bots are handling, as last read; null when the topology names no delivery file
     /// (there is then no <c>workitems.json</c> next to it), the file was never read, or it is not there yet. A reading
     /// that fails keeps the last good one.
     /// </summary>
-    public WorkItemsReport? WorkItems { get; private set; }
+    public WorkItemsReport? WorkItems => _workItems.Last;
 
     /// <summary>True after a read of the work items was attempted, so the view can tell "loading" from "not published".</summary>
-    public bool WorkItemsAsked { get; private set; }
+    public bool WorkItemsAsked => _workItems.Asked;
 
     /// <summary>
     /// What the system cost in Azure, as last read; null when the topology names no <c>costUrl</c> or the file was
     /// never read. A reading that fails keeps the last good one: the file names the day its numbers are of.
     /// </summary>
-    public CostReport? Cost { get; private set; }
+    public CostReport? Cost => _cost.Last;
 
     /// <summary>
     /// The system's deployments in flight, as last read; null when the topology names no <c>deploymentsUrl</c>, the
@@ -148,7 +148,7 @@ public sealed class DashboardMonitor
     /// no <c>system.dashboard</c> or the file was not read. It belongs to the release that serves the page, so it is
     /// read once: until it answers, every <see cref="DashboardBuildRetry"/>.
     /// </summary>
-    public BuildInfo? DashboardBuild { get; private set; }
+    public BuildInfo? DashboardBuild => _dashboardBuild.Last;
 
     /// <summary>
     /// The cluster the system runs in, read with every round of checks; null when the topology names none, and the
@@ -163,7 +163,7 @@ public sealed class DashboardMonitor
     /// What Resource Health said of the system's resources, as last read; null while no box of the runtime view asks
     /// for it, without <c>system.deliveryUrl</c>, or before the file was read. A reading that fails keeps the last good one.
     /// </summary>
-    public ResourceHealthReport? ResourceHealth { get; private set; }
+    public ResourceHealthReport? ResourceHealth => _resourceHealth.Last;
 
     /// <summary>
     /// The container apps and resources the runtime view shows: from the next round on, the page probes those apps
@@ -190,7 +190,7 @@ public sealed class DashboardMonitor
         }
 
         var newApps = !watched.SequenceEqual(_watched) && watched.Any(probe => probe.IsNew);
-        var newHealth = watch.ResourceHealth && !_resourceHealthWanted && Topology.System.ContainersUrl is not null && _resourceHealthReadAt is null;
+        var newHealth = watch.ResourceHealth && !_resourceHealthWanted && Topology.System.ContainersUrl is not null && _resourceHealth.LastAsked is null;
         _watched = watched;
         _resourceHealthWanted = watch.ResourceHealth;
         return newApps || newHealth;
@@ -306,16 +306,13 @@ public sealed class DashboardMonitor
 
     private async Task ReadDeliveryAsync(CancellationToken cancellationToken)
     {
-        var now = _time.GetUtcNow();
-        if (Topology.System.DeliveryUrl is not { } address || !IntervalDue.IsDue(_deliveryReadAt, now, DeliveryInterval))
+        if (Topology.System.DeliveryUrl is not { } address)
         {
             return;
         }
 
-        _deliveryReadAt = now;
-        if (await _prober.ReadDeliveryAsync(address, cancellationToken) is { } report)
+        if (await _delivery.ReadIfDueAsync(_time.GetUtcNow(), token => _prober.ReadDeliveryAsync(address, token), cancellationToken) is not null)
         {
-            Delivery = report;
             Changed?.Invoke();
         }
     }
@@ -326,34 +323,26 @@ public sealed class DashboardMonitor
     /// </summary>
     private async Task ReadWorkItemsAsync(CancellationToken cancellationToken)
     {
-        var now = _time.GetUtcNow();
-        if (Topology.System.WorkItemsUrl is not { } address || !IntervalDue.IsDue(_workItemsReadAt, now, DeliveryInterval))
+        if (Topology.System.WorkItemsUrl is not { } address)
         {
             return;
         }
 
-        _workItemsReadAt = now;
-        var report = await _prober.ReadWorkItemsAsync(address, cancellationToken);
-        WorkItemsAsked = true;
-        if (report is not null)
+        if (await _workItems.ReadIfDueAsync(_time.GetUtcNow(), token => _prober.ReadWorkItemsAsync(address, token), cancellationToken) is not null)
         {
-            WorkItems = report;
             Changed?.Invoke();
         }
     }
 
     private async Task ReadCostAsync(CancellationToken cancellationToken)
     {
-        var now = _time.GetUtcNow();
-        if (Topology.System.CostUrl is not { } address || !IntervalDue.IsDue(_costReadAt, now, CostInterval))
+        if (Topology.System.CostUrl is not { } address)
         {
             return;
         }
 
-        _costReadAt = now;
-        if (await _prober.ReadCostAsync(address, cancellationToken) is { } report)
+        if (await _cost.ReadIfDueAsync(_time.GetUtcNow(), token => _prober.ReadCostAsync(address, token), cancellationToken) is not null)
         {
-            Cost = report;
             Changed?.Invoke();
         }
     }
@@ -365,14 +354,13 @@ public sealed class DashboardMonitor
     private async Task ReadDeploymentsAsync(CancellationToken cancellationToken)
     {
         var now = _time.GetUtcNow();
-        if (Topology.System.DeploymentsUrl is not { } address || !IntervalDue.IsDue(_deploymentsReadAt, now, DeploymentsInterval))
+        if (Topology.System.DeploymentsUrl is not { } address || !_deployments.IsDue(now))
         {
             return;
         }
 
-        _deploymentsReadAt = now;
         var before = Deployments;
-        Deployments = await _prober.ReadDeploymentsAsync(address, cancellationToken);
+        Deployments = await _deployments.AskIfDueAsync(now, token => _prober.ReadDeploymentsAsync(address, token), cancellationToken);
         if (before is not null || Deployments is not null)
         {
             Changed?.Invoke();
@@ -389,34 +377,26 @@ public sealed class DashboardMonitor
 
     private async Task ReadResourceHealthAsync(CancellationToken cancellationToken)
     {
-        var now = _time.GetUtcNow();
-        if (!_resourceHealthWanted || Topology.System.ContainersUrl is not { } address
-            || !IntervalDue.IsDue(_resourceHealthReadAt, now, DeliveryInterval))
+        if (!_resourceHealthWanted || Topology.System.ContainersUrl is not { } address)
         {
             return;
         }
 
-        _resourceHealthReadAt = now;
-        if (await _prober.ReadResourceHealthAsync(address, cancellationToken) is { } report)
+        if (await _resourceHealth.ReadIfDueAsync(_time.GetUtcNow(), token => _prober.ReadResourceHealthAsync(address, token), cancellationToken) is not null)
         {
-            ResourceHealth = report;
             Changed?.Invoke();
         }
     }
 
     private async Task ReadDashboardBuildAsync(CancellationToken cancellationToken)
     {
-        var now = _time.GetUtcNow();
-        if (Topology.System.Dashboard is not { } dashboard || DashboardBuild is not null
-            || !IntervalDue.IsDue(_dashboardBuildAskedAt, now, DashboardBuildRetry))
+        if (Topology.System.Dashboard is not { } dashboard || DashboardBuild is not null)
         {
             return;
         }
 
-        _dashboardBuildAskedAt = now;
-        if (await _prober.ReadOwnBuildAsync(dashboard.BuildPath, cancellationToken) is { } build)
+        if (await _dashboardBuild.ReadIfDueAsync(_time.GetUtcNow(), token => _prober.ReadOwnBuildAsync(dashboard.BuildPath, token), cancellationToken) is not null)
         {
-            DashboardBuild = build;
             Changed?.Invoke();
         }
     }

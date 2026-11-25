@@ -67,37 +67,16 @@ public static class DatabaseParser
     private const int MostTables = 2000;
     private const int MostColumns = 1000;
 
-    private static readonly JsonDocumentOptions Options = new()
-    {
-        AllowTrailingCommas = true,
-        CommentHandling = JsonCommentHandling.Skip,
-    };
-
     public static RuntimeParseResult<DatabaseManifest> ParseManifest(string? json)
     {
-        if (string.IsNullOrWhiteSpace(json))
+        if (!RuntimeManifestParser.TryOpen(json, out var document, out var problem))
         {
-            return Failed("The file is empty.");
-        }
-
-        JsonDocument document;
-        try
-        {
-            document = JsonDocument.Parse(json, Options);
-        }
-        catch (JsonException exception)
-        {
-            return Failed($"The file is not valid JSON (line {exception.LineNumber + 1}, position {exception.BytePositionInLine + 1}).");
+            return Failed(problem);
         }
 
         using (document)
         {
             var root = document.RootElement;
-            if (root.ValueKind != JsonValueKind.Object)
-            {
-                return Failed("The file must contain a JSON object.");
-            }
-
             var errors = new List<string>();
             var environment = JsonRead.Text(root, "environment");
             var database = JsonRead.Text(root, "database");
@@ -151,17 +130,7 @@ public static class DatabaseParser
     /// <summary>The live file; null for anything that is no JSON object with a list of tables.</summary>
     public static DatabaseLive? ParseLive(string? json)
     {
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return null;
-        }
-
-        JsonDocument document;
-        try
-        {
-            document = JsonDocument.Parse(json, Options);
-        }
-        catch (JsonException)
+        if (!RuntimeManifestParser.TryOpen(json, out var document, out _))
         {
             return null;
         }
@@ -169,7 +138,7 @@ public static class DatabaseParser
         using (document)
         {
             var root = document.RootElement;
-            if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("tables", out var array) || array.ValueKind != JsonValueKind.Array)
+            if (!root.TryGetProperty("tables", out var array) || array.ValueKind != JsonValueKind.Array)
             {
                 return null;
             }

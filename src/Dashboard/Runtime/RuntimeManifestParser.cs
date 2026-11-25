@@ -166,7 +166,17 @@ public static class RuntimeManifestParser
     private static RuntimeParseResult<T> Failed<T>(params string[] errors)
         where T : class => new(null, errors);
 
-    private static bool TryOpen(string? json, out JsonDocument document, out string problem)
+    /// <summary>
+    /// The one opener of the files of <c>runtime/</c>, shared by every reader of the folder (this parser, the database
+    /// view's two readers and the application view's): an empty or blank file, a file that is no JSON and a file whose
+    /// root is no object are each refused here, in these words and nowhere else, and a document that is refused is
+    /// disposed here. The options it parses with (trailing commas and comments) are the folder's, so every reader of
+    /// the folder reads the same file the same way.
+    /// </summary>
+    /// <param name="json">The file's text, or null for a caller that read nothing.</param>
+    /// <param name="document">The opened document when the answer is true; null when it is false.</param>
+    /// <param name="problem">Why the file is refused when the answer is false; empty when it is true.</param>
+    internal static bool TryOpen(string? json, out JsonDocument document, out string problem)
     {
         document = null!;
         problem = string.Empty;

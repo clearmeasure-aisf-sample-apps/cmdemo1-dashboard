@@ -56,19 +56,13 @@ public class EventDetectorEdgeCaseTests
             StartedAt = startedAt,
         };
 
-    /// <summary>The serving decision of two nodes: a primary in westus3 and a standby in eastus2.</summary>
+    /// <summary>The serving decision of two nodes: the primary standing in westus3, the standby in eastus2.</summary>
     private static ServingAssessment Serving(HealthState primary, HealthState standby) =>
-        ServingAssessment.Assess([new NodeHealth("west", "westus3", true, primary), new NodeHealth("east", "eastus2", false, standby)], null);
+        ServingAssessment.Assess([NodeHealths.Primary(primary), NodeHealths.Standby(standby)], null);
 
-    private static NodeHealth Primary(HealthState state, string region) => new($"app-{region}", region, true, state);
-
-    private static NodeHealth Standby(HealthState state, string region = "japaneast") => new($"app-{region}", region, false, state);
-
-    /// <summary>One primary per state, in the regions of <see cref="Regions"/>.</summary>
-    private static NodeHealth[] Primaries(params HealthState[] states) => [.. states.Select((state, index) => Primary(state, Regions[index]))];
-
+    /// <summary>The rotation of the primaries in the regions of <see cref="Regions"/>, the standby of the state named standing in japaneast, behind a healthy Front Door.</summary>
     private static ServingAssessment Rotation(HealthState[] primaries, HealthState? standby = null) =>
-        ServingAssessment.Assess(standby is { } state ? [.. Primaries(primaries), Standby(state)] : Primaries(primaries), HealthState.Healthy);
+        ServingAssessment.Assess(standby is { } state ? [.. NodeHealths.Primaries(Regions, primaries), NodeHealths.Standby(state, region: "japaneast")] : NodeHealths.Primaries(Regions, primaries), HealthState.Healthy);
 
     private static string[] ServingEvents(ServingAssessment? before, ServingAssessment after) =>
         [.. EventDetector.ServingChanges(before, after, "uat", "ui", Now).Select(entry => $"{entry.Level}: {entry.Text}")];
@@ -346,8 +340,8 @@ public class EventDetectorEdgeCaseTests
     [Fact]
     public void AStandbyThatTakesOverAnotherStandbyIsAFailover()
     {
-        var japanDown = ServingAssessment.Assess([Primary(HealthState.Unreachable, "westus3"), Primary(HealthState.Unreachable, "eastus2"), Standby(HealthState.Healthy, "japaneast")], HealthState.Healthy);
-        var koreaDown = ServingAssessment.Assess([Primary(HealthState.Unreachable, "westus3"), Primary(HealthState.Unreachable, "eastus2"), Standby(HealthState.Unhealthy, "japaneast"), Standby(HealthState.Healthy, "koreacentral")], HealthState.Healthy);
+        var japanDown = ServingAssessment.Assess([NodeHealths.Primary(HealthState.Unreachable, "westus3"), NodeHealths.Primary(HealthState.Unreachable, "eastus2"), NodeHealths.Standby(HealthState.Healthy, "japaneast")], HealthState.Healthy);
+        var koreaDown = ServingAssessment.Assess([NodeHealths.Primary(HealthState.Unreachable, "westus3"), NodeHealths.Primary(HealthState.Unreachable, "eastus2"), NodeHealths.Standby(HealthState.Unhealthy, "japaneast"), NodeHealths.Standby(HealthState.Healthy, "koreacentral")], HealthState.Healthy);
 
         Assert.Equal(
             ["Warning: Failover: japaneast → koreacentral. No primary node is healthy; koreacentral is expected to serve traffic."],

@@ -37,14 +37,6 @@ public class NodeHealthEdgeCaseTests
     private const HealthState Unreachable = HealthState.Unreachable;
     private const HealthState Pending = HealthState.Pending;
 
-    /// <summary>A primary node of the name, the region and the state the test names.</summary>
-    private static NodeHealth Primary(HealthState state, string name = "app-west", string? region = "westus3") =>
-        new(name, region, true, state);
-
-    /// <summary>The same node as a standby, so a role can be moved without moving anything else.</summary>
-    private static NodeHealth Standby(HealthState state, string name = "app-west", string? region = "westus3") =>
-        new(name, region, false, state);
-
     // ----- the four parts the node keeps
 
     /// <summary>The four parts stand where they are given, the primary's and the standby's alike: the node asks
@@ -87,7 +79,7 @@ public class NodeHealthEdgeCaseTests
     [InlineData((HealthState)int.MaxValue)]
     public void TheStateStandsAsGivenEvenWhenTheEnumDoesNotNameIt(HealthState state)
     {
-        var node = Primary(state);
+        var node = NodeHealths.Primary(state, name: "app-west");
 
         Assert.Equal(state, node.State);
         Assert.Equal(node, node with { });
@@ -199,7 +191,7 @@ public class NodeHealthEdgeCaseTests
 
         // The node of nothing at all is still a node, and a node of the last state in the book of it.
         Assert.Equal(Pending, nothing.State);
-        Assert.False(Standby(Pending, region: null).Equals(nothing));
+        Assert.False(NodeHealths.Standby(Pending, region: null, name: "app-west").Equals(nothing));
         Assert.True(nothing == nothing with { });
     }
 
@@ -209,12 +201,12 @@ public class NodeHealthEdgeCaseTests
     [Fact]
     public void TheLabelAsksNothingOfTheRoleOrTheStateAndIsReadAgainAfterACopy()
     {
-        var labels = new[] { Primary(Healthy), Primary(Unhealthy), Primary(Unreachable), Primary(Pending), Standby(Healthy), Standby(Unhealthy) };
+        var labels = new[] { NodeHealths.Primary(Healthy, name: "app-west"), NodeHealths.Primary(Unhealthy, name: "app-west"), NodeHealths.Primary(Unreachable, name: "app-west"), NodeHealths.Primary(Pending, name: "app-west"), NodeHealths.Standby(Healthy, region: "westus3", name: "app-west"), NodeHealths.Standby(Unhealthy, region: "westus3", name: "app-west") };
 
         Assert.All(labels, node => Assert.Equal("westus3", node.Label));
         Assert.Single(labels.Select(node => node.Label).Distinct(StringComparer.Ordinal));
 
-        var nameless = Primary(Healthy, region: null);
+        var nameless = NodeHealths.Primary(Healthy, region: null, name: "app-west");
 
         Assert.Equal("app-west", nameless.Label);
         Assert.Equal("eastus2", (nameless with { Region = "eastus2" }).Label);
@@ -232,7 +224,7 @@ public class NodeHealthEdgeCaseTests
     [Fact]
     public void TwoNodesAreOneWhileTheirFourPartsAre()
     {
-        var one = Primary(Healthy);
+        var one = NodeHealths.Primary(Healthy, name: "app-west");
         var two = new NodeHealth("app-west", "westus3", true, Healthy);
         NodeHealth? nothing = null;
 
@@ -258,14 +250,14 @@ public class NodeHealthEdgeCaseTests
         Assert.False(one == one with { State = Pending });
 
         // A standby of the very same name and region is another node than the primary.
-        Assert.False(one.Equals(Standby(Healthy)));
-        Assert.False(Standby(Healthy).Equals(nothing));
+        Assert.False(one.Equals(NodeHealths.Standby(Healthy, region: "westus3", name: "app-west")));
+        Assert.False(NodeHealths.Standby(Healthy, region: "westus3", name: "app-west").Equals(nothing));
         Assert.False(one.Equals(nothing));
         Assert.False(one.Equals(null));
         Assert.False(one.Equals("app-west"));
         Assert.False(one.Equals(Healthy));
         Assert.False(one.Equals(one.Label));
-        Assert.False(one.Equals(ServingAssessment.Assess([one, Standby(Unhealthy)], frontDoor: Healthy)));
+        Assert.False(one.Equals(ServingAssessment.Assess([one, NodeHealths.Standby(Unhealthy, region: "westus3", name: "app-west")], frontDoor: Healthy)));
         Assert.False(nothing == one);
         Assert.False(one == nothing);
         Assert.True(nothing == null);
@@ -285,7 +277,7 @@ public class NodeHealthEdgeCaseTests
     [Fact]
     public void TheHashCodeFollowsTheFourPartsAndStandsFromCallToCall()
     {
-        var one = Primary(Unhealthy);
+        var one = NodeHealths.Primary(Unhealthy, name: "app-west");
         var two = new NodeHealth("app-west", "westus3", true, Unhealthy);
 
         Assert.Equal(one.GetHashCode(), one.GetHashCode());
@@ -322,7 +314,7 @@ public class NodeHealthEdgeCaseTests
         Assert.True(isPrimary);
         Assert.Equal(Unreachable, state);
 
-        var (standbyName, standbyRegion, standby, pending) = Standby(Pending, region: null);
+        var (standbyName, standbyRegion, standby, pending) = NodeHealths.Standby(Pending, region: null, name: "app-west");
 
         Assert.Equal("app-west", standbyName);
         Assert.Null(standbyRegion);
@@ -347,7 +339,7 @@ public class NodeHealthEdgeCaseTests
     [Fact]
     public void WithChangesOnlyThePartItNamesAndCarriesTheOtherThreeAlong()
     {
-        var one = Primary(Healthy);
+        var one = NodeHealths.Primary(Healthy, name: "app-west");
 
         var copy = one with { };
 
@@ -413,8 +405,8 @@ public class NodeHealthEdgeCaseTests
             new NodeHealth(null!, null, true, Pending).ToString());
 
         // The label is the last word the node says, and the parts before it stand in the order the record has them.
-        Assert.EndsWith(", Label = eastus2 }", Standby(Healthy, region: "eastus2").ToString(), StringComparison.Ordinal);
-        var words = Primary(Pending).ToString();
+        Assert.EndsWith(", Label = eastus2 }", NodeHealths.Standby(Healthy, region: "eastus2").ToString(), StringComparison.Ordinal);
+        var words = NodeHealths.Primary(Pending, name: "app-west").ToString();
         Assert.True(
             words.IndexOf("Name =", StringComparison.Ordinal) < words.IndexOf("Label =", StringComparison.Ordinal),
             $"The node says its label before its name: {words}");

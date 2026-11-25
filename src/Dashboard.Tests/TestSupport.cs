@@ -132,6 +132,33 @@ public static class ProbeResults
 }
 
 /// <summary>
+/// The one way a test builds the regional nodes of a serving decision: a primary and a standby of the state, the
+/// region and the name named - each one call away from its default, the region the default of the role it plays
+/// and the name the app the region runs - and the read-out of a list of nodes: the labels they say. The serving
+/// tests used to declare their own copies of these builders, and the copies drifted: a standby that stood in
+/// japaneast in one file and eastus2 in another, a region one file named and another made required, and a node one
+/// file named app-westus3 while another named it west. The defaults the mother keeps are the ones the majority
+/// of the callers stood on, and a caller that stands elsewhere names the part it moves.
+/// </summary>
+public static class NodeHealths
+{
+    /// <summary>A primary node of the state, the region and the name named; the region defaults to westus3 and the name to app-{region}.</summary>
+    public static NodeHealth Primary(HealthState state, string? region = "westus3", string? name = null) =>
+        new(name ?? $"app-{region}", region, true, state);
+
+    /// <summary>A standby node of the state, the region and the name named; the region defaults to eastus2 and the name to app-{region}.</summary>
+    public static NodeHealth Standby(HealthState state, string? region = "eastus2", string? name = null) =>
+        new(name ?? $"app-{region}", region, false, state);
+
+    /// <summary>One primary per state, in the regions named, in the order the states stand.</summary>
+    public static NodeHealth[] Primaries(IReadOnlyList<string> regions, params HealthState[] states) =>
+        [.. states.Select((state, index) => Primary(state, regions[index]))];
+
+    /// <summary>The labels the nodes say: the region when the topology gives one, the name when it does not.</summary>
+    public static string[] Names(IEnumerable<NodeHealth> nodes) => [.. nodes.Select(node => node.Label)];
+}
+
+/// <summary>
 /// The one way a test asks a question as a reader of another culture: the thread's culture is set for the
 /// lifetime of the scope and put back as it was found when the scope ends, whatever the question did.
 /// </summary>

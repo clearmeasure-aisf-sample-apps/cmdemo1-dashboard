@@ -22,8 +22,9 @@ public class EventDetectorTests
     private static IReadOnlyList<DashboardEvent> Node(NodeObservation before, NodeObservation after, bool isNode = true) =>
         EventDetector.Node(before, after, "uat", "ui", isNode ? "westus3" : "Front Door", isNode, Now);
 
+    /// <summary>The serving decision of two nodes: the primary standing in westus3, the standby in eastus2.</summary>
     private static ServingAssessment Serving(HealthState primary, HealthState standby) =>
-        ServingAssessment.Assess([new NodeHealth("west", "westus3", true, primary), new NodeHealth("east", "eastus2", false, standby)], null);
+        ServingAssessment.Assess([NodeHealths.Primary(primary), NodeHealths.Standby(standby)], null);
 
     [Fact]
     public void NothingChangedIsNoEvent()

@@ -15,17 +15,9 @@ public class RotationTests
     private static readonly Uri Page = new("http://localhost:5210/");
     private static readonly string[] Regions = ["westus3", "eastus2", "centralus", "northeurope", "uksouth"];
 
-    private static NodeHealth Primary(HealthState state, string region) => new($"app-{region}", region, true, state);
-
-    private static NodeHealth Standby(HealthState state, string region = "japaneast") => new($"app-{region}", region, false, state);
-
-    /// <summary>One primary per state, in the regions of <see cref="Regions"/>.</summary>
-    private static NodeHealth[] Primaries(params HealthState[] states) => [.. states.Select((state, index) => Primary(state, Regions[index]))];
-
+    /// <summary>The rotation of the primaries in the regions of <see cref="Regions"/>, the standby of the state named standing in japaneast, behind the Front Door named.</summary>
     private static ServingAssessment Rotation(HealthState[] primaries, HealthState? standby = null, HealthState? frontDoor = Healthy) =>
-        ServingAssessment.Assess(standby is { } state ? [.. Primaries(primaries), Standby(state)] : Primaries(primaries), frontDoor);
-
-    private static string[] Names(IEnumerable<NodeHealth> nodes) => [.. nodes.Select(node => node.Label)];
+        ServingAssessment.Assess(standby is { } state ? [.. NodeHealths.Primaries(Regions, primaries), NodeHealths.Standby(state, region: "japaneast")] : NodeHealths.Primaries(Regions, primaries), frontDoor);
 
     [Fact]
     public void EveryHealthyPrimaryServes()
@@ -34,7 +26,7 @@ public class RotationTests
 
         Assert.Equal(ServingState.Primary, assessment.State);
         Assert.True(assessment.IsRotation);
-        Assert.Equal(["westus3", "eastus2", "centralus"], Names(assessment.Serving));
+        Assert.Equal(["westus3", "eastus2", "centralus"], NodeHealths.Names(assessment.Serving));
         Assert.Empty(assessment.OutOfRotation);
         Assert.Equal("westus3", assessment.Expected?.Region);
         Assert.Equal("Front Door rotates over 3 regions: all healthy", assessment.Headline);
@@ -45,7 +37,7 @@ public class RotationTests
     [Fact]
     public void ElevenRegionsAreCounted()
     {
-        var nodes = Enumerable.Range(1, 11).Select(index => Primary(index == 4 ? Unhealthy : Healthy, $"region{index}")).ToList();
+        var nodes = Enumerable.Range(1, 11).Select(index => NodeHealths.Primary(index == 4 ? Unhealthy : Healthy, $"region{index}")).ToList();
 
         Assert.Equal("Front Door rotates over 10 of 11 regions: region4 is not healthy", ServingAssessment.Assess(nodes, Healthy).Headline);
         Assert.Equal(10, ServingAssessment.Assess(nodes, Healthy).Serving.Count);
@@ -72,21 +64,21 @@ public class RotationTests
     {
         var assessment = Rotation([Healthy, Unhealthy, Healthy], standby: Healthy);
 
-        Assert.Equal(["westus3", "centralus"], Names(assessment.Serving));
-        Assert.Equal(["eastus2"], Names(assessment.OutOfRotation));
+        Assert.Equal(["westus3", "centralus"], NodeHealths.Names(assessment.Serving));
+        Assert.Equal(["eastus2"], NodeHealths.Names(assessment.OutOfRotation));
         Assert.False(assessment.IsFailedOver);
     }
 
     [Fact]
     public void WithNoPrimaryHealthyTheFirstHealthyStandbyServesAndThatIsAFailover()
     {
-        NodeHealth[] nodes = [.. Primaries(Unreachable, Unhealthy), Standby(Unhealthy, "japaneast"), Standby(Healthy, "koreacentral"), Standby(Healthy, "australiaeast")];
+        NodeHealth[] nodes = [.. NodeHealths.Primaries(Regions, Unreachable, Unhealthy), NodeHealths.Standby(Unhealthy, "japaneast"), NodeHealths.Standby(Healthy, "koreacentral"), NodeHealths.Standby(Healthy, "australiaeast")];
 
         var assessment = ServingAssessment.Assess(nodes, Healthy);
 
         Assert.Equal(ServingState.FailedOver, assessment.State);
         Assert.True(assessment.IsFailedOver);
-        Assert.Equal(["koreacentral"], Names(assessment.Serving));
+        Assert.Equal(["koreacentral"], NodeHealths.Names(assessment.Serving));
         Assert.Equal("Failed over to koreacentral", assessment.Headline);
         Assert.Equal("No primary node is healthy; koreacentral is expected to serve traffic.", assessment.FailoverDetail);
         Assert.Equal(FrontDoorAgreement.Agrees, assessment.FrontDoor);
@@ -133,25 +125,25 @@ public class RotationTests
 
         Assert.False(assessment.IsRotation);
         Assert.Equal(ServingState.Primary, assessment.State);
-        Assert.Equal(["westus3"], Names(assessment.Serving));
+        Assert.Equal(["westus3"], NodeHealths.Names(assessment.Serving));
         Assert.Equal("Expected to serve traffic: westus3 (primary)", assessment.Headline);
 
         // The second primary takes over from the first, as the next node in priority order.
         var second = Rotation([Unreachable, Healthy, Healthy], frontDoor: null);
-        Assert.Equal(["eastus2"], Names(second.Serving));
+        Assert.Equal(["eastus2"], NodeHealths.Names(second.Serving));
         Assert.Equal("Expected to serve traffic: eastus2 (primary)", second.Headline);
     }
 
     [Fact]
     public void OnePrimaryBehindAFrontDoorIsNoRotation()
     {
-        var assessment = ServingAssessment.Assess([Primary(Healthy, "westus3"), Standby(Healthy)], Healthy);
+        var assessment = ServingAssessment.Assess([NodeHealths.Primary(Healthy, "westus3"), NodeHealths.Standby(Healthy, region: "japaneast")], Healthy);
 
         Assert.False(assessment.IsRotation);
         Assert.Empty(assessment.OutOfRotation);
-        Assert.Equal(["westus3"], Names(assessment.Serving));
+        Assert.Equal(["westus3"], NodeHealths.Names(assessment.Serving));
         Assert.Equal("Expected to serve traffic: westus3 (primary)", assessment.Headline);
-        Assert.Empty(ServingAssessment.Assess([Primary(Unreachable, "westus3"), Standby(Unreachable)], Unreachable).Serving);
+        Assert.Empty(ServingAssessment.Assess([NodeHealths.Primary(Unreachable, "westus3"), NodeHealths.Standby(Unreachable, region: "japaneast")], Unreachable).Serving);
     }
 
     private static string[] Events(ServingAssessment? before, ServingAssessment after) =>
@@ -218,8 +210,8 @@ public class RotationTests
     [Fact]
     public void ADeployableThatIsNoRotationKeepsItsOneEvent()
     {
-        var primary = ServingAssessment.Assess([Primary(Healthy, "westus3"), Standby(Healthy, "eastus2")], Healthy);
-        var failedOver = ServingAssessment.Assess([Primary(Unreachable, "westus3"), Standby(Healthy, "eastus2")], Healthy);
+        var primary = ServingAssessment.Assess([NodeHealths.Primary(Healthy, "westus3"), NodeHealths.Standby(Healthy, "eastus2")], Healthy);
+        var failedOver = ServingAssessment.Assess([NodeHealths.Primary(Unreachable, "westus3"), NodeHealths.Standby(Healthy, "eastus2")], Healthy);
 
         Assert.Equal(["Warning: Failover: westus3 → eastus2. Primary westus3 is unreachable; eastus2 is expected to serve traffic."], Events(primary, failedOver));
         Assert.Equal(["Good: Failback: eastus2 → westus3. The primary is healthy again."], Events(failedOver, primary));
@@ -266,17 +258,15 @@ public class RotationTests
             new RuntimeEdge("fd_ui-to-app_ui_japan", "fd_ui", "app_ui_japan", RuntimeEdgeKind.Origin, 2),
         ]);
 
-    private static ProbeResult Answer(HealthState state) => new(state, state == Unreachable ? null : state == Healthy ? 200 : 503, 40, Now, "2.4.21");
-
     /// <summary>The runtime view of prod with the nodes in the given states, in the order west, east, north, japan.</summary>
     private static RuntimePayload Payload(params HealthState[] states)
     {
         var prod = new EnvironmentStatus(TopologyParser.Parse(Topology).Topology!.Environments[0]);
         var ui = prod.Deployables[0];
-        ui.FrontDoor!.Record(Answer(states.Contains(Healthy) ? Healthy : Unhealthy));
+        ui.FrontDoor!.Record(ProbeResults.Of(states.Contains(Healthy) ? Healthy : Unhealthy, "2.4.21", Now));
         foreach (var (state, index) in states.Select((state, index) => (state, index)))
         {
-            ui.Nodes[index].Record(Answer(state));
+            ui.Nodes[index].Record(ProbeResults.Of(state, "2.4.21", Now));
         }
 
         return RuntimePayloadBuilder.Build(Manifest, prod, Page, TimeZoneInfo.Utc);
@@ -347,11 +337,11 @@ public class RotationTests
     public void TheDeployablePointsAtEveryTileExpectedToServe()
     {
         var ui = new DeployableStatus(TopologyParser.Parse(Topology).Topology!.Environments[0].Deployables[0]);
-        ui.FrontDoor!.Record(Answer(Healthy));
+        ui.FrontDoor!.Record(ProbeResults.Of(Healthy, "2.4.21", Now));
         HealthState[] states = [Unreachable, Healthy, Healthy, Healthy];
         foreach (var (state, index) in states.Select((state, index) => (state, index)))
         {
-            ui.Nodes[index].Record(Answer(state));
+            ui.Nodes[index].Record(ProbeResults.Of(state, "2.4.21", Now));
         }
 
         var assessment = ui.AssessServing(out var serving);

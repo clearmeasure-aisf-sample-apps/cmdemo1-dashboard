@@ -609,36 +609,30 @@ public static class RuntimePayloadBuilder
     private static RuntimeTile DatabaseTile(RuntimeNode node, List<Entry> clients, List<ContainerSqlApp> containerApps, TimeZoneInfo zone, LinkSet? links, HealthSource health) =>
         DatabaseTile(node, clients, containerApps, zone, health) with { NameLink = RuntimeLink.To(links?[LinkSet.Database], LinkText.For(LinkSet.Database, node.Name)) };
 
-    private static RuntimeTile DatabaseTile(RuntimeNode node, List<Entry> clients, List<ContainerSqlApp> containerApps, TimeZoneInfo zone, HealthSource health)
+    /// <summary>
+    /// Which app kind speaks for the database (#1750), chosen where the two lists meet: the web apps of the monitor
+    /// where the diagram has any that use it, else the container apps the page probes itself, else nothing that tells.
+    /// Each kind is asked in its own method and both say a reachable database in the same words
+    /// (<see cref="DatabaseReached"/>).
+    /// </summary>
+    private static RuntimeTile DatabaseTile(RuntimeNode node, List<Entry> clients, List<ContainerSqlApp> containerApps, TimeZoneInfo zone, HealthSource health) =>
+        clients.Count > 0
+            ? DatabaseFromWebApps(node, clients, zone, health)
+            : containerApps.Count > 0
+                ? DatabaseFromContainerApps(node, containerApps, zone, health)
+                : DatabaseUnprobed(node, health);
+
+    /// <summary>
+    /// The database from the health checks of the web apps that use it: one that passes says the database answered, and
+    /// the queries those apps counted are said beside it. A web app's check is the one the health view reads, so it is
+    /// read whether or not the diagram also has a container app that uses the database.
+    /// </summary>
+    private static RuntimeTile DatabaseFromWebApps(RuntimeNode node, List<Entry> clients, TimeZoneInfo zone, HealthSource health)
     {
-        if (clients.Count == 0)
+        var reached = clients.Select(ReachedOf).OfType<Reached>().ToList();
+        if (reached.Count > 0)
         {
-            return containerApps.Count == 0
-                ? DatabaseUnprobed(node, health)
-                : DatabaseFromContainerApps(node, containerApps, zone, health);
-        }
-
-        var passed = clients.Where(entry => entry.Target.Last is { State: HealthState.Healthy, Probe: ProbeKind.Health }).ToList();
-        if (passed.Count > 0)
-        {
-            var names = string.Join(", ", passed.Select(entry => entry.Target.Name));
-            var latest = passed.Max(entry => entry.Target.Last!.CheckedAt);
-            var line = PassedLine(passed.Count, passed[0].Target.Label, WebApps);
-            var queries = clients.Select(entry => entry.Target.Telemetry).OfType<TelemetrySnapshot>().ToList();
-
-            // The queries the traffic causes; what the apps run in the background (the message bus polling) is said in
-            // the tooltip, where an app tells the two apart.
-            var background = queries.Any(telemetry => telemetry.SplitsSql)
-                ? string.Create(CultureInfo.InvariantCulture, $" Queries per minute, counted by the web apps: {queries.Sum(telemetry => telemetry.SqlOfTraffic)} while handling requests, {queries.Sum(telemetry => telemetry.SqlBackground ?? 0)} in the background (mostly the message bus polling the database).")
-                : string.Empty;
-            return new RuntimeTile(
-                node.Alias,
-                TileState.Healthy.Word(),
-                Reachable,
-                queries.Count == 0 ? null : string.Create(CultureInfo.InvariantCulture, $"{queries.Sum(telemetry => telemetry.SqlOfTraffic)} queries/min"),
-                [new RuntimeTileLine(line, RuntimeLineTone.Ok)],
-                null,
-                DatabaseReachedTitle(node, names, latest, zone, background));
+            return DatabaseReached(node, reached, PassedLine(reached.Count, reached[0].Label, WebApps), zone, DatabaseQueries(clients));
         }
 
         if (OnlyProbesLiveness(clients))
@@ -653,6 +647,31 @@ public static class RuntimePayloadBuilder
         }
 
         return DatabaseUnconfirmed(node, "web app", "web app");
+    }
+
+    /// <summary>
+    /// The web app's answer about the database: its name for the title and its label for the line, with the last check,
+    /// where that check was a health check that passed. Null for an answer that says nothing about the database: a
+    /// failed check (the app itself may be the cause), no check yet, or the liveness probe, which never connects.
+    /// </summary>
+    private static Reached? ReachedOf(Entry entry) =>
+        entry.Target.Last is { State: HealthState.Healthy, Probe: ProbeKind.Health } last
+            ? new Reached(entry.Target.Name, entry.Target.Label, last.CheckedAt)
+            : null;
+
+    /// <summary>
+    /// The web apps' numbers beside a reachable database: the queries their traffic causes, and the tooltip sentence
+    /// that tells them apart from what the apps run in the background (the message bus polling); where an app reports
+    /// no telemetry at all, the number is none and the sentence empty.
+    /// </summary>
+    private static (string? Facts, string Background) DatabaseQueries(List<Entry> clients)
+    {
+        var queries = clients.Select(entry => entry.Target.Telemetry).OfType<TelemetrySnapshot>().ToList();
+        return (
+            queries.Count == 0 ? null : string.Create(CultureInfo.InvariantCulture, $"{queries.Sum(telemetry => telemetry.SqlOfTraffic)} queries/min"),
+            queries.Any(telemetry => telemetry.SplitsSql)
+                ? string.Create(CultureInfo.InvariantCulture, $" Queries per minute, counted by the web apps: {queries.Sum(telemetry => telemetry.SqlOfTraffic)} while handling requests, {queries.Sum(telemetry => telemetry.SqlBackground ?? 0)} in the background (mostly the message bus polling the database).")
+                : string.Empty);
     }
 
     private static RuntimeTile NeutralTile(RuntimeNode node, string label, string line, string title) =>
@@ -690,36 +709,26 @@ public static class RuntimePayloadBuilder
             $"{node.Name}: no {user} that uses it passes its health check, so this page cannot tell whether it answers: the database or the {cause} may be the cause.");
 
     /// <summary>
-    /// The title of a reachable database, naming the apps whose health checks connected to it. Both the web apps'
-    /// exit and the container apps' exit say it (<see cref="DatabaseTile"/>, <see cref="DatabaseFromContainerApps"/>),
-    /// so it is written once here. <paramref name="background"/> is the optional sentence after the period: either
-    /// empty, or a sentence that starts with its own leading space (the web apps' queries per minute).
+    /// The title of a reachable database, naming the apps whose health checks connected to it. The one reachable
+    /// branch says it (<see cref="DatabaseReached"/>), whichever kind of app spoke, so it is written once here.
+    /// <paramref name="background"/> is the optional sentence after the period: either empty, or a sentence that starts
+    /// with its own leading space (the web apps' queries per minute).
     /// </summary>
     private static string DatabaseReachedTitle(RuntimeNode node, string names, DateTimeOffset latest, TimeZoneInfo zone, string background) =>
         $"{node.Name}: reachable. The database takes no call from a browser; the health check of {names} connected to it (last {TimeText.Clock(latest, zone)}).{background}";
 
     /// <summary>
-    /// The database from the container apps that use it. A healthy health-path probe connected to it. An app that has
-    /// not been asked yet, or is still waking, leaves the database waiting. An answer that is not a health check
-    /// (Liveness, or an app that refuses this page's origin) leaves it alone. A failed check does not call the
-    /// database down: the app itself may be the cause.
+    /// The database from the container apps that use it, where no web app uses it. A healthy health-path probe
+    /// connected to it. An app that has not been asked yet, or is still waking, leaves the database waiting. An answer
+    /// that is not a health check (Liveness, or an app that refuses this page's origin) leaves it alone. A failed check
+    /// does not call the database down: the app itself may be the cause.
     /// </summary>
     private static RuntimeTile DatabaseFromContainerApps(RuntimeNode node, List<ContainerSqlApp> apps, TimeZoneInfo zone, HealthSource health)
     {
-        var passed = apps.Where(app => app.Status is { State: ContainerAppState.Healthy, Last: not null }).ToList();
-        if (passed.Count > 0)
+        var reached = apps.Select(ReachedOf).OfType<Reached>().ToList();
+        if (reached.Count > 0)
         {
-            var names = string.Join(", ", passed.Select(app => app.App.Name));
-            var latest = passed.Max(app => app.Status!.Last!.CheckedAt);
-            var line = PassedLine(passed.Count, passed[0].App.Name, ContainerApps);
-            return new RuntimeTile(
-                node.Alias,
-                TileState.Healthy.Word(),
-                Reachable,
-                null,
-                [new RuntimeTileLine(line, RuntimeLineTone.Ok)],
-                null,
-                DatabaseReachedTitle(node, names, latest, zone, string.Empty));
+            return DatabaseReached(node, reached, PassedLine(reached.Count, reached[0].Label, ContainerApps), zone, (null, string.Empty));
         }
 
         if (apps.Any(app => app.Status is null or { State: ContainerAppState.Probing or ContainerAppState.Waking }))
@@ -738,7 +747,53 @@ public static class RuntimePayloadBuilder
     }
 
     /// <summary>
-    /// The line of a database a health check of its apps reached: one app is named, more than one are counted.
+    /// The container app's answer about the database: its node's name twice over, since a container app has no label
+    /// apart from its name, with the last probe, where that probe is a healthy one. Null for an app the page has not
+    /// asked, is still waking, or answered otherwise than by a health check that passed.
+    /// </summary>
+    private static Reached? ReachedOf(ContainerSqlApp app) =>
+        app.Status is { State: ContainerAppState.Healthy, Last: { } last }
+            ? new Reached(app.App.Name, app.App.Name, last.CheckedAt)
+            : null;
+
+    /// <summary>
+    /// The one reading of an app the page asked about the database, whichever kind it is (<see cref="ReachedOf(Entry)"/>,
+    /// <see cref="ReachedOf(ContainerSqlApp)"/>): the name the title gives it, the name the line gives it, and when it
+    /// last answered. Only an answer that says the database was reached is read; both kinds hand theirs to
+    /// <see cref="DatabaseReached"/>.
+    /// </summary>
+    private readonly record struct Reached(string Name, string Label, DateTimeOffset CheckedAt);
+
+    /// <summary>
+    /// The one reachable branch, whichever kind of app spoke (#1750): the tile is reachable, <paramref name="line"/> is
+    /// what the source counted its readings in (<see cref="PassedLine"/> names the first app or counts them all with
+    /// the noun of its kind), and the title is <see cref="DatabaseReachedTitle"/> over the names of those readings and
+    /// the latest of their checks. <paramref name="queries"/> are the web apps' numbers beside the tile, none for a
+    /// container app, whose probe the page does not ask for counts.
+    /// </summary>
+    private static RuntimeTile DatabaseReached(
+        RuntimeNode node,
+        IReadOnlyList<Reached> reached,
+        string line,
+        TimeZoneInfo zone,
+        (string? Facts, string Background) queries) =>
+        new(
+            node.Alias,
+            TileState.Healthy.Word(),
+            Reachable,
+            queries.Facts,
+            [new RuntimeTileLine(line, RuntimeLineTone.Ok)],
+            null,
+            DatabaseReachedTitle(
+                node,
+                string.Join(", ", reached.Select(answer => answer.Name)),
+                reached.Max(answer => answer.CheckedAt),
+                zone,
+                queries.Background));
+
+    /// <summary>
+    /// The line of a database a health check of its apps reached: one app is named, more than one are counted. Each
+    /// source hands it to the one reachable branch (<see cref="DatabaseReached"/>) with the noun of its own kind.
     /// </summary>
     private static string PassedLine(int count, string name, string apps) =>
         Plural.Noun(count, $"health check of {name} passed", string.Create(CultureInfo.InvariantCulture, $"health checks of {count} {apps} passed"));

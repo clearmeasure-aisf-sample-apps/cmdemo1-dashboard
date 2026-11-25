@@ -182,10 +182,17 @@ public sealed class ContainerAppProbe(ContainerAppTarget target)
     /// <summary>When the probe asks again: the one interval rule (<see cref="IntervalDue" />) with the probe's <see cref="Interval"/>.</summary>
     public bool IsDue(DateTimeOffset now) => IntervalDue.IsDue(_lastProbeAt, now, Interval);
 
+    /// <summary>
+    /// True when a probe started at <paramref name="now"/> starts a new run: nothing was probed yet, or the app has
+    /// been without a probe for <see cref="Asleep"/>. The one interval rule (<see cref="IntervalDue" />) with the
+    /// probe's <see cref="Asleep"/>.
+    /// </summary>
+    private bool StartsNewRun(DateTimeOffset now) => IntervalDue.IsDue(_lastProbeAt, now, Asleep);
+
     /// <summary>Marks a probe as started, so the next round does not ask again before the interval.</summary>
     public void Start(DateTimeOffset now)
     {
-        if (_lastProbeAt is not { } last || now - last >= Asleep)
+        if (StartsNewRun(now))
         {
             _runStartedAt = now;
             _answeredInRun = false;

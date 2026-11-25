@@ -4,7 +4,7 @@ namespace Dashboard.Health;
 /// When a reading is asked again: the one rule the dashboard's interval reads share. Nothing is due before it was first
 /// asked, and once it was, it is due again only when its interval has passed since the last asking. The boundary is
 /// inclusive, and stated here once: a read exactly one interval later goes ahead. The monitor's file reads
-/// (<see cref="DashboardMonitor" />), the container app probe (<see cref="ContainerAppProbe" />) and the database
+/// (<see cref="DashboardMonitor" />), the container app probe (<see cref="ContainerAppProbe" />, both when it is due and when a probe starts a new run) and the database
 /// view's live-file read (<see cref="Runtime.DatabaseRefresh" />, beside the page's own <c>active</c>
 /// gate) all compose it. The version-based reads (<see cref="BuildRead.IsDue(string?)" />,
 /// <see cref="Runtime.ApplicationRefresh.IsDue" />) are a different rule and do not.

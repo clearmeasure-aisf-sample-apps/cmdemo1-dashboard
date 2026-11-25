@@ -120,7 +120,7 @@ public sealed record ContainerAppAnswer(
     /// </summary>
     public string? CannotTell() =>
         Answered && !ReadsHealth ? "The page could not classify the answer as a health check."
-        : StatusCode is 404 ? "HTTP 404 at the health path (including Azure's \"Container App - Unavailable\" page for a deleted app) means the app is down, not that it is responding."
+        : StatusCode is ContainerAppProbe.NotFound ? "HTTP 404 at the health path (including Azure's \"Container App - Unavailable\" page for a deleted app) means the app is down, not that it is responding."
         : null;
 }
 
@@ -146,6 +146,22 @@ public sealed class ContainerAppProbe(ContainerAppTarget target)
 
     /// <summary>The default time a container app waits without a request before it scales to zero.</summary>
     public static readonly TimeSpan Asleep = TimeSpan.FromMinutes(5);
+
+    /// <summary>The first status the probe reads as a success: the 2xx window starts here.</summary>
+    private const int FirstSuccess = 200;
+
+    /// <summary>The first status the probe reads as no success: the 2xx window ends just before here.</summary>
+    private const int PastSuccess = 300;
+
+    /// <summary>
+    /// The status that says the app is gone: a 404 at the health path (Azure's deleted-app page included). Internal,
+    /// so the answer's words in <see cref="ContainerAppAnswer.CannotTell" /> read the same rule as
+    /// <see cref="GoneAtHealthPath" />.
+    /// </summary>
+    internal const int NotFound = 404;
+
+    /// <summary>The word a healthy health-check body says, in plain text or in its JSON <c>status</c>.</summary>
+    private const string HealthyWord = "Healthy";
 
     private DateTimeOffset? _runStartedAt;
     private DateTimeOffset? _lastProbeAt;
@@ -191,13 +207,20 @@ public sealed class ContainerAppProbe(ContainerAppTarget target)
         : StillWaking(answer) ? ContainerAppState.Waking
         : ContainerAppState.NotResponding;
 
+    /// <summary>
+    /// The 2xx window, the one the probe reads as a success: from <see cref="FirstSuccess" /> up to, not including,
+    /// <see cref="PastSuccess" />. Wider than <see cref="HealthClassifier.FromStatusCode(int)" />'s one status: a
+    /// node is healthy on 200 alone, a container app on any 2xx with a healthy payload.
+    /// </summary>
+    private static bool IsSuccess(int statusCode) => statusCode is >= FirstSuccess and < PastSuccess;
+
     /// <summary>The health path answered 2xx with a healthy payload.</summary>
     private static bool HealthyAtHealthPath(ContainerAppAnswer answer) =>
-        answer is { ReadsHealth: true, StatusCode: >= 200 and < 300, HealthyPayload: true };
+        answer is { ReadsHealth: true, HealthyPayload: true, StatusCode: { } code } && IsSuccess(code);
 
     /// <summary>The health path answered 404: the app is gone or unavailable (Azure's deleted-app page included).</summary>
     private static bool GoneAtHealthPath(ContainerAppAnswer answer) =>
-        answer is { ReadsHealth: true, StatusCode: 404 };
+        answer is { ReadsHealth: true, StatusCode: NotFound };
 
     /// <summary>The health path answered any other status (a 5xx, or a 2xx without a healthy payload).</summary>
     private static bool UnhealthyAtHealthPath(ContainerAppAnswer answer) =>
@@ -213,13 +236,13 @@ public sealed class ContainerAppProbe(ContainerAppTarget target)
     /// </summary>
     public static bool IsHealthyPayload(int statusCode, string? body)
     {
-        if (statusCode is < 200 or >= 300 || string.IsNullOrWhiteSpace(body))
+        if (!IsSuccess(statusCode) || string.IsNullOrWhiteSpace(body))
         {
             return false;
         }
 
         var text = body.Trim();
-        if (text.Equals("Healthy", StringComparison.OrdinalIgnoreCase))
+        if (text.Equals(HealthyWord, StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
@@ -236,7 +259,7 @@ public sealed class ContainerAppProbe(ContainerAppTarget target)
                 && document.RootElement.TryGetProperty("status", out var status)
                 && status.ValueKind == JsonValueKind.String
                 && status.GetString() is { } value
-                && value.Equals("Healthy", StringComparison.OrdinalIgnoreCase);
+                && value.Equals(HealthyWord, StringComparison.OrdinalIgnoreCase);
         }
         catch (JsonException)
         {

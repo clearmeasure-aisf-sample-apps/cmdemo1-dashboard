@@ -443,15 +443,15 @@ public static class RuntimePayloadBuilder
         }
 
         var status = probes?.Invoke(target) ?? ContainerAppStatus.NotYet;
-        var lines = new List<RuntimeTileLine> { new(target.Url.Host, "muted") };
+        var lines = new List<RuntimeTileLine> { new(target.Url.Host, RuntimeLineTone.Muted) };
         var title = ContainerAppText.Title(node.Name, target, status, zone);
         if (node.Deployable is not null && hourly is not null && now is { } moment)
         {
             var reports = hourly.FirstOrDefault(entry => string.Equals(entry.Name, node.Deployable, StringComparison.OrdinalIgnoreCase));
-            lines.Add(new RuntimeTileLine(HourlyCheckText.Result(reports, moment), HourlyCheckText.RecentResult(reports, moment) is null ? "muted" : "plain"));
+            lines.Add(new RuntimeTileLine(HourlyCheckText.Result(reports, moment), HourlyCheckText.RecentResult(reports, moment) is null ? RuntimeLineTone.Muted : RuntimeLineTone.Plain));
             if (HourlyCheckText.Counts(reports) is { } counts)
             {
-                lines.Add(new RuntimeTileLine(counts, "muted"));
+                lines.Add(new RuntimeTileLine(counts, RuntimeLineTone.Muted));
             }
 
             title = $"{title}\n{HourlyCheckText.Title(reports, moment, zone)}";
@@ -572,7 +572,7 @@ public static class RuntimePayloadBuilder
                     TileState.Healthy.Word(),
                     Reachable,
                     null,
-                    [new RuntimeTileLine($"{worst.Target.Label} reports it {HealthDetailText.Label(worst.Check.State).ToLowerInvariant()}", "warn")],
+                    [new RuntimeTileLine($"{worst.Target.Label} reports it {HealthDetailText.Label(worst.Check.State).ToLowerInvariant()}", RuntimeLineTone.Warn)],
                     null,
                     $"{reachable} Not so for {worst.Target.Name}: {HealthDetailText.Title(worst.Check)}");
             }
@@ -580,7 +580,7 @@ public static class RuntimePayloadBuilder
             var line = entry.Description is { } description
                 ? HealthDetailText.Brief(description, DescriptionLength)
                 : $"health check {HealthDetailText.Brief(check, CheckNameLength)} passed";
-            return new RuntimeTile(node.Alias, TileState.Healthy.Word(), Reachable, null, [new RuntimeTileLine(line, "ok")], null, reachable);
+            return new RuntimeTile(node.Alias, TileState.Healthy.Word(), Reachable, null, [new RuntimeTileLine(line, RuntimeLineTone.Ok)], null, reachable);
         }
 
         // The label is the health check's own word ("Degraded", "Unhealthy", ...), owned by HealthDetailText.Label.
@@ -589,7 +589,7 @@ public static class RuntimePayloadBuilder
         var title = $"{node.Name}: by the health check of {worst.Target.Name} (last {TimeText.Clock(worst.Target.Last?.CheckedAt ?? worst.Target.HealthDetail!.ReadAt, zone)}). The browser does not call it. {HealthDetailText.Title(worst.Check)}";
         return worst.Check.State switch
         {
-            CheckState.Unhealthy or CheckState.Degraded => new RuntimeTile(node.Alias, TileState.Unhealthy.Word(), label, null, [new RuntimeTileLine(words, "warn")], null, title),
+            CheckState.Unhealthy or CheckState.Degraded => new RuntimeTile(node.Alias, TileState.Unhealthy.Word(), label, null, [new RuntimeTileLine(words, RuntimeLineTone.Warn)], null, title),
             CheckState.Unknown => NeutralTile(node, NotKnown, words, title),
             _ => NeutralTile(
                 node,
@@ -636,7 +636,7 @@ public static class RuntimePayloadBuilder
                 TileState.Healthy.Word(),
                 Reachable,
                 queries.Count == 0 ? null : string.Create(CultureInfo.InvariantCulture, $"{queries.Sum(telemetry => telemetry.SqlOfTraffic)} queries/min"),
-                [new RuntimeTileLine(line, "ok")],
+                [new RuntimeTileLine(line, RuntimeLineTone.Ok)],
                 null,
                 $"{node.Name}: reachable. The database takes no call from a browser; the health check of {names} connected to it (last {TimeText.Clock(latest, zone)}).{background}");
         }
@@ -656,7 +656,7 @@ public static class RuntimePayloadBuilder
     }
 
     private static RuntimeTile NeutralTile(RuntimeNode node, string label, string line, string title) =>
-        new(node.Alias, TileState.Neutral.Word(), label, null, line.Length > 0 ? [new RuntimeTileLine(line, "muted")] : [], null, title);
+        new(node.Alias, TileState.Neutral.Word(), label, null, line.Length > 0 ? [new RuntimeTileLine(line, RuntimeLineTone.Muted)] : [], null, title);
 
     /// <summary>A node this page does not check: neutral, labelled <see cref="NotProbed"/>.</summary>
     private static RuntimeTile NotProbedTile(RuntimeNode node, string line, string title) =>
@@ -668,7 +668,7 @@ public static class RuntimePayloadBuilder
 
     /// <summary>A tile still waiting for the health checks of the apps that use the node; <paramref name="users"/> names those apps (<see cref="WebApps"/>, <see cref="ContainerApps"/>).</summary>
     private static RuntimeTile WaitingTile(RuntimeNode node, string users) =>
-        new(node.Alias, TileState.Checking.Word(), CheckingLabel, null, [new RuntimeTileLine("waiting for the health checks", "muted")], null, $"{node.Name}: waiting for the health checks of the {users} that use it.");
+        new(node.Alias, TileState.Checking.Word(), CheckingLabel, null, [new RuntimeTileLine("waiting for the health checks", RuntimeLineTone.Muted)], null, $"{node.Name}: waiting for the health checks of the {users} that use it.");
 
     /// <summary>No app this page checks uses the database.</summary>
     private static RuntimeTile DatabaseUnprobed(RuntimeNode node, HealthSource health)
@@ -708,7 +708,7 @@ public static class RuntimePayloadBuilder
                 TileState.Healthy.Word(),
                 Reachable,
                 null,
-                [new RuntimeTileLine(line, "ok")],
+                [new RuntimeTileLine(line, RuntimeLineTone.Ok)],
                 null,
                 $"{node.Name}: reachable. The database takes no call from a browser; the health check of {names} connected to it (last {TimeText.Clock(latest, zone)}).");
         }
@@ -775,7 +775,7 @@ public static class RuntimePayloadBuilder
             : [.. failing.Concat(detail.Entries.Where(entry => entry.IsHealthy)).Take(MostMarks)];
         return new RuntimeTileLine(
             HealthDetailText.Summary(detail),
-            failing.Count > 0 ? "warn" : "plain",
+            failing.Count > 0 ? RuntimeLineTone.Warn : RuntimeLineTone.Plain,
             Marks: [.. shown.Select(entry => new RuntimeCheckMark(MarkOf(entry.State), HealthDetailText.Title(entry)))]);
     }
 
@@ -793,12 +793,12 @@ public static class RuntimePayloadBuilder
     {
         var role = target.Role ?? (target.IsPrimary ? NodeInfo.PrimaryRole : NodeInfo.StandbyRole);
         return serves
-            ? new RuntimeTileLine($"{role}: serves traffic", "serving")
+            ? new RuntimeTileLine($"{role}: serves traffic", RuntimeLineTone.Serving)
             : target.State switch
             {
-                HealthState.Healthy => new RuntimeTileLine($"{role}: ready, no traffic", "muted"),
-                HealthState.Pending => new RuntimeTileLine(role, "muted"),
-                _ => new RuntimeTileLine($"{role}: not serving", "plain"),
+                HealthState.Healthy => new RuntimeTileLine($"{role}: ready, no traffic", RuntimeLineTone.Muted),
+                HealthState.Pending => new RuntimeTileLine(role, RuntimeLineTone.Muted),
+                _ => new RuntimeTileLine($"{role}: not serving", RuntimeLineTone.Plain),
             };
     }
 
@@ -806,9 +806,9 @@ public static class RuntimePayloadBuilder
     /// The same line for the only node of a deployable without a Front Door endpoint: no role, since nothing stands by.
     /// </summary>
     private static RuntimeTileLine SingleNodeLine(TargetStatus target, bool serves) =>
-        serves ? new RuntimeTileLine("serves traffic", "serving")
-        : target.State == HealthState.Pending ? new RuntimeTileLine("checking", "muted")
-        : new RuntimeTileLine("not serving", "plain");
+        serves ? new RuntimeTileLine("serves traffic", RuntimeLineTone.Serving)
+        : target.State == HealthState.Pending ? new RuntimeTileLine("checking", RuntimeLineTone.Muted)
+        : new RuntimeTileLine("not serving", RuntimeLineTone.Plain);
 
     private static RuntimeLink? Link(TargetStatus target, string key, string subject) =>
         RuntimeLink.To(target.Links[key], LinkText.For(key, subject));
@@ -826,7 +826,7 @@ public static class RuntimePayloadBuilder
             traffic.Add(new RuntimeTextPart(string.Create(CultureInfo.InvariantCulture, $" · p95 {p95} ms")));
         }
 
-        yield return RuntimeTileLine.Of("plain", traffic, RuntimeTrend.Of(Trends.Requests(target)));
+        yield return RuntimeTileLine.Of(RuntimeLineTone.Plain, traffic, RuntimeTrend.Of(Trends.Requests(target)));
 
         var vitals = telemetry.Process;
         var failed = new List<RuntimeTextPart> { new(Errors(telemetry.Errors), Link(target, LinkSet.Failures, node.Name)) };
@@ -835,7 +835,7 @@ public static class RuntimePayloadBuilder
             failed.Add(new RuntimeTextPart(string.Create(CultureInfo.InvariantCulture, $" · {exceptions} exceptions/min")));
         }
 
-        yield return RuntimeTileLine.Of(telemetry.Errors > 0 || vitals?.ExceptionsPerMinute > 0 ? "warn" : "plain", failed);
+        yield return RuntimeTileLine.Of(telemetry.Errors > 0 || vitals?.ExceptionsPerMinute > 0 ? RuntimeLineTone.Warn : RuntimeLineTone.Plain, failed);
 
         if (vitals is null)
         {
@@ -860,13 +860,13 @@ public static class RuntimePayloadBuilder
 
         if (process.Count > 0)
         {
-            yield return new RuntimeTileLine(string.Join(" · ", process), "plain", null, RuntimeTrend.Of(Trends.Cpu(target)));
+            yield return new RuntimeTileLine(string.Join(" · ", process), RuntimeLineTone.Plain, null, RuntimeTrend.Of(Trends.Cpu(target)));
         }
 
         if (vitals.UptimeSeconds is { } uptime)
         {
             // A process that started within the last minutes is worth a second look: a deployment, a crash, a scale-in.
-            yield return new RuntimeTileLine(VitalsText.Uptime(uptime), vitals.RestartedRecently ? "warn" : "muted");
+            yield return new RuntimeTileLine(VitalsText.Uptime(uptime), vitals.RestartedRecently ? RuntimeLineTone.Warn : RuntimeLineTone.Muted);
         }
     }
 
@@ -882,18 +882,18 @@ public static class RuntimePayloadBuilder
                 assessment.Serving.Count == rotation.Count
                     ? string.Create(CultureInfo.InvariantCulture, $"rotates over {rotation.Count} regions")
                     : string.Create(CultureInfo.InvariantCulture, $"rotates over {assessment.Serving.Count} of {rotation.Count} regions"),
-                "plain"),
-            ServingState.Primary => new RuntimeTileLine($"routes to {assessment.Expected!.Label} (priority 1)", "plain"),
-            ServingState.FailedOver => new RuntimeTileLine($"routes to {assessment.Expected!.Label} (failed over)", "serving"),
-            ServingState.Down => new RuntimeTileLine("no healthy origin", "plain"),
-            ServingState.NoNodes => new RuntimeTileLine("no origins in the topology", "muted"),
-            _ => new RuntimeTileLine("origins being checked", "muted"),
+                RuntimeLineTone.Plain),
+            ServingState.Primary => new RuntimeTileLine($"routes to {assessment.Expected!.Label} (priority 1)", RuntimeLineTone.Plain),
+            ServingState.FailedOver => new RuntimeTileLine($"routes to {assessment.Expected!.Label} (failed over)", RuntimeLineTone.Serving),
+            ServingState.Down => new RuntimeTileLine("no healthy origin", RuntimeLineTone.Plain),
+            ServingState.NoNodes => new RuntimeTileLine("no origins in the topology", RuntimeLineTone.Muted),
+            _ => new RuntimeTileLine("origins being checked", RuntimeLineTone.Muted),
         });
         lines.Add(assessment.FrontDoor switch
         {
-            FrontDoorAgreement.Agrees => new RuntimeTileLine("agrees with the web apps", "ok"),
-            FrontDoorAgreement.Disagrees => new RuntimeTileLine("disagrees with the web apps", "warn"),
-            _ => new RuntimeTileLine("being compared with the web apps", "muted"),
+            FrontDoorAgreement.Agrees => new RuntimeTileLine("agrees with the web apps", RuntimeLineTone.Ok),
+            FrontDoorAgreement.Disagrees => new RuntimeTileLine("disagrees with the web apps", RuntimeLineTone.Warn),
+            _ => new RuntimeTileLine("being compared with the web apps", RuntimeLineTone.Muted),
         });
         return Checked(node, entry.Target, lines, zone, assessment.FrontDoorText) with
         {
@@ -943,10 +943,10 @@ public static class RuntimePayloadBuilder
     {
         if (target.Version is not { } version)
         {
-            return new RuntimeTileLine("version not known", "muted");
+            return new RuntimeTileLine("version not known", RuntimeLineTone.Muted);
         }
 
-        return RuntimeTileLine.Of("strong", [new RuntimeTextPart("version "), new RuntimeTextPart(version, deployable is null ? null : VersionLink(deployable, version))]);
+        return RuntimeTileLine.Of(RuntimeLineTone.Strong, [new RuntimeTextPart("version "), new RuntimeTextPart(version, deployable is null ? null : VersionLink(deployable, version))]);
     }
 
     /// <summary>Where a version leads: the release in Octopus Deploy, or else the commit of the build with that version.</summary>
@@ -975,12 +975,12 @@ public static class RuntimePayloadBuilder
         bool Has(IReadOnlyList<NodeVersion> nodes) => nodes.Any(node => node.Label == label);
         return versions.State switch
         {
-            VersionState.Pending => new RuntimeTileLine("reading the pinned version", "unknown"),
-            VersionState.NotDeployed => new RuntimeTileLine("no pinned version", "unknown"),
-            VersionState.PinnedUnknown => new RuntimeTileLine("pinned version not known", "unknown"),
-            _ when Has(versions.Differing) => new RuntimeTileLine($"differs from pinned {versions.Pinned}", "differs"),
-            _ when Has(versions.Matching) => new RuntimeTileLine($"pinned {versions.Pinned}: in sync", "insync"),
-            _ => new RuntimeTileLine($"pinned {versions.Pinned}: not compared", "unknown"),
+            VersionState.Pending => new RuntimeTileLine("reading the pinned version", RuntimeLineTone.Unknown),
+            VersionState.NotDeployed => new RuntimeTileLine("no pinned version", RuntimeLineTone.Unknown),
+            VersionState.PinnedUnknown => new RuntimeTileLine("pinned version not known", RuntimeLineTone.Unknown),
+            _ when Has(versions.Differing) => new RuntimeTileLine($"differs from pinned {versions.Pinned}", RuntimeLineTone.Differs),
+            _ when Has(versions.Matching) => new RuntimeTileLine($"pinned {versions.Pinned}: in sync", RuntimeLineTone.InSync),
+            _ => new RuntimeTileLine($"pinned {versions.Pinned}: not compared", RuntimeLineTone.Unknown),
         };
     }
 

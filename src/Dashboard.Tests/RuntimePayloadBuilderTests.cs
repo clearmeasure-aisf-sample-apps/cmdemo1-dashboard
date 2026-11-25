@@ -1026,4 +1026,27 @@ public class RuntimePayloadBuilderTests
         Assert.DoesNotContain("web app", container, StringComparison.OrdinalIgnoreCase);
         Assert.EndsWith(" connected to it (last 22:00:00).", container, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void TheReachableDatabaseOfTheWebAppsAndOfTheContainerAppsIsTheSameTileShape()
+    {
+        var web = Tile(Build(Uat()), "sqldb");
+        var container = Tile(RuntimePayloadBuilder.Build(Shipped("uat"), null, Page, TimeZoneInfo.Utc, containerApps: _ => HealthOf(ContainerAppState.Healthy)), "sqldb");
+
+        // Both exits build one tile: healthy under the Reachable label, one ok line, no history; only the facts and the
+        // words of the line and title may differ.
+        foreach (var tile in new[] { web, container })
+        {
+            Assert.Equal("healthy", tile.State);
+            Assert.Equal("Reachable", tile.Label);
+            Assert.Null(tile.History);
+            var line = Assert.Single(tile.Lines);
+            Assert.Equal(RuntimeLineTone.Ok, line.Tone);
+            Assert.EndsWith(" passed", line.Text, StringComparison.Ordinal);
+        }
+
+        Assert.Equal(web.State, container.State);
+        Assert.Equal(web.Label, container.Label);
+        Assert.Null(container.Facts);
+    }
 }

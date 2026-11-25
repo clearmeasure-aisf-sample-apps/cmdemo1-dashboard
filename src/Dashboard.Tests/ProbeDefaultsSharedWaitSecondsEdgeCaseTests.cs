@@ -74,4 +74,22 @@ public class ProbeDefaultsSharedWaitSecondsEdgeCaseTests
         Assert.Equal(SharedDefault(), TimeSpan.FromSeconds(TrafficPlan.AnswerWithinSeconds));
         Assert.Equal(NodeProber.DefaultTimeout, TimeSpan.FromSeconds(TrafficPlan.AnswerWithinSeconds));
     }
+
+    /// <summary>
+    /// The traffic wait has its duration beside its whole seconds, the shape <see cref="TrafficPlan.CheckEvery"/>
+    /// has beside <see cref="TrafficPlan.CheckEverySeconds"/> (#1795): a public static readonly <see cref="TimeSpan" />
+    /// that is the very shared wait, so a caller that holds a length reads it instead of rebuilding one from the
+    /// seconds.
+    /// </summary>
+    [Fact]
+    public void TheTrafficWaitHasADurationBesideItsWholeSeconds()
+    {
+        var field = typeof(TrafficPlan).GetField(nameof(TrafficPlan.AnswerWithin), BindingFlags.Public | BindingFlags.Static);
+
+        Assert.NotNull(field);
+        Assert.True(field!.IsInitOnly, "The traffic wait stays a static readonly TimeSpan, the way ProbeDefaults.DefaultTimeout is.");
+        Assert.Equal(typeof(TimeSpan), field.FieldType);
+        Assert.Equal(SharedDefault(), TrafficPlan.AnswerWithin);
+        Assert.Equal(TimeSpan.FromSeconds(TrafficPlan.AnswerWithinSeconds), TrafficPlan.AnswerWithin);
+    }
 }

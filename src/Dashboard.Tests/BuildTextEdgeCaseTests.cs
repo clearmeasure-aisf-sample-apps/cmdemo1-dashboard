@@ -297,6 +297,64 @@ public class BuildTextEdgeCaseTests
         Assert.Equal("source", error.ParamName);
     }
 
+    /// <summary>A bar that folds more than a fold stands on the slots the bar's colours are drawn for: seven
+    /// languages are six parts - the five named on the slots that count from one and the folded rest on the slot
+    /// of nothing named - one to five and then zero, the colours <c>langbar__part--1</c> to <c>langbar__part--5</c>
+    /// and <c>langbar__part--0</c> of the stylesheet, which knows no other slot.</summary>
+    [Fact]
+    public void TheBarOfSevenLanguagesStandsOnTheSlotsOneToFiveAndZero()
+    {
+        var seven = BuildText.Shares(Bar(("C#", 100), ("Razor", 90), ("SQL", 80), ("JavaScript", 70), ("CSS", 60), ("PowerShell", 50), ("YAML", 40)));
+
+        Assert.Equal(6, seven.Count);
+        Assert.Equal(["C#", "Razor", "SQL", "JavaScript", "CSS", "Other"], seven.Select(share => share.Name));
+        Assert.Equal([1, 2, 3, 4, 5, 0], seven.Select(share => share.Slot));
+    }
+
+    /// <summary>Every part of a bar, named and folded, is cut from one whole: their percents, each the part's lines
+    /// over the lines of all languages, add up to the hundred the whole says, within the rounding of the numbers
+    /// they are cut in - a fold that lost a line of the whole would show here as a sum short of it.</summary>
+    [Fact]
+    public void ThePercentsOfEveryPartAddUpToTheWhole()
+    {
+        var seven = BuildText.Shares(Bar(("C#", 100), ("Razor", 90), ("SQL", 80), ("JavaScript", 70), ("CSS", 60), ("PowerShell", 50), ("YAML", 40)));
+
+        Assert.Equal(100, seven.Sum(share => share.Percent), 6);
+    }
+
+    /// <summary>A language that holds every line of the bar holds the whole of it: its share is the hundred itself
+    /// - the scale times the lines over the whole, cut in the order the bar always cut it - and it stands on the
+    /// slot of the largest language.</summary>
+    [Fact]
+    public void ALanguageThatHoldsAllTheLinesHoldsTheWhole()
+    {
+        var whole = Assert.Single(BuildText.Shares(Bar(("C#", 1_000))));
+
+        Assert.Equal(100d, whole.Percent);
+        Assert.Equal(1, whole.Slot);
+    }
+
+    /// <summary>The rule each part of the bar stands on is said once, under a name: the scale of a share and the
+    /// slots of the first named language and of the "Other" part are private constants of the class that says them,
+    /// and the share is said by the one private helper they were named for - pinned here by reflection, the way the
+    /// card's other fixed facts are pinned, so the numbers the stylesheet's <c>langbar__part--N</c> colours are drawn
+    /// from cannot drift from the names.</summary>
+    [Fact]
+    public void TheShareRuleIsSaidOnceUnderNames()
+    {
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.DeclaredOnly;
+        var fields = typeof(BuildText).GetFields(flags).Where(field => field.IsLiteral && !field.IsPublic).ToList();
+
+        Assert.Contains(fields, field => field.Name == "PercentScale" && Equals(field.GetRawConstantValue(), 100d));
+        Assert.Contains(fields, field => field.Name == "FirstNamedSlot" && Equals(field.GetRawConstantValue(), 1));
+        Assert.Contains(fields, field => field.Name == "OtherSlot" && Equals(field.GetRawConstantValue(), 0));
+
+        var shareOf = typeof(BuildText).GetMethod("ShareOf", flags);
+        Assert.NotNull(shareOf);
+        Assert.Equal(typeof(double), shareOf!.ReturnType);
+        Assert.Equal([typeof(long), typeof(long)], shareOf.GetParameters().Select(parameter => parameter.ParameterType).ToArray());
+    }
+
     // ----- Tests, Coverage, Complexity and Crap: a line each, out of the parts that are there
 
     /// <summary>The tests line is the total before a colon and the kinds after it - and what it says when the build

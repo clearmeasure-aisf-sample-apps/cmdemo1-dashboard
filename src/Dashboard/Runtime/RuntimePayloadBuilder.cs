@@ -485,18 +485,13 @@ public static class RuntimePayloadBuilder
 
     /// <summary>The container apps with a SQL relationship to the database. A web app's relationship is not one of these.</summary>
     private static List<ContainerSqlApp> ContainerSqlApps(RuntimeManifest manifest, RuntimeNode database, Dictionary<string, ContainerAppStatus> probed) =>
-        [.. manifest.Edges
-            .Where(edge => edge.Kind == RuntimeEdgeKind.Sql && edge.To == database.Alias)
-            .Select(edge => manifest.Nodes.FirstOrDefault(node => node.Alias == edge.From && node.Kind == RuntimeNodeKind.ContainerApp))
-            .OfType<RuntimeNode>()
+        [.. new RuntimeClients(manifest, database, RuntimeEdgeKind.Sql)
+            .Of(alias => manifest.Nodes.FirstOrDefault(node => node.Alias == alias && node.Kind == RuntimeNodeKind.ContainerApp))
             .Select(app => new ContainerSqlApp(app, probed.GetValueOrDefault(app.Alias)))];
 
     /// <summary>The checked web apps with a relationship of that kind to the node (the database, a dependency).</summary>
     private static List<Entry> Clients(RuntimeManifest manifest, RuntimeNode node, RuntimeEdgeKind kind, Dictionary<string, Entry> byAlias) =>
-        [.. manifest.Edges
-            .Where(edge => edge.Kind == kind && edge.To == node.Alias)
-            .Select(edge => byAlias.GetValueOrDefault(edge.From))
-            .OfType<Entry>()];
+        [.. new RuntimeClients(manifest, node, kind).Of(alias => byAlias.GetValueOrDefault(alias))];
 
     /// <summary>True when every client that reports was probed for liveness only, so none of them read what the node answers.</summary>
     private static bool OnlyProbesLiveness(List<Entry> clients) =>

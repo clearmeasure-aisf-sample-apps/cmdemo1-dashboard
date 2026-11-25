@@ -312,8 +312,7 @@ public static class RuntimePayloadBuilder
                 return null;
             }
 
-            var title = why.Length > 0 ? $"{node.Name}: {why}\n{words.Title}" : $"{node.Name}\n{words.Title}";
-            return new RuntimeTile(node.Alias, TileState.Neutral.Word(), words.Label, null, [new RuntimeTileLine(words.Line, words.Tone)], null, title);
+            return new RuntimeTile(node.Alias, TileState.Neutral.Word(), words.Label, null, [new RuntimeTileLine(words.Line, words.Tone)], null, $"{Reasoned(node, why)}\n{words.Title}");
         }
     }
 
@@ -412,7 +411,7 @@ public static class RuntimePayloadBuilder
         if (ContainerTarget(node) is not { } target)
         {
             const string Why = "a container app without a public address this page knows: the browser cannot ask it.";
-            return health.Tile(node, Why) ?? NeutralTile(node, NoAddress, "no public address known", $"{node.Name}: {Why}");
+            return UnprobedUnder(node, health, Why, "no public address known", NoAddress);
         }
 
         var status = probes?.Invoke(target) ?? ContainerAppStatus.NotYet;
@@ -613,7 +612,7 @@ public static class RuntimePayloadBuilder
         if (clients.All(entry => entry.Target.Last is { Probe: ProbeKind.Liveness }))
         {
             const string Why = "the probe is Liveness, which does not connect to the database. Choose Health check to see whether it answers.";
-            return health.Tile(node, Why) ?? NotProbedTile(node, "probe Liveness leaves it alone", $"{node.Name}: {Why}");
+            return UnprobedUnder(node, health, Why, "probe Liveness leaves it alone");
         }
 
         if (clients.Any(entry => entry.Target.State == HealthState.Pending))
@@ -635,9 +634,21 @@ public static class RuntimePayloadBuilder
     private static RuntimeTile NotProbedTile(RuntimeNode node, string line, string title) =>
         NeutralTile(node, NotProbed, line, title);
 
+    /// <summary>
+    /// What Resource Health said of a node, or else this page's own answer under the reason it has just worked out:
+    /// the short <paramref name="line"/> on the tile, the <paramref name="why"/> in its tooltip behind the node's name.
+    /// </summary>
+    /// <param name="label">The label of the fallback, <see cref="NotProbed"/> unless the box lacks something of its own.</param>
+    private static RuntimeTile UnprobedUnder(RuntimeNode node, HealthSource health, string why, string line, string label = NotProbed) =>
+        health.Tile(node, why) ?? NeutralTile(node, label, line, Reasoned(node, why));
+
     /// <summary>A node with nothing of its own to say: what Resource Health said of it, or not probed under its name.</summary>
     private static RuntimeTile UnprobedNodeTile(RuntimeNode node, HealthSource health) =>
-        health.Tile(node, string.Empty) ?? NotProbedTile(node, string.Empty, node.Name);
+        UnprobedUnder(node, health, string.Empty, string.Empty);
+
+    /// <summary>A box's tooltip opening: its name, then the reason this page worked out for it, if there is one.</summary>
+    private static string Reasoned(RuntimeNode node, string why) =>
+        why.Length > 0 ? $"{node.Name}: {why}" : node.Name;
 
     /// <summary>A tile still waiting for the health checks of the apps that use the node; <paramref name="users"/> names those apps ("web apps", "container apps").</summary>
     private static RuntimeTile WaitingTile(RuntimeNode node, string users) =>
@@ -647,7 +658,7 @@ public static class RuntimePayloadBuilder
     private static RuntimeTile DatabaseUnprobed(RuntimeNode node, HealthSource health)
     {
         const string Why = "the database takes no call from a browser, and this page checks no web app that uses it.";
-        return health.Tile(node, Why) ?? NotProbedTile(node, "not probed from the browser", $"{node.Name}: {Why}");
+        return UnprobedUnder(node, health, Why, "not probed from the browser");
     }
 
     /// <summary>
@@ -683,7 +694,7 @@ public static class RuntimePayloadBuilder
         {
             var who = Plural.Noun(apps.Count, "the container app that uses it", "the container apps that use it");
             var why = $"{who} answered without a health check (the probe was Liveness, or the app does not allow this page's origin), so this page cannot tell whether the database answers.";
-            return health.Tile(node, why) ?? NotProbedTile(node, "health check not read", $"{node.Name}: {why}");
+            return UnprobedUnder(node, health, why, "health check not read");
         }
 
         return NeutralTile(

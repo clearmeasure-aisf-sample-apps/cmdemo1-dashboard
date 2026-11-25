@@ -53,5 +53,8 @@ public sealed record Trend(IReadOnlyList<double> Points, string Title)
     public (double X, double Y) Last(double width, double height, double inset = 1) =>
         (Math.Round(width - inset, 2), Math.Round(height - inset - Points[^1] * (height - 2 * inset), 2));
 
-    private static string Number(double value) => value.ToString(value == Math.Round(value) ? "0" : "0.#", CultureInfo.InvariantCulture);
+    /// <summary>At most one decimal; a whole reading is written without one.</summary>
+    private const string NumberFormat = "0.#";
+
+    private static string Number(double value) => value.ToString(NumberFormat, CultureInfo.InvariantCulture);
 }

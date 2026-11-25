@@ -8,7 +8,8 @@ namespace Dashboard.Health;
 ///
 /// The three consts below that say what a press sends - <see cref="PerSecond"/>, <see cref="Seconds"/> and
 /// <see cref="AnswerWithinSeconds"/> - belong to one run and travel together as one <see cref="TrafficRun"/>;
-/// <see cref="CheckEverySeconds"/> is not one of them, being how often the page checks while a run lasts.
+/// how often the page checks while a run lasts is not one of them, and lives here as one rule in both of its
+/// shapes, <see cref="CheckEverySeconds"/> whole and <see cref="CheckEvery"/> as a duration.
 /// </summary>
 public sealed record TrafficPlan(string Environment, IReadOnlyList<Uri> Addresses, IReadOnlyList<string> Targets)
 {
@@ -28,10 +29,20 @@ public sealed record TrafficPlan(string Environment, IReadOnlyList<Uri> Addresse
     public const int AnswerWithinSeconds = ProbeDefaults.DefaultTimeoutSeconds;
 
     /// <summary>
-    /// How often the page checks while the traffic runs, so the numbers follow it. Not a number of the run: a run
-    /// says what the browser sends (<see cref="TrafficRun"/>), this says what the page does while it sends.
+    /// How often the page checks while the traffic runs, so the numbers follow it, in whole seconds: the number
+    /// <see cref="CheckEvery"/> is made of. Not a number of the run: a run says what the browser sends
+    /// (<see cref="TrafficRun"/>), this says what the page does while it sends.
     /// </summary>
     public const int CheckEverySeconds = 10;
+
+    /// <summary>
+    /// That same check as a duration: <see cref="CheckEverySeconds"/> seconds. The one home of the rule a caller that
+    /// holds a length reads - <see cref="IntervalNote"/> compares the interval control with it, and the panel cuts its
+    /// follow tick out of it (<c>TrafficPanel.ReadEvery</c>) - so the rhythm is never re-derived from the seconds
+    /// wherever it is needed, the shape <see cref="ProbeDefaults"/> gives
+    /// <see cref="ProbeDefaults.DefaultTimeoutSeconds"/> and <see cref="ProbeDefaults.DefaultTimeout"/>.
+    /// </summary>
+    public static readonly TimeSpan CheckEvery = TimeSpan.FromSeconds(CheckEverySeconds);
 
     /// <summary>
     /// The environment the panel's choice shows, among those that have something to call. The viewer's own choice
@@ -57,11 +68,12 @@ public sealed record TrafficPlan(string Environment, IReadOnlyList<Uri> Addresse
 
     /// <summary>
     /// What stands next to the interval control while traffic runs: the page then checks every
-    /// <see cref="CheckEverySeconds"/> s, whatever the control says. Null when no traffic runs, and when the chosen
-    /// interval is no longer than that (the control is then right as it is).
+    /// <see cref="CheckEvery"/>, whatever the control says. Null when no traffic runs, and when the chosen interval is
+    /// no longer than that (the control is then right as it is). The comparison is the duration's, and only the words
+    /// are read from <see cref="CheckEverySeconds"/>, which is how a sentence is written.
     /// </summary>
     public static string? IntervalNote(bool running, TimeSpan interval) =>
-        running && interval > TimeSpan.FromSeconds(CheckEverySeconds) ? $"every {CheckEverySeconds} s while traffic runs" : null;
+        running && interval > CheckEvery ? $"every {CheckEverySeconds} s while traffic runs" : null;
 
     /// <summary>The plan of an environment; null when it has nothing to call.</summary>
     public static TrafficPlan? For(EnvironmentInfo environment)

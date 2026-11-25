@@ -5,8 +5,8 @@ namespace Dashboard.Health;
 /// request waits for its answer. These are the three numbers <c>start</c> of <c>js/traffic.js</c> takes after the
 /// addresses, in that order, and carrying them as one named value is what keeps a press from sending for as long as
 /// a single request was meant to wait - which three bare ints in a row could not (#1742). How often the page checks
-/// while traffic runs is not part of a run and stays <see cref="TrafficPlan.CheckEverySeconds"/>: a run is what the
-/// browser is asked to send, not what the page does while it sends.
+/// while traffic runs is not part of a run and stays <see cref="TrafficPlan.CheckEvery"/>: a run is what the browser
+/// is asked to send, not what the page does while it sends.
 /// </summary>
 /// <param name="PerSecond">Requests a second while the run lasts.</param>
 /// <param name="Seconds">How long one press sends.</param>

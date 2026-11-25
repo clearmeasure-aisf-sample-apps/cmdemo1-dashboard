@@ -40,9 +40,20 @@
     /// <summary>
     /// One press as one value (<see cref="TrafficRun"/>): the three numbers the browser call and the sentences below
     /// take, so they cannot reach <c>js/traffic.js</c> as three ints in the wrong order (#1742). How often the page
-    /// checks while the run lasts is not one of them, and stays <see cref="TrafficPlan.CheckEverySeconds"/>.
+    /// checks while the run lasts is not one of them: it is the page's own rule, <see cref="TrafficPlan.CheckEvery"/>,
+    /// and the tick below is cut from it.
     /// </summary>
     private static TrafficRun Run { get; } = TrafficRun.Default;
+
+    /// <summary>
+    /// How often <see cref="FollowAsync"/> reads the counts of a run: the page's check interval
+    /// (<see cref="TrafficPlan.CheckEvery"/>) cut into <see cref="TrafficPlan.CheckEverySeconds"/> of them, which
+    /// makes it a second. The tick is then the very rule it counts, read from the same length rather than from a bare
+    /// literal beside it: every <see cref="TrafficPlan.CheckEverySeconds"/> of these ticks is one
+    /// <see cref="TrafficPlan.CheckEvery"/>, and a tick of another length has to be said in those same words, which
+    /// is where <c>TrafficFollowIntervalTests</c> catches it (#1775).
+    /// </summary>
+    private static readonly TimeSpan ReadEvery = TrafficPlan.CheckEvery / TrafficPlan.CheckEverySeconds;
 
     private readonly CancellationTokenSource _stopping = new();
     private IReadOnlyList<TrafficPlan> _plans = [];
@@ -141,12 +152,13 @@
     }
 
     /// <summary>
-    /// Reads the counts every second until the run is over, which is after the last answer and not after the last
-    /// request, and asks for checks every few seconds.
+    /// Reads the counts on every tick of <see cref="ReadEvery"/> until the run is over, which is after the last answer
+    /// and not after the last request, and asks the page for a check every
+    /// <see cref="TrafficPlan.CheckEverySeconds"/> of those ticks - once every <see cref="TrafficPlan.CheckEvery"/>.
     /// </summary>
     private async Task FollowAsync()
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1), Time);
+        using var timer = new PeriodicTimer(ReadEvery, Time);
         var ticks = 0;
         try
         {

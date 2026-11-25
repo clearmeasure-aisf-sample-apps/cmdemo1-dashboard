@@ -4,9 +4,10 @@ namespace Dashboard.Tests;
 
 /// <summary>
 /// The boundary, null/empty and fixed-value tests of the rest of <c>topology.json</c> as records:
-/// <see cref="Topology" /> itself, its <see cref="SystemInfo" /> and <see cref="DashboardInfo" />, an
-/// <see cref="EnvironmentInfo" /> with its <see cref="PageLink" /> pages, and the <see cref="ClusterInfo" /> a
-/// system may name.
+/// <see cref="Topology" /> itself, its <see cref="SystemInfo" /> and <see cref="DashboardInfo" />, the
+/// <see cref="PageLink" /> a page of the system stands on, and the <see cref="ClusterInfo" /> a system may name.
+/// The <see cref="EnvironmentInfo" /> the file carries has its own boundary tests in
+/// <see cref="EnvironmentInfoEdgeCaseTests" />.
 /// <para>
 /// What the other files already pin is left alone. <see cref="TopologyParserTests" /> pins what the file becomes:
 /// the four parts of a topology read out of it, the moment it says it was generated, the absent and the null
@@ -19,19 +20,19 @@ namespace Dashboard.Tests;
 /// <see cref="EmptyStateStatusRegionTests" /> and <see cref="TargetTileClusterCardEnvironmentDeliveryTests" /> pin.
 /// </para>
 /// <para>
-/// <see cref="DeployableInfo" /> and <see cref="NodeInfo" /> - the two records of the file that are not covered
+/// <see cref="DeployableInfo" /> and <see cref="NodeInfo" /> - two more records of the file that are not covered
 /// here - have their own boundary tests in <see cref="DeployableInfoEdgeCaseTests" /> and
 /// <see cref="NodeInfoEdgeCaseTests" />, including their three fixed paths, their two role words, the path a probe
 /// is answered with, the pin file and the primary decision. What is pinned here is the rest of the file on its own:
 /// that the parts of each record come back to the property of their own name and that everything a caller may leave
-/// out stands absent rather than filled in; that the empty word is a word and not nothing, and an empty list not the
-/// list that is absent; the two fixed words <see cref="DashboardInfo.DefaultName" /> and a page's tooltip are made
-/// of, at the nothing they are asked about; that the two files a system derives from its delivery facts stand beside
-/// them - in their directory, never under them, and with the query and the fragment of the address they are derived
-/// from dropped; that a topology asks nothing of a list that is not there; that the moment a topology was generated
-/// is weighed as an instant and not as the offset it was written in; and the members every record is asked -
-/// comparing, hashing, falling apart, copying and saying itself - with the lists a topology or an environment holds
-/// compared by the instance they stand on and not by their contents.
+/// out stands absent rather than filled in; that the empty word is a word and not nothing; the two fixed words
+/// <see cref="DashboardInfo.DefaultName" /> and a page's tooltip are made of, at the nothing they are asked about;
+/// that the two files a system derives from its delivery facts stand beside them - in their directory, never under
+/// them, and with the query and the fragment of the address they are derived from dropped; that a topology asks
+/// nothing of a list that is not there; that the moment a topology was generated is weighed as an instant and not
+/// as the offset it was written in; and the members every record is asked - comparing, hashing, falling apart,
+/// copying and saying itself - with the lists a topology holds compared by the instance they stand on and not by
+/// their contents.
 /// </para>
 /// <para>
 /// Nothing here reaches the network or asks a clock what time it is: every address is named and never fetched, and
@@ -76,7 +77,6 @@ public class TopologyEdgeCaseTests
     private static readonly PageLink Scorecard = new("Scorecard", PageAddress, "scorecard");
     private static readonly PageLink Reports = new("Reports", ReportsAddress);
     private static readonly IReadOnlyList<PageLink> TwoPages = new[] { Scorecard, Reports };
-    private static readonly IReadOnlyList<PageLink> NoPages = [];
 
     /// <summary>A system with every part named and the seven values apart from one another, so that an argument
     /// landing on another property is seen instead of quietly matching a second part of the record.</summary>
@@ -789,272 +789,6 @@ public class TopologyEdgeCaseTests
         Assert.Equal([typeof(IEquatable<DashboardInfo>)], typeof(DashboardInfo).GetInterfaces());
         Assert.Equal(["DefaultName"], NamesOfFields<DashboardInfo>());
         Assert.Equal("dashboard", typeof(DashboardInfo).GetField("DefaultName")!.GetRawConstantValue());
-    }
-
-    // ------------------------------------------------------------------ the eight parts of an environment
-
-    /// <summary>The constructor's eight parts, each back as the property of its own name - the order the reader of
-    /// the file hands an environment over in. The two lists and the link set come back as the very holds they were
-    /// handed, never copied.</summary>
-    [Fact]
-    public void TheConstructorHandsEachEnvironmentArgumentToThePropertyOfItsName()
-    {
-        var environment = FullEnvironment;
-
-        Assert.Equal("uat", environment.Name);
-        Assert.Equal("nonprod", environment.Tier);
-        Assert.Same(TwoDeployables, environment.Deployables);
-        Assert.Equal(Versions, environment.VersionsUrl);
-        Assert.Equal(VersionsHistory, environment.VersionsHistoryUrl);
-        Assert.Same(Links, environment.Links);
-        Assert.Equal("demo-uat", environment.Namespace);
-        Assert.Same(TwoPages, environment.Pages);
-    }
-
-    /// <summary>The six parts a caller may leave out stand absent when it does: no tier, no version address, no
-    /// links, no namespace and no page - and the deployables it must name stand where it names them, an empty list
-    /// of them being an environment the page has nothing to check.</summary>
-    [Fact]
-    public void TheEnvironmentPartsTheCallerDoesNotNameStandAbsent()
-    {
-        var environment = BareEnvironment;
-
-        Assert.Equal("tdd", environment.Name);
-        Assert.Null(environment.Tier);
-        Assert.Empty(environment.Deployables);
-        Assert.Null(environment.VersionsUrl);
-        Assert.Null(environment.VersionsHistoryUrl);
-        Assert.Null(environment.Links);
-        Assert.Null(environment.Namespace);
-        Assert.Null(environment.Pages);
-
-        Assert.Null(new EnvironmentInfo("tdd", null, NoDeployables, Links: null, Namespace: null, Pages: null).Links);
-    }
-
-    /// <summary>The environment keeps the words it is given and changes none of them: an empty tier is a tier and
-    /// not the nothing a tier of no word is, a namespace of spaces is a namespace, a name of no letters is still a
-    /// name, and no part is trimmed, lower-cased or filled in - the reader of the file does all of that
-    /// (<see cref="TopologyParserTests" />).</summary>
-    [Fact]
-    public void AnEnvironmentKeepsItsWordsAsItIsGivenThem()
-    {
-        var empty = new EnvironmentInfo(string.Empty, string.Empty, NoDeployables, Links: null, Namespace: string.Empty, Pages: NoPages);
-        var spaced = new EnvironmentInfo("  uat  ", "  nonprod  ", NoDeployables, Namespace: "  demo-uat  ");
-        var nothing = new EnvironmentInfo(null!, null, null!);
-
-        Assert.Equal(string.Empty, empty.Name);
-        Assert.Equal(string.Empty, empty.Tier);
-        Assert.Equal(string.Empty, empty.Namespace);
-        Assert.Same(NoPages, empty.Pages);
-        Assert.Empty(empty.Pages!);
-
-        Assert.Equal("  uat  ", spaced.Name);
-        Assert.Equal("  nonprod  ", spaced.Tier);
-        Assert.Equal("  demo-uat  ", spaced.Namespace);
-
-        Assert.Null(nothing.Name);
-        Assert.Null(nothing.Tier);
-        Assert.Null(nothing.Deployables);
-        Assert.Null(nothing.Pages);
-    }
-
-    /// <summary>The empty list and no list at all are two different things, twice over: an environment of no
-    /// deployable still holds the list it was given, an environment that names no page holds nothing, and a second
-    /// list of the two very pages is another list to a record that opens neither.</summary>
-    [Fact]
-    public void AnEmptyListOfAnEnvironmentOwnIsNotTheListThatIsAbsent()
-    {
-        var emptied = FullEnvironment with { Deployables = NoDeployables, Pages = NoPages };
-        var unnamed = FullEnvironment with { Pages = null };
-
-        Assert.Empty(emptied.Deployables);
-        Assert.Empty(emptied.Pages!);
-        Assert.Same(NoDeployables, emptied.Deployables);
-        Assert.Same(NoPages, emptied.Pages);
-
-        Assert.Null(unnamed.Pages);
-        Assert.NotEqual(emptied, unnamed);
-
-        var copied = FullEnvironment with { Pages = [Scorecard, Reports] };
-
-        Assert.Equal(FullEnvironment.Pages, copied.Pages);
-        Assert.NotSame(FullEnvironment.Pages, copied.Pages);
-        Assert.NotEqual(FullEnvironment, copied);
-    }
-
-    /// <summary>Two environments are one while their eight parts are - the operators following <c>Equals</c> and the
-    /// hash code following them - and any one of the eight tells two apart: the empty tier and the absent one, the
-    /// absent link set and the empty one, the empty page list and the absent one, a second list of the two very
-    /// deployables, and a version address told in another spelling.</summary>
-    [Fact]
-    public void TwoEnvironmentsAreOneWhileTheirEightPartsAre()
-    {
-        var one = FullEnvironment;
-        var two = new EnvironmentInfo("uat", "nonprod", TwoDeployables, Versions, VersionsHistory, Links, "demo-uat", TwoPages);
-
-        Assert.True(one == two);
-        Assert.False(one != two);
-        Assert.Equal(one, two);
-        Assert.True(one.Equals(two));
-        Assert.True(two.Equals((object)one));
-        Assert.Equal(one.GetHashCode(), two.GetHashCode());
-
-        Assert.False(one.Equals(null));
-        Assert.False(one.Equals("uat"));
-        Assert.False(one.Equals(BareEnvironment));
-        Assert.False(one.Equals(AtDoor));
-
-        Assert.NotEqual(one, one with { Name = string.Empty });
-        Assert.NotEqual(one, one with { Name = "UAT" });
-        Assert.NotEqual(one, one with { Tier = null });
-        Assert.NotEqual(one, one with { Tier = string.Empty });
-        Assert.NotEqual(one, one with { Deployables = NoDeployables });
-        Assert.NotEqual(one, one with { Deployables = [.. TwoDeployables] });
-        Assert.NotEqual(one, one with { VersionsUrl = null });
-        Assert.NotEqual(one, one with { VersionsUrl = new Uri("https://raw.example.net/org/demo-system/main/environments/tdd/versions.json") });
-        Assert.NotEqual(one, one with { VersionsHistoryUrl = null });
-        Assert.NotEqual(one, one with { Links = null });
-        Assert.NotEqual(one, one with { Links = LinkSet.None });
-        Assert.NotEqual(one, one with { Links = OtherLinks });
-        Assert.NotEqual(one, one with { Namespace = string.Empty });
-        Assert.NotEqual(one, one with { Pages = null });
-        Assert.NotEqual(one, one with { Pages = NoPages });
-    }
-
-    /// <summary>The links an environment holds are compared as the hold they stand on and not as their keys: the
-    /// very same link set makes two environments one, and a second set of the one and the same link makes two
-    /// environments of them - the record opening neither to look inside it.</summary>
-    [Fact]
-    public void TheLinksAnEnvironmentHoldsAreComparedAsTheHoldTheyStandOn()
-    {
-        var one = FullEnvironment;
-        var holdingTheSameLinks = new EnvironmentInfo("uat", "nonprod", TwoDeployables, Versions, VersionsHistory, Links, "demo-uat", TwoPages);
-        var holdingOtherLinks = one with { Links = OtherLinks };
-
-        Assert.Equal(one, holdingTheSameLinks);
-        Assert.Equal(one.GetHashCode(), holdingTheSameLinks.GetHashCode());
-
-        Assert.Equal(one.Links!.Keys, holdingOtherLinks.Links!.Keys);
-        Assert.Equal(one.Links[LinkSet.Portal], holdingOtherLinks.Links[LinkSet.Portal]);
-        Assert.NotSame(one.Links, holdingOtherLinks.Links);
-        Assert.True(one != holdingOtherLinks);
-    }
-
-    /// <summary>The eight parts read out of the environment in the order they stand in it, each as the value it
-    /// holds, and the absent ones reading out as the nothing they are.</summary>
-    [Fact]
-    public void TheEightPartsReadOutOfTheEnvironmentInTheOrderTheyStand()
-    {
-        var (name, tier, deployables, versionsUrl, versionsHistoryUrl, links, @namespace, pages) = FullEnvironment;
-
-        Assert.Equal("uat", name);
-        Assert.Equal("nonprod", tier);
-        Assert.Same(TwoDeployables, deployables);
-        Assert.Equal(Versions, versionsUrl);
-        Assert.Equal(VersionsHistory, versionsHistoryUrl);
-        Assert.Same(Links, links);
-        Assert.Equal("demo-uat", @namespace);
-        Assert.Same(TwoPages, pages);
-
-        var (bareName, bareTier, bareDeployables, bareVersions, bareHistory, bareLinks, bareNamespace, barePages) = BareEnvironment;
-
-        Assert.Equal("tdd", bareName);
-        Assert.Null(bareTier);
-        Assert.Same(NoDeployables, bareDeployables);
-        Assert.Null(bareVersions);
-        Assert.Null(bareHistory);
-        Assert.Null(bareLinks);
-        Assert.Null(bareNamespace);
-        Assert.Null(barePages);
-    }
-
-    /// <summary><c>with</c> names the part it changes and carries the other seven: a copy that names nothing is one
-    /// with its original and not the same object, and the environment it was copied from is untouched.</summary>
-    [Fact]
-    public void WithChangesOnlyTheEnvironmentPartItNames()
-    {
-        var environment = FullEnvironment;
-        var copy = environment with { };
-
-        Assert.Equal(environment, copy);
-        Assert.NotSame(environment, copy);
-
-        var moved = environment with { Namespace = "demo-prod", Tier = "prod" };
-
-        Assert.Equal("demo-prod", moved.Namespace);
-        Assert.Equal("prod", moved.Tier);
-        Assert.Equal("uat", moved.Name);
-        Assert.Same(TwoDeployables, moved.Deployables);
-        Assert.Same(TwoPages, moved.Pages);
-        Assert.Equal("demo-uat", environment.Namespace);
-        Assert.Equal("nonprod", environment.Tier);
-    }
-
-    /// <summary>The words the environment says about itself: its type, then its eight parts in their order, each
-    /// named and an absent part named and left blank - a list saying the collection it stands on, a link set saying
-    /// the type it is, and neither of them opened. (The whole line stands here, so a part moved about in the record
-    /// is a change the tests see.)</summary>
-    [Fact]
-    public void TheEnvironmentSaysItsPartsInTheirOrder()
-    {
-        Assert.Equal(
-            "EnvironmentInfo { Name = uat, Tier = nonprod, Deployables = Dashboard.Health.DeployableInfo[], "
-                + "VersionsUrl = https://raw.example.net/org/demo-system/main/environments/uat/versions.json, "
-                + "VersionsHistoryUrl = https://github.example.net/org/demo-system/commits/main/environments/uat/versions.json, "
-                + "Links = Dashboard.Health.LinkSet, Namespace = demo-uat, Pages = Dashboard.Health.PageLink[] }",
-            FullEnvironment.ToString());
-
-        Assert.Equal(
-            "EnvironmentInfo { Name = tdd, Tier = , Deployables = Dashboard.Health.DeployableInfo[], VersionsUrl = , "
-                + "VersionsHistoryUrl = , Links = , Namespace = , Pages =  }",
-            BareEnvironment.ToString());
-    }
-
-    /// <summary>The environment's whole public surface as it stands: its eight parts, named in the order the
-    /// constructor names them and of the type the constructor says, and the members every record is asked - falling
-    /// apart, comparing, hashing and saying itself - and nothing else to call: an environment decides nothing of its
-    /// own. A ninth part added here has to be written down here too, which is the point.</summary>
-    [Fact]
-    public void TheEnvironmentHasEightPartsAndDecidesNothingOfItsOwn()
-    {
-        Assert.Equal(
-            ["Name", "Tier", "Deployables", "VersionsUrl", "VersionsHistoryUrl", "Links", "Namespace", "Pages"],
-            NamesOf<EnvironmentInfo>());
-
-        Assert.Equal(
-            [
-                "Deconstruct", "Deployables", "Equals", "GetHashCode", "Links", "Name", "Namespace", "Pages",
-                "Tier", "ToString", "VersionsHistoryUrl", "VersionsUrl", "op_Equality", "op_Inequality",
-            ],
-            PublicSurfaceOf<EnvironmentInfo>());
-
-        var properties = PropertiesOf<EnvironmentInfo>();
-
-        Assert.Equal(typeof(string), properties["Name"].PropertyType);
-        Assert.Equal(typeof(string), properties["Tier"].PropertyType);
-        Assert.Equal(typeof(IReadOnlyList<DeployableInfo>), properties["Deployables"].PropertyType);
-        Assert.Equal(typeof(Uri), properties["VersionsUrl"].PropertyType);
-        Assert.Equal(typeof(Uri), properties["VersionsHistoryUrl"].PropertyType);
-        Assert.Equal(typeof(LinkSet), properties["Links"].PropertyType);
-        Assert.Equal(typeof(string), properties["Namespace"].PropertyType);
-        Assert.Equal(typeof(IReadOnlyList<PageLink>), properties["Pages"].PropertyType);
-
-        var parameters = ParametersOf<EnvironmentInfo>();
-
-        Assert.Equal(
-            ["Name", "Tier", "Deployables", "VersionsUrl", "VersionsHistoryUrl", "Links", "Namespace", "Pages"],
-            [.. parameters.Select(parameter => parameter.Name!)]);
-        // The name and the deployables are what an environment must be told - the tier too, although it may be
-        // named as nothing - and the five after them may be left out, each standing as nothing when it is.
-        Assert.Equal([false, false, false, true, true, true, true, true], [.. parameters.Select(parameter => parameter.HasDefaultValue)]);
-        Assert.All(parameters.Take(3), parameter => Assert.Equal(DBNull.Value, parameter.DefaultValue));
-        Assert.All(parameters.Skip(3), parameter => Assert.Null(parameter.DefaultValue));
-        Assert.Equal(
-            [false, true, false, true, true, true, true, true],
-            [.. parameters.Select(IsNullable)]);
-
-        Assert.Equal([typeof(IEquatable<EnvironmentInfo>)], typeof(EnvironmentInfo).GetInterfaces());
-        Assert.Empty(NamesOfFields<EnvironmentInfo>());
     }
 
     // ------------------------------------------------------------------ a page of the system itself

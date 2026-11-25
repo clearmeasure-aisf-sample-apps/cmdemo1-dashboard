@@ -259,7 +259,7 @@ public class SystemInfoEdgeCaseTests
     /// the dashboard comes back as the very instance it was handed - but it never asks of a second <see
     /// cref="DashboardInfo" /> of the one and the same two words that the two systems it stands on are one. Here
     /// that is pinned: a nested record is opened and weighed by what it holds, unlike the <see cref="LinkSet" /> of
-    /// an environment, which <see cref="TopologyEdgeCaseTests" /> pins as weighed by the hold it stands on. Two
+    /// an environment, which <see cref="EnvironmentInfoEdgeCaseTests" /> pins as weighed by the hold it stands on. Two
     /// systems whose <see cref="SystemInfo.Dashboard" /> is a second <c>new DashboardInfo</c> of the same name and
     /// path are one - <c>==</c>, <c>Equals</c> and the hash code alike - although the two dashboard objects are not
     /// the same object, and a dashboard of the same name and another path is a second system.

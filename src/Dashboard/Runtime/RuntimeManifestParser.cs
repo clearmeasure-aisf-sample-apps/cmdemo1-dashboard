@@ -18,6 +18,17 @@ public sealed record RuntimeParseResult<T>(T? Value, IReadOnlyList<string> Error
     /// </summary>
     /// <param name="problems">Why there is no value, in the order the reader found them.</param>
     internal static RuntimeParseResult<T> Failed(params string[] problems) => new(null, problems);
+
+    /// <summary>
+    /// The one way a reader of <c>runtime/</c> hands over the problems it gathered while reading: any problem means no
+    /// value, and the problems are handed over as they are - the same words, their number and the order the reader
+    /// found them; no problem means the value. The value is made only when there is no problem, so a refused file
+    /// never builds one. <see cref="Health.TopologyParseResult.Collected"/> is the same way for <c>topology.json</c>.
+    /// </summary>
+    /// <param name="problems">What the reader found wrong, in the order it found it.</param>
+    /// <param name="value">The value the reader read, asked for only when <paramref name="problems"/> is empty.</param>
+    internal static RuntimeParseResult<T> Collected(IReadOnlyList<string> problems, Func<T?> value) =>
+        problems.Count == 0 && value() is { } read ? new(read, []) : new(null, problems);
 }
 
 /// <summary>
@@ -73,9 +84,7 @@ public static class RuntimeManifestParser
                 entries.Add(new RuntimeIndexEntry(name, manifest, svg, Database(element)));
             }
 
-            return errors.Count > 0
-                ? new RuntimeParseResult<RuntimeIndex>(null, errors)
-                : new RuntimeParseResult<RuntimeIndex>(new RuntimeIndex(entries, JsonRead.Text(root, "plantuml")), []);
+            return RuntimeParseResult<RuntimeIndex>.Collected(errors, () => new RuntimeIndex(entries, JsonRead.Text(root, "plantuml")));
         }
     }
 
@@ -168,9 +177,9 @@ public static class RuntimeManifestParser
                 return new RuntimeEdge(id, from, to, EdgeKind(JsonRead.Text(element, "kind")), priority);
             });
 
-            return errors.Count > 0 || environment is null
-                ? new RuntimeParseResult<RuntimeManifest>(null, errors)
-                : new RuntimeParseResult<RuntimeManifest>(new RuntimeManifest(environment, nodes, regions, edges, frames, Unplaced(root)), []);
+            return RuntimeParseResult<RuntimeManifest>.Collected(
+                errors,
+                () => environment is null ? null : new RuntimeManifest(environment, nodes, regions, edges, frames, Unplaced(root)));
         }
     }
 

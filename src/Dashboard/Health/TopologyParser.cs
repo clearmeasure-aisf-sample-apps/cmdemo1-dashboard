@@ -10,6 +10,14 @@ public sealed record TopologyParseResult(Topology? Topology, IReadOnlyList<strin
     public bool IsValid => Topology is not null;
 
     public static TopologyParseResult Failed(params string[] errors) => new(null, errors);
+
+    /// <summary>
+    /// The one way the reader of <c>topology.json</c> hands over the problems it gathered while reading, as
+    /// <see cref="RuntimeParseResult{T}.Collected"/> is for <c>runtime/</c>: any problem means no topology and the
+    /// problems as they are, in their order; no problem means the topology, made only then.
+    /// </summary>
+    internal static TopologyParseResult Collected(IReadOnlyList<string> errors, Func<Topology> topology) =>
+        errors.Count > 0 ? new(null, errors) : new(topology(), []);
 }
 
 /// <summary>
@@ -35,9 +43,7 @@ public static class TopologyParser
             var generated = ReadTime(root, "generated");
             var environments = ReadEnvironments(root, errors);
             var cluster = ReadCluster(root, errors);
-            return errors.Count > 0
-                ? new TopologyParseResult(null, errors)
-                : new TopologyParseResult(new Topology(system, generated, environments, cluster), []);
+            return TopologyParseResult.Collected(errors, () => new Topology(system, generated, environments, cluster));
         }
     }
 

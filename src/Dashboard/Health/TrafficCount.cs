@@ -73,13 +73,16 @@ public sealed record TrafficCount(int Sent, int Answered, int Failed, int Unansw
     /// A reading written as five numbers: sent, answered, failed, given up with no answer in time, and 1 while
     /// requests are still being sent. The browser does not answer this way: <c>status</c> of <c>js/traffic.js</c>
     /// answers one named object (<c>{ sent, answered, failed, unanswered, sending }</c>) that is read into this record
-    /// by name (#1771), so a swap of two counts cannot compile into a wrong reading.
+    /// by name (#1771), so a swap of two counts cannot compile into a wrong reading. The array itself is decoded the
+    /// same way, each position into the member named for it, the order written once here (#1773), so a number that
+    /// arrives in its neighbour's place still reads as the neighbour - failed as failed, and not as one given up with
+    /// no answer in time.
     /// </summary>
     public static TrafficCount From(IReadOnlyList<int> status)
     {
         ArgumentNullException.ThrowIfNull(status);
         return status.Count == 5
-            ? new TrafficCount(status[0], status[1], status[2], status[3], status[4] != 0)
+            ? new TrafficCount(Sent: status[0], Answered: status[1], Failed: status[2], Unanswered: status[3], Sending: status[4] != 0)
             : throw new ArgumentException($"A reading of the traffic has five numbers, not {status.Count}.", nameof(status));
     }
 }

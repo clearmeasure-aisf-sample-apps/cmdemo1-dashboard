@@ -1,18 +1,11 @@
+using static Dashboard.Tests.ClusterFixture;
+
 namespace Dashboard.Tests;
 
 public class ClusterAssessmentTests
 {
-    private static readonly DateTimeOffset Generated = ClusterFixture.Generated;
-    private static readonly DateTimeOffset Now = Generated.AddSeconds(20);
-    private static readonly TimeZoneInfo Utc = TimeZoneInfo.Utc;
-
     private static ClusterAssessment Live(ClusterStatus status, DateTimeOffset? now = null) =>
         ClusterAssessment.Live(ClusterFixture.Read(status), null, now ?? Now, Utc);
-
-    private static SourceReading<ClusterStatus> Silent(SourceState state = SourceState.Unavailable, string detail = "no answer within 10 s") =>
-        new(state, Detail: detail);
-
-    private static ClusterAssessment Service(AksService service) => ClusterAssessment.Service(ClusterFixture.Read(service));
 
     // ----- A pod -----
 

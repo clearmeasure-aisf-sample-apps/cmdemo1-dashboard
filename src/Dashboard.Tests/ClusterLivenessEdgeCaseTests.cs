@@ -1,3 +1,5 @@
+using static Dashboard.Tests.ClusterFixture;
+
 namespace Dashboard.Tests;
 
 /// <summary>
@@ -23,10 +25,6 @@ namespace Dashboard.Tests;
 /// </summary>
 public class ClusterLivenessEdgeCaseTests
 {
-    private static readonly DateTimeOffset Generated = ClusterFixture.Generated;
-    private static readonly DateTimeOffset Now = Generated.AddSeconds(20);
-    private static readonly TimeZoneInfo Utc = TimeZoneInfo.Utc;
-
     // ----- The liveness itself -----
 
     /// <summary>
@@ -171,7 +169,7 @@ public class ClusterLivenessEdgeCaseTests
 
         Assert.Equal(
             "No answer within 10 s. Azure's facts about the AKS service could not be read either.",
-            ClusterAssessment.Live(new SourceReading<ClusterStatus>(SourceState.Unavailable, Detail: "no answer within 10 s"), reading, Now, Utc).Detail);
+            ClusterAssessment.Live(Silent(), reading, Now, Utc).Detail);
         Assert.Equal(
             "What is shown below is as of then. Azure's facts about the AKS service could not be read either.",
             ClusterAssessment.Live(ClusterFixture.Read(ClusterFixture.Status()), reading, Generated.AddSeconds(61), Utc).Detail);

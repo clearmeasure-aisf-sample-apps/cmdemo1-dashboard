@@ -6,6 +6,12 @@ internal static class ClusterFixture
     /// <summary>The moment the sample <c>cluster.json</c> was written.</summary>
     public static readonly DateTimeOffset Generated = new(2026, 10, 6, 20, 15, 30, TimeSpan.Zero);
 
+    /// <summary>The moment the tests ask at: twenty seconds after <see cref="Generated"/>, a status still live.</summary>
+    public static readonly DateTimeOffset Now = Generated.AddSeconds(20);
+
+    /// <summary>The one zone the tests ask the words in, so no test leans on the machine's own.</summary>
+    public static readonly TimeZoneInfo Utc = TimeZoneInfo.Utc;
+
     public static string Sample(string file) => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "cluster.sample", file));
 
     public static ClusterStatus SampleStatus => ClusterStatus.Parse(Sample("cluster.json")).Value!;
@@ -81,6 +87,13 @@ internal static class ClusterFixture
     public static SourceReading<ClusterStatus> Read(ClusterStatus status) => new(SourceState.Read, status);
 
     public static SourceReading<AksService> Read(AksService service) => new(SourceState.Read, service);
+
+    /// <summary>A reading of the cluster's status that brought no status: the state it stands in and the reason it gives.</summary>
+    public static SourceReading<ClusterStatus> Silent(SourceState state = SourceState.Unavailable, string? detail = "no answer within 10 s") =>
+        new(state, Detail: detail);
+
+    /// <summary>The service card's assessment of an AKS service read as it is.</summary>
+    public static ClusterAssessment Service(AksService service) => ClusterAssessment.Service(Read(service));
 
     public static EnvironmentInfo Environment(string name, string? space, string? tier = "nonprod") =>
         new(name, tier, [], Namespace: space);

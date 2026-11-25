@@ -319,11 +319,18 @@ public static class WorkBotText
         ];
     }
 
+    /// <summary>The day a week starts on: a Sunday belongs to the week of the Monday before it.</summary>
+    private const DayOfWeek FirstDayOfWeek = DayOfWeek.Monday;
+
+    /// <summary>How many days a week has.</summary>
+    private const int DaysInWeek = 7;
+
     private static DateTimeOffset WeekOf(DateTimeOffset time)
     {
         var date = time.UtcDateTime.Date;
-        var monday = date.AddDays(-(((int)date.DayOfWeek + 6) % 7));
-        return new DateTimeOffset(monday, TimeSpan.Zero);
+        var daysSinceStart = ((int)date.DayOfWeek - (int)FirstDayOfWeek + DaysInWeek) % DaysInWeek;
+        var start = date.AddDays(-daysSinceStart);
+        return new DateTimeOffset(start, TimeSpan.Zero);
     }
 
     private static WorkRework? ReworkOf(IReadOnlyList<WorkItem> items)

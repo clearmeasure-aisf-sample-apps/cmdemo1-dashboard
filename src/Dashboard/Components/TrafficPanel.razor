@@ -152,7 +152,7 @@
         {
             while (await timer.WaitForNextTickAsync(_stopping.Token))
             {
-                _count = TrafficCount.From(await _module!.InvokeAsync<int[]>("status", _stopping.Token));
+                _count = await _module!.InvokeAsync<TrafficCount>("status", _stopping.Token);
                 if (++ticks % TrafficPlan.CheckEverySeconds == 0 || !Running)
                 {
                     await CheckNow.InvokeAsync();

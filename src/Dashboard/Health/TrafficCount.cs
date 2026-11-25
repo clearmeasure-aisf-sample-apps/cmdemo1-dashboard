@@ -70,8 +70,10 @@ public sealed record TrafficCount(int Sent, int Answered, int Failed, int Unansw
     public string Ended(bool stopped) => $"Traffic {(stopped ? "stopped" : "ended")}: {Counts}";
 
     /// <summary>
-    /// A reading of <c>status</c>: sent, answered, failed, given up with no answer in time, and 1 while requests are
-    /// still being sent.
+    /// A reading written as five numbers: sent, answered, failed, given up with no answer in time, and 1 while
+    /// requests are still being sent. The browser does not answer this way: <c>status</c> of <c>js/traffic.js</c>
+    /// answers one named object (<c>{ sent, answered, failed, unanswered, sending }</c>) that is read into this record
+    /// by name (#1771), so a swap of two counts cannot compile into a wrong reading.
     /// </summary>
     public static TrafficCount From(IReadOnlyList<int> status)
     {

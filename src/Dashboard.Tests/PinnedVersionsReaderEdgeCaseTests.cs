@@ -48,6 +48,17 @@ public class PinnedVersionsReaderEdgeCaseTests
         Assert.Equal(TimeSpan.FromSeconds(3), quicker.Timeout);
     }
 
+    /// <summary>The reader's default wait, said through the shared wait: a reader made without a named timeout
+    /// stands at <see cref="ProbeWait.SharedWait" />, the same value the node prober and the other readers hold,
+    /// beside the literal the test above still pins.</summary>
+    [Fact]
+    public void TheReadersDefaultTimeoutStandsAtTheSharedProbeWait()
+    {
+        var reader = new PinnedVersionsReader(new HttpClient(new StubHandler(_ => StubHandler.Answer(HttpStatusCode.NotFound))), _time);
+
+        Assert.Equal(ProbeWait.SharedWait(), reader.Timeout);
+    }
+
     /// <summary>The reader made with no clock throws no error at its making: the error stands where the reader
     /// asks the clock for its timeout, the reading, naming the argument it was made without - and the browser is
     /// never asked, for the timeout is asked before the request is made.</summary>

@@ -475,6 +475,19 @@ public class SourceStateEdgeCaseTests
         Assert.Empty(handler.RequestedUrls);
     }
 
+    /// <summary>The reader's default wait, said through the shared wait: a reader made without a named timeout
+    /// stands at <see cref="ProbeWait.SharedWait" />, the same value <see cref="NodeProber.DefaultTimeout" /> and
+    /// the other probes hold, beside the literals the test above still pins.</summary>
+    [Fact]
+    public void TheReadersDefaultTimeoutStandsAtTheSharedProbeWait()
+    {
+        var (reader, handler) = Unasked();
+
+        Assert.Equal(ProbeWait.SharedWait(), reader.Timeout);
+        Assert.Equal(ProbeWait.SharedWait(), NodeProber.DefaultTimeout);
+        Assert.Empty(handler.RequestedUrls);
+    }
+
     /// <summary>The timeout is the reader's own and is held as it is given: a minute for one reader leaves every
     /// other on the ten seconds it started with, and leaves the shared default of the node prober alone as well. The
     /// property argues with nothing - one tick, zero, either end of <see cref="TimeSpan" /> and a length under zero

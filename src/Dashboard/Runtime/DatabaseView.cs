@@ -71,7 +71,7 @@ public static class DatabaseParser
     {
         if (!RuntimeManifestParser.TryOpen(json, out var document, out var problem))
         {
-            return Failed(problem);
+            return RuntimeParseResult<DatabaseManifest>.Failed(problem);
         }
 
         using (document)
@@ -166,8 +166,6 @@ public static class DatabaseParser
             return new DatabaseLive(JsonRead.Time(root, "generated"), tables, JsonRead.Flag(root, "truncated") ?? false);
         }
     }
-
-    private static RuntimeParseResult<DatabaseManifest> Failed(string problem) => new(null, [problem]);
 
     /// <summary>The live file is fetched by the page itself: only an absolute https address is kept.</summary>
     private static Uri? Source(JsonElement root) =>

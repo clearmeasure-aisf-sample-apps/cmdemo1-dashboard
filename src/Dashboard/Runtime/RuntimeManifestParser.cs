@@ -7,6 +7,16 @@ public sealed record RuntimeParseResult<T>(T? Value, IReadOnlyList<string> Error
     where T : class
 {
     public bool IsValid => Value is not null;
+
+    /// <summary>
+    /// The one way a reader of <c>runtime/</c> says "there is no value, and here is why": no value, only the
+    /// problems. The readers of the index, of a manifest and of a database view all say it through here, as
+    /// <see cref="Health.TopologyParseResult.Failed"/> is the one way of the reader of <c>topology.json</c>. Kept to
+    /// the folder, like the opener <see cref="RuntimeManifestParser.TryOpen"/> the readers share: a caller of one of
+    /// them reads the result it handed back, it does not make one.
+    /// </summary>
+    /// <param name="problems">Why there is no value, in the order the reader found them.</param>
+    internal static RuntimeParseResult<T> Failed(params string[] problems) => new(null, problems);
 }
 
 /// <summary>
@@ -33,7 +43,7 @@ public static class RuntimeManifestParser
     {
         if (!TryOpen(json, out var document, out var problem))
         {
-            return Failed<RuntimeIndex>(problem);
+            return RuntimeParseResult<RuntimeIndex>.Failed(problem);
         }
 
         using (document)
@@ -41,7 +51,7 @@ public static class RuntimeManifestParser
             var root = document.RootElement;
             if (!root.TryGetProperty("environments", out var array) || array.ValueKind != JsonValueKind.Array)
             {
-                return Failed<RuntimeIndex>("environments: missing or not an array.");
+                return RuntimeParseResult<RuntimeIndex>.Failed("environments: missing or not an array.");
             }
 
             var errors = new List<string>();
@@ -72,7 +82,7 @@ public static class RuntimeManifestParser
     {
         if (!TryOpen(json, out var document, out var problem))
         {
-            return Failed<RuntimeManifest>(problem);
+            return RuntimeParseResult<RuntimeManifest>.Failed(problem);
         }
 
         using (document)
@@ -162,9 +172,6 @@ public static class RuntimeManifestParser
                 : new RuntimeParseResult<RuntimeManifest>(new RuntimeManifest(environment, nodes, regions, edges, frames, Unplaced(root)), []);
         }
     }
-
-    private static RuntimeParseResult<T> Failed<T>(params string[] errors)
-        where T : class => new(null, errors);
 
     /// <summary>
     /// The one opener of the files of <c>runtime/</c>, shared by every reader of the folder (this parser, the database

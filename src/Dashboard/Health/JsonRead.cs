@@ -30,9 +30,7 @@ internal static class JsonRead
 
     /// <summary>The elements of the array under <paramref name="name"/>; none when there is no array.</summary>
     public static IEnumerable<JsonElement> Items(JsonElement? parent, string name) =>
-        parent is { ValueKind: JsonValueKind.Object } value && value.TryGetProperty(name, out var array) && array.ValueKind == JsonValueKind.Array
-            ? [.. array.EnumerateArray()]
-            : [];
+        ArrayUnder(parent, name) is { } array ? [.. array.EnumerateArray()] : [];
 
     /// <summary>
     /// The strings of the list under <paramref name="name"/>, trimmed, the empty ones left out, in the order written;
@@ -40,7 +38,7 @@ internal static class JsonRead
     /// </summary>
     public static List<string>? Strings(JsonElement? parent, string name)
     {
-        if (parent is not { ValueKind: JsonValueKind.Object } value || !value.TryGetProperty(name, out var array) || array.ValueKind != JsonValueKind.Array)
+        if (ArrayUnder(parent, name) is not { } array)
         {
             return null;
         }
@@ -115,8 +113,17 @@ internal static class JsonRead
             : null;
 
     /// <summary>True when the value under <paramref name="name"/> is an array; false when there is no such name or it is not an array.</summary>
-    public static bool HasArray(JsonElement? parent, string name) =>
-        parent is { ValueKind: JsonValueKind.Object } value && value.TryGetProperty(name, out var part) && part.ValueKind == JsonValueKind.Array;
+    public static bool HasArray(JsonElement? parent, string name) => ArrayUnder(parent, name) is not null;
+
+    /// <summary>
+    /// The array under <paramref name="name"/>, empty or not; null when the parent is no object, or the name is absent
+    /// or holds anything else. The one place that says what a list of a file is: <see cref="Items" />,
+    /// <see cref="Strings" /> and <see cref="HasArray" /> all ask it.
+    /// </summary>
+    private static JsonElement? ArrayUnder(JsonElement? parent, string name) =>
+        parent is { ValueKind: JsonValueKind.Object } value && value.TryGetProperty(name, out var array) && array.ValueKind == JsonValueKind.Array
+            ? array
+            : null;
 
     public static Uri? Address(string? text) =>
         Uri.TryCreate(text, UriKind.Absolute, out var address) && (address.Scheme == Uri.UriSchemeHttp || address.Scheme == Uri.UriSchemeHttps)

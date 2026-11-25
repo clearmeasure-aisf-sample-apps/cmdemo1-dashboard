@@ -28,15 +28,8 @@ public sealed record ClusterStatus(
     /// <summary>A file younger than this is never stale, however often the collector writes.</summary>
     public static readonly TimeSpan MinimumStaleAfter = TimeSpan.FromSeconds(60);
 
-    /// <summary>The age from which the file is stale: four intervals of the collector, and a minute at least.</summary>
-    public TimeSpan StaleAfter
-    {
-        get
-        {
-            var intervals = TimeSpan.FromSeconds((double)StaleIntervals * (IntervalSeconds ?? 0));
-            return intervals > MinimumStaleAfter ? intervals : MinimumStaleAfter;
-        }
-    }
+    /// <summary>The age from which the file is stale: the <see cref="ClusterStaleness"/> of the collector's interval.</summary>
+    public TimeSpan StaleAfter => new ClusterStaleness(IntervalSeconds).After;
 
     /// <summary>Every pod with its namespace, in the order of the file.</summary>
     public IEnumerable<(ClusterNamespace Namespace, ClusterPod Pod)> Pods =>
@@ -99,6 +92,25 @@ public sealed record ClusterStatus(
 
     /// <summary>The field that names a node, a namespace, a pod or a volume: the one part without which there is no row.</summary>
     private const string RowName = "name";
+}
+
+/// <summary>
+/// The one home of the stale rule of <see cref="ClusterStatus"/>: a file written every <paramref name="IntervalSeconds"/>
+/// is stale from <see cref="After"/> - <see cref="ClusterStatus.StaleIntervals"/> of the intervals, and
+/// <see cref="ClusterStatus.MinimumStaleAfter"/> at least (also for an interval absent, zero or negative).
+/// </summary>
+/// <param name="IntervalSeconds">How often the collector writes; null when the file does not say.</param>
+public readonly record struct ClusterStaleness(int? IntervalSeconds)
+{
+    /// <summary>The age from which the file is stale: four intervals of the collector, and a minute at least.</summary>
+    public TimeSpan After
+    {
+        get
+        {
+            var intervals = TimeSpan.FromSeconds((double)ClusterStatus.StaleIntervals * (IntervalSeconds ?? 0));
+            return intervals > ClusterStatus.MinimumStaleAfter ? intervals : ClusterStatus.MinimumStaleAfter;
+        }
+    }
 }
 
 /// <summary>One resource (CPU in millicores, or memory in bytes) of a node or a pod. Each number may be absent.</summary>

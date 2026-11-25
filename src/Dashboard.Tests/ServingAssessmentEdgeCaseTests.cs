@@ -1022,4 +1022,27 @@ public class ServingAssessmentEdgeCaseTests
                 .Select(method => method.Name)
                 .Order(StringComparer.Ordinal)]);
     }
+
+    /// <summary>
+    /// The rotation headline's count-against-1 verb choice is routed through Plural, not written by hand:
+    /// one stopped region says "is not healthy", any other count says "are not healthy", and zero stopped
+    /// regions uses a different sentence altogether.
+    /// </summary>
+    [Theory]
+    [InlineData(2, 0, "Front Door rotates over 2 regions: all healthy")]
+    [InlineData(2, 1, "Front Door rotates over 1 of 2 regions: a is not healthy")]
+    [InlineData(3, 2, "Front Door rotates over 1 of 3 regions: a and b are not healthy")]
+    [InlineData(10, 5, "Front Door rotates over 5 of 10 regions: a, b, c and 2 more are not healthy")]
+    public void TheRotationHeadlineRoutesThroughPlural(int regions, int stopped, string expected)
+    {
+        var nodes = Enumerable.Range(1, regions)
+            .Select(index => Primary(index <= stopped ? Unreachable : Healthy, $"{(char)('a' + index - 1)}"))
+            .ToList();
+
+        var assessment = ServingAssessment.Assess(nodes, Healthy);
+
+        Assert.Equal(ServingState.Primary, assessment.State);
+        Assert.Equal(stopped, assessment.OutOfRotation.Count);
+        Assert.Equal(expected, assessment.Headline);
+    }
 }

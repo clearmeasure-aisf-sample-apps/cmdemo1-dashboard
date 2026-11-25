@@ -100,4 +100,22 @@ public class TrafficCountTests
 
         Assert.StartsWith("A reading of the traffic has five numbers, not 4.", error.Message, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// The count-against-1 word choice for requests on their way is routed through Plural, not written by hand:
+    /// zero requests on their way says nothing about them, one says "its" and any other count says "their".
+    /// </summary>
+    [Theory]
+    // sent, answered, failed, unanswered, sending, secondsLeft, expected line
+    [InlineData(5, 5, 0, 0, 0, 0, "Done: 5 sent, 5 answered.")]
+    [InlineData(5, 4, 0, 0, 0, 0, "5 sent, 4 answered, 1 on its way; waiting for its answer.")]
+    [InlineData(5, 3, 0, 0, 0, 0, "5 sent, 3 answered, 2 on their way; waiting for their answers.")]
+    [InlineData(1000, 950, 0, 0, 0, 0, "1000 sent, 950 answered, 50 on their way; waiting for their answers.")]
+    public void TheOnTheirWayWordChoiceRoutesThroughPlural(int sent, int answered, int failed, int unanswered, int sending,
+        int secondsLeft, string expected)
+    {
+        var count = Reading(sent, answered, failed, unanswered, sending);
+
+        Assert.Equal(expected, count.Status(secondsLeft));
+    }
 }

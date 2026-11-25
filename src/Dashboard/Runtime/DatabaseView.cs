@@ -245,8 +245,8 @@ public static class DatabaseText
     }
 
     /// <summary>
-    /// The links of the view's heading row: where the name of the database's box led before the box zoomed, as "Open
-    /// in the Azure portal". That is the environment's link to its database in the topology, else the link the
+    /// The links of the view's heading row: where the name of the database's box led before the box zoomed, as
+    /// <see cref="Health.LinkText.OpenInPortal"/>. That is the environment's link to its database in the topology, else the link the
     /// deployment wrote for the node into the manifest; none without either.
     /// </summary>
     /// <param name="box">The database's node of the runtime diagram.</param>
@@ -261,7 +261,7 @@ public static class DatabaseText
         }
 
         var portal = link.Title.EndsWith(Health.LinkText.PortalSuffix, StringComparison.Ordinal);
-        return [new ViewLink(portal ? "Open in the Azure portal" : $"Open {box.Name}", link.Href, link.Title)];
+        return [new ViewLink(portal ? Health.LinkText.OpenInPortal : $"Open {box.Name}", link.Href, link.Title)];
     }
 
     /// <summary>

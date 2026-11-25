@@ -2,15 +2,10 @@ namespace Dashboard.Tests;
 
 public class HealthSummaryTests
 {
-    private const HealthState Healthy = HealthState.Healthy;
-    private const HealthState Unhealthy = HealthState.Unhealthy;
-    private const HealthState Unreachable = HealthState.Unreachable;
-    private const HealthState Pending = HealthState.Pending;
-
     [Fact]
     public void AllHealthy()
     {
-        var summary = HealthSummary.Of(Enumerable.Repeat(Healthy, 7));
+        var summary = HealthSummary.Of(Enumerable.Repeat(HealthState.Healthy, 7));
 
         Assert.Equal(SummaryLevel.AllHealthy, summary.Level);
         Assert.Equal("All 7 nodes healthy", summary.Text);
@@ -20,7 +15,7 @@ public class HealthSummaryTests
     [Fact]
     public void UnhealthyAndUnreachableBothCountAsNotHealthy()
     {
-        var summary = HealthSummary.Of([Healthy, Unhealthy, Healthy, Unreachable, Healthy, Healthy, Healthy]);
+        var summary = HealthSummary.Of([HealthState.Healthy, HealthState.Unhealthy, HealthState.Healthy, HealthState.Unreachable, HealthState.Healthy, HealthState.Healthy, HealthState.Healthy]);
 
         Assert.Equal(SummaryLevel.Problems, summary.Level);
         Assert.Equal(2, summary.NotHealthy);
@@ -30,7 +25,7 @@ public class HealthSummaryTests
     [Fact]
     public void BeforeTheFirstCheckEverythingIsBeingChecked()
     {
-        var summary = HealthSummary.Of([Pending, Pending, Pending]);
+        var summary = HealthSummary.Of([HealthState.Pending, HealthState.Pending, HealthState.Pending]);
 
         Assert.Equal(SummaryLevel.Pending, summary.Level);
         Assert.Equal("Checking 3 nodes", summary.Text);
@@ -39,7 +34,7 @@ public class HealthSummaryTests
     [Fact]
     public void WhileAnswersArriveTheHealthyOnesAreCounted()
     {
-        var summary = HealthSummary.Of([Healthy, Pending, Pending]);
+        var summary = HealthSummary.Of([HealthState.Healthy, HealthState.Pending, HealthState.Pending]);
 
         Assert.Equal(SummaryLevel.Pending, summary.Level);
         Assert.Equal("1 of 3 nodes healthy, 2 being checked", summary.Text);
@@ -48,7 +43,7 @@ public class HealthSummaryTests
     [Fact]
     public void AProblemIsReportedBeforeEveryAnswerArrived()
     {
-        var summary = HealthSummary.Of([Unreachable, Pending, Healthy]);
+        var summary = HealthSummary.Of([HealthState.Unreachable, HealthState.Pending, HealthState.Healthy]);
 
         Assert.Equal(SummaryLevel.Problems, summary.Level);
         Assert.Equal("1 of 3 nodes not healthy", summary.Text);
@@ -64,9 +59,9 @@ public class HealthSummaryTests
     }
 
     [Theory]
-    [InlineData(Healthy, "The only node is healthy")]
-    [InlineData(Unhealthy, "1 of 1 node not healthy")]
-    [InlineData(Pending, "Checking 1 node")]
+    [InlineData(HealthState.Healthy, "The only node is healthy")]
+    [InlineData(HealthState.Unhealthy, "1 of 1 node not healthy")]
+    [InlineData(HealthState.Pending, "Checking 1 node")]
     public void ASingleNodeReadsAsSingular(HealthState state, string expected) =>
         Assert.Equal(expected, HealthSummary.Of([state]).Text);
 }

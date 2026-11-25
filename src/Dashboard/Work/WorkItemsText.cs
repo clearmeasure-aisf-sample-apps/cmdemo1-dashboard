@@ -103,11 +103,20 @@ public static class WorkItemsText
         ?? throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no name.");
 
     /// <summary>The first segment after <c>work-items</c> in the address: <c>bot</c>, <c>team</c>, or anything else for all.</summary>
-    public static WorkAudience AudienceOf(string? segment)
+    public static WorkAudience AudienceOf(string? segment) => WordsFor(segment)?.Audience ?? WorkAudience.All;
+
+    /// <summary>
+    /// The file's <c>worker</c> word on an item: <c>bot</c>, <c>team</c>, or anything else for
+    /// <see cref="WorkWorker.Unknown"/>. Read from the same table as <see cref="AudienceOf"/>, so an item's worker and a
+    /// filter's audience are always the same words.
+    /// </summary>
+    internal static WorkWorker WorkerOf(string? word) => WordsFor(word)?.Worker ?? WorkWorker.Unknown;
+
+    /// <summary>The audience words whose segment is <paramref name="word"/>, trimmed and in any case; null when none is.</summary>
+    private static AudienceWords? WordsFor(string? word)
     {
-        var word = segment?.Trim();
-        return Array.Find(Audiences, words => string.Equals(words.Segment, word, StringComparison.OrdinalIgnoreCase))?.Audience
-            ?? WorkAudience.All;
+        var trimmed = word?.Trim();
+        return Array.Find(Audiences, words => string.Equals(words.Segment, trimmed, StringComparison.OrdinalIgnoreCase));
     }
 
     public static string AudienceHash(WorkAudience audience) =>

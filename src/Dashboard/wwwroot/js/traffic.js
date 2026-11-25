@@ -24,10 +24,10 @@ export function start(addresses, perSecond, seconds, answerWithinSeconds) {
   })();
 }
 
-// [sent, answered, failed, unanswered, sending (1 or 0)]; nothing sent and not sending before the first press.
+// One named reading, read into TrafficCount by name; nothing sent and not sending before the first press.
 export function status() {
-  if (!run) return [0, 0, 0, 0, 0];
-  return [run.sent, run.answered, run.failed, run.unanswered, run.sending ? 1 : 0];
+  if (!run) return { sent: 0, answered: 0, failed: 0, unanswered: 0, sending: false };
+  return { sent: run.sent, answered: run.answered, failed: run.failed, unanswered: run.unanswered, sending: run.sending };
 }
 
 // Sends no more; what is on its way is still counted.

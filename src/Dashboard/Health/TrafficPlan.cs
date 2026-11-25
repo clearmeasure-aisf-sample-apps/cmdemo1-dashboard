@@ -5,6 +5,10 @@ namespace Dashboard.Health;
 /// (<c>trafficPaths</c> of the topology; the start page without them) at its public address, which is the Front Door
 /// endpoint where there is one and the primary web app's own address otherwise. So the calls take the path a user's
 /// calls take: browser, Front Door, the origin that serves, the database.
+///
+/// The three consts below that say what a press sends - <see cref="PerSecond"/>, <see cref="Seconds"/> and
+/// <see cref="AnswerWithinSeconds"/> - belong to one run and travel together as one <see cref="TrafficRun"/>;
+/// <see cref="CheckEverySeconds"/> is not one of them, being how often the page checks while a run lasts.
 /// </summary>
 public sealed record TrafficPlan(string Environment, IReadOnlyList<Uri> Addresses, IReadOnlyList<string> Targets)
 {
@@ -23,7 +27,10 @@ public sealed record TrafficPlan(string Environment, IReadOnlyList<Uri> Addresse
     /// </summary>
     public const int AnswerWithinSeconds = ProbeDefaults.DefaultTimeoutSeconds;
 
-    /// <summary>How often the page checks while the traffic runs, so the numbers follow it.</summary>
+    /// <summary>
+    /// How often the page checks while the traffic runs, so the numbers follow it. Not a number of the run: a run
+    /// says what the browser sends (<see cref="TrafficRun"/>), this says what the page does while it sends.
+    /// </summary>
     public const int CheckEverySeconds = 10;
 
     /// <summary>

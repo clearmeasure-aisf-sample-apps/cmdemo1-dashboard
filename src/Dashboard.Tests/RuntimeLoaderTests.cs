@@ -101,4 +101,34 @@ public class RuntimeLoaderTests
 
         Assert.Equal(["runtime/uat.svg: not an SVG."], diagram.Errors);
     }
+
+    /// <summary>
+    /// #1684: <see cref="RuntimeLoaders" /> answers what this file's own <see cref="Serve" /> answers, on the one
+    /// base address its <see cref="Loader" /> builds the client on - pinned beside the copies it stands in for, so
+    /// that the lane which takes the copies out rewrites nothing the tests do not already hold. The copies stay
+    /// until then: the two ways of asking are held equal here and nowhere else.
+    /// </summary>
+    [Fact]
+    public async Task TheSharedFixtureAnswersWhatThisFilesOwnStubAnswers()
+    {
+        var shared = RuntimeLoaders.From(RuntimeLoaders.ServingSamples("index.json", "uat.json", "uat.svg"));
+        var alone = Loader(new StubHandler(Serve));
+
+        var index = await shared.LoadIndexAsync(CancellationToken.None);
+        var indexAlone = await alone.LoadIndexAsync(CancellationToken.None);
+
+        Assert.Equal(indexAlone.Availability, index.Availability);
+        Assert.Equal(indexAlone.Index!.Environments, index.Index!.Environments);
+        Assert.Equal(indexAlone.Errors, index.Errors);
+
+        var entry = new RuntimeIndexEntry("uat", "uat.json", "uat.svg");
+        var diagram = await shared.LoadDiagramAsync(entry, CancellationToken.None);
+        var diagramAlone = await alone.LoadDiagramAsync(entry, CancellationToken.None);
+
+        Assert.True(diagram.IsValid);
+        Assert.Equal(diagramAlone.Manifest!.Environment, diagram.Manifest!.Environment);
+        Assert.Equal(diagramAlone.Manifest.Nodes.Select(node => node.Alias), diagram.Manifest.Nodes.Select(node => node.Alias));
+        Assert.Equal(diagramAlone.Svg, diagram.Svg);
+        Assert.Equal(diagramAlone.Errors, diagram.Errors);
+    }
 }

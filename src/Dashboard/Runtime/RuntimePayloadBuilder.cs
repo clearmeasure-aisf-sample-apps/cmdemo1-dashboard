@@ -41,6 +41,32 @@ public static class RuntimePayloadBuilder
     /// <summary>The label of a neutral tile whose address is not known.</summary>
     private const string NoAddress = "No address";
 
+    // The rest of this page's tile-label vocabulary, one name per word (#1672): a word is one word here, so a typo
+    // at a call site cannot silently split the page's vocabulary. "Not known" (the checks say nothing about it) and
+    // "Not confirmed" (an entry speaks well of it, but nothing vouches for the speaker) are different words and keep
+    // separate names. Two labels the vocabulary might have needed are not literals of this file at all: "Degraded"
+    // comes from the detailed health check's own words (HealthDetailText.Label) and "Available" from Resource Health
+    // (ResourceHealthText.Label), each named in its own file. The lowercase words of a region mark (Region) and the
+    // state words at the JSON boundary (RuntimeStateWords) are other vocabularies still, deliberately kept apart.
+
+    /// <summary>The label of a neutral tile whose state the detailed health checks of the apps that use it do not tell: no entry of that name, no answer, or an entry that knows nothing.</summary>
+    private const string NotKnown = "Not known";
+
+    /// <summary>The label of a neutral tile that no passing health check confirms: the entry may be healthy while every app that reports it fails its own check, so neither side is called the cause.</summary>
+    private const string NotConfirmed = "Not confirmed";
+
+    /// <summary>The label of a neutral tile for an address the topology this page loaded does not name, so no check runs against it.</summary>
+    private const string NotChecked = "Not checked";
+
+    /// <summary>The label of the static site that serves this very dashboard.</summary>
+    private const string ThisPage = "This page";
+
+    /// <summary>The label of a tile waiting for the health checks that tell its state; the state word it rides with is the lowercase <see cref="Checking"/> at the JSON boundary, which is why this name carries the suffix.</summary>
+    private const string CheckingLabel = "Checking";
+
+    /// <summary>The label of a tile a passing health check reached; the browser itself calls neither the database nor a dependency.</summary>
+    private const string Reachable = "Reachable";
+
     /// <summary>How many marks of a detailed health check a tile's line holds; the entries that are not healthy come first.</summary>
     public const int MostMarks = 8;
 
@@ -296,7 +322,7 @@ public static class RuntimePayloadBuilder
         {
             return NeutralTile(
                 node,
-                "This page",
+                ThisPage,
                 "serves this dashboard",
                 $"{node.Name} ({node.Url.Host}) serves the page you are looking at.");
         }
@@ -320,7 +346,7 @@ public static class RuntimePayloadBuilder
                 $"{node.Name}: the deployment found no such endpoint in the Front Door profile. Deploy the dashboard again once the environment has it."),
             RuntimeNodeKind.WebApp or RuntimeNodeKind.FrontDoor => NeutralTile(
                 node,
-                "Not checked",
+                NotChecked,
                 "not in topology.json",
                 $"{node.Name}: the topology this page loaded has no such address, so it is not checked. Reload the topology, or deploy the dashboard again."),
             // A kind this page does not know, with an address: drawn with it, never probed.
@@ -483,18 +509,18 @@ public static class RuntimePayloadBuilder
         {
             if (clients.Any(entry => entry.Target.State == HealthState.Pending))
             {
-                return new RuntimeTile(node.Alias, TileState.Checking.Word(), "Checking", null, [new RuntimeTileLine("waiting for the health checks", "muted")], null, $"{node.Name}: waiting for the health checks of the web apps that use it.");
+                return WaitingForChecks(node, "the web apps");
             }
 
             return clients.Any(entry => entry.Target.HealthDetail is not null)
                 ? NeutralTile(
                     node,
-                    "Not known",
+                    NotKnown,
                     $"no health check entry {HealthDetailText.Brief(check, CheckNameLength)}",
                     $"{node.Name}: the detailed health check of the web apps that use it has no entry named {check}, so this page cannot tell its state.")
                 : NeutralTile(
                     node,
-                    "Not known",
+                    NotKnown,
                     "no detailed health check answers",
                     $"{node.Name}: no web app that uses it answers its detailed health check, where the entry {check} would tell its state.");
         }
@@ -513,7 +539,7 @@ public static class RuntimePayloadBuilder
                 return new RuntimeTile(
                     node.Alias,
                     TileState.Healthy.Word(),
-                    "Reachable",
+                    Reachable,
                     null,
                     [new RuntimeTileLine($"{worst.Target.Label} reports it {HealthDetailText.Label(worst.Check.State).ToLowerInvariant()}", "warn")],
                     null,
@@ -523,19 +549,20 @@ public static class RuntimePayloadBuilder
             var line = entry.Description is { } description
                 ? HealthDetailText.Brief(description, DescriptionLength)
                 : $"health check {HealthDetailText.Brief(check, CheckNameLength)} passed";
-            return new RuntimeTile(node.Alias, TileState.Healthy.Word(), "Reachable", null, [new RuntimeTileLine(line, "ok")], null, reachable);
+            return new RuntimeTile(node.Alias, TileState.Healthy.Word(), Reachable, null, [new RuntimeTileLine(line, "ok")], null, reachable);
         }
 
+        // The label is the health check's own word ("Degraded", "Unhealthy", ...), owned by HealthDetailText.Label.
         var label = HealthDetailText.Label(worst.Check.State);
         var words = worst.Check.Description is { } said ? HealthDetailText.Brief(said, DescriptionLength) : $"health check {HealthDetailText.Brief(check, CheckNameLength)}: {label.ToLowerInvariant()}";
         var title = $"{node.Name}: by the health check of {worst.Target.Name} (last {TimeText.Clock(worst.Target.Last?.CheckedAt ?? worst.Target.HealthDetail!.ReadAt, zone)}). The browser does not call it. {HealthDetailText.Title(worst.Check)}";
         return worst.Check.State switch
         {
             CheckState.Unhealthy or CheckState.Degraded => new RuntimeTile(node.Alias, TileState.Unhealthy.Word(), label, null, [new RuntimeTileLine(words, "warn")], null, title),
-            CheckState.Unknown => NeutralTile(node, "Not known", words, title),
+            CheckState.Unknown => NeutralTile(node, NotKnown, words, title),
             _ => NeutralTile(
                 node,
-                "Not confirmed",
+                NotConfirmed,
                 "no web app that reports it passes",
                 $"{node.Name}: the entry {check} is healthy, but no web app that reports it passes its own health check, so this page does not call it reachable."),
         };
@@ -578,7 +605,7 @@ public static class RuntimePayloadBuilder
             return new RuntimeTile(
                 node.Alias,
                 TileState.Healthy.Word(),
-                "Reachable",
+                Reachable,
                 queries.Count == 0 ? null : string.Create(CultureInfo.InvariantCulture, $"{queries.Sum(telemetry => telemetry.SqlOfTraffic)} queries/min"),
                 [new RuntimeTileLine(line, "ok")],
                 null,
@@ -593,18 +620,24 @@ public static class RuntimePayloadBuilder
 
         if (clients.Any(entry => entry.Target.State == HealthState.Pending))
         {
-            return new RuntimeTile(node.Alias, TileState.Checking.Word(), "Checking", null, [new RuntimeTileLine("waiting for the health checks", "muted")], null, $"{node.Name}: waiting for the health checks of the web apps that use it.");
+            return WaitingForChecks(node, "the web apps");
         }
 
         return NeutralTile(
             node,
-            "Not confirmed",
+            NotConfirmed,
             "no health check of its apps passes",
             $"{node.Name}: no web app that uses it passes its health check, so this page cannot tell whether it answers: the database or the web app may be the cause.");
     }
 
     private static RuntimeTile NeutralTile(RuntimeNode node, string label, string line, string title) =>
         new(node.Alias, TileState.Neutral.Word(), label, null, line.Length > 0 ? [new RuntimeTileLine(line, "muted")] : [], null, title);
+
+    /// <summary>The tile of a node whose checks have not answered yet: waiting, in the words the reader of the diagram
+    /// needs, naming which apps' checks it waits for. The label, the line and the title are one sentence, so they are
+    /// written once.</summary>
+    private static RuntimeTile WaitingForChecks(RuntimeNode node, string apps) =>
+        new(node.Alias, TileState.Checking.Word(), CheckingLabel, null, [new RuntimeTileLine("waiting for the health checks", "muted")], null, $"{node.Name}: waiting for the health checks of {apps} that use it.");
 
     /// <summary>No app this page checks uses the database.</summary>
     private static RuntimeTile DatabaseUnprobed(RuntimeNode node, HealthSource health)
@@ -632,7 +665,7 @@ public static class RuntimePayloadBuilder
             return new RuntimeTile(
                 node.Alias,
                 TileState.Healthy.Word(),
-                "Reachable",
+                Reachable,
                 null,
                 [new RuntimeTileLine(line, "ok")],
                 null,
@@ -641,14 +674,7 @@ public static class RuntimePayloadBuilder
 
         if (apps.Any(app => app.Status is null or { State: ContainerAppState.Probing or ContainerAppState.Waking }))
         {
-            return new RuntimeTile(
-                node.Alias,
-                TileState.Checking.Word(),
-                "Checking",
-                null,
-                [new RuntimeTileLine("waiting for the health checks", "muted")],
-                null,
-                $"{node.Name}: waiting for the health checks of the container apps that use it.");
+            return WaitingForChecks(node, "the container apps");
         }
 
         if (apps.All(app => app.Status!.State == ContainerAppState.Responding))
@@ -660,7 +686,7 @@ public static class RuntimePayloadBuilder
 
         return NeutralTile(
             node,
-            "Not confirmed",
+            NotConfirmed,
             "no health check of its apps passes",
             $"{node.Name}: no container app that uses it passes its health check, so this page cannot tell whether it answers: the database or the app may be the cause.");
     }

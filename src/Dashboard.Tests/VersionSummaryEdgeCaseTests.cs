@@ -51,4 +51,43 @@ public class VersionSummaryEdgeCaseTests
             Thread.CurrentThread.CurrentCulture = culture;
         }
     }
+
+    [Theory]
+    [InlineData(int.MinValue)]
+    [InlineData(-1)]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(int.MaxValue)]
+    public void ItDiffersExactlyWhenItHasWordsToSay(int environments)
+    {
+        var summary = new VersionSummary(environments);
+
+        Assert.Equal(summary.Differs, summary.Text is not null);
+    }
+
+    [Fact]
+    public void TwoCountsThatAreNotTheSameAreNotEqual()
+    {
+        var three = new VersionSummary(3);
+
+        Assert.False(new VersionSummary(3) != three);
+        Assert.True(new VersionSummary(2) != three);
+        Assert.True(new VersionSummary(0) != new VersionSummary(-1));
+        Assert.True(new VersionSummary(int.MinValue) != new VersionSummary(int.MaxValue));
+    }
+
+    [Fact]
+    public void ASummaryIsNeverEqualToNull()
+    {
+        var three = new VersionSummary(3);
+        VersionSummary? none = null;
+
+        Assert.False(three.Equals(none));
+        Assert.False(three == none);
+        Assert.False(none == three);
+        Assert.True(three != none);
+        Assert.True(none != three);
+        Assert.True(none == null);
+    }
 }

@@ -188,6 +188,28 @@ public static class ActivityKind
     public const string Canceled = "canceled";
 
     public static IReadOnlyList<string> All { get; } = [Waiting, Deploying, Queued, Frozen, Freeze, Deployed, Failed, Canceled];
+
+    /// <summary>The kinds of a deployment in flight: said in the tile's title with the marks already.</summary>
+    private static readonly string[] InFlightKinds = [Waiting, Deploying, Queued];
+
+    /// <summary>Whether <paramref name="kind"/> is one of the eight words, letter for letter.</summary>
+    internal static bool Knows(string? kind) => kind is not null && All.Contains(kind, StringComparer.Ordinal);
+
+    /// <summary>Whether <paramref name="kind"/> is a deployment in flight: waiting, deploying or queued.</summary>
+    internal static bool IsInFlight(string? kind) => kind is not null && InFlightKinds.Contains(kind, StringComparer.Ordinal);
+
+    /// <summary>
+    /// The kind of the last deployment that ended, by its result: <see cref="Deployed"/> and <see cref="Failed"/>
+    /// for those, and <see cref="Canceled"/> for a canceled one and - the one decision the page makes about it - for
+    /// a result it does not know (or a state that is no end), which is drawn as a deployment that did not finish.
+    /// </summary>
+    internal static string OfResult(DeploymentState result) => result switch
+    {
+        DeploymentState.Succeeded => Deployed,
+        DeploymentState.Failed => Failed,
+        DeploymentState.Canceled => Canceled,
+        _ => Canceled,
+    };
 }
 
 /// <summary>
@@ -355,12 +377,7 @@ public static class DeploymentActivity
 
     private static ActivityLine Last(RecentDeployment last, DateTimeOffset now, TimeZoneInfo zone, string words) =>
         new(
-            last.Result switch
-            {
-                DeploymentState.Succeeded => ActivityKind.Deployed,
-                DeploymentState.Failed => ActivityKind.Failed,
-                _ => ActivityKind.Canceled,
-            },
+            ActivityKind.OfResult(last.Result),
             words,
             $"The last deployment of {last.Project} to {last.Environment} that ended: {Sentence(last, now)} ({TimeText.DateAndTime(last.Finished, zone)}){By(last.StartedBy, ", started by ")}.",
             last.Url);

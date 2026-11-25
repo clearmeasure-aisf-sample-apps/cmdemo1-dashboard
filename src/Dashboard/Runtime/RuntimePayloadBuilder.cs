@@ -256,15 +256,13 @@ public static class RuntimePayloadBuilder
         }
 
         // What is in flight is in the title already, with the marks; a freeze and the last deployment are not.
-        var more = lines.Where(line => !InFlightKinds.Contains(line.Kind) || marks.Count == 0).Select(line => line.Title).ToList();
+        var more = lines.Where(line => !ActivityKind.IsInFlight(line.Kind) || marks.Count == 0).Select(line => line.Title).ToList();
         return tile with
         {
             Title = more.Count == 0 ? tile.Title : $"{tile.Title}\n{string.Join('\n', more)}",
             Lines = [.. tile.Lines, .. lines.Select(ActivityLineOf)],
         };
     }
-
-    private static readonly string[] InFlightKinds = [ActivityKind.Waiting, ActivityKind.Deploying, ActivityKind.Queued];
 
     /// <summary>
     /// An activity line as a line of the tile: its tone is its kind, and its words are a link to the task in Octopus

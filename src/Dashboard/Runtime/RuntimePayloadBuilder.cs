@@ -974,147 +974,165 @@ public static class RuntimePayloadBuilder
     {
         var from = byAlias.GetValueOrDefault(edge.From);
         var to = byAlias.GetValueOrDefault(edge.To);
-        switch (edge.Kind)
+        return edge.Kind switch
         {
-            case RuntimeEdgeKind.Origin:
-            {
-                // In a rotation the origins of the primary nodes share the traffic: none of them is the first.
-                var role = to is { Assessment.IsRotation: true, Target.IsPrimary: true } ? "in the rotation, while healthy"
-                    : edge.Priority == FirstPriority ? "first, while healthy"
-                    : "when priority 1 is down";
-                var state = to is null ? EdgeState.Neutral : Carries(to);
-                var telemetry = to?.Target.Telemetry;
-                var text = telemetry is { FrontDoorProbes: > 0 } ? string.Create(CultureInfo.InvariantCulture, $"{role} · {telemetry.FrontDoorProbes} probes") : role;
-                var counted = telemetry is null
-                    ? "Calls per minute: the web app reports none."
-                    : string.Create(CultureInfo.InvariantCulture, $"Last minute, counted by the web app: {telemetry.FromFrontDoor} requests forwarded by Front Door, {telemetry.FrontDoorProbes} Front Door health probes.");
-                return new RuntimeEdgeMark(
-                    Id: edge.Id,
-                    State: state.Word(),
-                    Number: Number(telemetry?.FromFrontDoor),
-                    Unit: CallsUnit,
-                    Text: text,
-                    Title: $"Front Door to {edge.To}, origin priority {edge.Priority?.ToString(CultureInfo.InvariantCulture) ?? "not known"}: {role}. {state.Sentence()} {counted}",
-                    Link: to is null || telemetry is null ? null : Link(to.Target, LinkSet.Performance, to.Target.Name),
-                    Trend: to is null ? null : RuntimeTrend.Of(Trends.FromFrontDoor(to.Target)));
-            }
-
-            case RuntimeEdgeKind.Sql:
-            {
-                if (from is null && manifest.Nodes.FirstOrDefault(node => node.Alias == edge.From) is { Kind: RuntimeNodeKind.ContainerApp } app)
-                {
-                    return ContainerSqlEdge(edge, probed.GetValueOrDefault(app.Alias));
-                }
-
-                // A web app that is down sends no queries: the database is not the reason, so the line is idle.
-                var carries = from is null ? EdgeState.Neutral : Carries(from);
-                var state = carries == EdgeState.Down ? EdgeState.Idle : carries;
-                var telemetry = from?.Target.Telemetry;
-                var latency = telemetry?.SqlP95Ms is { } p95 ? string.Create(CultureInfo.InvariantCulture, $", p95 {p95} ms") : string.Empty;
-                var counted = telemetry switch
-                {
-                    null => "Queries per minute: the web app reports none.",
-                    { SplitsSql: true } => string.Create(CultureInfo.InvariantCulture, $"Last minute, counted by the web app: {telemetry.SqlRequests} SQL commands while handling requests (the number shown: what traffic causes) and {telemetry.SqlBackground} in the background (mostly the message bus polling the database), {telemetry.Sql} in all{latency}; its health checks query the database too."),
-                    _ => string.Create(CultureInfo.InvariantCulture, $"Last minute, counted by the web app: {telemetry.Sql} SQL commands{latency}; its health checks query the database too."),
-                };
-                // Short words: they stand under the number, in the narrow column between two frames of the diagram.
-                const string Queries = "app queries";
-                return new RuntimeEdgeMark(
-                    Id: edge.Id,
-                    State: state.Word(),
-                    Number: Number(telemetry?.SqlOfTraffic),
-                    Unit: CallsUnit,
-                    Text: telemetry is { SplitsSql: true } ? string.Create(CultureInfo.InvariantCulture, $"{Queries} · {telemetry.SqlBackground} background") : Queries,
-                    Title: $"{edge.From} to the database. {state.Sentence()} {counted}",
-                    Link: from is null || telemetry is null ? null : Link(from.Target, LinkSet.Dependencies, from.Target.Name),
-                    Trend: from is null ? null : RuntimeTrend.Of(Trends.Sql(from.Target)));
-            }
-
-            case RuntimeEdgeKind.Dependency:
-            {
-                // As to the database: a web app that is down calls nothing, and the dependency is not the reason.
-                var carries = from is null ? EdgeState.Neutral : Carries(from);
-                var state = carries == EdgeState.Down ? EdgeState.Idle : carries;
-                var telemetry = from?.Target.Telemetry;
-
-                // The app counts its outgoing HTTP calls as one number: it is this dependency's only when the web app
-                // has no other one.
-                var only = manifest.Edges.Count(other => other.Kind == RuntimeEdgeKind.Dependency && other.From == edge.From) == 1;
-                var counted = (only, telemetry) switch
-                {
-                    (false, _) => "Calls per minute: the web app counts its outgoing HTTP calls as one number, and it has more than one dependency.",
-                    (_, null) => "Calls per minute: the web app reports none.",
-                    _ => string.Create(CultureInfo.InvariantCulture, $"Last minute, counted by the web app: {telemetry.Http} outgoing HTTP calls, all of them (it has this one dependency)."),
-                };
-                return new RuntimeEdgeMark(
-                    Id: edge.Id,
-                    State: state.Word(),
-                    Number: only ? Number(telemetry?.Http) : NoNumber,
-                    Unit: CallsUnit,
-                    Text: only ? "outgoing HTTP calls" : "not counted apart",
-                    Title: $"{edge.From} to {manifest.Nodes.FirstOrDefault(node => node.Alias == edge.To)?.Name ?? edge.To}. {state.Sentence()} {counted}",
-                    Link: null,
-                    Trend: only && from is not null ? RuntimeTrend.Of(Trends.Http(from.Target)) : null);
-            }
-
-            case RuntimeEdgeKind.Public:
-            {
-                var target = to ?? from;
-                var state = target is null ? EdgeState.Neutral : target.Target.State switch
-                {
-                    HealthState.Healthy => EdgeState.Active,
-                    HealthState.Pending => EdgeState.Checking,
-                    _ => EdgeState.Down,
-                };
-                var (number, counted, trend) = PublicCalls(edge, manifest, byAlias);
-                var requests = number == NoNumber || target is null
-                    ? null
-                    : RuntimeLink.To(target.Deployable.Info.Links?[LinkSet.Logs], LinkText.For(LinkSet.Logs, target.Deployable.Info.Name));
-                return new RuntimeEdgeMark(
-                    Id: edge.Id,
-                    State: state.Word(),
-                    Number: number,
-                    Unit: CallsUnit,
-                    Text: null,
-                    Title: $"The browser to {edge.To}: {state.Sentence()} {counted}",
-                    Link: requests,
-                    Trend: RuntimeTrend.Of(trend));
-            }
-
-            case RuntimeEdgeKind.Dashboard when to is not null:
-            {
-                // A dashboard the topology lists as a node (another home of this page): the arrow says whether it answers.
-                var state = to.Target.State switch
-                {
-                    HealthState.Healthy => EdgeState.Active,
-                    HealthState.Pending => EdgeState.Checking,
-                    _ => EdgeState.Down,
-                };
-                var words = state switch
-                {
-                    EdgeState.Active => "It answers.",
-                    EdgeState.Checking => "Being checked.",
-                    _ => "Down: it does not answer.",
-                };
-                return new RuntimeEdgeMark(
-                    Id: edge.Id,
-                    State: state.Word(),
-                    Number: null,
-                    Unit: null,
-                    Text: null,
-                    Title: $"The browser to {to.Target.Name}: {words}");
-            }
-
-            default:
-                return new RuntimeEdgeMark(
-                    Id: edge.Id,
-                    State: EdgeState.Neutral.Word(),
-                    Number: null,
-                    Unit: null,
-                    Text: null,
-                    Title: $"{edge.From} to {edge.To}");
-        }
+            RuntimeEdgeKind.Origin => OriginEdge(edge, to),
+            RuntimeEdgeKind.Sql => SqlEdge(edge, from, manifest, probed),
+            RuntimeEdgeKind.Dependency => DependencyEdge(edge, from, manifest),
+            RuntimeEdgeKind.Public => PublicEdge(edge, to ?? from, manifest, byAlias),
+            RuntimeEdgeKind.Dashboard when to is not null => DashboardEdge(edge, to),
+            _ => UnknownEdge(edge),
+        };
     }
+
+    /// <summary>Front Door's arrow to one of its origins: its role in the origin group and the calls it forwarded.</summary>
+    private static RuntimeEdgeMark OriginEdge(RuntimeEdge edge, Entry? to)
+    {
+        // In a rotation the origins of the primary nodes share the traffic: none of them is the first.
+        var role = to is { Assessment.IsRotation: true, Target.IsPrimary: true } ? "in the rotation, while healthy"
+            : edge.Priority == FirstPriority ? "first, while healthy"
+            : "when priority 1 is down";
+        var state = to is null ? EdgeState.Neutral : Carries(to);
+        var telemetry = to?.Target.Telemetry;
+        var text = telemetry is { FrontDoorProbes: > 0 } ? string.Create(CultureInfo.InvariantCulture, $"{role} · {telemetry.FrontDoorProbes} probes") : role;
+        var counted = telemetry is null
+            ? "Calls per minute: the web app reports none."
+            : string.Create(CultureInfo.InvariantCulture, $"Last minute, counted by the web app: {telemetry.FromFrontDoor} requests forwarded by Front Door, {telemetry.FrontDoorProbes} Front Door health probes.");
+        return new RuntimeEdgeMark(
+            Id: edge.Id,
+            State: state.Word(),
+            Number: Number(telemetry?.FromFrontDoor),
+            Unit: CallsUnit,
+            Text: text,
+            Title: $"Front Door to {edge.To}, origin priority {edge.Priority?.ToString(CultureInfo.InvariantCulture) ?? "not known"}: {role}. {state.Sentence()} {counted}",
+            Link: to is null || telemetry is null ? null : Link(to.Target, LinkSet.Performance, to.Target.Name),
+            Trend: to is null ? null : RuntimeTrend.Of(Trends.FromFrontDoor(to.Target)));
+    }
+
+    /// <summary>A web app's (or a container app's) arrow to the database: the SQL commands the app counted.</summary>
+    private static RuntimeEdgeMark SqlEdge(RuntimeEdge edge, Entry? from, RuntimeManifest manifest, Dictionary<string, ContainerAppStatus> probed)
+    {
+        if (from is null && manifest.Nodes.FirstOrDefault(node => node.Alias == edge.From) is { Kind: RuntimeNodeKind.ContainerApp } app)
+        {
+            return ContainerSqlEdge(edge, probed.GetValueOrDefault(app.Alias));
+        }
+
+        var state = CallerState(from);
+        var telemetry = from?.Target.Telemetry;
+        var latency = telemetry?.SqlP95Ms is { } p95 ? string.Create(CultureInfo.InvariantCulture, $", p95 {p95} ms") : string.Empty;
+        var counted = telemetry switch
+        {
+            null => "Queries per minute: the web app reports none.",
+            { SplitsSql: true } => string.Create(CultureInfo.InvariantCulture, $"Last minute, counted by the web app: {telemetry.SqlRequests} SQL commands while handling requests (the number shown: what traffic causes) and {telemetry.SqlBackground} in the background (mostly the message bus polling the database), {telemetry.Sql} in all{latency}; its health checks query the database too."),
+            _ => string.Create(CultureInfo.InvariantCulture, $"Last minute, counted by the web app: {telemetry.Sql} SQL commands{latency}; its health checks query the database too."),
+        };
+        // Short words: they stand under the number, in the narrow column between two frames of the diagram.
+        const string Queries = "app queries";
+        return new RuntimeEdgeMark(
+            Id: edge.Id,
+            State: state.Word(),
+            Number: Number(telemetry?.SqlOfTraffic),
+            Unit: CallsUnit,
+            Text: telemetry is { SplitsSql: true } ? string.Create(CultureInfo.InvariantCulture, $"{Queries} · {telemetry.SqlBackground} background") : Queries,
+            Title: $"{edge.From} to the database. {state.Sentence()} {counted}",
+            Link: from is null || telemetry is null ? null : Link(from.Target, LinkSet.Dependencies, from.Target.Name),
+            Trend: from is null ? null : RuntimeTrend.Of(Trends.Sql(from.Target)));
+    }
+
+    /// <summary>A web app's arrow to an outside dependency: its outgoing HTTP calls, when they are this dependency's alone.</summary>
+    private static RuntimeEdgeMark DependencyEdge(RuntimeEdge edge, Entry? from, RuntimeManifest manifest)
+    {
+        // As to the database: a web app that is down calls nothing, and the dependency is not the reason.
+        var state = CallerState(from);
+        var telemetry = from?.Target.Telemetry;
+
+        // The app counts its outgoing HTTP calls as one number: it is this dependency's only when the web app
+        // has no other one.
+        var only = manifest.Edges.Count(other => other.Kind == RuntimeEdgeKind.Dependency && other.From == edge.From) == 1;
+        var counted = (only, telemetry) switch
+        {
+            (false, _) => "Calls per minute: the web app counts its outgoing HTTP calls as one number, and it has more than one dependency.",
+            (_, null) => "Calls per minute: the web app reports none.",
+            _ => string.Create(CultureInfo.InvariantCulture, $"Last minute, counted by the web app: {telemetry.Http} outgoing HTTP calls, all of them (it has this one dependency)."),
+        };
+        return new RuntimeEdgeMark(
+            Id: edge.Id,
+            State: state.Word(),
+            Number: only ? Number(telemetry?.Http) : NoNumber,
+            Unit: CallsUnit,
+            Text: only ? "outgoing HTTP calls" : "not counted apart",
+            Title: $"{edge.From} to {manifest.Nodes.FirstOrDefault(node => node.Alias == edge.To)?.Name ?? edge.To}. {state.Sentence()} {counted}",
+            Link: null,
+            Trend: only && from is not null ? RuntimeTrend.Of(Trends.Http(from.Target)) : null);
+    }
+
+    /// <summary>The browser's arrow to a public address: whether it answers, and the calls it took.</summary>
+    private static RuntimeEdgeMark PublicEdge(RuntimeEdge edge, Entry? target, RuntimeManifest manifest, Dictionary<string, Entry> byAlias)
+    {
+        var state = target is null ? EdgeState.Neutral : AnswerState(target);
+        var (number, counted, trend) = PublicCalls(edge, manifest, byAlias);
+        var requests = number == NoNumber || target is null
+            ? null
+            : RuntimeLink.To(target.Deployable.Info.Links?[LinkSet.Logs], LinkText.For(LinkSet.Logs, target.Deployable.Info.Name));
+        return new RuntimeEdgeMark(
+            Id: edge.Id,
+            State: state.Word(),
+            Number: number,
+            Unit: CallsUnit,
+            Text: null,
+            Title: $"The browser to {edge.To}: {state.Sentence()} {counted}",
+            Link: requests,
+            Trend: RuntimeTrend.Of(trend));
+    }
+
+    /// <summary>
+    /// The browser's arrow to a dashboard the topology lists as a node (another home of this page): whether it answers.
+    /// </summary>
+    private static RuntimeEdgeMark DashboardEdge(RuntimeEdge edge, Entry to)
+    {
+        var state = AnswerState(to);
+        var words = state switch
+        {
+            EdgeState.Active => "It answers.",
+            EdgeState.Checking => "Being checked.",
+            _ => "Down: it does not answer.",
+        };
+        return new RuntimeEdgeMark(
+            Id: edge.Id,
+            State: state.Word(),
+            Number: null,
+            Unit: null,
+            Text: null,
+            Title: $"The browser to {to.Target.Name}: {words}");
+    }
+
+    /// <summary>An arrow this page has nothing to say about: neutral, named by its two ends.</summary>
+    private static RuntimeEdgeMark UnknownEdge(RuntimeEdge edge) =>
+        new RuntimeEdgeMark(
+            Id: edge.Id,
+            State: EdgeState.Neutral.Word(),
+            Number: null,
+            Unit: null,
+            Text: null,
+            Title: $"{edge.From} to {edge.To}");
+
+    /// <summary>
+    /// The state of a caller's arrow (to the database, to a dependency): a caller that is down sends nothing, and the
+    /// callee is not the reason, so the line is idle rather than down.
+    /// </summary>
+    private static EdgeState CallerState(Entry? from)
+    {
+        var carries = from is null ? EdgeState.Neutral : Carries(from);
+        return carries == EdgeState.Down ? EdgeState.Idle : carries;
+    }
+
+    /// <summary>Whether an address the browser calls answers, by its health state.</summary>
+    private static EdgeState AnswerState(Entry target) => target.Target.State switch
+    {
+        HealthState.Healthy => EdgeState.Active,
+        HealthState.Pending => EdgeState.Checking,
+        _ => EdgeState.Down,
+    };
 
     /// <summary>
     /// The calls to a public address: for a Front Door endpoint, the sum of what its origins counted as forwarded by

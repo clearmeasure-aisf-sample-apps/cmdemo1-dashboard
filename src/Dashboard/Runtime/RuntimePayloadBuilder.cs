@@ -625,17 +625,11 @@ public static class RuntimePayloadBuilder
             var latest = passed.Max(entry => entry.Target.Last!.CheckedAt);
             var line = PassedLine(passed.Count, passed[0].Target.Label, WebApps);
             var queries = clients.Select(entry => entry.Target.Telemetry).OfType<TelemetrySnapshot>().ToList();
-
-            // The queries the traffic causes; what the apps run in the background (the message bus polling) is said in
-            // the tooltip, where an app tells the two apart.
-            var background = queries.Any(telemetry => telemetry.SplitsSql)
-                ? string.Create(CultureInfo.InvariantCulture, $" Queries per minute, counted by the web apps: {queries.Sum(telemetry => telemetry.SqlOfTraffic)} while handling requests, {queries.Sum(telemetry => telemetry.SqlBackground ?? 0)} in the background (mostly the message bus polling the database).")
-                : string.Empty;
             return DatabaseReachedTile(
                 node,
                 line,
                 queries.Count == 0 ? null : string.Create(CultureInfo.InvariantCulture, $"{queries.Sum(telemetry => telemetry.SqlOfTraffic)} queries/min"),
-                DatabaseReachedTitle(node, names, latest, zone, background));
+                DatabaseReachedTitle(node, names, latest, zone, queries));
         }
 
         if (OnlyProbesLiveness(clients))
@@ -689,11 +683,23 @@ public static class RuntimePayloadBuilder
     /// <summary>
     /// The title of a reachable database, naming the apps whose health checks connected to it. Both the web apps'
     /// exit and the container apps' exit say it (<see cref="DatabaseTile"/>, <see cref="DatabaseFromContainerApps"/>),
-    /// so it is written once here. <paramref name="background"/> is the optional sentence after the period: either
-    /// empty, or a sentence that starts with its own leading space (the web apps' queries per minute).
+    /// so it is written once here. <paramref name="queries"/> holds the web apps' telemetry snapshots (none on the
+    /// container apps' exit); when an app tells its requests' queries from its background ones, the optional
+    /// sentence of the web apps' queries per minute is appended after the first sentence's period (#1733).
     /// </summary>
-    private static string DatabaseReachedTitle(RuntimeNode node, string names, DateTimeOffset latest, TimeZoneInfo zone, string background) =>
-        $"{node.Name}: reachable. The database takes no call from a browser; the health check of {names} connected to it (last {TimeText.Clock(latest, zone)}).{background}";
+    private static string DatabaseReachedTitle(RuntimeNode node, string names, DateTimeOffset latest, TimeZoneInfo zone, IReadOnlyList<TelemetrySnapshot> queries) =>
+        $"{node.Name}: reachable. The database takes no call from a browser; the health check of {names} connected to it (last {TimeText.Clock(latest, zone)})."
+        + QueriesSentence(queries);
+
+    /// <summary>
+    /// The reachable database title's optional sentence of the web apps' queries per minute, said when a web app
+    /// tells its requests' queries from its background ones: it stands after the first sentence's period and owns
+    /// its own leading space and full stop, so no caller can run it into that period (#1754).
+    /// </summary>
+    private static string QueriesSentence(IReadOnlyList<TelemetrySnapshot> queries) =>
+        queries.Any(telemetry => telemetry.SplitsSql)
+            ? string.Create(CultureInfo.InvariantCulture, $" Queries per minute, counted by the web apps: {queries.Sum(telemetry => telemetry.SqlOfTraffic)} while handling requests, {queries.Sum(telemetry => telemetry.SqlBackground ?? 0)} in the background (mostly the message bus polling the database).")
+            : string.Empty;
 
     /// <summary>
     /// The tile of a database a health check of its apps reached: healthy under the <see cref="Reachable"/> label, one
@@ -718,7 +724,7 @@ public static class RuntimePayloadBuilder
             var names = string.Join(", ", passed.Select(app => app.App.Name));
             var latest = passed.Max(app => app.Status!.Last!.CheckedAt);
             var line = PassedLine(passed.Count, passed[0].App.Name, ContainerApps);
-            return DatabaseReachedTile(node, line, null, DatabaseReachedTitle(node, names, latest, zone, string.Empty));
+            return DatabaseReachedTile(node, line, null, DatabaseReachedTitle(node, names, latest, zone, []));
         }
 
         if (apps.Any(app => app.Status is null or { State: ContainerAppState.Probing or ContainerAppState.Waking }))

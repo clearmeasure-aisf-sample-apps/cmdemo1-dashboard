@@ -112,18 +112,18 @@ public static class DatabaseParser
                 tables.Add(new DatabaseTable(alias, qualifiedName, JsonRead.Text(element, "schema") ?? string.Empty, name, JsonRead.Long(element, "rows"), JsonRead.Count(element, "columns")));
             }
 
-            return errors.Count > 0 || environment is null || database is null
-                ? new RuntimeParseResult<DatabaseManifest>(null, errors)
-                : new RuntimeParseResult<DatabaseManifest>(
-                    new DatabaseManifest(
+            return RuntimeParseResult<DatabaseManifest>.Collected(
+                errors,
+                () => environment is null || database is null
+                    ? null
+                    : new DatabaseManifest(
                         environment,
                         database,
                         JsonRead.Time(root, "readAt"),
                         Source(root),
                         JsonRead.Flag(root, "truncated") ?? false,
                         tables,
-                        JsonRead.Count(root, "drawn") ?? tables.Count),
-                    []);
+                        JsonRead.Count(root, "drawn") ?? tables.Count));
         }
     }
 

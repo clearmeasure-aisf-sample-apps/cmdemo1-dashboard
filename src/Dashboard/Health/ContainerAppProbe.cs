@@ -160,8 +160,13 @@ public sealed class ContainerAppProbe(ContainerAppTarget target)
     /// </summary>
     internal const int NotFound = 404;
 
-    /// <summary>The word a healthy health-check body says, in plain text or in its JSON <c>status</c>.</summary>
-    private const string HealthyWord = "Healthy";
+    /// <summary>
+    /// The word a healthy health-check body says, in plain text or in its JSON <c>status</c>. Internal, so the
+    /// badge's word for a healthy app in <see cref="ContainerAppText.Label" /> reads the same word: the app is
+    /// healthy exactly when the body says it, so the badge says the word the body said, and the two spell one
+    /// word by construction rather than by agreement.
+    /// </summary>
+    internal const string HealthyWord = "Healthy";
 
     private DateTimeOffset? _runStartedAt;
     private DateTimeOffset? _lastProbeAt;
@@ -271,11 +276,16 @@ public sealed class ContainerAppProbe(ContainerAppTarget target)
 /// <summary>A container app's probe in words: the badge, the facts next to it and the tooltip.</summary>
 public static class ContainerAppText
 {
+    /// <summary>
+    /// The badge's word for each state. The healthy arm reads <see cref="ContainerAppProbe.HealthyWord" />: the
+    /// app is healthy exactly when the health-check body says the word, so the badge says the word the body said,
+    /// and the two stand or fall together; a change to the server's word changes the badge with it.
+    /// </summary>
     public static string Label(ContainerAppState state) => state switch
     {
         ContainerAppState.Waking => "Waking",
         ContainerAppState.Responding => "Responding",
-        ContainerAppState.Healthy => "Healthy",
+        ContainerAppState.Healthy => ContainerAppProbe.HealthyWord,
         ContainerAppState.Unhealthy => "Unhealthy",
         ContainerAppState.NotResponding => "Not responding",
         _ => "Probing",

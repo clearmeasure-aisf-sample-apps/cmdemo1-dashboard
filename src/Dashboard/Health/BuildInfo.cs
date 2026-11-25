@@ -207,6 +207,13 @@ public static class BuildText
     /// </summary>
     private const int OtherSlot = 0;
 
+    /// <summary>
+    /// The upper edge of the small-share window <see cref="SharePercent" /> says as <c>&lt;1 %</c>: a share above zero
+    /// and below this bound is a language that is there and small, not one that is not; zero itself and the bound itself
+    /// are said as whole percentages.
+    /// </summary>
+    private const double SmallShareBound = 1d;
+
     /// <summary>What the page calls itself next to the dashboard's name: the chip of its heading.</summary>
     public const string ThisPage = "this page";
 
@@ -282,9 +289,9 @@ public static class BuildText
     public static string Describe(IEnumerable<LanguageShare> shares) =>
         string.Join(", ", shares.Select(share => $"{share.Name} {SharePercent(share.Percent)}"));
 
-    /// <summary>A share as a whole percentage; a share below one as <c>&lt;1 %</c>.</summary>
+    /// <summary>A share as a whole percentage; a share above zero and below the <see cref="SmallShareBound" /> as <c>&lt;1 %</c>.</summary>
     public static string SharePercent(double percent) =>
-        percent is > 0 and < 1 ? "<1 %" : string.Create(CultureInfo.InvariantCulture, $"{Math.Round(percent):0} %");
+        percent is > 0 and < SmallShareBound ?"<1 %" : string.Create(CultureInfo.InvariantCulture, $"{Math.Round(percent):0} %");
 
     /// <summary><c>1,417: 1,009 unit, 240 integration, 168 acceptance</c>.</summary>
     public static string Tests(TestCounts tests)

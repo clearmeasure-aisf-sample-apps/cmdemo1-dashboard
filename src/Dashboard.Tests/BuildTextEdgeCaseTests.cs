@@ -355,6 +355,27 @@ public class BuildTextEdgeCaseTests
         Assert.Equal([typeof(long), typeof(long)], shareOf.GetParameters().Select(parameter => parameter.ParameterType).ToArray());
     }
 
+    /// <summary>The window of the small share is said once, under a name: its upper edge is a private constant of
+    /// one, and the words on either side of it are the ones the bar always said - just under it is <c>&lt;1 %</c>,
+    /// on it is <c>1 %</c>, and a hair past it rounds to the whole it is.</summary>
+    [Fact]
+    public void TheSmallShareBoundIsSaidOnceUnderAName()
+    {
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.DeclaredOnly;
+        var bound = typeof(BuildText).GetField("SmallShareBound", flags);
+
+        Assert.NotNull(bound);
+        Assert.True(bound!.IsLiteral);
+        Assert.Equal(1d, bound.GetRawConstantValue());
+
+        Assert.Equal("<1 %", BuildText.SharePercent(Math.BitDecrement(1d)));
+        Assert.Equal("<1 %", BuildText.SharePercent(0.5));
+        Assert.Equal("1 %", BuildText.SharePercent(1d));
+        Assert.Equal("1 %", BuildText.SharePercent(Math.BitIncrement(1d)));
+        Assert.Equal("-0 %", BuildText.SharePercent(Math.BitDecrement(0d)));
+        Assert.Equal("-Infinity %", BuildText.SharePercent(double.NegativeInfinity));
+    }
+
     // ----- Tests, Coverage, Complexity and Crap: a line each, out of the parts that are there
 
     /// <summary>The tests line is the total before a colon and the kinds after it - and what it says when the build

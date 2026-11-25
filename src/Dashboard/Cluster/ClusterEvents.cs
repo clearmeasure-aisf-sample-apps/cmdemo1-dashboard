@@ -42,7 +42,7 @@ public static class ClusterEventDetector
             _ when before == ClusterLiveness.Stale => new ClusterNotice(EventLevel.Good, "The collector in the cluster writes again"),
             _ => new ClusterNotice(EventLevel.Good, "The cluster's status file answers again"),
         };
-        return new DashboardEvent(at, EventKind.Cluster, notice.Level, null, ClusterPlace, notice.Text);
+        return ClusterEvent(at, notice);
     }
 
     /// <summary>
@@ -81,8 +81,8 @@ public static class ClusterEventDetector
             if (nodes.TryGetValue(node.Name, out var known) && known.Ready != node.Ready)
             {
                 yield return node.Ready
-                    ? new DashboardEvent(at, EventKind.Cluster, EventLevel.Good, null, ClusterPlace, $"Node {ClusterText.ShortNode(node.Name)} is ready again")
-                    : new DashboardEvent(at, EventKind.Cluster, EventLevel.Problem, null, ClusterPlace, $"Node {ClusterText.ShortNode(node.Name)} is not ready");
+                    ? ClusterEvent(at, new ClusterNotice(EventLevel.Good, $"Node {ClusterText.ShortNode(node.Name)} is ready again"))
+                    : ClusterEvent(at, new ClusterNotice(EventLevel.Problem, $"Node {ClusterText.ShortNode(node.Name)} is not ready"));
             }
         }
     }
@@ -99,8 +99,6 @@ public static class ClusterEventDetector
             .GroupBy(entry => (entry.Namespace.Name, entry.Pod.Name))
             .ToDictionary(group => group.Key, group => group.First().Pod);
 
-
-
     /// <summary>The one event of each pod that changed, in this reading's order, named for its namespace's environment.</summary>
     private static List<DashboardEvent> PodChanges(ClusterStatus before, ClusterStatus after, Dictionary<string, string> names, DateTimeOffset at)
     {
@@ -112,7 +110,7 @@ public static class ClusterEventDetector
             var known = pods.GetValueOrDefault((space.Name, pod.Name));
             if (Pod(known, known is null ? null : PodRules.StateOf(known, beforeAt), pod, PodRules.StateOf(pod, afterAt), space.Name, afterAt) is { } notice)
             {
-                changes.Add(new DashboardEvent(at, EventKind.Cluster, notice.Level, names.GetValueOrDefault(space.Name), ClusterPlace, notice.Text));
+                changes.Add(ClusterEvent(at, notice, environment: names.GetValueOrDefault(space.Name)));
             }
         }
 
@@ -125,13 +123,7 @@ public static class ClusterEventDetector
     /// <summary>The one event that counts the pod changes past the <see cref="NamedPods"/> named; null when none is left over.</summary>
     private static DashboardEvent? Overflow(List<DashboardEvent> changes, DateTimeOffset at) =>
         changes.Count > NamedPods
-            ? new DashboardEvent(
-                at,
-                EventKind.Cluster,
-                EventLevel.Info,
-                null,
-                ClusterPlace,
-                string.Create(CultureInfo.InvariantCulture, $"{changes.Count - NamedPods} more pods changed in this check"))
+            ? ClusterEvent(at, new ClusterNotice(EventLevel.Info, string.Create(CultureInfo.InvariantCulture, $"{changes.Count - NamedPods} more pods changed in this check")))
             : null;
 
     /// <summary>
@@ -151,22 +143,24 @@ public static class ClusterEventDetector
                 _ when now.Is(AksAvailability.Unavailable) => EventLevel.Problem,
                 _ => EventLevel.Info,
             };
-            events.Add(new DashboardEvent(at, EventKind.Cluster, level, null, ServicePlace, $"Azure's verdict on the AKS service: {verdict} → {now}"));
+            events.Add(ServiceEvent(at, new ClusterNotice(level, $"Azure's verdict on the AKS service: {verdict} → {now}")));
         }
 
         if (new AzureState(before.PowerState) is { IsMissing: false } power && new AzureState(after.PowerState) is { IsMissing: false } current && !power.IsSameAs(current))
         {
-            events.Add(new DashboardEvent(
-                at,
-                EventKind.Cluster,
-                after.IsRunning ? EventLevel.Good : EventLevel.Info,
-                null,
-                ServicePlace,
-                $"The power state of the AKS service: {power} → {current}"));
+            events.Add(ServiceEvent(at, new ClusterNotice(after.IsRunning ? EventLevel.Good : EventLevel.Info, $"The power state of the AKS service: {power} → {current}")));
         }
 
         return events;
     }
+
+    /// <summary>An event of the cluster as a whole, in the words of its notice; only a pod's change names an environment.</summary>
+    private static DashboardEvent ClusterEvent(DateTimeOffset at, ClusterNotice notice, string? environment = null) =>
+        new(at, EventKind.Cluster, notice.Level, environment, ClusterPlace, notice.Text);
+
+    /// <summary>An event of the AKS service, in the words of its notice: it belongs to no environment.</summary>
+    private static DashboardEvent ServiceEvent(DateTimeOffset at, ClusterNotice notice) =>
+        new(at, EventKind.Cluster, notice.Level, null, ServicePlace, notice.Text);
 
     /// <summary>The one event of a pod in a round, by what matters most: a restart, then unhealthy, then ready again.</summary>
     private static ClusterNotice? Pod(ClusterPod? before, PodState? was, ClusterPod after, PodState now, string space, DateTimeOffset asOf)

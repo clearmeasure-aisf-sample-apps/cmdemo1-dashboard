@@ -10,7 +10,8 @@ namespace Dashboard.Health;
 /// </summary>
 public sealed record ContainerAppTarget(Uri Url, string? HealthPath = null)
 {
-    public const string DefaultHealthPath = "/_healthcheck";
+    /// <summary>The default the page asks when no deployable names one: <see cref="HealthPaths.DefaultHealthPath" />.</summary>
+    public const string DefaultHealthPath = HealthPaths.DefaultHealthPath;
 
     /// <summary>The path a probe asks: the app's health path, or <see cref="DefaultHealthPath"/>. Never the root.</summary>
     public string PathFor(ProbeKind _) => EffectiveHealthPath;

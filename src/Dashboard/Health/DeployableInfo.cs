@@ -38,7 +38,8 @@ public sealed record DeployableInfo(
     Uri? PinHistoryUrl = null,
     string? HealthDetailPath = null)
 {
-    public const string DefaultHealthPath = "/_healthcheck";
+    /// <summary>The default the page asks when the file names none: <see cref="HealthPaths.DefaultHealthPath" />.</summary>
+    public const string DefaultHealthPath = HealthPaths.DefaultHealthPath;
     public const string DefaultAlivePath = "/alive";
     public const string DefaultVersionPath = "/_version";
 

@@ -210,7 +210,7 @@ public static class TopologyParser
             deployables.Add(new DeployableInfo(
                 Name: ReadText(element, "name") ?? "app",
                 FrontDoor: frontDoor,
-                HealthPath: ReadPath(element, "healthPath", DeployableInfo.DefaultHealthPath),
+                HealthPath: ReadPath(element, "healthPath", HealthPaths.DefaultHealthPath),
                 AlivePath: ReadPath(element, "alivePath", DeployableInfo.DefaultAlivePath),
                 VersionPath: ReadPath(element, "versionPath", DeployableInfo.DefaultVersionPath),
                 Nodes: nodes,

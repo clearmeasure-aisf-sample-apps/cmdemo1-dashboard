@@ -284,6 +284,27 @@ public class TelemetryTests
             told.Title[silent.Title.Length..]);
     }
 
+    /// <summary>
+    /// The reachable database's optional sentence of the web apps' queries per minute never runs into the period of
+    /// the sentence before it (#1754): when it is there, it starts after that period and its own leading space and
+    /// ends with its own full stop; when it is not, the title ends with the first sentence's period alone.
+    /// </summary>
+    [Fact]
+    public void TheQueriesSentenceOfTheReachableDatabaseNeverRunsIntoThePeriodBeforeIt()
+    {
+        var withSplit = RuntimePayloadBuilder.Build(Manifest(), Uat(Split(62, 55), Split(0, 48)), Page, TimeZoneInfo.Utc).Nodes.Single(tile => tile.Alias == "sqldb").Title;
+        var withoutSplit = RuntimePayloadBuilder.Build(Manifest(), Uat(Snapshot(), Snapshot(sql: 3)), Page, TimeZoneInfo.Utc).Nodes.Single(tile => tile.Alias == "sqldb").Title;
+
+        // The clause stands after the period and its own space, and ends with its own full stop.
+        Assert.Contains(" connected to it (last 22:00:00). Queries per minute, counted by the web apps:", withSplit, StringComparison.Ordinal);
+        Assert.DoesNotContain(".Queries per minute", withSplit, StringComparison.Ordinal);
+        Assert.EndsWith("database).", withSplit, StringComparison.Ordinal);
+
+        // Without a split the clause is not there: the title ends with the first sentence's period.
+        Assert.EndsWith(" connected to it (last 22:00:00).", withoutSplit, StringComparison.Ordinal);
+        Assert.DoesNotContain("Queries per minute", withoutSplit, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void AnOlderAppThatDoesNotTellThemApartKeepsTheTotalOnItsArrow()
     {

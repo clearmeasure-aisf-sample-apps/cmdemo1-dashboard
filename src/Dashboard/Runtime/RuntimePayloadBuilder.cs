@@ -1057,9 +1057,9 @@ public static class RuntimePayloadBuilder
         var state = to is null ? EdgeState.Neutral : Carries(to);
         var telemetry = to?.Target.Telemetry;
         var text = telemetry is { FrontDoorProbes: > 0 } ? string.Create(CultureInfo.InvariantCulture, $"{role} · {telemetry.FrontDoorProbes} probes") : role;
-        var counted = telemetry is null
-            ? "Calls per minute: the web app reports none."
-            : string.Create(CultureInfo.InvariantCulture, $"Last minute, counted by the web app: {telemetry.FromFrontDoor} requests forwarded by Front Door, {telemetry.FrontDoorProbes} Front Door health probes.");
+        var counted = Counted(CallsWord, telemetry is null
+            ? null
+            : string.Create(CultureInfo.InvariantCulture, $"{telemetry.FromFrontDoor} requests forwarded by Front Door, {telemetry.FrontDoorProbes} Front Door health probes"));
         return new RuntimeEdgeMark(
             Id: edge.Id,
             State: state.Word(),
@@ -1082,12 +1082,12 @@ public static class RuntimePayloadBuilder
         var state = CallerState(from);
         var telemetry = from?.Target.Telemetry;
         var latency = telemetry?.SqlP95Ms is { } p95 ? string.Create(CultureInfo.InvariantCulture, $", p95 {p95} ms") : string.Empty;
-        var counted = telemetry switch
+        var counted = Counted(QueriesWord, telemetry switch
         {
-            null => "Queries per minute: the web app reports none.",
-            { SplitsSql: true } => string.Create(CultureInfo.InvariantCulture, $"Last minute, counted by the web app: {telemetry.SqlRequests} SQL commands while handling requests (the number shown: what traffic causes) and {telemetry.SqlBackground} in the background (mostly the message bus polling the database), {telemetry.Sql} in all{latency}; its health checks query the database too."),
-            _ => string.Create(CultureInfo.InvariantCulture, $"Last minute, counted by the web app: {telemetry.Sql} SQL commands{latency}; its health checks query the database too."),
-        };
+            null => null,
+            { SplitsSql: true } => string.Create(CultureInfo.InvariantCulture, $"{telemetry.SqlRequests} SQL commands while handling requests (the number shown: what traffic causes) and {telemetry.SqlBackground} in the background (mostly the message bus polling the database), {telemetry.Sql} in all{latency}; its health checks query the database too"),
+            _ => string.Create(CultureInfo.InvariantCulture, $"{telemetry.Sql} SQL commands{latency}; its health checks query the database too"),
+        });
         // Short words: they stand under the number, in the narrow column between two frames of the diagram.
         const string Queries = "app queries";
         return new RuntimeEdgeMark(
@@ -1111,12 +1111,11 @@ public static class RuntimePayloadBuilder
         // The app counts its outgoing HTTP calls as one number: it is this dependency's only when the web app
         // has no other one.
         var only = manifest.Edges.Count(other => other.Kind == RuntimeEdgeKind.Dependency && other.From == edge.From) == 1;
-        var counted = (only, telemetry) switch
-        {
-            (false, _) => "Calls per minute: the web app counts its outgoing HTTP calls as one number, and it has more than one dependency.",
-            (_, null) => "Calls per minute: the web app reports none.",
-            _ => string.Create(CultureInfo.InvariantCulture, $"Last minute, counted by the web app: {telemetry.Http} outgoing HTTP calls, all of them (it has this one dependency)."),
-        };
+        var counted = only
+            ? Counted(CallsWord, telemetry is null
+                ? null
+                : string.Create(CultureInfo.InvariantCulture, $"{telemetry.Http} outgoing HTTP calls, all of them (it has this one dependency)"))
+            : PerMinute(CallsWord, "the web app counts its outgoing HTTP calls as one number, and it has more than one dependency.");
         return new RuntimeEdgeMark(
             Id: edge.Id,
             State: state.Word(),
@@ -1210,15 +1209,33 @@ public static class RuntimePayloadBuilder
         {
             var counted = origins.Select(origin => origin?.Telemetry).OfType<TelemetrySnapshot>().ToList();
             return counted.Count == 0
-                ? (NoNumber, "Calls per minute: no origin reports them.", null)
-                : (Number(counted.Sum(telemetry => telemetry.FromFrontDoor)), "Calls per minute: the sum of what its origins counted from Front Door.", Trends.Sum(origins.OfType<TargetStatus>()));
+                ? (NoNumber, PerMinute(CallsWord, "no origin reports them."), null)
+                : (Number(counted.Sum(telemetry => telemetry.FromFrontDoor)), PerMinute(CallsWord, "the sum of what its origins counted from Front Door."), Trends.Sum(origins.OfType<TargetStatus>()));
         }
 
         var direct = byAlias.GetValueOrDefault(edge.To)?.Target;
         return direct?.Telemetry is not { } own
-            ? (NoNumber, "Calls per minute: the web app reports none.", null)
-            : (Number(own.Direct), "Calls per minute: counted by the web app.", Trends.Direct(direct));
+            ? (NoNumber, ReportsNone(CallsWord), null)
+            : (Number(own.Direct), PerMinute(CallsWord, "counted by the web app."), Trends.Direct(direct));
     }
+
+    // The counting words of an edge's tooltip (#1734): the unit word opens a "per minute" sentence, and a number the
+    // web app counted is framed as the last minute's. One home for each, so the edges cannot drift apart.
+    private const string CallsWord = "Calls";
+    private const string QueriesWord = "Queries";
+
+    /// <summary>A sentence about the unit's rate: the unit word, "per minute", then the words.</summary>
+    private static string PerMinute(string unit, string words) => $"{unit} per minute: {words}";
+
+    /// <summary>The unit's sentence where the web app reports no number.</summary>
+    private static string ReportsNone(string unit) => PerMinute(unit, "the web app reports none.");
+
+    /// <summary>
+    /// The tooltip sentence of a counted edge: the unit's "none" sentence where the web app reports no number, else
+    /// the last minute's frame with the counted clause (given without its full stop).
+    /// </summary>
+    private static string Counted(string unit, string? counted) =>
+        counted is null ? ReportsNone(unit) : $"Last minute, counted by the web app: {counted}.";
 
     /// <summary>
     /// A container app's arrow to the database. The page does not ask the app for its call counts, so the number is a
@@ -1233,7 +1250,7 @@ public static class RuntimePayloadBuilder
             Number: NoNumber,
             Unit: CallsUnit,
             Text: null,
-            Title: $"{edge.From} to the database. {state.Sentence()} Queries per minute: this page does not count a container app's SQL commands.");
+            Title: $"{edge.From} to the database. {state.Sentence()} {PerMinute(QueriesWord, "this page does not count a container app's SQL commands.")}");
     }
 
     /// <summary>The state of a container app's SQL arrow, one arm per state so a new state fails the build.</summary>

@@ -36,7 +36,7 @@ public static class TopologyParser
             var environments = ReadEnvironments(root, errors);
             var cluster = ReadCluster(root, errors);
             return errors.Count > 0
-                ? new TopologyParseResult(null, errors)
+                ? TopologyParseResult.Failed([.. errors])
                 : new TopologyParseResult(new Topology(system, generated, environments, cluster), []);
         }
     }

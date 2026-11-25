@@ -113,7 +113,7 @@ public static class DatabaseParser
             }
 
             return errors.Count > 0 || environment is null || database is null
-                ? new RuntimeParseResult<DatabaseManifest>(null, errors)
+                ? RuntimeParseResult<DatabaseManifest>.Failed([.. errors])
                 : new RuntimeParseResult<DatabaseManifest>(
                     new DatabaseManifest(
                         environment,

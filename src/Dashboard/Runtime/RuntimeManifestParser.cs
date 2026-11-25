@@ -15,7 +15,10 @@ public sealed record RuntimeParseResult<T>(T? Value, IReadOnlyList<string> Error
     /// the folder, like the opener <see cref="RuntimeManifestParser.TryOpen"/> the readers share: a caller of one of
     /// them reads the result it handed back, it does not make one.
     /// </summary>
-    /// <param name="problems">Why there is no value, in the order the reader found them.</param>
+    /// <param name="problems">
+    /// Why there is no value, in the order the reader found them. A reader that collects its problems in a list hands
+    /// the list over with a spread (<c>Failed([.. errors])</c>), the same way the topology record takes it.
+    /// </param>
     internal static RuntimeParseResult<T> Failed(params string[] problems) => new(null, problems);
 }
 
@@ -73,7 +76,7 @@ public static class RuntimeManifestParser
             }
 
             return errors.Count > 0
-                ? new RuntimeParseResult<RuntimeIndex>(null, errors)
+                ? RuntimeParseResult<RuntimeIndex>.Failed([.. errors])
                 : new RuntimeParseResult<RuntimeIndex>(new RuntimeIndex(entries, Text(root, "plantuml")), []);
         }
     }
@@ -168,7 +171,7 @@ public static class RuntimeManifestParser
             });
 
             return errors.Count > 0 || environment is null
-                ? new RuntimeParseResult<RuntimeManifest>(null, errors)
+                ? RuntimeParseResult<RuntimeManifest>.Failed([.. errors])
                 : new RuntimeParseResult<RuntimeManifest>(new RuntimeManifest(environment, nodes, regions, edges, frames, Unplaced(root)), []);
         }
     }

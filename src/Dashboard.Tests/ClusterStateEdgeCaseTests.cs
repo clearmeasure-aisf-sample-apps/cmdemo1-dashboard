@@ -1,3 +1,5 @@
+using static Dashboard.Tests.ClusterFixture;
+
 namespace Dashboard.Tests;
 
 /// <summary>
@@ -22,10 +24,6 @@ namespace Dashboard.Tests;
 /// </summary>
 public class ClusterStateEdgeCaseTests
 {
-    private static readonly DateTimeOffset Generated = ClusterFixture.Generated;
-    private static readonly DateTimeOffset Now = Generated.AddSeconds(20);
-    private static readonly TimeZoneInfo Utc = TimeZoneInfo.Utc;
-
     // ----- The states, as the numbers they are -----
 
     /// <summary>The six states of the cluster view, in the order the enum declares them: the order a cast to a
@@ -254,7 +252,7 @@ public class ClusterStateEdgeCaseTests
     public void AStoppedServiceWithoutAMomentSaysStoppedWithoutTheAsOf()
     {
         var stopped = ClusterFixture.SampleService with { PowerState = "Stopped", Generated = null };
-        var silent = new SourceReading<ClusterStatus>(SourceState.Unavailable, Detail: "no answer within 10 s");
+        var silent = Silent();
 
         Assert.Equal(
             new ClusterAssessment(

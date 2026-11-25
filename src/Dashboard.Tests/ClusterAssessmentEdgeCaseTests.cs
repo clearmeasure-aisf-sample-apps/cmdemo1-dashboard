@@ -1,3 +1,5 @@
+using static Dashboard.Tests.ClusterFixture;
+
 namespace Dashboard.Tests;
 
 /// <summary>
@@ -25,17 +27,8 @@ namespace Dashboard.Tests;
 /// </summary>
 public class ClusterAssessmentEdgeCaseTests
 {
-    private static readonly DateTimeOffset Generated = ClusterFixture.Generated;
-    private static readonly DateTimeOffset Now = Generated.AddSeconds(20);
-    private static readonly TimeZoneInfo Utc = TimeZoneInfo.Utc;
-
     /// <summary>Azure's own sentence about the sample's verdict, the detail the service card stands under.</summary>
     private const string AzureSays = "There aren't any known Azure platform problems affecting this managed cluster.";
-
-    /// <summary>The cluster's own detail: the end of a sentence the reading carries, or none.</summary>
-    private static SourceReading<ClusterStatus> Silent(string? detail) => new(SourceState.Unavailable, Detail: detail);
-
-    private static ClusterAssessment Service(AksService service) => ClusterAssessment.Service(ClusterFixture.Read(service));
 
     // ----- ClusterAssessment.Live: a silence about why -----
 
@@ -50,7 +43,7 @@ public class ClusterAssessmentEdgeCaseTests
     [InlineData("   ")]
     public void AStatusFileThatDoesNotAnswerWithoutAWordForWhySaysNothingMore(string? detail)
     {
-        var assessment = ClusterAssessment.Live(Silent(detail), null, Now, Utc);
+        var assessment = ClusterAssessment.Live(Silent(detail: detail), null, Now, Utc);
 
         Assert.Equal(
             new ClusterAssessment(ClusterState.Unreachable, "Unreachable", "The cluster's status file does not answer"),
@@ -65,7 +58,7 @@ public class ClusterAssessmentEdgeCaseTests
     /// </summary>
     [Fact]
     public void AReasonOfASingleLetterIsASentenceOfItsOwn() =>
-        Assert.Equal("X.", ClusterAssessment.Live(Silent("x"), null, Now, Utc).Detail);
+        Assert.Equal("X.", ClusterAssessment.Live(Silent(detail: "x"), null, Now, Utc).Detail);
 
     /// <summary>
     /// A reason that already ends in its full stop is said with one: the stop that stands there is taken off before
@@ -75,7 +68,7 @@ public class ClusterAssessmentEdgeCaseTests
     public void AReasonThatAlreadyEndsInAFullStopIsSaidWithOne() =>
         Assert.Equal(
             "The address answered HTTP 404.",
-            ClusterAssessment.Live(Silent("the address answered HTTP 404."), null, Now, Utc).Detail);
+            ClusterAssessment.Live(Silent(detail: "the address answered HTTP 404."), null, Now, Utc).Detail);
 
     /// <summary>
     /// A reason is said with one closing stop whatever shape its end takes: no stop, one stop, a stop and the space a
@@ -92,7 +85,7 @@ public class ClusterAssessmentEdgeCaseTests
     [InlineData("  the file is empty.  ")]
     public void AReasonIsSaidWithOneClosingStopWhateverItsEnd(string detail)
     {
-        Assert.Equal("The file is empty.", ClusterAssessment.Live(Silent(detail), null, Now, Utc).Detail);
+        Assert.Equal("The file is empty.", ClusterAssessment.Live(Silent(detail: detail), null, Now, Utc).Detail);
         Assert.Equal(
             "The file is empty.",
             ClusterAssessment.Service(new SourceReading<AksService>(SourceState.Malformed, Detail: detail)).Detail);

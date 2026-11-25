@@ -65,4 +65,18 @@ public class SummaryWordsPluralizationTests
     [InlineData(4, 2, 2, "2 of 4 nodes healthy, 2 being checked")]
     public void TheSummaryTextIsUnchanged(int total, int healthy, int pending, string expected) =>
         Assert.Equal(expected, new HealthSummary(total, healthy, pending).Text);
+
+    /// <summary>
+    /// The AllHealthy sentence's count-against-1 word choice is routed through Plural, not written by hand.
+    /// Count 0 is tested via the Empty level (0 nodes is never AllHealthy).
+    /// </summary>
+    [Theory]
+    [InlineData(SummaryLevel.Empty, 0, 0, 0, "No nodes in the topology")]
+    [InlineData(SummaryLevel.AllHealthy, 1, 1, 0, "The only node is healthy")]
+    [InlineData(SummaryLevel.AllHealthy, 2, 2, 0, "All 2 nodes healthy")]
+    [InlineData(SummaryLevel.AllHealthy, 1000, 1000, 0, "All 1000 nodes healthy")]
+    public void TheAllHealthySentenceRoutesThroughPlural(SummaryLevel level, int total, int healthy, int pending, string expected)
+    {
+        Assert.Equal(expected, SummaryWords.Text(level, total, healthy, pending));
+    }
 }

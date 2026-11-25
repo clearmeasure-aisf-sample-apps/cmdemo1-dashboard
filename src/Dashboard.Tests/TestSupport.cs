@@ -314,3 +314,73 @@ internal static class MarkupGuards
         return count;
     }
 }
+
+/// <summary>
+/// The one way a test builds and reads an <see cref="ActivityLine" />, and the moment and the zone its ages are
+/// counted from: the moment the page is asked (Friday noon, 2026, UTC) and the zone it says the moments in, the
+/// system the deployments file is read for, the line a test builds from its four words, the default line with all
+/// four of its parts and the line without its address, and the questions a test asks of a line - the kind it says,
+/// whether it carries the address of the task, whether its kind is one of the in flight, and what its title says.
+/// The sayers the lines come from (<see cref="DeploymentActivity.OfNode" /> and
+/// <see cref="DeploymentActivity.OfEnvironment" />) are reached with the file parsed the way the tests parse it and
+/// the names the file was read for, so a test names the file's words and nothing of where they are read from.
+/// </summary>
+public static class ActivityLines
+{
+    /// <summary>Friday noon, UTC: the moment the page is asked, and every age is counted from it.</summary>
+    public static readonly DateTimeOffset Now = new(2026, 10, 9, 12, 0, 0, TimeSpan.Zero);
+
+    /// <summary>The zone the moments are said in, as the page says them.</summary>
+    public static readonly TimeZoneInfo Utc = TimeZoneInfo.Utc;
+
+    /// <summary>The system the deployments file is read for.</summary>
+    public const string Slug = "demo";
+
+    /// <summary>The deployable the ui's node is drawn for.</summary>
+    public static readonly string[] Ui = ["ui"];
+
+    /// <summary>A line of the four words named, the address left out being the absence of one rather than a placeholder for one.</summary>
+    public static ActivityLine Line(string kind, string text, string title, Uri? url = null) =>
+        new(kind, text, title, url);
+
+    /// <summary>The default line: a deployment stopped for a person, on the task it waits for - the line with all four of its parts.</summary>
+    public static ActivityLine Full() =>
+        Line("waiting", "2.4.43 waits for demo approvers", "demo-ui 2.4.43 waits for a sign-off in prod", new Uri("https://octopus.example.invalid/app#/Spaces-5"));
+
+    /// <summary>A line without its address: the freeze's line, or the line of a file that names no task.</summary>
+    public static ActivityLine WithoutAddress() =>
+        Line("queued", "2.4.44 queued, 3 min", "demo-ui 2.4.44 is queued in uat");
+
+    /// <summary>The deployments file as a test writes it: the entries named in the three lists, and nothing the test did not name.</summary>
+    public static DeploymentsReport Parse(string deployments = "", string recent = "", string freezes = "") =>
+        DeploymentsReport.Parse($$"""{ "deployments": [ {{deployments}} ], "recent": [ {{recent}} ], "freezes": [ {{freezes}} ], "missing": [] }""")!;
+
+    /// <summary>The lines a node of the report says for the environment and the deployable named, at the moment named or at <see cref="Now" /> in <see cref="Utc" />.</summary>
+    public static IReadOnlyList<ActivityLine> Node(DeploymentsReport report, string environment, string deployable = "ui", DateTimeOffset? now = null) =>
+        DeploymentActivity.OfNode(report, environment, Slug, deployable, now ?? Now, Utc);
+
+    /// <summary>The lines under the environment's name, with the report's own marks of it, at the moment named or at <see cref="Now" /> in <see cref="Utc" />.</summary>
+    public static IReadOnlyList<ActivityLine> Environment(DeploymentsReport report, string environment, DateTimeOffset? now = null) =>
+        DeploymentActivity.OfEnvironment(report, environment, report.Marks(environment, Slug, Ui, now ?? Now), now ?? Now, Utc);
+
+    /// <summary>The kind the line says.</summary>
+    public static string KindOf(ActivityLine line) => line.Kind;
+
+    /// <summary>True when the line carries the address of the task, and leads a reader to it.</summary>
+    public static bool HasLink(ActivityLine line) => line.Url is not null;
+
+    /// <summary>
+    /// True for the kinds a deployment that is still in flight says - waiting, deploying, queued - and not for the
+    /// freezes, and not for what ended: the kinds in the order <see cref="ActivityKind.All" /> says them, with the
+    /// three that are in flight first.
+    /// </summary>
+    public static bool IsInFlight(ActivityLine line) =>
+        line.Kind is ActivityKind.Waiting or ActivityKind.Deploying or ActivityKind.Queued;
+
+    /// <summary>The sentence of the line's tooltip.</summary>
+    public static string TitleOf(ActivityLine line) => line.Title;
+
+    /// <summary>True when the line's title names the word, as the words compare themselves: in the case the word is written in, and ordinal.</summary>
+    public static bool TitleMentions(ActivityLine line, string word) =>
+        line.Title.Contains(word, StringComparison.Ordinal);
+}

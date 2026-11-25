@@ -638,7 +638,7 @@ public static class RuntimePayloadBuilder
                 queries.Count == 0 ? null : string.Create(CultureInfo.InvariantCulture, $"{queries.Sum(telemetry => telemetry.SqlOfTraffic)} queries/min"),
                 [new RuntimeTileLine(line, RuntimeLineTone.Ok)],
                 null,
-                $"{node.Name}: reachable. The database takes no call from a browser; the health check of {names} connected to it (last {TimeText.Clock(latest, zone)}).{background}");
+                DatabaseReachedTitle(node, names, latest, zone, background));
         }
 
         if (OnlyProbesLiveness(clients))
@@ -690,6 +690,15 @@ public static class RuntimePayloadBuilder
             $"{node.Name}: no {user} that uses it passes its health check, so this page cannot tell whether it answers: the database or the {cause} may be the cause.");
 
     /// <summary>
+    /// The title of a reachable database, naming the apps whose health checks connected to it. Both the web apps'
+    /// exit and the container apps' exit say it (<see cref="DatabaseTile"/>, <see cref="DatabaseFromContainerApps"/>),
+    /// so it is written once here. <paramref name="background"/> is the optional sentence after the period: either
+    /// empty, or a sentence that starts with its own leading space (the web apps' queries per minute).
+    /// </summary>
+    private static string DatabaseReachedTitle(RuntimeNode node, string names, DateTimeOffset latest, TimeZoneInfo zone, string background) =>
+        $"{node.Name}: reachable. The database takes no call from a browser; the health check of {names} connected to it (last {TimeText.Clock(latest, zone)}).{background}";
+
+    /// <summary>
     /// The database from the container apps that use it. A healthy health-path probe connected to it. An app that has
     /// not been asked yet, or is still waking, leaves the database waiting. An answer that is not a health check
     /// (Liveness, or an app that refuses this page's origin) leaves it alone. A failed check does not call the
@@ -710,7 +719,7 @@ public static class RuntimePayloadBuilder
                 null,
                 [new RuntimeTileLine(line, RuntimeLineTone.Ok)],
                 null,
-                $"{node.Name}: reachable. The database takes no call from a browser; the health check of {names} connected to it (last {TimeText.Clock(latest, zone)}).");
+                DatabaseReachedTitle(node, names, latest, zone, string.Empty));
         }
 
         if (apps.Any(app => app.Status is null or { State: ContainerAppState.Probing or ContainerAppState.Waking }))

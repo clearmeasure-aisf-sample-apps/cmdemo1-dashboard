@@ -71,7 +71,7 @@ public class EventDetectorEdgeCaseTests
         ServingAssessment.Assess(standby is { } state ? [.. Primaries(primaries), Standby(state)] : Primaries(primaries), HealthState.Healthy);
 
     private static string[] ServingEvents(ServingAssessment? before, ServingAssessment after) =>
-        [.. EventDetector.ServingChanges(before, after, "uat", "ui", Now).Select(entry => $"{entry.Level}: {entry.Text}")];
+        ServingEventReaders.Events(before, after, "uat", Now);
 
     // ----- Node -----
 

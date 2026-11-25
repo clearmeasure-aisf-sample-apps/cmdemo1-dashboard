@@ -237,6 +237,20 @@ public static class TelemetrySnapshots
 }
 
 /// <summary>
+/// The one way a test reads a rotation's serving events: the two assessments, the audience and the moment the
+/// round was asked in, and the events the detector names between them, each said as the level and the text the
+/// page says. A test says what changed - the node that left, the failover, the nothing that serves - and nothing
+/// about how the events are spelled.
+/// </summary>
+public static class ServingEventReaders
+{
+    /// <summary>The serving events between <paramref name="before" /> and <paramref name="after" /> for the
+    /// audience and the moment named, each said as its level and its text.</summary>
+    public static string[] Events(ServingAssessment? before, ServingAssessment after, string environment, DateTimeOffset at) =>
+        [.. EventDetector.ServingChanges(before, after, environment, "ui", at).Select(entry => $"{entry.Level}: {entry.Text}")];
+}
+
+/// <summary>
 /// The two questions every markup guard asks and every markup guard used to answer with a copy of its own: how many
 /// times a word is said in a file, and where the file a test reads stands. The walk of <see cref="CountOccurrences" />
 /// was copied verbatim into ten guard files and the <c>[CallerFilePath]</c> navigation of

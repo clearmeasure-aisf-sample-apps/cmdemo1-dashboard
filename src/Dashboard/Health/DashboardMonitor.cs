@@ -9,6 +9,9 @@ public sealed class DashboardMonitor
     /// <summary>How often the delivery facts are read: they change with a deployment, and GitHub caches the file for minutes.</summary>
     public static readonly TimeSpan DeliveryInterval = TimeSpan.FromMinutes(5);
 
+    /// <summary>How often the work items are read: their file stands beside the delivery facts, and is read as they are.</summary>
+    public static readonly TimeSpan WorkItemsInterval = DeliveryInterval;
+
     /// <summary>How often the cost is read: its file changes a few times a day at most, and is read as the delivery facts are.</summary>
     public static readonly TimeSpan CostInterval = DeliveryInterval;
 
@@ -20,6 +23,9 @@ public sealed class DashboardMonitor
 
     /// <summary>How long the page waits before it asks again for its own build facts, while the file does not answer.</summary>
     public static readonly TimeSpan DashboardBuildRetry = DeliveryInterval;
+
+    /// <summary>How often Resource Health is read: its file stands beside the delivery facts, and is read as they are.</summary>
+    public static readonly TimeSpan ResourceHealthInterval = DeliveryInterval;
 
     private readonly NodeProber _prober;
     private readonly PinnedVersionsReader _versions;
@@ -208,12 +214,13 @@ public sealed class DashboardMonitor
     /// timeout delays neither the others nor their display. The pinned versions are read at the same time, once per
     /// environment, and once per deployable that has a pin of its own (<c>pinUrl</c>); with the probe Health check, a
     /// node whose deployable names a <c>healthDetailPath</c> is also asked for the entries of its health check. A file that cannot be read is a
-    /// result like any other and fails no check. So are the delivery facts and the work items, every
-    /// <see cref="DeliveryInterval"/>, the cost, every <see cref="CostInterval"/>, the deployments in flight, every
+    /// result like any other and fails no check. So are the delivery facts, every
+    /// <see cref="DeliveryInterval"/>, the work items, every <see cref="WorkItemsInterval"/>, the cost, every
+    /// <see cref="CostInterval"/>, the deployments in flight, every
     /// <see cref="DeploymentsInterval"/>, the
     /// dashboard's own build facts, once, and the two files of the cluster view, every round, where the topology names
     /// a cluster. The container apps the runtime view shows are probed when their interval is due, and Resource Health
-    /// is read every <see cref="DeliveryInterval"/> while a box shows it (<see cref="Watch"/>).
+    /// is read every <see cref="ResourceHealthInterval"/> while a box shows it (<see cref="Watch"/>).
     /// </summary>
     public async Task CheckAllAsync(ProbeKind probe, CancellationToken cancellationToken)
     {
@@ -331,7 +338,7 @@ public sealed class DashboardMonitor
     private async Task ReadWorkItemsAsync(CancellationToken cancellationToken)
     {
         var now = _time.GetUtcNow();
-        if (Topology.System.WorkItemsUrl is not { } address || !IsDue(_workItemsReadAt, now, DeliveryInterval))
+        if (Topology.System.WorkItemsUrl is not { } address || !IsDue(_workItemsReadAt, now, WorkItemsInterval))
         {
             return;
         }
@@ -395,7 +402,7 @@ public sealed class DashboardMonitor
     {
         var now = _time.GetUtcNow();
         if (!_resourceHealthWanted || Topology.System.ContainersUrl is not { } address
-            || !IsDue(_resourceHealthReadAt, now, DeliveryInterval))
+            || !IsDue(_resourceHealthReadAt, now, ResourceHealthInterval))
         {
             return;
         }

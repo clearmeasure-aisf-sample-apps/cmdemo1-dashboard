@@ -60,6 +60,18 @@ public class DashboardMonitorEdgeCaseTests
         Assert.Equal(TimeSpan.FromMinutes(5), DashboardMonitor.DashboardBuildRetry);
     }
 
+    /// <summary>The work items and Resource Health each name their own interval - today the five minutes of the
+    /// delivery facts they are read beside - so the readers state their own rule, and a different cadence for one
+    /// of the two is a change to that one field.</summary>
+    [Fact]
+    public void TheWorkItemsAndResourceHealthIntervalsNameTheFiveMinutesTheyAreRead()
+    {
+        Assert.Equal(DashboardMonitor.DeliveryInterval, DashboardMonitor.WorkItemsInterval);
+        Assert.Equal(TimeSpan.FromMinutes(5), DashboardMonitor.WorkItemsInterval);
+        Assert.Equal(DashboardMonitor.DeliveryInterval, DashboardMonitor.ResourceHealthInterval);
+        Assert.Equal(TimeSpan.FromMinutes(5), DashboardMonitor.ResourceHealthInterval);
+    }
+
     // ----- the monitor at its making -----
 
     /// <summary>The monitor is asked for its topology, and only for it: without one it is said so, naming the

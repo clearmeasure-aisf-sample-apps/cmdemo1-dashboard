@@ -353,8 +353,9 @@ public static class DatabaseRefresh
 {
     public static readonly TimeSpan Interval = TimeSpan.FromMinutes(1);
 
+    /// <summary>The page's own gate and the one interval rule (<see cref="Health.IntervalDue" />) with the view's <see cref="Interval"/>.</summary>
     /// <param name="active">The page checks: it is neither paused nor hidden.</param>
     /// <param name="lastRead">When the live file was last asked for; null when it never was.</param>
     public static bool IsDue(bool active, DateTimeOffset? lastRead, DateTimeOffset now) =>
-        active && (lastRead is not { } last || now - last >= Interval);
+        active && IntervalDue.IsDue(lastRead, now, Interval);
 }

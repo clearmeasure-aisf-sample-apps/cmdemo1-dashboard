@@ -179,7 +179,8 @@ public sealed class ContainerAppProbe(ContainerAppTarget target)
     /// <summary>True before the first probe.</summary>
     public bool IsNew => _lastProbeAt is null;
 
-    public bool IsDue(DateTimeOffset now) => _lastProbeAt is not { } last || now - last >= Interval;
+    /// <summary>When the probe asks again: the one interval rule (<see cref="IntervalDue" />) with the probe's <see cref="Interval"/>.</summary>
+    public bool IsDue(DateTimeOffset now) => IntervalDue.IsDue(_lastProbeAt, now, Interval);
 
     /// <summary>Marks a probe as started, so the next round does not ask again before the interval.</summary>
     public void Start(DateTimeOffset now)

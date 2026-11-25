@@ -6,26 +6,33 @@ namespace Dashboard.Health;
 /// endpoint where there is one and the primary web app's own address otherwise. So the calls take the path a user's
 /// calls take: browser, Front Door, the origin that serves, the database.
 ///
-/// The three consts below that say what a press sends - <see cref="PerSecond"/>, <see cref="Seconds"/> and
-/// <see cref="AnswerWithinSeconds"/> - belong to one run and travel together as one <see cref="TrafficRun"/>;
-/// <see cref="CheckEverySeconds"/> is not one of them, being how often the page checks while a run lasts.
+/// The numbers of a press - what a press sends - are declared on the <see cref="TrafficRun"/> that carries them,
+/// in <see cref="TrafficRun.Values"/>, and the run is the only way a caller gets them (#1777). What the plan keeps
+/// of them: <see cref="AnswerWithinSeconds"/>, the const the shared-wait guard pins here, naming the wait the run
+/// declares; and <see cref="PerSecond"/> and <see cref="Seconds"/>, which the plan's own members read no longer
+/// and name the run's numbers for the guard that still reads them from the plan. <see cref="CheckEverySeconds"/>
+/// is none of them, being how often the page checks while a run lasts - the plan's own rule, read by
+/// <see cref="IntervalNote"/>.
 /// </summary>
 public sealed record TrafficPlan(string Environment, IReadOnlyList<Uri> Addresses, IReadOnlyList<string> Targets)
 {
     public static readonly IReadOnlyList<string> DefaultPaths = ["/"];
 
-    /// <summary>Requests per second while the button runs: enough to move every number, far below any limit.</summary>
-    public const int PerSecond = 2;
+    /// <summary>Requests per second while the button runs: the run's own <see cref="TrafficRun.Values.PerSecond"/>.
+    /// The number is declared on the run; this names it for the guard that still reads it from the plan.</summary>
+    public static int PerSecond => TrafficRun.Values.PerSecond;
 
-    /// <summary>How long one press sends: the counters' window is one minute.</summary>
-    public const int Seconds = 60;
+    /// <summary>How long one press sends: the run's own <see cref="TrafficRun.Values.Seconds"/>.
+    /// The number is declared on the run; this names it for the guard that still reads it from the plan.</summary>
+    public static int Seconds => TrafficRun.Values.Seconds;
 
     /// <summary>
     /// How long a request waits for its answer before the browser gives it up: as long as a check of the page waits
-    /// (the shared <see cref="ProbeDefaults.DefaultTimeoutSeconds"/>). So a run is over this long after its last
-    /// request at the latest. Whole seconds, because the browser call and the sentence about it take it that way.
+    /// (the shared <see cref="ProbeDefaults.DefaultTimeoutSeconds"/>). The number is declared on the run the
+    /// callers read it from (<see cref="TrafficRun.Values.AnswerWithinSeconds"/>); this const names the same shared
+    /// wait, where the guard that pinned it stands.
     /// </summary>
-    public const int AnswerWithinSeconds = ProbeDefaults.DefaultTimeoutSeconds;
+    public const int AnswerWithinSeconds = TrafficRun.Values.AnswerWithinSeconds;
 
     /// <summary>
     /// How often the page checks while the traffic runs, so the numbers follow it. Not a number of the run: a run

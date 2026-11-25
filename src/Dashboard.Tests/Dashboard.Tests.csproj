@@ -50,6 +50,13 @@
     <Compile Include="..\Dashboard\Shares.cs" Link="Shares.cs" />
   </ItemGroup>
 
+  <!-- SelectChange is internal to the app for the same reason: the tests pin the one read of a select's change -
+       the parse, the "is offered" check and the values both selects keep or ignore - so they compile this one file
+       too and assert against the source the app runs. -->
+  <ItemGroup>
+    <Compile Include="..\Dashboard\SelectChange.cs" Link="SelectChange.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <Using Include="Dashboard.Cluster" />
     <Using Include="Dashboard.Health" />

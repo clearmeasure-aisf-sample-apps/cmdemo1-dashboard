@@ -8,7 +8,7 @@ namespace Dashboard.Tests;
 /// <summary>
 /// The boundary, null/empty and fixed-value tests still open for <see cref="ComplexityFacts" />, the three
 /// measurements a build makes of the complexity of its methods, declared in
-/// <c>src/Dashboard/Health/BuildInfo.cs</c>: the average they make, the worst of them and the count of the methods
+/// <c>src/Dashboard/Health/ComplexityFacts.cs</c>: the average they make, the worst of them and the count of the methods
 /// they are of - pinned here as the compiled type stands, member by member, and at the asks of its public members
 /// that no other file has answered with a fixed value of its own.
 /// <para>

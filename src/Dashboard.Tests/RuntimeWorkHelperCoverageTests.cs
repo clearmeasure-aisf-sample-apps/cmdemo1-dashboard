@@ -395,23 +395,26 @@ public class RuntimeWorkHelperCoverageTests
 
     /// <summary>Every public static method of the helpers, in the order the files write them: the public static
     /// classes of <c>src/Dashboard/Runtime</c> and <c>src/Dashboard/Work</c>, the properties and the fields of
-    /// the helpers read past.</summary>
-    private static List<HelperMethod> HelperMethods()
+    /// the helpers read past. Read once per test run from the shared read of the two folders - the files that
+    /// stand directly in each folder, as the guard has always read them - since the source under test does not
+    /// move while the tests run.</summary>
+    private static IReadOnlyList<HelperMethod> HelperMethods() => HelperMethodsOnce.Value;
+
+    private static readonly Lazy<IReadOnlyList<HelperMethod>> HelperMethodsOnce = new(ReadHelperMethods);
+
+    private static System.Collections.ObjectModel.ReadOnlyCollection<HelperMethod> ReadHelperMethods()
     {
         var methods = new List<HelperMethod>();
 
         foreach (var directory in new[] { "Runtime", "Work" })
         {
-            var path = Path.Combine(DashboardRoot(), directory);
-
-            foreach (var file in Directory.EnumerateFiles(path, "*.cs", SearchOption.TopDirectoryOnly).OrderBy(f => f, StringComparer.Ordinal))
+            foreach (var file in SourceText.Files(Path.Combine(DashboardRoot(), directory)).Where(file => Path.GetDirectoryName(file.Path) is ""))
             {
-                var text = File.ReadAllText(file);
-                methods.AddRange(MethodsIn(text, Path.GetRelativePath(DashboardRoot(), file)));
+                methods.AddRange(MethodsIn(file.Text, Path.Combine(directory, file.Path)));
             }
         }
 
-        return methods;
+        return methods.AsReadOnly();
     }
 
     private static List<HelperMethod> MethodsIn(string text, string file)
@@ -577,32 +580,15 @@ public class RuntimeWorkHelperCoverageTests
     private static int LineOf(string text, int at) => text.AsSpan(0, at).Count('\n') + 1;
 
     /// <summary>Every test file, as the path the assertion prints it: under <c>src/Dashboard.Tests</c>, the
-    /// build's copies under <c>bin</c> and <c>obj</c> walked past.</summary>
-    private static List<string> TestFiles()
-    {
-        var files = new List<string>();
-        var root = TestsRoot();
-
-        foreach (var path in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories).OrderBy(p => p, StringComparer.Ordinal))
-        {
-            var relative = Path.GetRelativePath(root, path);
-
-            if (relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(part =>
-                    part.Equals("bin", StringComparison.OrdinalIgnoreCase) || part.Equals("obj", StringComparison.OrdinalIgnoreCase)))
-            {
-                continue;
-            }
-
-            files.Add(relative);
-        }
-
-        return files;
-    }
+    /// build's copies under <c>bin</c> and <c>obj</c> walked past, from the shared read of the run.</summary>
+    private static List<string> TestFiles() => [.. SourceText.Files(TestsRoot()).Select(file => file.Path)];
 
     /// <summary>The text of every test file, each one marked, so a name at the end of one file never reads as a
-    /// call in the next.</summary>
-    private static string TestCorpus() =>
-        string.Join("\n// the next test file\n", TestFiles().Select(file => File.ReadAllText(Path.Combine(TestsRoot(), file))));
+    /// call in the next - joined once per test run, from the shared read of the run.</summary>
+    private static string TestCorpus() => TestCorpusOnce.Value;
+
+    private static readonly Lazy<string> TestCorpusOnce = new(() =>
+        string.Join("\n// the next test file\n", SourceText.Files(TestsRoot()).Select(file => file.Text)));
 
     private static string DashboardRoot([CallerFilePath] string here = "") =>
         Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here)!, "..", "Dashboard"));

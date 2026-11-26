@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
@@ -46,12 +47,23 @@ public static partial class SourceText
 
     // --------------------------------------------------------------- the files
 
+    /// <summary>The walks already taken in this test run, by the full path of the root they were asked for.</summary>
+    private static readonly ConcurrentDictionary<string, Lazy<IReadOnlyList<SourceFile>>> Read = new(StringComparer.Ordinal);
+
     /// <summary>
     /// Every <c>.cs</c> file under a root, as the path the assertion prints it relative to the root and its
     /// text, in the order the paths spell. The build's copies under <c>bin</c> and <c>obj</c> hold the same
     /// source twice, so those directories are walked past - the one idiom the three guards kept, now read once.
+    /// The read is memoised by the full path of the root: the source under test does not move while the tests
+    /// run, so the walk and the disk read run once per root per test run, and every guard that asks for a root
+    /// compares reads taken from the same bytes. A test that writes a file and reads it back passes a root of its
+    /// own, which is a walk of its own.
     /// </summary>
-    public static List<SourceFile> Files(string root)
+    public static IReadOnlyList<SourceFile> Files(string root) =>
+        Read.GetOrAdd(Path.GetFullPath(root), full => new Lazy<IReadOnlyList<SourceFile>>(() => Walk(full))).Value;
+
+    /// <summary>The walk itself, uncached: every <c>.cs</c> under the root, the build's copies walked past.</summary>
+    private static System.Collections.ObjectModel.ReadOnlyCollection<SourceFile> Walk(string root)
     {
         var files = new List<SourceFile>();
 
@@ -67,7 +79,7 @@ public static partial class SourceText
             files.Add(new SourceFile(relative, File.ReadAllText(path)));
         }
 
-        return files;
+        return files.AsReadOnly();
     }
 
     /// <summary>True when the path the assertion prints walks through a <c>bin</c> or an <c>obj</c>, which is the

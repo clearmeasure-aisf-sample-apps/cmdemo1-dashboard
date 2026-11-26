@@ -60,10 +60,6 @@ public class DeploymentsReportEdgeCaseTests
     /// <summary>Five minutes before it: the moment a deployment that ended ended.</summary>
     private static readonly DateTimeOffset Finished = new(2026, 10, 8, 4, 18, 0, TimeSpan.Zero);
 
-    private const string Slug = "demo";
-
-    private static readonly string[] Ui = ["ui"];
-
     /// <summary>The byte-order mark a file copied along with its answer begins with.</summary>
     private const string ByteOrderMark = "\ufeff";
 
@@ -223,7 +219,7 @@ public class DeploymentsReportEdgeCaseTests
 
         Assert.Null(report.Generated);
         Assert.Equal(["demo-ui"], report.Deployments.Select(deployment => deployment.Project));
-        Assert.Single(report.Marks("uat", Slug, Ui, Now));
+        Assert.Single(report.Marks("uat", ActivityLines.Slug, ActivityLines.Ui, Now));
     }
 
     /// <summary>
@@ -244,7 +240,7 @@ public class DeploymentsReportEdgeCaseTests
 
         Assert.Equal(new DateTimeOffset(2026, 10, 8, 4, 22, 24, TimeSpan.Zero), report.Generated);
         Assert.Empty(report.Deployments);
-        Assert.Empty(report.Marks("uat", Slug, Ui, Now));
+        Assert.Empty(report.Marks("uat", ActivityLines.Slug, ActivityLines.Ui, Now));
         Assert.Empty(report.Recent);
         Assert.Empty(report.Freezes);
         Assert.Empty(report.Missing);
@@ -350,15 +346,15 @@ public class DeploymentsReportEdgeCaseTests
     {
         var report = Read("""{ "deployments": [ { "project": "demo-ui", "environment": "uat", "release": "1", "state": "executing" } ] }""");
 
-        Assert.Equal("slug", Assert.Throws<ArgumentNullException>(() => report.Marks("uat", null!, Ui, Now)).ParamName);
-        Assert.Equal("deployables", Assert.Throws<ArgumentNullException>(() => report.Marks("uat", Slug, null!, Now)).ParamName);
+        Assert.Equal("slug", Assert.Throws<ArgumentNullException>(() => report.Marks("uat", null!, ActivityLines.Ui, Now)).ParamName);
+        Assert.Equal("deployables", Assert.Throws<ArgumentNullException>(() => report.Marks("uat", ActivityLines.Slug, null!, Now)).ParamName);
         Assert.Equal("slug", Assert.Throws<ArgumentNullException>(() => report.Marks("uat", null!, null!, Now)).ParamName);
 
-        Assert.Empty(report.Marks(null!, Slug, Ui, Now));
-        Assert.Empty(report.Marks(string.Empty, Slug, Ui, Now));
-        Assert.Empty(report.Marks(" uat ", Slug, Ui, Now));
-        Assert.Empty(report.Marks("uat, prod", Slug, Ui, Now));
-        Assert.Single(report.Marks("uat", Slug, Ui, Now));
+        Assert.Empty(report.Marks(null!, ActivityLines.Slug, ActivityLines.Ui, Now));
+        Assert.Empty(report.Marks(string.Empty, ActivityLines.Slug, ActivityLines.Ui, Now));
+        Assert.Empty(report.Marks(" uat ", ActivityLines.Slug, ActivityLines.Ui, Now));
+        Assert.Empty(report.Marks("uat, prod", ActivityLines.Slug, ActivityLines.Ui, Now));
+        Assert.Single(report.Marks("uat", ActivityLines.Slug, ActivityLines.Ui, Now));
     }
 
     /// <summary>
@@ -385,14 +381,14 @@ public class DeploymentsReportEdgeCaseTests
             yield return "api";
         }
 
-        Assert.Equal(3, report.Marks("uat", Slug, Counted(), Now).Count);
+        Assert.Equal(3, report.Marks("uat", ActivityLines.Slug, Counted(), Now).Count);
         Assert.Equal(1, walks);
 
-        Assert.Empty(report.Marks("prod", Slug, Counted(), Now));
+        Assert.Empty(report.Marks("prod", ActivityLines.Slug, Counted(), Now));
         Assert.Equal(2, walks);
 
         // Walked to the end once, and its own order kept: the first name of the list is the deployable a mark takes.
-        Assert.Equal(["ui", "ui", "api"], report.Marks("uat", Slug, Counted(), Now).Select(mark => mark.Deployable));
+        Assert.Equal(["ui", "ui", "api"], report.Marks("uat", ActivityLines.Slug, Counted(), Now).Select(mark => mark.Deployable));
         Assert.Equal(3, walks);
     }
 
@@ -411,19 +407,19 @@ public class DeploymentsReportEdgeCaseTests
                 { "project": "demo-system", "environment": "uat", "release": "9", "state": "executing" } ] }
             """);
 
-        Assert.Equal(["UI", "Api", null], report.Marks("uat", Slug, ["UI", "ui", null!, "Api"], Now).Select(mark => mark.Deployable));
+        Assert.Equal(["UI", "Api", null], report.Marks("uat", ActivityLines.Slug, ["UI", "ui", null!, "Api"], Now).Select(mark => mark.Deployable));
 
         // A deployable that is nothing matches no project: it is passed over and never handed to a mark.
-        Assert.Equal(["ui", null, null], report.Marks("uat", Slug, [null!, "ui"], Now).Select(mark => mark.Deployable));
+        Assert.Equal(["ui", null, null], report.Marks("uat", ActivityLines.Slug, [null!, "ui"], Now).Select(mark => mark.Deployable));
 
         // The whitespace slug, and the slug with whitespace about it, are slugs that name nothing.
-        Assert.All(report.Marks("uat", " ", Ui, Now), mark =>
+        Assert.All(report.Marks("uat", " ", ActivityLines.Ui, Now), mark =>
         {
             Assert.Null(mark.Deployable);
             Assert.False(mark.OfSystem);
         });
-        Assert.All(report.Marks("uat", "demo ", Ui, Now), mark => Assert.Null(mark.Deployable));
-        Assert.Equal(3, report.Marks("uat", " ", Ui, Now).Count);
+        Assert.All(report.Marks("uat", "demo ", ActivityLines.Ui, Now), mark => Assert.Null(mark.Deployable));
+        Assert.Equal(3, report.Marks("uat", " ", ActivityLines.Ui, Now).Count);
     }
 
     /// <summary>
@@ -438,13 +434,13 @@ public class DeploymentsReportEdgeCaseTests
         var nowhere = new Deployment("demo-ui", null!, "1", DeploymentState.Executing, "executing", Finished, null, null);
         var report = new DeploymentsReport(Now, [nowhere]);
 
-        var mark = Assert.Single(report.Marks(null!, Slug, Ui, Now));
+        var mark = Assert.Single(report.Marks(null!, ActivityLines.Slug, ActivityLines.Ui, Now));
 
         Assert.Null(mark.Environment);
         Assert.Equal("demo-ui", mark.Project);
         Assert.Equal("deploying demo-ui 1 to ", mark.Sentence);
-        Assert.Empty(report.Marks(string.Empty, Slug, Ui, Now));
-        Assert.Empty(report.Marks("uat", Slug, Ui, Now));
+        Assert.Empty(report.Marks(string.Empty, ActivityLines.Slug, ActivityLines.Ui, Now));
+        Assert.Empty(report.Marks("uat", ActivityLines.Slug, ActivityLines.Ui, Now));
     }
 
     /// <summary>
@@ -469,7 +465,7 @@ public class DeploymentsReportEdgeCaseTests
         Assert.Single(report.Freezes);
         Assert.Single(report.Missing);
         Assert.True(report.SaysActivity);
-        Assert.Empty(report.Marks("uat", Slug, Ui, Now));
+        Assert.Empty(report.Marks("uat", ActivityLines.Slug, ActivityLines.Ui, Now));
 
         var built = new DeploymentsReport(Now, [])
         {
@@ -479,15 +475,15 @@ public class DeploymentsReportEdgeCaseTests
             SaysActivity = true,
         };
 
-        Assert.Empty(built.Marks("uat", Slug, Ui, Now));
+        Assert.Empty(built.Marks("uat", ActivityLines.Slug, ActivityLines.Ui, Now));
 
         // In flight, marked however far the moment asked for stands from the file; ended, marked for ten minutes.
         var both = new DeploymentsReport(Now, [InFlight(), Ended("prod")]);
 
-        Assert.Single(both.Marks("uat", Slug, Ui, Now.AddYears(-100)));
-        Assert.Single(both.Marks("uat", Slug, Ui, Now.AddYears(100)));
-        Assert.Single(both.Marks("prod", Slug, Ui, Now));
-        Assert.Empty(both.Marks("prod", Slug, Ui, Now.AddYears(100)));
+        Assert.Single(both.Marks("uat", ActivityLines.Slug, ActivityLines.Ui, Now.AddYears(-100)));
+        Assert.Single(both.Marks("uat", ActivityLines.Slug, ActivityLines.Ui, Now.AddYears(100)));
+        Assert.Single(both.Marks("prod", ActivityLines.Slug, ActivityLines.Ui, Now));
+        Assert.Empty(both.Marks("prod", ActivityLines.Slug, ActivityLines.Ui, Now.AddYears(100)));
         Assert.Equal(2, both.Deployments.Count);
     }
 
@@ -525,9 +521,9 @@ public class DeploymentsReportEdgeCaseTests
         Assert.Same(deployments, new DeploymentsReport(null, deployments).Deployments);
 
         // The moment the report carries is no part of the marking, which asks for a moment of its own.
-        Assert.Single(report.Marks("uat", Slug, Ui, Now));
-        Assert.Single(report.Marks("uat", Slug, Ui, at));
-        Assert.Single(report.Marks("uat", Slug, Ui, DateTimeOffset.MinValue));
+        Assert.Single(report.Marks("uat", ActivityLines.Slug, ActivityLines.Ui, Now));
+        Assert.Single(report.Marks("uat", ActivityLines.Slug, ActivityLines.Ui, at));
+        Assert.Single(report.Marks("uat", ActivityLines.Slug, ActivityLines.Ui, DateTimeOffset.MinValue));
     }
 
     /// <summary>
@@ -576,9 +572,9 @@ public class DeploymentsReportEdgeCaseTests
 
         Assert.Null(emptied.Generated);
         Assert.Empty(emptied.Deployments);
-        Assert.Empty(emptied.Marks("uat", Slug, Ui, Now));
+        Assert.Empty(emptied.Marks("uat", ActivityLines.Slug, ActivityLines.Ui, Now));
         Assert.False(emptied.SaysActivity);
-        Assert.Single(report.Marks("uat", Slug, Ui, Now));
+        Assert.Single(report.Marks("uat", ActivityLines.Slug, ActivityLines.Ui, Now));
     }
 
     /// <summary>
@@ -719,7 +715,7 @@ public class DeploymentsReportEdgeCaseTests
         Assert.False(there.Equals((object)deployments));
         Assert.False(there.Equals((object)deployments[0]));
         Assert.False(there.Equals((object)Read("""{ "deployments": [] }""")));
-        Assert.False(there.Equals((object)Slug));
+        Assert.False(there.Equals((object)ActivityLines.Slug));
         Assert.Null(default(DeploymentsReport));
 
         DeploymentsReport? nothing = null;

@@ -32,16 +32,12 @@ public class DeploymentStateRankEdgeCaseTests
     /// <summary>Five minutes before the page is asked: when a deployment that ended ended.</summary>
     private static readonly DateTimeOffset Ended = new(2026, 10, 8, 4, 18, 0, TimeSpan.Zero);
 
-    private const string Slug = "demo";
-
-    private static readonly string[] Ui = ["ui"];
-
     /// <summary>A deployment of <paramref name="project" /> to uat in <paramref name="state" />, said as <c>retired</c>.</summary>
     private static Deployment Of(string project, DeploymentState state, DateTimeOffset? finished) =>
         new(project, "uat", "1", state, "retired", Since, finished, null);
 
     private static IReadOnlyList<DeploymentMark> Marks(params Deployment[] deployments) =>
-        new DeploymentsReport(Now, deployments).Marks("uat", Slug, Ui, Now);
+        new DeploymentsReport(Now, deployments).Marks("uat", ActivityLines.Slug, ActivityLines.Ui, Now);
 
     // ----- the rank
 

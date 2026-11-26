@@ -46,9 +46,6 @@ namespace Dashboard.Tests;
 /// </summary>
 public class DeploymentFreezeEdgeCaseTests
 {
-    /// <summary>Friday noon, UTC: the moment the freeze is asked about.</summary>
-    private static readonly DateTimeOffset Now = new(2026, 10, 9, 12, 0, 0, TimeSpan.Zero);
-
     /// <summary>Saturday 19:00, UTC: the start the test's freezes stand on.</summary>
     private static readonly DateTimeOffset Start = new(2026, 10, 10, 19, 0, 0, TimeSpan.Zero);
 
@@ -72,7 +69,7 @@ public class DeploymentFreezeEdgeCaseTests
         var active = Of(null, End, true, ["prod"], ["demo-ui"]);
         var notActive = Of(null, End, false, ["prod"], ["demo-ui"]);
 
-        DateTimeOffset[] moments = [Now, End - TimeSpan.FromSeconds(1), End, End + TimeSpan.FromSeconds(1), DateTimeOffset.MaxValue];
+        DateTimeOffset[] moments = [ActivityLines.Now, End - TimeSpan.FromSeconds(1), End, End + TimeSpan.FromSeconds(1), DateTimeOffset.MaxValue];
 
         Assert.All(moments, moment => Assert.False(active.ComesAt(moment)));
         Assert.All(moments, moment => Assert.False(notActive.ComesAt(moment)));
@@ -84,14 +81,14 @@ public class DeploymentFreezeEdgeCaseTests
     [Fact]
     public void AStartOnTheInstantAskedForIsNotAComingAndATickAfterItIs()
     {
-        var startsNow = Of(Now, End, false, ["prod"], ["demo-ui"]);
-        var startsATickAfter = Of(Now + TimeSpan.FromTicks(1), End, false, ["prod"], ["demo-ui"]);
+        var startsNow = Of(ActivityLines.Now, End, false, ["prod"], ["demo-ui"]);
+        var startsATickAfter = Of(ActivityLines.Now + TimeSpan.FromTicks(1), End, false, ["prod"], ["demo-ui"]);
 
-        Assert.False(startsNow.ComesAt(Now));
-        Assert.True(startsNow.InForceAt(Now));
+        Assert.False(startsNow.ComesAt(ActivityLines.Now));
+        Assert.True(startsNow.InForceAt(ActivityLines.Now));
 
-        Assert.True(startsATickAfter.ComesAt(Now));
-        Assert.False(startsATickAfter.InForceAt(Now));
+        Assert.True(startsATickAfter.ComesAt(ActivityLines.Now));
+        Assert.False(startsATickAfter.InForceAt(ActivityLines.Now));
     }
 
     /// <summary>The seventy-two hours <see cref="DeploymentFreeze.Ahead" /> names, held to the tick: the start at
@@ -100,11 +97,11 @@ public class DeploymentFreezeEdgeCaseTests
     [Fact]
     public void TheSeventyTwoHoursAreHeldToTheTick()
     {
-        var atSeventyTwoHours = Of(Now + DeploymentFreeze.Ahead, End.AddDays(30), false, ["prod"], ["demo-ui"]);
-        var aTickFurther = Of(Now + DeploymentFreeze.Ahead + TimeSpan.FromTicks(1), End.AddDays(30), false, ["prod"], ["demo-ui"]);
+        var atSeventyTwoHours = Of(ActivityLines.Now + DeploymentFreeze.Ahead, End.AddDays(30), false, ["prod"], ["demo-ui"]);
+        var aTickFurther = Of(ActivityLines.Now + DeploymentFreeze.Ahead + TimeSpan.FromTicks(1), End.AddDays(30), false, ["prod"], ["demo-ui"]);
 
-        Assert.True(atSeventyTwoHours.ComesAt(Now));
-        Assert.False(aTickFurther.ComesAt(Now));
+        Assert.True(atSeventyTwoHours.ComesAt(ActivityLines.Now));
+        Assert.False(aTickFurther.ComesAt(ActivityLines.Now));
     }
 
     /// <summary>A start within the seventy-two hours is no coming where the freeze has already ended: the end is
@@ -133,17 +130,17 @@ public class DeploymentFreezeEdgeCaseTests
     [Fact]
     public void AFreezeThatBeginsAfterItEndsIsInForceAtNoMoment()
     {
-        var broken = Of(Now.AddHours(2), Now, true, ["prod"], ["demo-ui"]);
+        var broken = Of(ActivityLines.Now.AddHours(2), ActivityLines.Now, true, ["prod"], ["demo-ui"]);
 
-        DateTimeOffset[] moments = [DateTimeOffset.MinValue, Now, Now.AddHours(1), broken.From!.Value, Now.AddHours(2), DateTimeOffset.MaxValue];
+        DateTimeOffset[] moments = [DateTimeOffset.MinValue, ActivityLines.Now, ActivityLines.Now.AddHours(1), broken.From!.Value, ActivityLines.Now.AddHours(2), DateTimeOffset.MaxValue];
 
         Assert.All(moments, moment => Assert.False(broken.InForceAt(moment)));
         Assert.All(moments, moment => Assert.False(broken.ComesAt(moment)));
 
         // Between the two: the end not yet reached and the start within the seventy-two hours, the freeze is still
         // a coming - held to the tick at the far side of them, as the coming of a whole freeze is.
-        Assert.False(broken.InForceAt(Now - TimeSpan.FromHours(1)));
-        Assert.True(broken.ComesAt(Now - TimeSpan.FromHours(1)));
+        Assert.False(broken.InForceAt(ActivityLines.Now - TimeSpan.FromHours(1)));
+        Assert.True(broken.ComesAt(ActivityLines.Now - TimeSpan.FromHours(1)));
         Assert.True(broken.ComesAt(broken.From!.Value - DeploymentFreeze.Ahead));
         Assert.False(broken.ComesAt(broken.From!.Value - DeploymentFreeze.Ahead - TimeSpan.FromTicks(1)));
     }
@@ -201,7 +198,7 @@ public class DeploymentFreezeEdgeCaseTests
         [
             DateTimeOffset.MinValue,
             DateTimeOffset.MinValue + TimeSpan.FromTicks(1),
-            Now,
+            ActivityLines.Now,
             DateTimeOffset.MaxValue - TimeSpan.FromTicks(1),
             DateTimeOffset.MaxValue,
         ];
@@ -219,9 +216,9 @@ public class DeploymentFreezeEdgeCaseTests
     [Fact]
     public void AListThatNamesNothingCoversNothing()
     {
-        var noEnvironments = Of(Now, End, false, [], ["demo-ui"]);
-        var noProjects = Of(Now, End, false, ["prod"], []);
-        var neither = Of(Now, End, false, [], []);
+        var noEnvironments = Of(ActivityLines.Now, End, false, [], ["demo-ui"]);
+        var noProjects = Of(ActivityLines.Now, End, false, ["prod"], []);
+        var neither = Of(ActivityLines.Now, End, false, [], []);
 
         Assert.False(noEnvironments.Covers("prod", "demo-ui"));
         Assert.False(noEnvironments.Covers("prod"));
@@ -241,7 +238,7 @@ public class DeploymentFreezeEdgeCaseTests
     [Fact]
     public void TheDefaultAsksNoProjectAtAll()
     {
-        var namesAProject = Of(Now, End, false, ["prod"], ["demo-ui"]);
+        var namesAProject = Of(ActivityLines.Now, End, false, ["prod"], ["demo-ui"]);
 
         Assert.True(namesAProject.Covers("prod"));
         Assert.True(namesAProject.Covers("prod", null));
@@ -256,7 +253,7 @@ public class DeploymentFreezeEdgeCaseTests
     [Fact]
     public void AnEmptyNameIsTheNameItIs()
     {
-        var empty = Of(Now, End, false, ["", "prod"], ["", "demo-ui"]);
+        var empty = Of(ActivityLines.Now, End, false, ["", "prod"], ["", "demo-ui"]);
 
         Assert.True(empty.Covers("", ""));
         Assert.True(empty.Covers("prod", ""));

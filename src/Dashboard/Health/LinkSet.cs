@@ -134,7 +134,7 @@ public static class LinkText
     public static Uri? Release(Uri? projectUrl, string? version) =>
         projectUrl is null || string.IsNullOrWhiteSpace(version)
             ? null
-            : new Uri($"{projectUrl.AbsoluteUri.TrimEnd('/')}/deployments/releases/{Uri.EscapeDataString(version)}");
+            : projectUrl.AppendPath($"deployments/releases/{Uri.EscapeDataString(version)}");
 
     public static string ReleaseTitle(string deployable, string version) =>
         $"Release {version} of {deployable} in Octopus Deploy{OctopusSuffix}";

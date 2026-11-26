@@ -248,7 +248,7 @@ public static class ApplicationText
     {
         ArgumentNullException.ThrowIfNull(architecture);
         return IsVersion(version)
-            ? new Uri($"{architecture.AbsoluteUri.TrimEnd('/')}/{Uri.EscapeDataString(version!)}.{extension}")
+            ? architecture.AppendPath($"{Uri.EscapeDataString(version!)}.{extension}")
             : null;
     }
 

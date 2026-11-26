@@ -18,18 +18,22 @@ public sealed class DeployableStatus
     }
 
     /// <summary>
-    /// The reading of the deployable's own pin: what it shows, and the last reading that succeeded, owned by one
-    /// <see cref="Reading{T}" />.
+    /// The reading of the deployable's own pin: what the page shows of it, and the last reading that succeeded,
+    /// owned by one <see cref="Reading{T}" /> so that the rule a new reading is kept by is written once.
     /// </summary>
     private readonly Reading<PinnedVersions> _pin = new();
 
     /// <summary>
-    /// The last reading of the deployable's own pin (<c>pinUrl</c>, a Kustomize file); a failed reading replaces a good
-    /// one. Null when the topology names none: the environment's <c>versions.json</c> then holds the pin.
+    /// The reading of the deployable's own pin (<c>pinUrl</c>, a Kustomize file) of this round: what the page shows
+    /// of it. A reading that failed replaces what the page shows but not what the next reading is compared with.
+    /// Null when the topology names none: the environment's <c>versions.json</c> then holds the pin.
     /// </summary>
     public PinnedVersions? Pinned => _pin.Current;
 
-    /// <summary>The last reading of the deployable's own pin that succeeded: what a new reading is compared with to find a new pin.</summary>
+    /// <summary>
+    /// The last reading of the deployable's own pin that succeeded: what a new reading is compared with to find a new
+    /// pin. Null until a reading that succeeded comes.
+    /// </summary>
     public PinnedVersions? LastReadPinned => _pin.LastGood;
 
     public void RecordPin(PinnedVersions pinned)
@@ -38,7 +42,7 @@ public sealed class DeployableStatus
         _pin.Show(pinned);
     }
 
-    public void RememberPin(PinnedVersions pinned) => _pin.Remember(pinned);
+    public void RecordGoodPin(PinnedVersions pinned) => _pin.Remember(pinned);
 
     /// <summary>The node asked for the build facts: the primary; null when the topology names no <c>buildPath</c>.</summary>
     public TargetStatus? BuildSource { get; }

@@ -38,8 +38,9 @@ namespace Dashboard.Tests;
 /// <see cref="DeployableStatus.BuildIsDue" /> before anything has been asked, and the sixteen pairs of version it is
 /// asked about afterwards, compared without regard to case and with everything else kept; a build read being kept
 /// until another read replaces it, the absence of an answer among them; the pin of <c>pinUrl</c> standing where the
-/// last reading left it, good or failed, the reading that is not there refused by name, and
-/// <see cref="DeployableStatus.RememberPin" /> refusing even nothing - the one asymmetry of the two; the serving
+/// last reading left it, good or failed, the reading that is not there refused by name by
+/// <see cref="DeployableStatus.RecordPin" /> and not by <see cref="DeployableStatus.RecordGoodPin" /> - the one
+/// asymmetry of the two; the serving
 /// decision remembered only when it is recorded and never by the deciding; and the surface the class declares, so
 /// that the day a member is added the list below says so.
 /// </para>
@@ -439,7 +440,7 @@ public class DeployableStatusEdgeCaseTests
         Assert.Equal(PinnedVersionsState.Read, deployable.Pinned!.State);
         Assert.Equal("2.4.14", deployable.Pinned.Of("ui"));
 
-        // The last good reading is not remembered by a recording: only RememberPin remembers it.
+        // The last good reading is not remembered by a recording: only RecordGoodPin remembers it.
         Assert.Null(deployable.LastReadPinned);
 
         // A reading that failed is a reading, and it replaces the good one whole.
@@ -466,7 +467,7 @@ public class DeployableStatusEdgeCaseTests
     }
 
     /// <summary>The memory of the last reading that succeeded is written by
-    /// <see cref="DeployableStatus.RememberPin" /> and by nothing else: it stands through the failed recordings
+    /// <see cref="DeployableStatus.RecordGoodPin" /> and by nothing else: it stands through the failed recordings
     /// <see cref="DeployableStatus.RecordPin" /> goes on making, is replaced only by another remembering, and is the
     /// one part of a deployable that refuses nothing - not a second reading, and not the absence of one, which clears
     /// it. The two members are two memories, and neither touches the other.</summary>
@@ -478,7 +479,7 @@ public class DeployableStatusEdgeCaseTests
 
         Assert.Null(deployable.LastReadPinned);
 
-        deployable.RememberPin(good);
+        deployable.RecordGoodPin(good);
         deployable.RecordPin(good);
 
         Assert.Same(good, deployable.LastReadPinned);
@@ -492,16 +493,16 @@ public class DeployableStatusEdgeCaseTests
         Assert.Equal(PinnedVersionsState.Missing, deployable.Pinned!.State);
         Assert.Same(good, deployable.LastReadPinned);
 
-        // Remembering writes one thing and reads nothing: another reading replaces it, and no reading clears it.
+        // RecordGoodPin writes one thing and reads nothing: another reading replaces it, and no reading clears it.
         var newer = Pin("2.4.15");
-        deployable.RememberPin(newer);
+        deployable.RecordGoodPin(newer);
 
         Assert.Same(newer, deployable.LastReadPinned);
         Assert.Equal(PinnedVersionsState.Missing, deployable.Pinned!.State);
 
         // The member guards nothing, unlike the recording next to it - which is why the monitor remembers only ever
         // a reading that came back, and why the memory of the last good pin can be moved back to nothing.
-        deployable.RememberPin(null!);
+        deployable.RecordGoodPin(null!);
 
         Assert.Null(deployable.LastReadPinned);
         Assert.Equal(PinnedVersionsState.Missing, deployable.Pinned!.State);
@@ -514,7 +515,7 @@ public class DeployableStatusEdgeCaseTests
     /// with every tile of a rotation - writes <see cref="DeployableStatus.LastServing" />, which is what lets the next
     /// round compare itself with the last one's decision rather than with its own. What is recorded is kept as the
     /// instance it was handed, replaced by the next recording and by nothing else - and, like
-    /// <see cref="DeployableStatus.RememberPin" />, refused by no argument at all.</summary>
+    /// <see cref="DeployableStatus.RecordGoodPin" />, refused by no argument at all.</summary>
     [Fact]
     public void TheServingDecisionIsRememberedOnlyWhenTheRoundRecordsIt()
     {
@@ -766,7 +767,7 @@ public class DeployableStatusEdgeCaseTests
         Assert.Null(deployable.LastServing);
         Assert.Empty(deployable.Nodes[0].History);
 
-        deployable.RememberPin(Pin("2.4.14"));
+        deployable.RecordGoodPin(Pin("2.4.14"));
         deployable.RecordServing(deployable.Assess());
 
         Assert.NotNull(deployable.LastServing);
@@ -806,7 +807,7 @@ public class DeployableStatusEdgeCaseTests
             [.. properties.Keys]);
 
         Assert.Equal(
-            ["Assess", "AssessServing", "BuildIsDue", "RecordBuild", "RecordPin", "RecordServing", "RememberPin", "ServingTiles"],
+            ["Assess", "AssessServing", "BuildIsDue", "RecordBuild", "RecordGoodPin", "RecordPin", "RecordServing", "ServingTiles"],
             PublicMembers());
 
         // The twelve parts, each of the type the class says it is.
@@ -825,7 +826,7 @@ public class DeployableStatusEdgeCaseTests
 
         // Everything is readable from outside. Four of the twelve are still writable from nowhere else; the pin
         // pair (Pinned, LastReadPinned) is no longer written by a set method - the two memories are owned by one
-        // Reading<PinnedVersions> field and moved by RecordPin and RememberPin, which is why they are read-only here.
+        // Reading<PinnedVersions> field and moved by RecordPin and RecordGoodPin, which is why they are read-only here.
         Assert.All(properties.Values, property => Assert.NotNull(property.GetMethod));
         Assert.Equal(
             ["Build", "BuildReadForVersion", "BuildWasRead", "LastServing"],

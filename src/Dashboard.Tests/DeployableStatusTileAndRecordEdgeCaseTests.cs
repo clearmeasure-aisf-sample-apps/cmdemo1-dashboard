@@ -357,7 +357,7 @@ public class DeployableStatusTileAndRecordEdgeCaseTests
         Assert.Null(deployable.LastReadPinned);
 
         deployable.RecordPin(PinnedVersions.NotTracked);
-        deployable.RememberPin(PinnedVersions.NotTracked);
+        deployable.RecordGoodPin(PinnedVersions.NotTracked);
 
         Assert.Same(PinnedVersions.NotTracked, deployable.Pinned);
         Assert.Same(PinnedVersions.NotTracked, deployable.LastReadPinned);
@@ -399,7 +399,7 @@ public class DeployableStatusTileAndRecordEdgeCaseTests
         Assert.Null(unnamed.LastReadPinned);
 
         unnamed.RecordPin(PinnedVersions.Pending);
-        unnamed.RememberPin(PinnedVersions.Pending);
+        unnamed.RecordGoodPin(PinnedVersions.Pending);
 
         Assert.Same(PinnedVersions.Pending, unnamed.Pinned);
         Assert.Same(unnamed.Pinned, unnamed.LastReadPinned);

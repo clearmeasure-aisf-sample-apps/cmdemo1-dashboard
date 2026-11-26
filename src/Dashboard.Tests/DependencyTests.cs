@@ -24,13 +24,13 @@ public class DependencyTests
     /// <summary>The sample manifest of uat with the dependencies of ui: a node each, and a relationship from each web app.</summary>
     private static RuntimeManifest Manifest(params (string Alias, string Name, string? HealthCheck)[] dependencies) => Sample with
     {
-        Nodes = [.. Sample.Nodes, .. dependencies.Select(dependency => new RuntimeNode(dependency.Alias, RuntimeNodeKind.Dependency, dependency.Name, Deployable: "ui", HealthCheck: dependency.HealthCheck, DependencyKind: "external"))],
+        Nodes = [.. Sample.Nodes, .. dependencies.Select(dependency => ManifestNodes.ExternalDependency(dependency.Alias, dependency.Name, "ui", dependency.HealthCheck))],
         Edges =
         [
             .. Sample.Edges,
             .. from dependency in dependencies
                from app in WebApps
-               select new RuntimeEdge($"{dependency.Alias}-to-{app}", app, dependency.Alias, RuntimeEdgeKind.Dependency),
+               select ManifestEdges.ToDependency(app, dependency.Alias),
         ],
     };
 

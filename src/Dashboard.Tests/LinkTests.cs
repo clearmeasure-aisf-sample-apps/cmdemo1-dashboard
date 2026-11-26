@@ -11,22 +11,21 @@ public class LinkTests
 
     private static readonly Topology Parsed = TopologyParser.Parse(Optics.Topology).Topology!;
 
-    private static readonly RuntimeManifest Manifest = new(
+    private static readonly RuntimeManifest Manifest = Manifests.Of(
         "uat",
         [
-            new RuntimeNode("browser", RuntimeNodeKind.Person, "Browser"),
-            new RuntimeNode("fd_ui", RuntimeNodeKind.FrontDoor, "demo-uat-ui", new Uri("https://fd-uat.example.net"), "ui"),
-            new RuntimeNode("app_ui_primary", RuntimeNodeKind.WebApp, "uat-west", new Uri("https://uat-west.example.net"), "ui", "primary", "westus3", "region_primary"),
-            new RuntimeNode("app_ui_standby", RuntimeNodeKind.WebApp, "uat-east", new Uri("https://uat-east.example.net"), "ui", "standby", "eastus2", "region_standby"),
-            new RuntimeNode("sqldb", RuntimeNodeKind.Sql, "sqldb-demo-uat", null, null, null, "centralus", "region_data"),
+            ManifestNodes.Browser(),
+            ManifestNodes.FrontDoor("fd_ui", "demo-uat-ui", "https://fd-uat.example.net", "ui"),
+            ManifestNodes.WebApp("app_ui_primary", "uat-west", "https://uat-west.example.net", "ui", "primary", "westus3", "region_primary"),
+            ManifestNodes.WebApp("app_ui_standby", "uat-east", "https://uat-east.example.net", "ui", "standby", "eastus2", "region_standby"),
+            ManifestNodes.Database("sqldb", "sqldb-demo-uat", "centralus", "region_data"),
         ],
-        [],
         [
-            new RuntimeEdge("browser-to-fd_ui", "browser", "fd_ui", RuntimeEdgeKind.Public),
-            new RuntimeEdge("fd_ui-to-app_ui_primary", "fd_ui", "app_ui_primary", RuntimeEdgeKind.Origin, 1),
-            new RuntimeEdge("fd_ui-to-app_ui_standby", "fd_ui", "app_ui_standby", RuntimeEdgeKind.Origin, 2),
-            new RuntimeEdge("app_ui_primary-to-sqldb", "app_ui_primary", "sqldb", RuntimeEdgeKind.Sql),
-            new RuntimeEdge("app_ui_standby-to-sqldb", "app_ui_standby", "sqldb", RuntimeEdgeKind.Sql),
+            ManifestEdges.Between("browser", "fd_ui", RuntimeEdgeKind.Public),
+            ManifestEdges.Between("fd_ui", "app_ui_primary", RuntimeEdgeKind.Origin, 1),
+            ManifestEdges.Between("fd_ui", "app_ui_standby", RuntimeEdgeKind.Origin, 2),
+            ManifestEdges.Between("app_ui_primary", "sqldb", RuntimeEdgeKind.Sql),
+            ManifestEdges.Between("app_ui_standby", "sqldb", RuntimeEdgeKind.Sql),
         ]);
 
     private async Task<RuntimePayload> PayloadAsync(Func<HttpRequestMessage, HttpResponseMessage>? respond = null, string topology = Optics.Topology)

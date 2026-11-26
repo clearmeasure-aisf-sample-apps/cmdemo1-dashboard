@@ -48,7 +48,7 @@ public class RuntimeEdgeEdgeCaseTests
     /// id - a spaced one, an upper-case one, the two aliases the other way round - says all five parts to the
     /// constructor, since the record checks nothing of the convention (pinned below).</summary>
     private static RuntimeEdge Line(string from, string to, RuntimeEdgeKind kind, int? priority = null) =>
-        new($"{from}-to-{to}", from, to, kind, priority);
+        ManifestEdges.Between(from, to, kind, priority);
 
     /// <summary>An edge with every part named, the three words apart from one another and the kind and the priority
     /// of a Front Door origin, so that a part landing on another property is seen instead of quietly matching.</summary>

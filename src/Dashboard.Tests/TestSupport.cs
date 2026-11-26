@@ -525,3 +525,76 @@ public static class ApplicationNames
     /// <summary>One character past the longest deployable name the address takes.</summary>
     public const string LongestPlusOne = Longest + "4";
 }
+
+/// <summary>
+/// The one way a test builds a <see cref="Deployment" />: the four parts a file must give - the project,
+/// the environment, the release, and the state with the word the file wrote for it - and nothing else, so a
+/// deployment the test means to be bare is bare in every file alike. The seven test files that used to build
+/// the record by hand each declared their own private builder under a name of their own, and the copies drifted:
+/// a <c>StateText</c> one file said was <c>"paused"</c> and another said was <c>"as the file wrote it"</c> and a
+/// third said was the state's own word, a <c>Since</c> one file left as nothing and another set to its own moment,
+/// and the two <c>DateTimeOffset?</c> - <c>Since</c> and <c>Finished</c> - sitting side by side positionally so a
+/// swap of them was silent. A caller that wants a part beyond the four names it, and the record's own
+/// <c>with {}</c> handles the rest, so the positional order is written here once and not in every file.
+/// </summary>
+public static class Deployments
+{
+    /// <summary>
+    /// A deployment of the four parts a file must give - the <paramref name="project" /> in the
+    /// <paramref name="environment" />, the <paramref name="release" />, in the <paramref name="state" /> with the
+    /// <paramref name="stateText" /> the file wrote - and nothing else: no start, no end, no address, no account
+    /// that started it, no wait. The defaults are the ones the majority of the callers stood on.
+    /// </summary>
+    public static Deployment Bare(
+        string project = "demo-ui",
+        string environment = "uat",
+        string release = "1",
+        DeploymentState state = DeploymentState.Unknown,
+        string stateText = "paused") =>
+        new(project, environment, release, state, stateText, null, null, null);
+
+    /// <summary>
+    /// A deployment in the <paramref name="state" />, the <paramref name="finished" /> and the
+    /// <paramref name="since" /> named, for the flight and marking questions: a deployment the test means to be in
+    /// a state with the moments named, and nothing else. The <paramref name="stateText" /> defaults to the state's
+    /// own word in lower case, the way the file says it. Named parameters keep <c>Since</c> and <c>Finished</c>
+    /// apart: a swap of them is a compile error here, not a silent swap.
+    /// </summary>
+    public static Deployment InState(
+        DeploymentState state,
+        DateTimeOffset? finished = null,
+        DateTimeOffset? since = null,
+        string stateText = "",
+        string project = "demo-ui",
+        string environment = "uat",
+        string release = "1",
+        Uri? url = null,
+        string? startedBy = null,
+        DeploymentWait? waitsFor = null) =>
+        new(project, environment, release, state, stateText.Length == 0 ? state.ToString().ToLowerInvariant() : stateText, since, finished, url, startedBy, waitsFor);
+
+    /// <summary>
+    /// A deployment in flight - <see cref="DeploymentState.Executing" /> - the <paramref name="since" /> named or
+    /// three minutes before <paramref name="finished" />, and no end: the shape a mark of an in-flight deployment
+    /// is built from.
+    /// </summary>
+    public static Deployment InFlight(
+        string environment = "uat",
+        string project = "demo-ui",
+        string release = "1",
+        DateTimeOffset? since = null,
+        DateTimeOffset? finished = null) =>
+        InState(DeploymentState.Executing, finished: null, since: since ?? finished?.AddMinutes(-3) ?? null, project: project, environment: environment, release: release);
+
+    /// <summary>
+    /// A deployment that ended - the <paramref name="state" /> named, the <paramref name="finished" /> named - the
+    /// shape a mark of an ended deployment is built from.
+    /// </summary>
+    public static Deployment Ended(
+        DeploymentState state,
+        DateTimeOffset finished,
+        string environment = "uat",
+        string project = "demo-api",
+        string release = "2") =>
+        InState(state, finished: finished, since: finished.AddMinutes(-10), project: project, environment: environment, release: release);
+}

@@ -70,16 +70,15 @@ public class DeploymentEdgeCaseTests
 
     /// <summary>Every part a file may give a deployment, brought here without reading one.</summary>
     private static Deployment Full() =>
-        new("demo-ui", "uat", "2.4.43", DeploymentState.Executing, "executing", Since, null, new Uri($"{Tasks}1"), "jeffrey", SignOff);
+        Deployments.InState(DeploymentState.Executing, since: Since, stateText: "executing", release: "2.4.43", url: new Uri($"{Tasks}1"), startedBy: "jeffrey", waitsFor: SignOff);
 
     /// <summary>A deployment that names nobody and nowhere, in a state the page does not know: the eight arguments a
     /// file must give and nothing beside them.</summary>
-    private static Deployment Bare() =>
-        new("demo-ui", "uat", "1", DeploymentState.Unknown, "paused", null, null, null);
+    private static Deployment Bare() => Deployments.Bare();
 
     /// <summary>One deployment of a state and an end, of nothing else: the flight and the marking ask no more.</summary>
     private static Deployment Of(DeploymentState state, DateTimeOffset? finished) =>
-        new("demo-ui", "uat", "1", state, "as the file wrote it", Since, finished, null);
+        Deployments.InState(state, finished, since: Since, stateText: "as the file wrote it");
 
     // ----- the constructor, handing each argument to the property of its name
 

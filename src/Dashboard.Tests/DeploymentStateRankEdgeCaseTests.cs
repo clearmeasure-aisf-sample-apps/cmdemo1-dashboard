@@ -34,7 +34,7 @@ public class DeploymentStateRankEdgeCaseTests
 
     /// <summary>A deployment of <paramref name="project" /> to uat in <paramref name="state" />, said as <c>retired</c>.</summary>
     private static Deployment Of(string project, DeploymentState state, DateTimeOffset? finished) =>
-        new(project, "uat", "1", state, "retired", Since, finished, null);
+        Deployments.InState(state, finished, since: Since, stateText: "retired", project: project);
 
     private static IReadOnlyList<DeploymentMark> Marks(params Deployment[] deployments) =>
         new DeploymentsReport(Now, deployments).Marks("uat", ActivityLines.Slug, ActivityLines.Ui, Now);

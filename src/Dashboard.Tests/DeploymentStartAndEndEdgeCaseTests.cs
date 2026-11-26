@@ -36,7 +36,7 @@ public class DeploymentStartAndEndEdgeCaseTests
 
     /// <summary>One deployment of a state and its two moments, of nothing else.</summary>
     private static Deployment Of(DeploymentState state, DateTimeOffset? since, DateTimeOffset? finished) =>
-        new("demo-ui", "uat", "1", state, state.ToString().ToLowerInvariant(), since, finished, null);
+        Deployments.InState(state, finished, since: since);
 
     // ----- a success the page cannot date
 

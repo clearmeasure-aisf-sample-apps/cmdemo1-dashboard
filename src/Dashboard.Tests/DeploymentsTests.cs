@@ -46,7 +46,7 @@ public class DeploymentsTests
         Assert.Equal(new DateTimeOffset(2026, 10, 8, 4, 22, 24, TimeSpan.Zero), Report.Generated);
         Assert.Equal(["prod", "uat", "uat", "tdd"], Report.Deployments.Select(deployment => deployment.Environment));
         Assert.Equal(
-            new Deployment("demo-ui", "uat", "2.4.43", DeploymentState.Executing, "executing", new DateTimeOffset(2026, 10, 8, 4, 20, 7, TimeSpan.Zero), null, new Uri($"{Tasks}1")),
+            Deployments.InState(DeploymentState.Executing, since: new DateTimeOffset(2026, 10, 8, 4, 20, 7, TimeSpan.Zero), stateText: "executing", release: "2.4.43", url: new Uri($"{Tasks}1")),
             Report.Deployments[1]);
         Assert.Equal(new DateTimeOffset(2026, 10, 8, 4, 18, 0, TimeSpan.Zero), Report.Deployments[3].Finished);
     }

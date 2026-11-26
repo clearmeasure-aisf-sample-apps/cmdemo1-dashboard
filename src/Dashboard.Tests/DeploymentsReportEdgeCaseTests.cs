@@ -68,11 +68,11 @@ public class DeploymentsReportEdgeCaseTests
 
     /// <summary>A deployment of that environment in flight: executing, and with no end.</summary>
     private static Deployment InFlight(string environment = "uat", string project = "demo-ui", string release = "1") =>
-        new(project, environment, release, DeploymentState.Executing, "executing", Finished.AddMinutes(-3), null, null);
+        Deployments.InFlight(environment: environment, project: project, release: release, since: Finished.AddMinutes(-3));
 
     /// <summary>A deployment of that environment that ended at <see cref="Finished" />.</summary>
     private static Deployment Ended(string environment, string project = "demo-api", string release = "2") =>
-        new(project, environment, release, DeploymentState.Failed, "failed", Finished.AddMinutes(-10), Finished, null);
+        Deployments.Ended(DeploymentState.Failed, Finished, environment: environment, project: project, release: release);
 
     // --------------------------------------------------------------- the one length the report names
 

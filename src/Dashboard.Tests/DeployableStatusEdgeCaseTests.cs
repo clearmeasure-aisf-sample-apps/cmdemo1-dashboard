@@ -13,7 +13,8 @@ namespace Dashboard.Tests;
 /// holding no Front Door tile, and the tile <see cref="DeployableStatus.Assess" /> expects to serve when the primary
 /// is down and when nothing is; <see cref="RotationTests" /> pins <see cref="DeployableStatus.AssessServing" /> over a
 /// rotation of four nodes and the runtime view drawn from it; <see cref="TargetStatusEdgeCaseTests" />,
-/// <see cref="TargetKindEdgeCaseTests" /> and <see cref="HistoryBufferTests" /> pin the tile every part of a
+/// <see cref="TargetKindEdgeCaseTests" />, <see cref="TargetKindBoundaryEdgeCaseTests" /> and
+/// <see cref="HistoryBufferTests" /> pin the tile every part of a
 /// deployable is made of; <see cref="ServingAssessmentEdgeCaseTests" /> and <see cref="ServingStateEdgeCaseTests" />
 /// pin the decision worked out of the nodes, the words it says and the instances it keeps;
 /// <see cref="ServingAssessmentTests" /> and <see cref="RotationTests" /> pin the states that decide it.

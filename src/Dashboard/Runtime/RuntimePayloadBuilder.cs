@@ -96,9 +96,6 @@ public static class RuntimePayloadBuilder
     /// <summary>How many characters of a health check entry's name fit the line of a dependency's tile, where no description stands in for it.</summary>
     private const int CheckNameLength = 14;
 
-    /// <summary>The origin priority that serves first: the origin a Front Door edge says "first, while healthy" about.</summary>
-    private const int FirstPriority = 1;
-
     /// <param name="Serves">True for a node the serving decision expects to serve: one node, or every healthy primary of a rotation.</param>
     private sealed record Entry(DeployableStatus Deployable, TargetStatus Target, ServingAssessment Assessment, bool Serves);
 
@@ -1098,7 +1095,7 @@ public static class RuntimePayloadBuilder
     {
         // In a rotation the origins of the primary nodes share the traffic: none of them is the first.
         var role = to is { Assessment.IsRotation: true, Target.IsPrimary: true } ? "in the rotation, while healthy"
-            : edge.Priority == FirstPriority ? "first, while healthy"
+            : edge.IsFirstOrigin ? "first, while healthy"
             : "when priority 1 is down";
         var state = to is null ? EdgeState.Neutral : Carries(to);
         var telemetry = to?.Target.Telemetry;

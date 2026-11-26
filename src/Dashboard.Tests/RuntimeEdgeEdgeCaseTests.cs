@@ -274,6 +274,36 @@ public class RuntimeEdgeEdgeCaseTests
         Assert.Equal(edge, new RuntimeEdge(edge.Id, edge.From, edge.To, edge.Kind, edge.Priority!.Value));
     }
 
+    /// <summary>The one word the record works out of its kind and its priority: an edge is the first origin only
+    /// when it is an origin and its priority is one - the origin Front Door serves before the others. Every other
+    /// kind, whatever number it carries, is no first origin; an origin with no priority or one not one is no first
+    /// origin; and the word is read from the kind and the number together, not from the number alone, so a <c>sql</c>
+    /// line with priority one and an <c>origin</c> line with priority one are not the same edge in that respect.
+    /// (That the page says <c>first, while healthy</c> of it is the builder's and is pinned with the builder.)</summary>
+    [Theory]
+    [InlineData(RuntimeEdgeKind.Origin, 1, true)]
+    [InlineData(RuntimeEdgeKind.Origin, 0, false)]
+    [InlineData(RuntimeEdgeKind.Origin, 2, false)]
+    [InlineData(RuntimeEdgeKind.Origin, -1, false)]
+    [InlineData(RuntimeEdgeKind.Origin, null, false)]
+    [InlineData(RuntimeEdgeKind.Public, 1, false)]
+    [InlineData(RuntimeEdgeKind.Sql, 1, false)]
+    [InlineData(RuntimeEdgeKind.Dashboard, 1, false)]
+    [InlineData(RuntimeEdgeKind.Dependency, 1, false)]
+    [InlineData(RuntimeEdgeKind.Other, 1, false)]
+    [InlineData(RuntimeEdgeKind.Other, null, false)]
+    public void TheWordIsFirstOriginStandsForAnOriginOfPriorityOne(RuntimeEdgeKind kind, int? priority, bool isFirstOrigin)
+    {
+        var edge = Line(From, To, kind, priority);
+
+        Assert.Equal(isFirstOrigin, edge.IsFirstOrigin);
+
+        // The word is a word of the record: it is not one of the five parts it compares apart, so two edges that
+        // agree on every part and differ in nothing are one edge with one word.
+        var same = new RuntimeEdge(edge.Id, edge.From, edge.To, edge.Kind, edge.Priority);
+        Assert.Equal(edge.IsFirstOrigin, same.IsFirstOrigin);
+    }
+
     /// <summary>The priority that is nothing is not the priority that is zero, and neither is the one that is one:
     /// Front Door's priority <c>1</c> is the first origin, and a line that says no number is not a line that says
     /// zero - the three of them are three edges, three entries of a set, and the nothing says so in its own words by
@@ -527,41 +557,45 @@ public class RuntimeEdgeEdgeCaseTests
     }
 
     /// <summary>The words an edge says about itself - its name, then its five parts in the order they are declared,
-    /// each named and standing blank when there is nothing of it - are the record's own and not the page's: the page
-    /// is given its words by the payload builder, and an id, an alias, a kind and a number are what these words
-    /// carry. The whole line stands here, so a part moved about in the record is a change the tests see.</summary>
+    /// each named and standing blank when there is nothing of it, then the one word it works out of them,
+    /// <see cref="RuntimeEdge.IsFirstOrigin" />, named and stood as its true and false - are the record's own and not
+    /// the page's: the page is given its words by the payload builder, and an id, an alias, a kind and a number are
+    /// what these words carry. The whole line stands here, so a part moved about in the record is a change the tests
+    /// see.</summary>
     [Fact]
     public void AnEdgeSaysItsFivePartsInTheirOrder()
     {
         Assert.Equal(
-            "RuntimeEdge { Id = browser-to-fd_ui, From = browser, To = fd_ui, Kind = Origin, Priority = 1 }",
+            "RuntimeEdge { Id = browser-to-fd_ui, From = browser, To = fd_ui, Kind = Origin, Priority = 1, IsFirstOrigin = True }",
             Full.ToString());
 
-        // The part a caller may leave out is named and says nothing.
+        // The part a caller may leave out is named and says nothing, and the word worked out of it says false.
         Assert.Equal(
-            "RuntimeEdge { Id = browser-to-fd_ui, From = browser, To = fd_ui, Kind = Public, Priority =  }",
+            "RuntimeEdge { Id = browser-to-fd_ui, From = browser, To = fd_ui, Kind = Public, Priority = , IsFirstOrigin = False }",
             Bare.ToString());
 
         Assert.Equal(
-            "RuntimeEdge { Id = , From = , To = , Kind = Other, Priority =  }",
+            "RuntimeEdge { Id = , From = , To = , Kind = Other, Priority = , IsFirstOrigin = False }",
             Empty.ToString());
         Assert.Equal(
-            "RuntimeEdge { Id = , From = , To = , Kind = Other, Priority =  }",
+            "RuntimeEdge { Id = , From = , To = , Kind = Other, Priority = , IsFirstOrigin = False }",
             Nothing.ToString());
 
-        // A number is said as it stands, its sign and all, and a kind outside the six says its number.
+        // A number is said as it stands, its sign and all, and a kind outside the six says its number; the word is
+        // false wherever the kind is no origin or the priority is no one.
         Assert.Equal(
-            "RuntimeEdge { Id = a-to-b, From = a, To = b, Kind = Sql, Priority = -2147483648 }",
+            "RuntimeEdge { Id = a-to-b, From = a, To = b, Kind = Sql, Priority = -2147483648, IsFirstOrigin = False }",
             Line("a", "b", RuntimeEdgeKind.Sql, int.MinValue).ToString());
         Assert.Equal(
-            "RuntimeEdge { Id = a-to-b, From = a, To = b, Kind = Dependency, Priority = 2147483647 }",
+            "RuntimeEdge { Id = a-to-b, From = a, To = b, Kind = Dependency, Priority = 2147483647, IsFirstOrigin = False }",
             Line("a", "b", RuntimeEdgeKind.Dependency, int.MaxValue).ToString());
         Assert.Equal(
-            "RuntimeEdge { Id = a-to-b, From = a, To = b, Kind = 99, Priority =  }",
+            "RuntimeEdge { Id = a-to-b, From = a, To = b, Kind = 99, Priority = , IsFirstOrigin = False }",
             Line("a", "b", (RuntimeEdgeKind)99).ToString());
 
         // The words of the six kinds are the words of the enum, and no part is put in quotes.
         Assert.Contains("Kind = Dashboard", Line(From, To, RuntimeEdgeKind.Dashboard).ToString(), StringComparison.Ordinal);
+        Assert.Contains("IsFirstOrigin = False", Line(From, To, RuntimeEdgeKind.Dashboard).ToString(), StringComparison.Ordinal);
     }
 
     /// <summary>An edge's words are three words, a kind and a number, so no reader's culture turns them: a reader of German is
@@ -576,9 +610,9 @@ public class RuntimeEdgeEdgeCaseTests
 
         ViewerCulture.German(() =>
         {
-            Assert.Equal("RuntimeEdge { Id = a-to-b, From = a, To = b, Kind = Origin, Priority = -1 }", minus.ToString());
-            Assert.Equal("RuntimeEdge { Id = a-to-b, From = a, To = b, Kind = Origin, Priority = 1000000 }", million.ToString());
-            Assert.Equal("RuntimeEdge { Id = browser-to-fd_ui, From = browser, To = fd_ui, Kind = Origin, Priority = 1 }", Full.ToString());
+            Assert.Equal("RuntimeEdge { Id = a-to-b, From = a, To = b, Kind = Origin, Priority = -1, IsFirstOrigin = False }", minus.ToString());
+            Assert.Equal("RuntimeEdge { Id = a-to-b, From = a, To = b, Kind = Origin, Priority = 1000000, IsFirstOrigin = False }", million.ToString());
+            Assert.Equal("RuntimeEdge { Id = browser-to-fd_ui, From = browser, To = fd_ui, Kind = Origin, Priority = 1, IsFirstOrigin = True }", Full.ToString());
         });
 
         // Under the reader the test happens to run as, the words are the words the invariant reader gets.
@@ -610,21 +644,23 @@ public class RuntimeEdgeEdgeCaseTests
 
     /// <summary>The edge's whole public surface as it stands: its five parts, named in the order the constructor
     /// names them and of the type the constructor says, the four a caller must name and the one it may leave out as
-    /// nothing, and the members every record is asked - falling apart, comparing, hashing and saying itself - and
-    /// nothing else to call. There is no verdict on an edge to read and none to set: what a line means is the kind
-    /// and the priority, and the builder decides from them. A sixth part added to the record has to be written down
-    /// here as well, which is the point: a line of a diagram cannot carry a part nobody decided what it means.</summary>
+    /// nothing, the one read-only word of its own it says about them - <see cref="RuntimeEdge.IsFirstOrigin" /> -
+    /// and the members every record is asked - falling apart, comparing, hashing and saying itself - and nothing
+    /// else to call. There is no verdict on an edge to set: the five parts are read and written by the parts of the
+    /// record, and the one computed word the record works out of its kind and its priority stands apart from them
+    /// and has no setter. A sixth part added to the record has to be written down here as well, which is the point:
+    /// a line of a diagram cannot carry a part nobody decided what it means.</summary>
     [Fact]
     public void TheEdgeHasFivePartsAndTheMembersEveryRecordIsAsked()
     {
         Assert.Equal(
-            ["Id", "From", "To", "Kind", "Priority"],
+            ["Id", "From", "To", "Kind", "Priority", "IsFirstOrigin"],
             [.. typeof(RuntimeEdge)
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                 .Select(property => property.Name)]);
 
         Assert.Equal(
-            ["Deconstruct", "Equals", "From", "GetHashCode", "Id", "Kind", "Priority", "To", "ToString", "op_Equality", "op_Inequality"],
+            ["Deconstruct", "Equals", "From", "GetHashCode", "Id", "IsFirstOrigin", "Kind", "Priority", "To", "ToString", "op_Equality", "op_Inequality"],
             PublicSurface());
 
         var properties = typeof(RuntimeEdge)
@@ -636,14 +672,20 @@ public class RuntimeEdgeEdgeCaseTests
         Assert.Equal(typeof(string), properties["To"].PropertyType);
         Assert.Equal(typeof(RuntimeEdgeKind), properties["Kind"].PropertyType);
         Assert.Equal(typeof(int?), properties["Priority"].PropertyType);
+        Assert.Equal(typeof(bool), properties["IsFirstOrigin"].PropertyType);
 
+        // The five parts a caller may name stand read and write; the one word the record works out of them stands
+        // read only, with no setter to put another verdict on the edge.
         Assert.All(
-            properties.Values,
-            property =>
+            ["Id", "From", "To", "Kind", "Priority"],
+            name =>
             {
-                Assert.True(property.CanRead);
-                Assert.True(property.CanWrite);
+                Assert.True(properties[name].CanRead);
+                Assert.True(properties[name].CanWrite);
             });
+
+        Assert.True(properties["IsFirstOrigin"].CanRead);
+        Assert.False(properties["IsFirstOrigin"].CanWrite);
 
         // The one public constructor, naming its five parts as the properties are named; the copy constructor the
         // compiler writes for a record is not one a caller outside the record calls.
@@ -673,6 +715,10 @@ public class RuntimeEdgeEdgeCaseTests
         Assert.Equal(
             [false, false, false, false, true],
             [.. parts.Select(property => nullability.Create(property).ReadState == NullabilityState.Nullable)]);
+
+        // The computed word is a plain value type: it may be nothing in no sense, so it is not nullable in its
+        // read state, and it is not one of the five parts a constructor names.
+        Assert.False(nullability.Create(properties["IsFirstOrigin"]).ReadState == NullabilityState.Nullable);
 
         Assert.Equal([typeof(IEquatable<RuntimeEdge>)], typeof(RuntimeEdge).GetInterfaces());
         Assert.True(typeof(RuntimeEdge).IsSealed);

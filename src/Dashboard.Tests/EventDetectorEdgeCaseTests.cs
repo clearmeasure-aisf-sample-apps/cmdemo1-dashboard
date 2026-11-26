@@ -169,16 +169,68 @@ public class EventDetectorEdgeCaseTests
 
     /// <summary>
     /// The entry whose description is the empty word is said without words: the mark the state stands on stays,
-    /// and the words the entry gives are the blank it gives.
+    /// and neither the colon the words were joined with nor a blank behind it is said for the absence.
     /// </summary>
     [Fact]
-    public void AnEmptyDescriptionIsSaidAsTheBlankItIs()
+    public void AnEmptyDescriptionIsSaidWithNoWords()
     {
         var before = new HealthDetail([new HealthCheckEntry("Queue", CheckState.Healthy)], Now);
         var after = new HealthDetail([new HealthCheckEntry("Queue", CheckState.Unknown, string.Empty)], Now);
 
         var event_ = Assert.Single(EventDetector.HealthChecks(before, after, "uat", "ui", "westus3", Now));
-        Assert.Equal((EventLevel.Info, "ui: Queue Healthy → Not known: "), (event_.Level, event_.Text));
+        Assert.Equal((EventLevel.Info, "ui: Queue Healthy → Not known"), (event_.Level, event_.Text));
+    }
+
+    /// <summary>
+    /// The entry's own words are joined by the one trimming the cluster settled (#1167): the spaces around them
+    /// and the full stops they end in are not said, and a description that is nothing but spaces or stops says
+    /// nothing at all - not even the colon - so the event ends on the state.
+    /// </summary>
+    [Theory]
+    [InlineData("  ")]
+    [InlineData(".")]
+    [InlineData(". .")]
+    [InlineData("...")]
+    public void ADescriptionOfNothingButSpacesOrStopsIsSaidWithoutWords(string description)
+    {
+        var before = new HealthDetail([new HealthCheckEntry("Queue", CheckState.Healthy)], Now);
+        var after = new HealthDetail([new HealthCheckEntry("Queue", CheckState.Unhealthy, description)], Now);
+
+        var event_ = Assert.Single(EventDetector.HealthChecks(before, after, "uat", "ui", "westus3", Now));
+        Assert.Equal((EventLevel.Problem, "ui: Queue Healthy → Unhealthy"), (event_.Level, event_.Text));
+    }
+
+    /// <summary>
+    /// The trimming the words of a health check entry take on the way into the event: the full stops a
+    /// description ends in, a space standing behind the last of them, and the spaces that stand before the words,
+    /// are not said - the words stand as the one rule trims them.
+    /// </summary>
+    [Theory]
+    [InlineData("Login failed. ", "ui: Queue Healthy → Unhealthy: Login failed")]
+    [InlineData("  Login failed", "ui: Queue Healthy → Unhealthy: Login failed")]
+    [InlineData("Login failed..", "ui: Queue Healthy → Unhealthy: Login failed")]
+    public void ADescriptionIsJoinedByTheOneTrimming(string description, string expected)
+    {
+        var before = new HealthDetail([new HealthCheckEntry("Queue", CheckState.Healthy)], Now);
+        var after = new HealthDetail([new HealthCheckEntry("Queue", CheckState.Unhealthy, description)], Now);
+
+        var event_ = Assert.Single(EventDetector.HealthChecks(before, after, "uat", "ui", "westus3", Now));
+        Assert.Equal(expected, event_.Text);
+    }
+
+    /// <summary>
+    /// The word for why the endpoint answered the way it did is joined by the same trimming: a detail that ends
+    /// in a full stop a space stands behind is said without both, and a detail that is nothing but a stop says
+    /// nothing at all - the event ends on the state, with no colon of its own.
+    /// </summary>
+    [Theory]
+    [InlineData("No answer within 10 s. ", "ui: Healthy → Unreachable: No answer within 10 s")]
+    [InlineData(".", "ui: Healthy → Unreachable")]
+    [InlineData("  ", "ui: Healthy → Unreachable")]
+    public void AProbeDetailIsJoinedByTheSameTrimming(string detail, string expected)
+    {
+        var event_ = Assert.Single(Node(Seen(HealthState.Healthy), Seen(HealthState.Unreachable, detail: detail)));
+        Assert.Equal((EventLevel.Problem, expected), (event_.Level, event_.Text));
     }
 
     // ----- Restarted -----

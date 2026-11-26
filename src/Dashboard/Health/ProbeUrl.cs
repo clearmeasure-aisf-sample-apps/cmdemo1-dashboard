@@ -10,7 +10,9 @@ namespace Dashboard.Health;
 /// address the page is served from, for the files the page ships beside itself: <c>topology.json</c>, the files of
 /// <c>runtime/</c>, its own build facts.</description></item>
 /// </list>
-/// Neither one edits the path it is given beyond the slashes that join it: what is asked for is what was written.
+/// Neither one edits the path it is given beyond the slashes that front it: the path is taken from the root, as
+/// <see cref="SitePath.FromRoot(string)" /> - the one home of a path's front slashes - says, and the rest of it is
+/// asked for as it was written.
 /// <para>
 /// The one join the two readings of a base share - the base, without its trailing slash, one slash, and the path,
 /// without its leading one - stands in <see cref="UriExtensions.Join(string, string)" />: <see cref="Combine" />
@@ -59,7 +61,7 @@ public static class ProbeUrl
     internal static Uri? ResolveRelative(Uri? baseAddress, string path)
     {
         ArgumentNullException.ThrowIfNull(path);
-        if (!Uri.TryCreate(path.TrimStart('/'), UriKind.Relative, out var relative))
+        if (!Uri.TryCreate(SitePath.FromRoot(path), UriKind.Relative, out var relative))
         {
             return null;
         }
@@ -110,12 +112,12 @@ public static class UriExtensions
 
     /// <summary>
     /// The one join the readings of a base share: <paramref name="root"/>, without its trailing slash, one slash,
-    /// and <paramref name="path"/>, without its leading one, parsed back into the absolute address it spells.
+    /// and <paramref name="path"/> taken from the root (<see cref="SitePath.FromRoot(string)" />), parsed back into the absolute address it spells.
     /// Neither argument is null here: the readings that call this refuse a missing argument by name before they
     /// reach the join.
     /// </summary>
     /// <param name="root">The base, as its reading says it: up to its path, or as it stands.</param>
     /// <param name="path">The path that comes after it, with or without its front slash.</param>
     internal static Uri Join(string root, string path) =>
-        new($"{root.TrimEnd('/')}/{path.TrimStart('/')}", UriKind.Absolute);
+        new($"{root.TrimEnd('/')}/{SitePath.FromRoot(path)}", UriKind.Absolute);
 }

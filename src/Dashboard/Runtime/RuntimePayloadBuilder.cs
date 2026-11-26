@@ -1042,22 +1042,7 @@ public static class RuntimePayloadBuilder
             .ToList();
         if (apps.Count == 0)
         {
-            var others = region.Roles
-                .Where(role => !(databaseReachable && role == RuntimeRegionRole.Data))
-                .Select(RuntimeRegionRole.Words)
-                .ToList();
-            var parts = new List<string>();
-            if (databaseReachable)
-            {
-                parts.Add("database: reachable");
-            }
-
-            if (others.Count > 0)
-            {
-                parts.Add($"{string.Join(", ", others)}: not probed");
-            }
-
-            return new RuntimeRegionMark(region.Alias, RegionState.Neutral.Word(), string.Join("; ", parts));
+            return new RuntimeRegionMark(region.Alias, RegionState.Neutral.Word(), RuntimeRegionRole.Unprobed(region.Roles, databaseReachable));
         }
 
         // A web app the topology does not have is left out; a region with none the topology has is not checked.

@@ -43,21 +43,51 @@ public sealed record ContainerAppReports(string Name, HourlyCheck? Last, HealthW
             : null;
 }
 
-/// <summary>What one hourly health report found for a container app, and when.</summary>
-/// <param name="Result"><see cref="Healthy"/>, <see cref="Unhealthy"/> or <see cref="Unreachable"/>.</param>
-/// <param name="At">When that report ended.</param>
-public sealed record HourlyCheck(string Result, DateTimeOffset At)
+/// <summary>
+/// What one hourly health report found for a container app: one of the three words the runbook "Health report"
+/// writes for it in its log, and nothing else. A word the reading never makes - another case, a padding, the empty
+/// word - is no word of the three and says itself nowhere: the lowercase spelling is kept at the boundary the word
+/// crosses (<see cref="Read" /> of <c>last.result</c> from <c>delivery.json</c>), and every check the page holds
+/// says the word it is.
+/// </summary>
+public sealed record HourlyCheckResult
 {
-    public const string Healthy = "healthy";
-    public const string Unhealthy = "unhealthy";
-    public const string Unreachable = "unreachable";
+    /// <summary>The three words the report knows, each already in its own lower case, trimmed and of no spaces.</summary>
+    public static readonly HourlyCheckResult Healthy = new("healthy");
+    public static readonly HourlyCheckResult Unhealthy = new("unhealthy");
+    public static readonly HourlyCheckResult Unreachable = new("unreachable");
 
-    /// <summary>The result; null unless it is one of the three words and has its time.</summary>
-    internal static HourlyCheck? Read(JsonElement? section)
+    /// <summary>The word, in the lowercase spelling the runbook writes it.</summary>
+    public string Word { get; }
+
+    private HourlyCheckResult(string word) => Word = word;
+
+    /// <summary>
+    /// The word a file writes as <c>last.result</c> as one of the three, in whatever case or padding the log gave
+    /// it; null for anything beside them - the lowercase spelling kept at the boundary the word crosses.
+    /// </summary>
+    public static HourlyCheckResult? Read(string? word) => word?.Trim().ToLowerInvariant() switch
     {
-        var result = JsonRead.Text(section, "result")?.ToLowerInvariant();
-        return result is Healthy or Unhealthy or Unreachable && JsonRead.Time(section, "at") is { } at ? new HourlyCheck(result, at) : null;
-    }
+        "healthy" => Healthy,
+        "unhealthy" => Unhealthy,
+        "unreachable" => Unreachable,
+        _ => null,
+    };
+
+    /// <summary>The word the check says, in the case the box says it.</summary>
+    public override string ToString() => Word;
+}
+
+/// <summary>What one hourly health report found for a container app, and when.</summary>
+/// <param name="Result"><see cref="HourlyCheckResult.Healthy"/>, <see cref="HourlyCheckResult.Unhealthy"/> or <see cref="HourlyCheckResult.Unreachable"/>.</param>
+/// <param name="At">When that report ended.</param>
+public sealed record HourlyCheck(HourlyCheckResult Result, DateTimeOffset At)
+{
+    /// <summary>The result; null unless it is one of the three words and has its time.</summary>
+    internal static HourlyCheck? Read(JsonElement? section) =>
+        HourlyCheckResult.Read(JsonRead.Text(section, "result")) is { } result && JsonRead.Time(section, "at") is { } at
+            ? new HourlyCheck(result, at)
+            : null;
 }
 
 /// <summary>
@@ -83,7 +113,7 @@ public static class HourlyCheckText
 
     /// <summary><c>hourly: healthy, 40 min ago</c>; <see cref="NoRecentCheck"/> without a result of the last two hours.</summary>
     public static string Result(ContainerAppReports? reports, DateTimeOffset now) =>
-        RecentResult(reports, now) is { } last ? $"hourly: {last.Result}, {TimeText.Ago(last.At, now)}" : NoRecentCheck;
+        RecentResult(reports, now) is { } last ? $"hourly: {last.Result.Word}, {TimeText.Ago(last.At, now)}" : NoRecentCheck;
 
     /// <summary>
     /// <c>24 h: 23 of 24 · 7 d: 160 of 168</c>: of the reports that asked the app, those that found it healthy. A time
@@ -104,7 +134,7 @@ public static class HourlyCheckText
         {
             var when = string.Format(CultureInfo.InvariantCulture, HourlyReportWords.When, TimeText.DateAndTime(last.At, zone), TimeText.Ago(last.At, now));
             var found = RecentResult(reports, now) is null ? HourlyReportWords.StaleReport : HourlyReportWords.RecentReport;
-            words.Add(string.Format(CultureInfo.InvariantCulture, found, when, last.Result));
+            words.Add(string.Format(CultureInfo.InvariantCulture, found, when, last.Result.Word));
         }
         else
         {

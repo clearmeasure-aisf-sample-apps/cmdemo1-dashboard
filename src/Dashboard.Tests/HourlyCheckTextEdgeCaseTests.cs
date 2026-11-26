@@ -66,7 +66,7 @@ public class HourlyCheckTextEdgeCaseTests
     [InlineData(120, "hourly: healthy, 2 min ago")]
     public void TheLineCountsTheWholeMinuteTheMomentStandsIn(int secondsAgo, string line)
     {
-        var last = new HourlyCheck(HourlyCheck.Healthy, Now.AddSeconds(-secondsAgo));
+        var last = new HourlyCheck(HourlyCheckResult.Healthy, Now.AddSeconds(-secondsAgo));
         var reports = Reports("ui", last);
 
         Assert.Same(last, HourlyCheckText.RecentResult(reports, Now));
@@ -89,7 +89,7 @@ public class HourlyCheckTextEdgeCaseTests
     [InlineData(7201, "no recent hourly check")]
     public void TheNewestResultIsSaidUpToTheVeryTwoHoursAndNotOneTickPast(int secondsAgo, string line)
     {
-        var last = new HourlyCheck(HourlyCheck.Healthy, Now.AddSeconds(-secondsAgo));
+        var last = new HourlyCheck(HourlyCheckResult.Healthy, Now.AddSeconds(-secondsAgo));
         var reports = Reports("ui", last);
 
         var recent = HourlyCheckText.RecentResult(reports, Now);
@@ -106,36 +106,37 @@ public class HourlyCheckTextEdgeCaseTests
     // ---------------------------------------------------------------- the word the check holds, in the line and the tooltip
 
     /// <summary>
-    /// The line says the word the check carries and the tooltip says it in its own sentence, whichever word the
-    /// check carries: the reading makes the three words it knows, but a check built by hand carries the other case,
-    /// the empty word and the word of spaces just as it holds them, which
-    /// <see cref="HourlyCheckEdgeCaseTests" /> pins of the record itself - and the line and the tooltip say the
-    /// word they are given, the empty word and the word of spaces saying themselves in the spaces they take.
+    /// Retired deliberately with the closed vocabulary of issue #897: the line used to say the word the check
+    /// carries and the tooltip said it in its own sentence, whichever word the check carried - the other case, the
+    /// empty word and the word of spaces just as they were held. A <see cref="HourlyCheckResult" /> is one of the
+    /// three words the reading makes and nothing else, so the line and the tooltip say the word the file's spelling
+    /// reads as, in the lowercase spelling the runbook writes it, whichever case or padding the log gave.
     /// </summary>
     [Theory]
-    [InlineData("HEALTHY", "hourly: HEALTHY, 40 min ago", "and found it HEALTHY.")]
-    [InlineData("", "hourly: , 40 min ago", "and found it .")]
-    [InlineData(" ", "hourly:  , 40 min ago", "and found it  .")]
-    public void TheLineAndTheTooltipSayTheWordTheCheckHolds(string word, string line, string sentence)
+    [InlineData("HEALTHY", "hourly: healthy, 40 min ago", "and found it healthy.")]
+    [InlineData("UNHEALTHY", "hourly: unhealthy, 40 min ago", "and found it unhealthy.")]
+    [InlineData("Unreachable", "hourly: unreachable, 40 min ago", "and found it unreachable.")]
+    public void TheLineAndTheTooltipSayTheWordTheFilesSpellingReadsAs(string spelling, string line, string sentence)
     {
-        var reports = Reports("ui", new HourlyCheck(word, Checked));
+        var reports = Reports("ui", new HourlyCheck(HourlyCheckResult.Read(spelling)!, Checked));
 
         Assert.Equal(line, HourlyCheckText.Result(reports, Now));
         Assert.Contains(sentence, HourlyCheckText.Title(reports, Now, Utc), StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// No word at all is the word the line and the tooltip say: a check built by hand with no word carries none, as
-    /// it carries the empty word, and the line and the tooltip say the line they say with the word the check holds -
-    /// nothing the page refuses and nothing the page fills in.
+    /// Retired deliberately with the closed vocabulary of issue #897: no word at all used to be the word the line
+    /// and the tooltip said - a check built by hand with no word carried none. Now a <c>last</c> without a word is
+    /// no check at all, so the line says <see cref="HourlyCheckText.NoRecentCheck" /> and the tooltip says no report
+    /// of the last seven days asked it - nothing the page fills in.
     /// </summary>
     [Fact]
-    public void TheLineAndTheTooltipSayNoWordWhenTheCheckHoldsNone()
+    public void TheLineAndTheTooltipSayNoRecentCheckWhenTheCheckHoldsNone()
     {
-        var reports = Reports("ui", new HourlyCheck(null!, Checked));
+        var reports = Reports("ui", null);
 
-        Assert.Equal("hourly: , 40 min ago", HourlyCheckText.Result(reports, Now));
-        Assert.Contains("and found it .", HourlyCheckText.Title(reports, Now, Utc), StringComparison.Ordinal);
+        Assert.Equal(HourlyCheckText.NoRecentCheck, HourlyCheckText.Result(reports, Now));
+        Assert.Contains("No report of the last 7 days asked it.", HourlyCheckText.Title(reports, Now, Utc), StringComparison.Ordinal);
     }
 
     // ---------------------------------------------------------------- the counts, where one window counts nothing and the other counts
@@ -163,7 +164,7 @@ public class HourlyCheckTextEdgeCaseTests
     [Fact]
     public void TheTooltipSaysZeroOfZeroForAWindowThatCountedNothing()
     {
-        var checkedApp = new HourlyCheck(HourlyCheck.Healthy, Checked);
+        var checkedApp = new HourlyCheck(HourlyCheckResult.Healthy, Checked);
         const string intro =
             "Once an hour the pipeline's runbook \"Health report\" in Octopus Deploy asks the app whether it answers, "
             + "also while no page is open: the history, under the page's own probe. ";
@@ -206,11 +207,11 @@ public class HourlyCheckTextEdgeCaseTests
 
         Assert.Equal(
             intro + "The last report that asked it ended 2026-10-07 00:50 +00:00 (40 min ago) and found it healthy. " + note,
-            HourlyCheckText.Title(Reports("scorecard", new HourlyCheck(HourlyCheck.Healthy, Checked)), Now, Utc));
+            HourlyCheckText.Title(Reports("scorecard", new HourlyCheck(HourlyCheckResult.Healthy, Checked)), Now, Utc));
 
         Assert.Equal(
             intro + "The last report that asked it ended 2026-10-07 00:50 +00:00 (40 min ago) and found it unreachable. " + note,
-            HourlyCheckText.Title(Reports("scorecard", new HourlyCheck(HourlyCheck.Unreachable, Checked)), Now, Utc));
+            HourlyCheckText.Title(Reports("scorecard", new HourlyCheck(HourlyCheckResult.Unreachable, Checked)), Now, Utc));
     }
 
     /// <summary>
@@ -228,7 +229,7 @@ public class HourlyCheckTextEdgeCaseTests
             + "The last report that asked it ended 2026-10-06 22:30 +00:00 (3 h ago) and found it unreachable: "
             + "none in the last two hours, so the box says no recent hourly check. "
             + "Hourly checks by the pipeline, not continuous monitoring.",
-            HourlyCheckText.Title(Reports("scorecard", new HourlyCheck(HourlyCheck.Unreachable, Stale)), Now, Utc));
+            HourlyCheckText.Title(Reports("scorecard", new HourlyCheck(HourlyCheckResult.Unreachable, Stale)), Now, Utc));
     }
 
     /// <summary>
@@ -247,7 +248,7 @@ public class HourlyCheckTextEdgeCaseTests
             + "none in the last two hours, so the box says no recent hourly check. "
             + "Healthy in 160 of the 168 reports of 7 days that asked it. "
             + "Hourly checks by the pipeline, not continuous monitoring.",
-            HourlyCheckText.Title(Reports("scorecard", new HourlyCheck(HourlyCheck.Unhealthy, Stale), null, new HealthWindow(168, 160)), Now, Utc));
+            HourlyCheckText.Title(Reports("scorecard", new HourlyCheck(HourlyCheckResult.Unhealthy, Stale), null, new HealthWindow(168, 160)), Now, Utc));
     }
 
     /// <summary>
@@ -259,7 +260,7 @@ public class HourlyCheckTextEdgeCaseTests
     [Fact]
     public void TheStaleSentenceStandsInTheHoursTheViewerIsIn()
     {
-        var reports = Reports("scorecard", new HourlyCheck(HourlyCheck.Unhealthy, Stale));
+        var reports = Reports("scorecard", new HourlyCheck(HourlyCheckResult.Unhealthy, Stale));
 
         Assert.Contains(
             "The last report that asked it ended 2026-10-06 17:30 -05:00 (3 h ago) and found it unhealthy: "

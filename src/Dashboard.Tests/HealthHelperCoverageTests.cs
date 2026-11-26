@@ -514,7 +514,7 @@ public partial class HealthHelperCoverageTests
 
     private static readonly ContainerAppReports Reported = new(
         "ui",
-        new HourlyCheck(HourlyCheck.Healthy, new DateTimeOffset(2026, 10, 6, 23, 20, 0, TimeSpan.Zero)),
+        new HourlyCheck(HourlyCheckResult.Healthy, new DateTimeOffset(2026, 10, 6, 23, 20, 0, TimeSpan.Zero)),
         new HealthWindow(24, 23),
         new HealthWindow(168, 160));
 
@@ -544,7 +544,7 @@ public partial class HealthHelperCoverageTests
     [Fact]
     public void AResultOlderThanTwoHoursIsSaidToBeNoNews()
     {
-        var stale = Reported with { Last = new HourlyCheck(HourlyCheck.Unhealthy, Now - TimeSpan.FromHours(3)) };
+        var stale = Reported with { Last = new HourlyCheck(HourlyCheckResult.Unhealthy, Now - TimeSpan.FromHours(3)) };
 
         Assert.Contains(
             "The last report that asked it ended 2026-10-06 21:00 +00:00 (3 h ago) and found it unhealthy: "
@@ -553,7 +553,7 @@ public partial class HealthHelperCoverageTests
             StringComparison.Ordinal);
 
         // Two hours is still said: the runbook and the publisher both take up to an hour of it.
-        var edge = Reported with { Last = new HourlyCheck(HourlyCheck.Healthy, Now - HourlyCheckText.Recent) };
+        var edge = Reported with { Last = new HourlyCheck(HourlyCheckResult.Healthy, Now - HourlyCheckText.Recent) };
 
         Assert.Contains("and found it healthy.", HourlyCheckText.Title(edge, Now, Utc), StringComparison.Ordinal);
         Assert.DoesNotContain("none in the last two hours", HourlyCheckText.Title(edge, Now, Utc), StringComparison.Ordinal);

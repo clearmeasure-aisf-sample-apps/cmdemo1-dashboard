@@ -135,8 +135,8 @@ public class AvailabilityTests
 
         Assert.Equal(
             [
-                new ContainerAppReports("ui", new HourlyCheck(HourlyCheck.Healthy, Reported), new HealthWindow(24, 24), new HealthWindow(168, 167)),
-                new ContainerAppReports("scorecard", new HourlyCheck(HourlyCheck.Unreachable, Reported), null, new HealthWindow(70, 69)),
+                new ContainerAppReports("ui", new HourlyCheck(HourlyCheckResult.Healthy, Reported), new HealthWindow(24, 24), new HealthWindow(168, 167)),
+                new ContainerAppReports("scorecard", new HourlyCheck(HourlyCheckResult.Unreachable, Reported), null, new HealthWindow(70, 69)),
                 new ContainerAppReports("worker", null, new HealthWindow(0, 0), new HealthWindow(0, 0)),
             ],
             apps!);
@@ -172,7 +172,7 @@ public class AvailabilityTests
     [Fact]
     public void TheBoxSaysTheResultOfTheLastTwoHoursAndTheCountsInWords()
     {
-        var ui = new ContainerAppReports("ui", new HourlyCheck(HourlyCheck.Unhealthy, Reported), new HealthWindow(24, 23), new HealthWindow(0, 0));
+        var ui = new ContainerAppReports("ui", new HourlyCheck(HourlyCheckResult.Unhealthy, Reported), new HealthWindow(24, 23), new HealthWindow(0, 0));
 
         Assert.Equal(TimeSpan.FromHours(2), HourlyCheckText.Recent);
         Assert.Equal("hourly: unhealthy, 27 min ago", HourlyCheckText.Result(ui, Now));

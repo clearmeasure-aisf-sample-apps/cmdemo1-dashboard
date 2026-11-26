@@ -60,7 +60,7 @@ public class ContainerAppReportsEdgeCaseTests
     [Fact]
     public void TheReportKeepsTheNameTheLastCheckAndTheTwoWindows()
     {
-        var last = new HourlyCheck(HourlyCheck.Unreachable, Checked);
+        var last = new HourlyCheck(HourlyCheckResult.Unreachable, Checked);
         var day = new HealthWindow(24, 23);
         var week = new HealthWindow(168, 160);
         var reports = new ContainerAppReports("ui", last, day, week);
@@ -105,8 +105,8 @@ public class ContainerAppReportsEdgeCaseTests
     [Fact]
     public void TwoReportsAreOneWhileTheirPartsAre()
     {
-        var one = new ContainerAppReports("ui", new HourlyCheck(HourlyCheck.Healthy, Checked), new HealthWindow(24, 23), new HealthWindow(168, 160));
-        var two = new ContainerAppReports("ui", new HourlyCheck(HourlyCheck.Healthy, Checked), new HealthWindow(24, 23), new HealthWindow(168, 160));
+        var one = new ContainerAppReports("ui", new HourlyCheck(HourlyCheckResult.Healthy, Checked), new HealthWindow(24, 23), new HealthWindow(168, 160));
+        var two = new ContainerAppReports("ui", new HourlyCheck(HourlyCheckResult.Healthy, Checked), new HealthWindow(24, 23), new HealthWindow(168, 160));
 
         Assert.Equal(one, two);
         Assert.True(one == two);
@@ -119,8 +119,8 @@ public class ContainerAppReportsEdgeCaseTests
 
         Assert.NotEqual(one, one with { Name = "UI" });
         Assert.NotEqual(one, one with { Name = "worker" });
-        Assert.NotEqual(one, one with { Last = new HourlyCheck(HourlyCheck.Unhealthy, Checked) });
-        Assert.NotEqual(one, one with { Last = new HourlyCheck(HourlyCheck.Healthy, Checked.AddSeconds(1)) });
+        Assert.NotEqual(one, one with { Last = new HourlyCheck(HourlyCheckResult.Unhealthy, Checked) });
+        Assert.NotEqual(one, one with { Last = new HourlyCheck(HourlyCheckResult.Healthy, Checked.AddSeconds(1)) });
         Assert.NotEqual(one, one with { Last = null });
         Assert.NotEqual(one, one with { Last24Hours = new HealthWindow(24, 22) });
         Assert.NotEqual(one, one with { Last24Hours = null });
@@ -136,7 +136,7 @@ public class ContainerAppReportsEdgeCaseTests
     [Fact]
     public void ACopyOfAReportIsTheReportAgain()
     {
-        var reports = new ContainerAppReports("ui", new HourlyCheck(HourlyCheck.Healthy, Checked), new HealthWindow(24, 23), new HealthWindow(168, 160));
+        var reports = new ContainerAppReports("ui", new HourlyCheck(HourlyCheckResult.Healthy, Checked), new HealthWindow(24, 23), new HealthWindow(168, 160));
 
         var copy = reports with { };
         Assert.Equal(reports, copy);
@@ -179,16 +179,18 @@ public class ContainerAppReportsEdgeCaseTests
 
     /// <summary>
     /// The three words a result is told in, as the file writes them, in lower case, and three distinct words: a
-    /// fourth word is no result the page reads, which <see cref="AvailabilityTests" /> pins read from the file.
+    /// fourth word is no result the page reads, which <see cref="AvailabilityTests" /> pins read from the file. The
+    /// words are the <see cref="HourlyCheckResult" /> instances the closed vocabulary holds, and their <see
+    /// cref="HourlyCheckResult.Word" /> is the lowercase spelling the runbook writes.
     /// </summary>
     [Fact]
     public void TheThreeWordsOfAResultAreTheThreeWordsTheFileWritesThemIn()
     {
-        Assert.Equal("healthy", HourlyCheck.Healthy);
-        Assert.Equal("unhealthy", HourlyCheck.Unhealthy);
-        Assert.Equal("unreachable", HourlyCheck.Unreachable);
+        Assert.Equal("healthy", HourlyCheckResult.Healthy.Word);
+        Assert.Equal("unhealthy", HourlyCheckResult.Unhealthy.Word);
+        Assert.Equal("unreachable", HourlyCheckResult.Unreachable.Word);
 
-        Assert.Equal(3, new[] { HourlyCheck.Healthy, HourlyCheck.Unhealthy, HourlyCheck.Unreachable }.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(3, new[] { HourlyCheckResult.Healthy, HourlyCheckResult.Unhealthy, HourlyCheckResult.Unreachable }.Distinct().Count());
     }
 
     /// <summary>
@@ -200,18 +202,18 @@ public class ContainerAppReportsEdgeCaseTests
     [Fact]
     public void ACheckKeepsItsWordAndItsMomentInTheInstantItStandsOn()
     {
-        var check = new HourlyCheck(HourlyCheck.Unhealthy, Checked);
+        var check = new HourlyCheck(HourlyCheckResult.Unhealthy, Checked);
 
-        Assert.Equal(HourlyCheck.Unhealthy, check.Result);
+        Assert.Equal(HourlyCheckResult.Unhealthy, check.Result);
         Assert.Equal(Checked, check.At);
-        Assert.Equal(check, new HourlyCheck("unhealthy", Checked));
+        Assert.Equal(check, new HourlyCheck(HourlyCheckResult.Unhealthy, Checked));
         Assert.Equal(check, check with { At = Checked.ToOffset(TimeSpan.FromMinutes(330)) });
-        Assert.Equal(DateTimeOffset.MinValue, new HourlyCheck(HourlyCheck.Healthy, DateTimeOffset.MinValue).At);
-        Assert.Equal(DateTimeOffset.MaxValue, new HourlyCheck(HourlyCheck.Healthy, DateTimeOffset.MaxValue).At);
+        Assert.Equal(DateTimeOffset.MinValue, new HourlyCheck(HourlyCheckResult.Healthy, DateTimeOffset.MinValue).At);
+        Assert.Equal(DateTimeOffset.MaxValue, new HourlyCheck(HourlyCheckResult.Healthy, DateTimeOffset.MaxValue).At);
 
-        Assert.NotEqual(check, new HourlyCheck(HourlyCheck.Healthy, Checked));
-        Assert.NotEqual(check, new HourlyCheck(HourlyCheck.Unreachable, Checked));
-        Assert.NotEqual(check, new HourlyCheck(HourlyCheck.Unhealthy, Checked.AddSeconds(1)));
+        Assert.NotEqual(check, new HourlyCheck(HourlyCheckResult.Healthy, Checked));
+        Assert.NotEqual(check, new HourlyCheck(HourlyCheckResult.Unreachable, Checked));
+        Assert.NotEqual(check, new HourlyCheck(HourlyCheckResult.Unhealthy, Checked.AddSeconds(1)));
 
         var copy = check with { };
         Assert.Equal(check, copy);
@@ -250,7 +252,7 @@ public class ContainerAppReportsEdgeCaseTests
     [InlineData(-3599, "59 min ago")]
     public void TheNewestResultIsSaidWhileItsMomentStandsWithinTheTwoHours(int secondsFromNow, string ago)
     {
-        var last = new HourlyCheck(HourlyCheck.Healthy, Now.AddSeconds(secondsFromNow));
+        var last = new HourlyCheck(HourlyCheckResult.Healthy, Now.AddSeconds(secondsFromNow));
         var reports = Reports("ui", last);
 
         Assert.Equal(last, HourlyCheckText.RecentResult(reports, Now));
@@ -265,8 +267,8 @@ public class ContainerAppReportsEdgeCaseTests
     [Fact]
     public void TheLineIsTheSameInTheHoursTheMomentIsWrittenIn()
     {
-        var utc = Reports("ui", new HourlyCheck(HourlyCheck.Unhealthy, Now.AddMinutes(-27)));
-        var spelled = Reports("ui", new HourlyCheck(HourlyCheck.Unhealthy, Now.AddMinutes(-27).ToOffset(TimeSpan.FromMinutes(330))));
+        var utc = Reports("ui", new HourlyCheck(HourlyCheckResult.Unhealthy, Now.AddMinutes(-27)));
+        var spelled = Reports("ui", new HourlyCheck(HourlyCheckResult.Unhealthy, Now.AddMinutes(-27).ToOffset(TimeSpan.FromMinutes(330))));
 
         Assert.Equal("hourly: unhealthy, 27 min ago", HourlyCheckText.Result(utc, Now));
         Assert.Equal("hourly: unhealthy, 27 min ago", HourlyCheckText.Result(spelled, Now));
@@ -297,7 +299,7 @@ public class ContainerAppReportsEdgeCaseTests
     [Fact]
     public void TheTooltipOfAReportFoundUnhealthyCountsTheDayItCounts()
     {
-        var reports = Reports("ui", new HourlyCheck(HourlyCheck.Unhealthy, Checked), new HealthWindow(24, 23));
+        var reports = Reports("ui", new HourlyCheck(HourlyCheckResult.Unhealthy, Checked), new HealthWindow(24, 23));
 
         Assert.Equal(
             "Once an hour the pipeline's runbook \"Health report\" in Octopus Deploy asks the app whether it answers, "
@@ -317,7 +319,7 @@ public class ContainerAppReportsEdgeCaseTests
     [Fact]
     public void TheTooltipOfAReportThatEndsNowIsJustNowInTheHoursItIsWrittenIn()
     {
-        var reports = Reports("ui", new HourlyCheck(HourlyCheck.Healthy, Now), new HealthWindow(24, 24), new HealthWindow(168, 168));
+        var reports = Reports("ui", new HourlyCheck(HourlyCheckResult.Healthy, Now), new HealthWindow(24, 24), new HealthWindow(168, 168));
 
         Assert.Equal(
             "Once an hour the pipeline's runbook \"Health report\" in Octopus Deploy asks the app whether it answers, "
@@ -342,7 +344,7 @@ public class ContainerAppReportsEdgeCaseTests
     [Fact]
     public void TheTooltipOfAStaleResultCountsTheDayItCounts()
     {
-        var reports = Reports("ui", new HourlyCheck(HourlyCheck.Unreachable, Now.AddHours(-3)), new HealthWindow(12, 12));
+        var reports = Reports("ui", new HourlyCheck(HourlyCheckResult.Unreachable, Now.AddHours(-3)), new HealthWindow(12, 12));
 
         Assert.Equal(
             "Once an hour the pipeline's runbook \"Health report\" in Octopus Deploy asks the app whether it answers, "

@@ -40,7 +40,7 @@ public class DeliveryEnvironmentTests
         Assert.Equal(new HealthWindow(167, 160), uat.Health.Last7Days);
         Assert.Equal(new DateTimeOffset(2026, 10, 3, 8, 0, 0, TimeSpan.Zero), uat.Health.LastFailure);
         Assert.Equal(
-            [new ContainerAppReports("ui", new HourlyCheck(HourlyCheck.Healthy, new DateTimeOffset(2026, 10, 4, 20, 0, 0, TimeSpan.Zero)), new HealthWindow(23, 22), null)],
+            [new ContainerAppReports("ui", new HourlyCheck(HourlyCheckResult.Healthy, new DateTimeOffset(2026, 10, 4, 20, 0, 0, TimeSpan.Zero)), new HealthWindow(23, 22), null)],
             uat.Health.ContainerApps);
         Assert.Equal(new HealthReports(new HealthWindow(24, 24), new HealthWindow(168, 168), null), Report.Environments[0].Health);
         Assert.Empty(Report.Environments[2].Deployables);

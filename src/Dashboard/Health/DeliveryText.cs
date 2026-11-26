@@ -135,6 +135,16 @@ public static class AvailabilityText
 }
 
 /// <summary>One part of the availability line: words, the number in the middle that carries it, words.</summary>
+/// <remarks>
+/// The words are the caller's: a part is a value object the line builds out of literals, and
+/// <see cref="AvailabilityText.Parts" /> is its one producer. <see cref="Before" />, <see cref="Strong" /> and
+/// <see cref="After" /> are never null by contract - the empty string is the word that is not there - and the record
+/// does not refuse a null on purpose: a null is a caller's mistake, not a file's silence, and the page would print it
+/// as nothing. <see cref="CostPart" /> holds its words the same way.
+/// </remarks>
+/// <param name="Before">The words before the number; the empty string for none. Never null.</param>
+/// <param name="Strong">The number that carries the part. Never null.</param>
+/// <param name="After">The words after the number; the empty string for none. Never null.</param>
 /// <param name="Title">The part's own tooltip; null without one.</param>
 /// <param name="When">The moment the part names, for a <c>time</c> element; null when it names none.</param>
 public sealed record AvailabilityPart(string Before, string Strong, string After, string? Title = null, DateTimeOffset? When = null);

@@ -130,6 +130,13 @@ public sealed record CostEstimate(double? Share, CostAmounts Amounts)
 public sealed record CostService(string Name, double? MonthToDate);
 
 /// <summary>An amount with the days it covers: <c>$1.52</c> and <c>yesterday</c>.</summary>
+/// <remarks>
+/// The words are the caller's: a part is a value object built by its one producer, <see cref="CostText.Parts" />.
+/// <see cref="Amount" /> and <see cref="Period" /> are never null by contract, and the record
+/// does not refuse a null on purpose - the same decision as <see cref="AvailabilityPart" />.
+/// </remarks>
+/// <param name="Amount">The amount in words, or <see cref="CostText.NoNumber" />. Never null.</param>
+/// <param name="Period">The days the amount covers. Never null.</param>
 public sealed record CostPart(string Amount, string Period);
 
 /// <summary>The cost in the words of the page. Nothing here says "now": every wording names the days it covers.</summary>

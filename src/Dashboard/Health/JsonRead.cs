@@ -31,6 +31,19 @@ internal static class JsonRead
         where T : class =>
         parent is { ValueKind: JsonValueKind.Object } value ? read(value) : null;
 
+    /// <summary>
+    /// The rows of the array under <paramref name="name"/>, each made by <paramref name="read"/> from its name and its
+    /// object, in the order written. The one place of the rule that a row without a name (as <see cref="Identified"/>
+    /// reads one under <c>name</c>) is left out: a node, a namespace, a pod, a volume and a node pool all get it by
+    /// construction. None when there is no array.
+    /// </summary>
+    public static IReadOnlyList<T> Named<T>(JsonElement? parent, string name, Func<string, JsonElement, T> read)
+        where T : class =>
+        [.. Items(parent, name).Select(item => Identified(item, RowName, read)).OfType<T>()];
+
+    /// <summary>The field that names a row of <see cref="Named"/>: the one part without which there is no row.</summary>
+    private const string RowName = "name";
+
     /// <summary>The elements of the array under <paramref name="name"/>; none when there is no array.</summary>
     public static IEnumerable<JsonElement> Items(JsonElement? parent, string name) =>
         ArrayUnder(parent, name) is { } array ? [.. array.EnumerateArray()] : [];

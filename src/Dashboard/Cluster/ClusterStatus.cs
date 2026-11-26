@@ -73,25 +73,14 @@ public sealed record ClusterStatus(
                 JsonRead.Time(root, "generated"),
                 JsonRead.Count(root, "intervalSeconds"),
                 JsonRead.Text(root, "kubernetesVersion"),
-                ReadNamed(root, "nodes", ClusterNode.Read),
-                ReadNamed(root, "namespaces", ClusterNamespace.Read)));
+                JsonRead.Named(root, "nodes", ClusterNode.Read),
+                JsonRead.Named(root, "namespaces", ClusterNamespace.Read)));
         }
         catch (JsonException)
         {
             return new Parsed<ClusterStatus>(null, FileProblems.Broken);
         }
     }
-
-    /// <summary>
-    /// The rows of the array under <paramref name="name"/>, each made by <paramref name="read"/> from its name and its
-    /// object. The one place of the rule that a row without a name is left out: a row type gets it by construction.
-    /// </summary>
-    internal static IReadOnlyList<T> ReadNamed<T>(JsonElement? parent, string name, Func<string, JsonElement, T> read)
-        where T : class =>
-        [.. JsonRead.Items(parent, name).Select(item => JsonRead.Identified(item, RowName, read)).OfType<T>()];
-
-    /// <summary>The field that names a node, a namespace, a pod or a volume: the one part without which there is no row.</summary>
-    private const string RowName = "name";
 }
 
 /// <summary>
@@ -196,8 +185,8 @@ public sealed record ClusterNamespace(string Name, IReadOnlyList<ClusterPod> Pod
     internal static ClusterNamespace Read(string name, JsonElement element) =>
         new(
             name,
-            ClusterStatus.ReadNamed(element, "pods", ClusterPod.Read),
-            ClusterStatus.ReadNamed(element, "volumes", ClusterVolume.Read));
+            JsonRead.Named(element, "pods", ClusterPod.Read),
+            JsonRead.Named(element, "volumes", ClusterVolume.Read));
 }
 
 /// <summary>One pod.</summary>

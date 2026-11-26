@@ -87,6 +87,7 @@ public class RuntimeEdgeCountingWordsTests
     public void TheCountingWordsAreWrittenOnce()
     {
         var source = File.ReadAllText(MarkupGuards.SourcePath(Path.Combine("Runtime", "RuntimePayloadBuilder.cs")));
+        source = File.ReadAllText(MarkupGuards.SourcePath(Path.Combine("Runtime", "RuntimeEdgeMarks.cs"))); // #1829: the counting words moved to RuntimeEdgeMarks.cs
 
         Assert.Equal(1, Count(source, "the web app reports none"));
         Assert.Equal(1, Count(source, "Last minute, counted by the web app:"));

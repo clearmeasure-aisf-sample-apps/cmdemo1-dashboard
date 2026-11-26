@@ -6,8 +6,6 @@ public class DeploymentsTests
 {
     /// <summary>A minute after the sample was written.</summary>
     private static readonly DateTimeOffset Now = new(2026, 10, 8, 4, 23, 24, TimeSpan.Zero);
-    private static readonly string[] Ui = ["ui"];
-    private const string Slug = "demo";
     private const string Tasks = "https://octopus.example.net/app#/Spaces-356/tasks/ServerTasks-";
     private const string DeploymentsPath = "/org/demo-system/deployments/deployments.json";
     private readonly SignallingTimeProvider _time = new();
@@ -37,7 +35,7 @@ public class DeploymentsTests
             """)!;
 
     private static IReadOnlyList<DeploymentMark> Marks(DeploymentsReport report, DateTimeOffset now, string environment = "uat") =>
-        report.Marks(environment, Slug, Ui, now);
+        report.Marks(environment, ActivityLines.Slug, ActivityLines.Ui, now);
 
     private static HttpResponseMessage Answer(HttpRequestMessage request) =>
         request.RequestUri!.AbsolutePath == DeploymentsPath ? StubHandler.Answer(HttpStatusCode.OK, Sample) : Optics.Answer(request);
@@ -239,7 +237,7 @@ public class DeploymentsTests
     [InlineData("ui", null, false)]
     public void AProjectIsItsDeployableAfterTheSlugAndTheSystemsOwnIsNone(string project, string? deployable, bool ofSystem)
     {
-        var mark = Assert.Single(One("executing", project: project).Marks("uat", Slug, ["ui", "Api"], Now));
+        var mark = Assert.Single(One("executing", project: project).Marks("uat", ActivityLines.Slug, ["ui", "Api"], Now));
 
         Assert.Equal((project, deployable, ofSystem), (mark.Project, mark.Deployable, mark.OfSystem));
     }
@@ -247,12 +245,12 @@ public class DeploymentsTests
     [Fact]
     public void WithoutASlugOrADeployableNoProjectIsADeployable()
     {
-        Assert.Null(Assert.Single(One("executing").Marks("uat", string.Empty, Ui, Now)).Deployable);
-        Assert.Null(Assert.Single(One("executing").Marks("uat", Slug, [], Now)).Deployable);
-        Assert.False(Assert.Single(One("executing", project: "-system").Marks("uat", string.Empty, Ui, Now)).OfSystem);
-        Assert.Equal("ui", DeploymentMark.NameOf("demo-ui", "demo"));
-        Assert.Equal("my-app", DeploymentMark.NameOf("demo-my-app", "demo"));
-        Assert.Null(DeploymentMark.NameOf("demonstration", "demo"));
+        Assert.Null(Assert.Single(One("executing").Marks("uat", string.Empty, ActivityLines.Ui, Now)).Deployable);
+        Assert.Null(Assert.Single(One("executing").Marks("uat", ActivityLines.Slug, [], Now)).Deployable);
+        Assert.False(Assert.Single(One("executing", project: "-system").Marks("uat", string.Empty, ActivityLines.Ui, Now)).OfSystem);
+        Assert.Equal("ui", DeploymentMark.NameOf("demo-ui", ActivityLines.Slug));
+        Assert.Equal("my-app", DeploymentMark.NameOf("demo-my-app", ActivityLines.Slug));
+        Assert.Null(DeploymentMark.NameOf("demonstration", ActivityLines.Slug));
     }
 
     [Theory]
@@ -344,7 +342,7 @@ public class DeploymentsTests
         var monitor = Optics.Monitor(handler, _time, events, TopologyWithDeployments);
 
         await monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
-        Assert.NotEmpty(monitor.DeploymentMarks("uat", Ui, _time.GetUtcNow()));
+        Assert.NotEmpty(monitor.DeploymentMarks("uat", ActivityLines.Ui, _time.GetUtcNow()));
 
         failing = true;
         _time.Advance(DashboardMonitor.DeploymentsInterval);
@@ -353,7 +351,7 @@ public class DeploymentsTests
         // Not the marks of the reading before: a deployment the page can no longer read about would stay marked.
         Assert.Equal(2, Optics.Count(handler, DeploymentsPath));
         Assert.Null(monitor.Deployments);
-        Assert.Empty(monitor.DeploymentMarks("uat", Ui, _time.GetUtcNow()));
+        Assert.Empty(monitor.DeploymentMarks("uat", ActivityLines.Ui, _time.GetUtcNow()));
         Assert.Empty(events.Newest);
         Assert.Equal("All 4 nodes healthy", monitor.Summary.Text);
         Assert.All(monitor.Targets, target => Assert.Equal(HealthState.Healthy, target.State));
@@ -363,7 +361,7 @@ public class DeploymentsTests
         failing = false;
         _time.Advance(DashboardMonitor.DeploymentsInterval);
         await monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
-        Assert.NotEmpty(monitor.DeploymentMarks("uat", Ui, _time.GetUtcNow()));
+        Assert.NotEmpty(monitor.DeploymentMarks("uat", ActivityLines.Ui, _time.GetUtcNow()));
     }
 
     [Fact]
@@ -375,7 +373,7 @@ public class DeploymentsTests
         await monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
 
         Assert.Null(monitor.Deployments);
-        Assert.Empty(monitor.DeploymentMarks("uat", Ui, _time.GetUtcNow()));
+        Assert.Empty(monitor.DeploymentMarks("uat", ActivityLines.Ui, _time.GetUtcNow()));
         Assert.Equal(0, Optics.Count(handler, DeploymentsPath));
     }
 }

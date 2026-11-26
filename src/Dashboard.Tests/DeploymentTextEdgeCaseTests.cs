@@ -35,9 +35,6 @@ namespace Dashboard.Tests;
 /// </summary>
 public class DeploymentTextEdgeCaseTests
 {
-    /// <summary>Friday noon, UTC: the moment the page is asked, and every age below is counted from it.</summary>
-    private static readonly DateTimeOffset Now = new(2026, 10, 9, 12, 0, 0, TimeSpan.Zero);
-
     /// <summary>The words every help ends with, said once and joined on to its first line.</summary>
     private const string HelpEnd =
         ". A deployment that started shows within about one to six minutes and its end as soon, one that is only queued within half an hour; "
@@ -45,11 +42,11 @@ public class DeploymentTextEdgeCaseTests
 
     /// <summary>A deployment of uat, started when the page is asked, and ended when the end says it is.</summary>
     private static Deployment One(DeploymentState state, string stateText, DateTimeOffset? finished = null, DeploymentWait? waitsFor = null) =>
-        new("demo-ui", "uat", "2.4.43", state, stateText, Now, finished, null, null, waitsFor);
+        new("demo-ui", "uat", "2.4.43", state, stateText, ActivityLines.Now, finished, null, null, waitsFor);
 
     /// <summary>A deployment that is waiting, asked five minutes before the page is asked.</summary>
     private static Deployment Waiting(DeploymentWait? wait, string? startedBy = null) =>
-        new("demo-ui", "uat", "2.4.43", DeploymentState.Waiting, "waiting", Now - TimeSpan.FromMinutes(5), null, null, startedBy, wait);
+        new("demo-ui", "uat", "2.4.43", DeploymentState.Waiting, "waiting", ActivityLines.Now - TimeSpan.FromMinutes(5), null, null, startedBy, wait);
 
     /// <summary>A mark the test builds from its own words, its count and what the file says more.</summary>
     private static DeploymentMark Mark(string sentence, int? minutes, bool inFlight, string? detail = null) =>
@@ -95,8 +92,8 @@ public class DeploymentTextEdgeCaseTests
     [InlineData("timed out", "demo-ui 2.4.43 in uat: timed out")]
     public void AStateThePageDoesNotKnowSaysTheFilesWordWithoutAnAge(string stateText, string sentence)
     {
-        Assert.Equal(sentence, DeploymentText.Sentence(One(DeploymentState.Unknown, stateText, finished: Now.AddMinutes(-5)), Now));
-        Assert.Equal(sentence, DeploymentText.Sentence(One(DeploymentState.Unknown, stateText, finished: Now.AddHours(-2)), Now));
+        Assert.Equal(sentence, DeploymentText.Sentence(One(DeploymentState.Unknown, stateText, finished: ActivityLines.Now.AddMinutes(-5)), ActivityLines.Now));
+        Assert.Equal(sentence, DeploymentText.Sentence(One(DeploymentState.Unknown, stateText, finished: ActivityLines.Now.AddHours(-2)), ActivityLines.Now));
     }
 
     /// <summary>
@@ -109,7 +106,7 @@ public class DeploymentTextEdgeCaseTests
     [InlineData(DeploymentState.Queued, "queued", "demo-ui 2.4.43 is queued for uat")]
     [InlineData(DeploymentState.Executing, "executing", "deploying demo-ui 2.4.43 to uat")]
     public void AStateInFlightSaysItsWordWithoutAnAgeEvenWhenTheFileGivesItAnEnd(DeploymentState state, string stateText, string sentence) =>
-        Assert.Equal(sentence, DeploymentText.Sentence(One(state, stateText, finished: Now.AddMinutes(-5)), Now));
+        Assert.Equal(sentence, DeploymentText.Sentence(One(state, stateText, finished: ActivityLines.Now.AddMinutes(-5)), ActivityLines.Now));
 
     /// <summary>The question a failed step asks is said without its age, an end the file gives it notwithstanding.</summary>
     [Fact]
@@ -117,8 +114,8 @@ public class DeploymentTextEdgeCaseTests
         Assert.Equal(
             "demo-ui 2.4.43 asks what to do after a failed step in uat",
             DeploymentText.Sentence(
-                One(DeploymentState.Waiting, "waiting", finished: Now.AddMinutes(-5), waitsFor: new DeploymentWait(DeploymentWait.GuidedFailure, null, null, null)),
-                Now));
+                One(DeploymentState.Waiting, "waiting", finished: ActivityLines.Now.AddMinutes(-5), waitsFor: new DeploymentWait(DeploymentWait.GuidedFailure, null, null, null)),
+                ActivityLines.Now));
 
     // --------------------------------------------------- the age, truncated to the whole unit it is in
 
@@ -243,13 +240,13 @@ public class DeploymentTextEdgeCaseTests
     {
         Assert.Equal(
             "the question after a failed step is with jeffrey",
-            DeploymentText.Detail(Waiting(new DeploymentWait(DeploymentWait.GuidedFailure, null, null, "jeffrey")), Now));
+            DeploymentText.Detail(Waiting(new DeploymentWait(DeploymentWait.GuidedFailure, null, null, "jeffrey")), ActivityLines.Now));
 
         Assert.Equal(
             "the question after a failed step \"Database is unreachable\"",
-            DeploymentText.Detail(Waiting(new DeploymentWait(DeploymentWait.GuidedFailure, "Database is unreachable", null, null)), Now));
+            DeploymentText.Detail(Waiting(new DeploymentWait(DeploymentWait.GuidedFailure, "Database is unreachable", null, null)), ActivityLines.Now));
 
-        Assert.Null(DeploymentText.Detail(Waiting(new DeploymentWait(DeploymentWait.GuidedFailure, null, null, null)), Now));
+        Assert.Null(DeploymentText.Detail(Waiting(new DeploymentWait(DeploymentWait.GuidedFailure, null, null, null)), ActivityLines.Now));
     }
 
     /// <summary>
@@ -263,15 +260,15 @@ public class DeploymentTextEdgeCaseTests
     {
         Assert.Equal(
             "the question after a failed step is with ops",
-            DeploymentText.Detail(Waiting(new DeploymentWait(DeploymentWait.GuidedFailure, "Guided Failure", null, "ops")), Now));
+            DeploymentText.Detail(Waiting(new DeploymentWait(DeploymentWait.GuidedFailure, "Guided Failure", null, "ops")), ActivityLines.Now));
 
         Assert.Equal(
             "the question after a failed step is with ops",
-            DeploymentText.Detail(Waiting(new DeploymentWait(DeploymentWait.GuidedFailure, "guided-failure", null, "ops")), Now));
+            DeploymentText.Detail(Waiting(new DeploymentWait(DeploymentWait.GuidedFailure, "guided-failure", null, "ops")), ActivityLines.Now));
 
         Assert.Equal(
             "the sign-off is with ops",
-            DeploymentText.Detail(Waiting(new DeploymentWait(DeploymentWait.SignOff, "SIGN-OFF", null, "ops")), Now));
+            DeploymentText.Detail(Waiting(new DeploymentWait(DeploymentWait.SignOff, "SIGN-OFF", null, "ops")), ActivityLines.Now));
     }
 
     /// <summary>
@@ -285,9 +282,9 @@ public class DeploymentTextEdgeCaseTests
     [InlineData(-2)]
     public void AnAskOfNoWholeMinuteIsSaidAsOneMinuteAgo(int minutesAgo)
     {
-        var wait = new DeploymentWait(DeploymentWait.SignOff, null, Now - TimeSpan.FromMinutes(minutesAgo), null);
+        var wait = new DeploymentWait(DeploymentWait.SignOff, null, ActivityLines.Now - TimeSpan.FromMinutes(minutesAgo), null);
 
-        Assert.Equal("asked 1 min ago", DeploymentText.Detail(Waiting(wait), Now));
+        Assert.Equal("asked 1 min ago", DeploymentText.Detail(Waiting(wait), ActivityLines.Now));
     }
 
     /// <summary>
@@ -298,11 +295,11 @@ public class DeploymentTextEdgeCaseTests
     [Fact]
     public void AQuestionThatSaysAllOfItSaysItInItsOrder()
     {
-        var wait = new DeploymentWait(DeploymentWait.SignOff, "Approve the release", Now - TimeSpan.FromHours(2), "demo approvers");
+        var wait = new DeploymentWait(DeploymentWait.SignOff, "Approve the release", ActivityLines.Now - TimeSpan.FromHours(2), "demo approvers");
 
         Assert.Equal(
             "the sign-off \"Approve the release\" is with demo approvers; asked 2 h ago; started by jeffrey",
-            DeploymentText.Detail(Waiting(wait, "jeffrey"), Now));
+            DeploymentText.Detail(Waiting(wait, "jeffrey"), ActivityLines.Now));
     }
 
     // ------------------------------------------------------------- the help, word for word to its last word

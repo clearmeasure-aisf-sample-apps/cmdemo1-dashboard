@@ -26,11 +26,6 @@ namespace Dashboard.Tests;
 /// </summary>
 public class DeploymentWaitEdgeCaseTests
 {
-    /// <summary>Friday noon, UTC: the moment the page is asked, and every day below is counted from it.</summary>
-    private static readonly DateTimeOffset Now = new(2026, 10, 9, 12, 0, 0, TimeSpan.Zero);
-
-    private static readonly TimeZoneInfo Utc = TimeZoneInfo.Utc;
-
     /// <summary>A file that says everything a file may say, about nothing: all the lists, all of them empty.</summary>
     private static readonly DeploymentsReport Empty =
         DeploymentsReport.Parse("""{ "deployments": [], "recent": [], "freezes": [], "missing": [] }""")!;
@@ -69,7 +64,7 @@ public class DeploymentWaitEdgeCaseTests
     [InlineData(7, "16 Oct 12:00")]
     [InlineData(-7, "2 Oct 12:00")]
     public void TheMomentAtTheChangesOfDaySaysTheDayOrTheDate(int days, string expected) =>
-        Assert.Equal(expected, DeploymentActivity.When(Now.AddDays(days), Now, Utc));
+        Assert.Equal(expected, DeploymentActivity.When(ActivityLines.Now.AddDays(days), ActivityLines.Now, ActivityLines.Utc));
 
     /// <summary>The day is counted in the zone the moment is given: the instant two o'clock the next day on the
     /// meridian is a day away there, while five hours west of it the same instant is the evening of the same day,
@@ -80,15 +75,15 @@ public class DeploymentWaitEdgeCaseTests
         var instant = new DateTimeOffset(2026, 10, 10, 2, 0, 0, TimeSpan.Zero);
         var chicago = TimeZoneInfo.FindSystemTimeZoneById("America/Chicago");
 
-        Assert.Equal("Sat 02:00", DeploymentActivity.When(instant, Now, Utc));
-        Assert.Equal("21:00", DeploymentActivity.When(instant, Now, chicago));
+        Assert.Equal("Sat 02:00", DeploymentActivity.When(instant, ActivityLines.Now, ActivityLines.Utc));
+        Assert.Equal("21:00", DeploymentActivity.When(instant, ActivityLines.Now, chicago));
     }
 
     /// <summary>The moment refuses a zone that is not there, by the name the guard keeps: the day it would count
     /// in is not there either.</summary>
     [Fact]
     public void TheMomentRefusesAZoneThatIsNotThere() =>
-        Assert.Equal("zone", Assert.Throws<ArgumentNullException>(() => DeploymentActivity.When(Now, Now, null!)).ParamName);
+        Assert.Equal("zone", Assert.Throws<ArgumentNullException>(() => DeploymentActivity.When(ActivityLines.Now, ActivityLines.Now, null!)).ParamName);
 
     // ------------------------------------------------------------- the sayers, and what they refuse
 
@@ -98,11 +93,11 @@ public class DeploymentWaitEdgeCaseTests
     [Fact]
     public void TheNodeRefusesAReportOrAZoneThatIsNotThere()
     {
-        var noReport = Assert.Throws<ArgumentNullException>(() => DeploymentActivity.OfNode(null!, "uat", "demo", "ui", Now, Utc));
+        var noReport = Assert.Throws<ArgumentNullException>(() => DeploymentActivity.OfNode(null!, "uat", ActivityLines.Slug, ActivityLines.Ui[0], ActivityLines.Now, ActivityLines.Utc));
 
         Assert.Equal("report", noReport.ParamName);
 
-        var noZone = Assert.Throws<ArgumentNullException>(() => DeploymentActivity.OfNode(Empty, "uat", "demo", "ui", Now, null!));
+        var noZone = Assert.Throws<ArgumentNullException>(() => DeploymentActivity.OfNode(Empty, "uat", ActivityLines.Slug, ActivityLines.Ui[0], ActivityLines.Now, null!));
 
         Assert.Equal("zone", noZone.ParamName);
     }
@@ -112,9 +107,9 @@ public class DeploymentWaitEdgeCaseTests
     [Fact]
     public void TheEnvironmentRefusesAFileTheMarksOrAZoneThatIsNotThere()
     {
-        Assert.Equal("report", Assert.Throws<ArgumentNullException>(() => DeploymentActivity.OfEnvironment(null!, "uat", [], Now, Utc)).ParamName);
-        Assert.Equal("marks", Assert.Throws<ArgumentNullException>(() => DeploymentActivity.OfEnvironment(Empty, "uat", null!, Now, Utc)).ParamName);
-        Assert.Equal("zone", Assert.Throws<ArgumentNullException>(() => DeploymentActivity.OfEnvironment(Empty, "uat", [], Now, null!)).ParamName);
+        Assert.Equal("report", Assert.Throws<ArgumentNullException>(() => DeploymentActivity.OfEnvironment(null!, "uat", [], ActivityLines.Now, ActivityLines.Utc)).ParamName);
+        Assert.Equal("marks", Assert.Throws<ArgumentNullException>(() => DeploymentActivity.OfEnvironment(Empty, "uat", null!, ActivityLines.Now, ActivityLines.Utc)).ParamName);
+        Assert.Equal("zone", Assert.Throws<ArgumentNullException>(() => DeploymentActivity.OfEnvironment(Empty, "uat", [], ActivityLines.Now, null!)).ParamName);
     }
 
     /// <summary>The environment is asked for in any case: the lines it has are the same in upper case as in the
@@ -122,8 +117,8 @@ public class DeploymentWaitEdgeCaseTests
     [Fact]
     public void TheEnvironmentIsAskedForInAnyCaseAndIsEmptyWhereTheFileHasNothing()
     {
-        var upper = DeploymentActivity.OfEnvironment(Small, "PROD", [], Now, Utc);
-        var asWritten = DeploymentActivity.OfEnvironment(Small, "prod", [], Now, Utc);
+        var upper = DeploymentActivity.OfEnvironment(Small, "PROD", [], ActivityLines.Now, ActivityLines.Utc);
+        var asWritten = DeploymentActivity.OfEnvironment(Small, "prod", [], ActivityLines.Now, ActivityLines.Utc);
 
         Assert.Equal(
             [
@@ -134,7 +129,7 @@ public class DeploymentWaitEdgeCaseTests
         Assert.Equal(
             asWritten.Select(line => (line.Kind, line.Text, line.Url, line.Title)),
             upper.Select(line => (line.Kind, line.Text, line.Url, line.Title)));
-        Assert.Empty(DeploymentActivity.OfEnvironment(Small, "TDD", [], Now, Utc));
+        Assert.Empty(DeploymentActivity.OfEnvironment(Small, "TDD", [], ActivityLines.Now, ActivityLines.Utc));
     }
 
     /// <summary>The line that is cut refuses a text that is not there, by the name the guard keeps: the cut to

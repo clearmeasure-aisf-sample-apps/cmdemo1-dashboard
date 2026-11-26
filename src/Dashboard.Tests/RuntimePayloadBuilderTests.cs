@@ -803,7 +803,7 @@ public class RuntimePayloadBuilderTests
 
     /// <summary>The marks of an environment as the runtime view asks for them: for the deployables its diagram draws.</summary>
     private static IReadOnlyList<DeploymentMark> Deploying(RuntimeManifest manifest, string slug, string deployments) =>
-        DeploymentsReport.Parse($$"""{ "deployments": [ {{deployments}} ] }""")!.Marks(manifest.Environment, slug, RuntimePayloadBuilder.Deployables(manifest), Now);
+        ActivityLines.Parse(deployments: deployments).Marks(manifest.Environment, slug, RuntimePayloadBuilder.Deployables(manifest), Now);
 
     [Fact]
     public void ANodeOfADeployableThatIsBeingDeployedCarriesTheMarkAndAnotherDoesNot()
@@ -887,7 +887,7 @@ public class RuntimePayloadBuilderTests
             null,
             Page,
             TimeZoneInfo.Utc,
-            Deploying(own, "demo", """{ "project": "demo-web", "environment": "prod", "release": "3.1.0", "state": "queued", "since": "2026-10-04T21:59:30Z" }"""));
+            Deploying(own, ActivityLines.Slug, """{ "project": "demo-web", "environment": "prod", "release": "3.1.0", "state": "queued", "since": "2026-10-04T21:59:30Z" }"""));
 
         Assert.Equal(new RuntimeDeployment("queued", "demo-web 3.1.0 is queued for prod (1 min so far)"), Tile(recorded, "site_web").Deployment);
         Assert.Equal("web-prod\ndemo-web 3.1.0 is queued for prod (1 min so far)", Tile(recorded, "site_web").Title);

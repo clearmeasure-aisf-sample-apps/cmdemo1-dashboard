@@ -127,14 +127,7 @@ public static class RuntimePayloadBuilder
         var health = new HealthSource(resources, now, zone);
         var probed = Probes(manifest, containerApps);
         var entries = Index(environment);
-        var byAlias = new Dictionary<string, Entry>(StringComparer.Ordinal);
-        foreach (var node in manifest.Nodes)
-        {
-            if (Find(entries, node) is { } entry)
-            {
-                byAlias[node.Alias] = entry;
-            }
-        }
+        var index = new RuntimeDiagramIndex<Entry>(manifest, node => Find(entries, node));
 
         var tiles = manifest.Nodes
             .Where(node => node.Kind != RuntimeNodeKind.Person)
@@ -142,11 +135,11 @@ public static class RuntimePayloadBuilder
                 Deploying(
                     node.Kind switch
                     {
-                        RuntimeNodeKind.Sql => DatabaseTile(node, Clients(manifest, node, RuntimeEdgeKind.Sql, byAlias), ContainerSqlApps(manifest, node, probed), zone, environment?.Info.Links, health),
-                        RuntimeNodeKind.Dependency => DependencyTile(node, Clients(manifest, node, RuntimeEdgeKind.Dependency, byAlias), zone),
+                        RuntimeNodeKind.Sql => DatabaseTile(node, Clients(index, node, RuntimeEdgeKind.Sql), ContainerSqlApps(index, node, probed), zone, environment?.Info.Links, health),
+                        RuntimeNodeKind.Dependency => DependencyTile(node, Clients(index, node, RuntimeEdgeKind.Dependency), zone),
                         RuntimeNodeKind.ContainerApp => ContainerAppTile(node, containerApps, hourly, now, zone, health),
                         RuntimeNodeKind.Resource => UnprobedNodeTile(node, health),
-                        _ => Tile(node, byAlias.GetValueOrDefault(node.Alias), environment, page, zone, health),
+                        _ => Tile(node, index.Entry(node.Alias), environment, page, zone, health),
                     },
                     node,
                     deployments,
@@ -158,9 +151,9 @@ public static class RuntimePayloadBuilder
             .Select(node => node.RegionAlias)
             .ToHashSet(StringComparer.Ordinal);
         var regions = manifest.Regions
-            .Select(region => Region(region, manifest, byAlias, reachable.Contains(region.Alias)) with { NameLink = RuntimeBoxLink.Of(region) })
+            .Select(region => Region(region, index, reachable.Contains(region.Alias)) with { NameLink = RuntimeBoxLink.Of(region) })
             .ToList();
-        var edges = manifest.Edges.Select(edge => Edge(edge, manifest, byAlias, probed)).ToList();
+        var edges = manifest.Edges.Select(edge => Edge(edge, index, probed)).ToList();
         return new RuntimePayload(tiles, regions, edges, Names(manifest));
     }
 
@@ -482,14 +475,14 @@ public static class RuntimePayloadBuilder
     private readonly record struct ContainerSqlApp(RuntimeNode App, ContainerAppStatus? Status);
 
     /// <summary>The container apps with a SQL relationship to the database. A web app's relationship is not one of these.</summary>
-    private static List<ContainerSqlApp> ContainerSqlApps(RuntimeManifest manifest, RuntimeNode database, Dictionary<string, ContainerAppStatus> probed) =>
-        [.. new RuntimeClients(manifest, database, RuntimeEdgeKind.Sql)
-            .Of(alias => manifest.Nodes.FirstOrDefault(node => node.Alias == alias && node.Kind == RuntimeNodeKind.ContainerApp))
+    private static List<ContainerSqlApp> ContainerSqlApps(RuntimeDiagramIndex<Entry> index, RuntimeNode database, Dictionary<string, ContainerAppStatus> probed) =>
+        [.. new RuntimeClients(index.Manifest, database, RuntimeEdgeKind.Sql)
+            .Of(index.ContainerApp)
             .Select(app => new ContainerSqlApp(app, probed.GetValueOrDefault(app.Alias)))];
 
     /// <summary>The checked web apps with a relationship of that kind to the node (the database, a dependency).</summary>
-    private static List<Entry> Clients(RuntimeManifest manifest, RuntimeNode node, RuntimeEdgeKind kind, Dictionary<string, Entry> byAlias) =>
-        [.. new RuntimeClients(manifest, node, kind).Of(alias => byAlias.GetValueOrDefault(alias))];
+    private static List<Entry> Clients(RuntimeDiagramIndex<Entry> index, RuntimeNode node, RuntimeEdgeKind kind) =>
+        [.. new RuntimeClients(index.Manifest, node, kind).Of(index.Entry)];
 
     /// <summary>True when every client that reports was probed for liveness only, so none of them read what the node answers.</summary>
     private static bool OnlyProbesLiveness(List<Entry> clients) =>
@@ -1006,11 +999,10 @@ public static class RuntimePayloadBuilder
         };
     }
 
-    private static RuntimeRegionMark Region(RuntimeRegion region, RuntimeManifest manifest, Dictionary<string, Entry> byAlias, bool databaseReachable)
+    private static RuntimeRegionMark Region(RuntimeRegion region, RuntimeDiagramIndex<Entry> index, bool databaseReachable)
     {
-        var apps = manifest.Nodes
-            .Where(node => node.Kind == RuntimeNodeKind.WebApp && node.RegionAlias == region.Alias)
-            .Select(node => byAlias.GetValueOrDefault(node.Alias))
+        var apps = index.WebAppsIn(region.Alias)
+            .Select(node => index.Entry(node.Alias))
             .ToList();
         if (apps.Count == 0)
         {
@@ -1054,16 +1046,16 @@ public static class RuntimePayloadBuilder
             : new RuntimeRegionMark(alias, "down", "not serving");
     }
 
-    private static RuntimeEdgeMark Edge(RuntimeEdge edge, RuntimeManifest manifest, Dictionary<string, Entry> byAlias, Dictionary<string, ContainerAppStatus> probed)
+    private static RuntimeEdgeMark Edge(RuntimeEdge edge, RuntimeDiagramIndex<Entry> index, Dictionary<string, ContainerAppStatus> probed)
     {
-        var from = byAlias.GetValueOrDefault(edge.From);
-        var to = byAlias.GetValueOrDefault(edge.To);
+        var from = index.Entry(edge.From);
+        var to = index.Entry(edge.To);
         return edge.Kind switch
         {
             RuntimeEdgeKind.Origin => OriginEdge(edge, to),
-            RuntimeEdgeKind.Sql => SqlEdge(edge, from, manifest, probed),
-            RuntimeEdgeKind.Dependency => DependencyEdge(edge, from, manifest),
-            RuntimeEdgeKind.Public => PublicEdge(edge, to ?? from, manifest, byAlias),
+            RuntimeEdgeKind.Sql => SqlEdge(edge, from, index, probed),
+            RuntimeEdgeKind.Dependency => DependencyEdge(edge, from, index),
+            RuntimeEdgeKind.Public => PublicEdge(edge, to ?? from, index),
             RuntimeEdgeKind.Dashboard when to is not null => DashboardEdge(edge, to),
             _ => UnknownEdge(edge),
         };
@@ -1094,9 +1086,9 @@ public static class RuntimePayloadBuilder
     }
 
     /// <summary>A web app's (or a container app's) arrow to the database: the SQL commands the app counted.</summary>
-    private static RuntimeEdgeMark SqlEdge(RuntimeEdge edge, Entry? from, RuntimeManifest manifest, Dictionary<string, ContainerAppStatus> probed)
+    private static RuntimeEdgeMark SqlEdge(RuntimeEdge edge, Entry? from, RuntimeDiagramIndex<Entry> index, Dictionary<string, ContainerAppStatus> probed)
     {
-        if (from is null && manifest.Nodes.FirstOrDefault(node => node.Alias == edge.From) is { Kind: RuntimeNodeKind.ContainerApp } app)
+        if (from is null && index.Node(edge.From) is { Kind: RuntimeNodeKind.ContainerApp } app)
         {
             return ContainerSqlEdge(edge, probed.GetValueOrDefault(app.Alias));
         }
@@ -1124,7 +1116,7 @@ public static class RuntimePayloadBuilder
     }
 
     /// <summary>A web app's arrow to an outside dependency: its outgoing HTTP calls, when they are this dependency's alone.</summary>
-    private static RuntimeEdgeMark DependencyEdge(RuntimeEdge edge, Entry? from, RuntimeManifest manifest)
+    private static RuntimeEdgeMark DependencyEdge(RuntimeEdge edge, Entry? from, RuntimeDiagramIndex<Entry> index)
     {
         // As to the database: a web app that is down calls nothing, and the dependency is not the reason.
         var state = CallerState(from);
@@ -1132,7 +1124,7 @@ public static class RuntimePayloadBuilder
 
         // The app counts its outgoing HTTP calls as one number: it is this dependency's only when the web app
         // has no other one.
-        var only = manifest.Edges.Count(other => other.Kind == RuntimeEdgeKind.Dependency && other.From == edge.From) == 1;
+        var only = index.DependenciesFrom(edge.From) == 1;
         var counted = only
             ? Counted(CallsWord, telemetry is null
                 ? null
@@ -1144,16 +1136,16 @@ public static class RuntimePayloadBuilder
             Number: only ? Number(telemetry?.Http) : NoNumber,
             Unit: CallsUnit,
             Text: only ? "outgoing HTTP calls" : "not counted apart",
-            Title: $"{edge.From} to {manifest.Nodes.FirstOrDefault(node => node.Alias == edge.To)?.Name ?? edge.To}. {state.Sentence()} {counted}",
+            Title: $"{edge.From} to {index.Node(edge.To)?.Name ?? edge.To}. {state.Sentence()} {counted}",
             Link: null,
             Trend: only && from is not null ? RuntimeTrend.Of(Trends.Http(from.Target)) : null);
     }
 
     /// <summary>The browser's arrow to a public address: whether it answers, and the calls it took.</summary>
-    private static RuntimeEdgeMark PublicEdge(RuntimeEdge edge, Entry? target, RuntimeManifest manifest, Dictionary<string, Entry> byAlias)
+    private static RuntimeEdgeMark PublicEdge(RuntimeEdge edge, Entry? target, RuntimeDiagramIndex<Entry> index)
     {
         var state = target is null ? EdgeState.Neutral : AnswerState(target);
-        var (number, counted, trend) = PublicCalls(edge, manifest, byAlias);
+        var (number, counted, trend) = PublicCalls(edge, index);
         var requests = number == NoNumber || target is null
             ? null
             : RuntimeLink.To(target.Deployable.Info.Links?[LinkSet.Logs], LinkText.For(LinkSet.Logs, target.Deployable.Info.Name));
@@ -1221,11 +1213,10 @@ public static class RuntimePayloadBuilder
     /// The calls to a public address: for a Front Door endpoint, the sum of what its origins counted as forwarded by
     /// Front Door (no caching rule is set, so every call reaches an origin); for a web app's own address, its direct calls.
     /// </summary>
-    private static (string Number, string Words, Trend? Trend) PublicCalls(RuntimeEdge edge, RuntimeManifest manifest, Dictionary<string, Entry> byAlias)
+    private static (string Number, string Words, Trend? Trend) PublicCalls(RuntimeEdge edge, RuntimeDiagramIndex<Entry> index)
     {
-        var origins = manifest.Edges
-            .Where(other => other.Kind == RuntimeEdgeKind.Origin && other.From == edge.To)
-            .Select(other => byAlias.GetValueOrDefault(other.To)?.Target)
+        var origins = index.OriginsOf(edge.To)
+            .Select(other => index.Entry(other.To)?.Target)
             .ToList();
         if (origins.Count > 0)
         {
@@ -1235,7 +1226,7 @@ public static class RuntimePayloadBuilder
                 : (Number(counted.Sum(telemetry => telemetry.FromFrontDoor)), PerMinute(CallsWord, "the sum of what its origins counted from Front Door."), Trends.Sum(origins.OfType<TargetStatus>()));
         }
 
-        var direct = byAlias.GetValueOrDefault(edge.To)?.Target;
+        var direct = index.Entry(edge.To)?.Target;
         return direct?.Telemetry is not { } own
             ? (NoNumber, ReportsNone(CallsWord), null)
             : (Number(own.Direct), PerMinute(CallsWord, "counted by the web app."), Trends.Direct(direct));

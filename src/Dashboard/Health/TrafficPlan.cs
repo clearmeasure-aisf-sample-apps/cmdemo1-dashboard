@@ -1,3 +1,5 @@
+using Dashboard.Runtime;
+
 namespace Dashboard.Health;
 
 /// <summary>
@@ -72,7 +74,7 @@ public sealed record TrafficPlan(string Environment, IReadOnlyList<Uri> Addresse
     {
         ArgumentNullException.ThrowIfNull(plans);
         string? Known(string? name) =>
-            name is null ? null : plans.FirstOrDefault(plan => string.Equals(plan.Environment, name, StringComparison.OrdinalIgnoreCase))?.Environment;
+            name is null ? null : plans.FirstOrDefault(plan => new EnvironmentName(plan.Environment).Matches(name))?.Environment;
 
         if (running)
         {

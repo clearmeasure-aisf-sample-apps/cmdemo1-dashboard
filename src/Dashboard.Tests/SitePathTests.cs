@@ -30,6 +30,34 @@ public class SitePathTests
     public void WithFrontAddsTheSlashAndChangesNothingElse(string path, string expected) =>
         Assert.Equal(expected, SitePath.WithFront(path));
 
+    /// <summary>The other half of the rule (#1541): a path is asked at from the root, every front slash dropped
+    /// for the joiner's one, and nothing after the front changed.</summary>
+    [Theory]
+    [InlineData("health", "health")]
+    [InlineData("/health", "health")]
+    [InlineData("//health", "health")]
+    [InlineData("////", "")]
+    [InlineData("/x///y/", "x///y/")]
+    [InlineData("/ api ", " api ")]
+    public void FromRootDropsEveryFrontSlashAndChangesNothingElse(string path, string expected) =>
+        Assert.Equal(expected, SitePath.FromRoot(path));
+
+    /// <summary>The two halves meet (#1541): a run of front slashes written in the file is recorded as written,
+    /// and the address the probe asks at takes the path from the root, with the one slash the join adds.</summary>
+    [Fact]
+    public void APathWithARunOfFrontSlashesIsRecordedAsWrittenAndAskedAtFromTheRoot()
+    {
+        var result = TopologyParser.Parse("""
+            { "environments": [ { "name": "prod", "deployables": [ { "healthPath": "//health" } ] } ] }
+            """);
+
+        var deployable = Assert.Single(Assert.Single(result.Topology!.Environments).Deployables);
+        Assert.Equal("//health", deployable.HealthPath);
+        Assert.Equal(
+            "https://app.example.net/health",
+            ProbeUrl.Combine(new Uri("https://app.example.net/"), deployable.HealthPath).AbsoluteUri);
+    }
+
     /// <summary>The traffic paths are the one list of paths the reader does not trim: a padded entry is kept as the
     /// path it was written as, on purpose, while every other path of the deployable is read over its spaces.</summary>
     [Fact]

@@ -459,19 +459,5 @@ public class BehindFirstEdgeCaseTests
     /// <summary>The words a distance says its two parts in, taken in the invariant culture whatever the reader of
     /// this test happens to be: the record's own words follow whoever reads them, which is pinned on its own further
     /// up this file, so the strings there are the point and the culture only the way to say them once.</summary>
-    private static string Words(BehindFirst behind)
-    {
-        ArgumentNullException.ThrowIfNull(behind);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return behind.ToString();
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(BehindFirst behind) => ViewerCulture.Invariant(() => behind.ToString()!);
 }

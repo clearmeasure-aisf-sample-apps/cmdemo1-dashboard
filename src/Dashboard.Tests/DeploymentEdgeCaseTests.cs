@@ -995,19 +995,5 @@ public class DeploymentEdgeCaseTests
     /// <summary>The words a deployment says its parts in, taken in the invariant culture whatever the reader of this
     /// test happens to be: the record's own words follow whoever reads them, which is pinned on its own further up
     /// this file, so the strings there are the point and the culture only the way to say them once.</summary>
-    private static string Words(Deployment deployment)
-    {
-        ArgumentNullException.ThrowIfNull(deployment);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return deployment.ToString()!;
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(Deployment deployment) => ViewerCulture.Invariant(() => deployment.ToString()!);
 }

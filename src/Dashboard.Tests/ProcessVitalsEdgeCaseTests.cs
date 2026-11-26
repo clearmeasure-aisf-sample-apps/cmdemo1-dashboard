@@ -803,19 +803,5 @@ public class ProcessVitalsEdgeCaseTests
     /// <summary>The words a process says its seven parts in, taken in the invariant culture whatever the reader of
     /// this test happens to be: the parts are numbers and the sentence is the point, so the culture is only the way
     /// to say it once - which of the two readers turns which part is pinned on its own further up this file.</summary>
-    private static string Words(ProcessVitals vitals)
-    {
-        ArgumentNullException.ThrowIfNull(vitals);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return vitals.ToString();
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(ProcessVitals vitals) => ViewerCulture.Invariant(() => vitals.ToString()!);
 }

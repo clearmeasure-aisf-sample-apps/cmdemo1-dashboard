@@ -292,19 +292,5 @@ public class CrapFactsBoundaryEdgeCaseTests
     /// <summary>The words a record says its three parts in, taken in the invariant culture whatever the reader of
     /// this test happens to be: the record's own words follow whoever reads them, which is pinned on its own below,
     /// so the strings above are the point and the culture only the way to say them once.</summary>
-    private static string Words(CrapFacts crap)
-    {
-        ArgumentNullException.ThrowIfNull(crap);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return crap.ToString()!;
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(CrapFacts crap) => ViewerCulture.Invariant(() => crap.ToString()!);
 }

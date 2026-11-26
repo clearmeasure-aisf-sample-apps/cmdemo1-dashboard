@@ -640,19 +640,5 @@ public class ClusterPodEdgeCaseTests
     /// <summary>The words a pod says its parts in, taken in the invariant culture whatever the reader of this test
     /// happens to be: the parts themselves outlast any reader, which is pinned on its own further up this file, so
     /// the strings there are the point and the culture only the way to say them once.</summary>
-    private static string Words(ClusterPod pod)
-    {
-        ArgumentNullException.ThrowIfNull(pod);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return pod.ToString();
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(ClusterPod pod) => ViewerCulture.Invariant(() => pod.ToString()!);
 }

@@ -67,21 +67,7 @@ public class DeploymentBoundaryEdgeCaseTests
 
     /// <summary>The words a deployment says its parts in, taken in the invariant culture whatever the reader of this
     /// test happens to be, since the record's own words follow whoever reads them.</summary>
-    private static string Words(Deployment deployment)
-    {
-        ArgumentNullException.ThrowIfNull(deployment);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return deployment.ToString()!;
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(Deployment deployment) => ViewerCulture.Invariant(() => deployment.ToString()!);
 
     // ----- the two ends of the clock, as ends and not as the absence of a moment
 

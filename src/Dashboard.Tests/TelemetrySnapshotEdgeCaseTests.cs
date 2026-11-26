@@ -1044,19 +1044,5 @@ public class TelemetrySnapshotEdgeCaseTests
     /// whatever the reader of this test happens to be: the parts are numbers and moments and the sentence is the
     /// point, so the culture is only the way to say it once - which of the two readers turns which part is pinned on
     /// its own above.</summary>
-    private static string Words(TelemetrySnapshot read)
-    {
-        ArgumentNullException.ThrowIfNull(read);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return read.ToString();
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(TelemetrySnapshot read) => ViewerCulture.Invariant(() => read.ToString()!);
 }

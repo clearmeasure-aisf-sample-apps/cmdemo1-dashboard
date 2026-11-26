@@ -667,21 +667,7 @@ public class AvailabilityPartEdgeCaseTests
     /// <summary>The words a part says its five members in, taken in the invariant culture whatever the reader of
     /// this test happens to be: the four words are letters and outlast any reader, and the moment is said in the
     /// invariant digits here so that the string is the point and the culture only the way to say it once.</summary>
-    private static string Words(AvailabilityPart part)
-    {
-        ArgumentNullException.ThrowIfNull(part);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return part.ToString();
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(AvailabilityPart part) => ViewerCulture.Invariant(() => part.ToString()!);
 
     /// <summary>The letters of a word gathered into a string of its own, which no other word in the test shares a
     /// reference with: what the record does with a word it is given - keeping the one and not another that spells

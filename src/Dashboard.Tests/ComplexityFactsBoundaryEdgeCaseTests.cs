@@ -312,19 +312,5 @@ public class ComplexityFactsBoundaryEdgeCaseTests
     /// <summary>The words a record says its three parts in, taken in the invariant culture whoever reads this test
     /// happens to stand in: the record's own words follow the reader, which is pinned on its own above, so the
     /// strings here are the point and the culture only the way to say them once.</summary>
-    private static string Words(ComplexityFacts complexity)
-    {
-        ArgumentNullException.ThrowIfNull(complexity);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return complexity.ToString()!;
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(ComplexityFacts complexity) => ViewerCulture.Invariant(() => complexity.ToString()!);
 }

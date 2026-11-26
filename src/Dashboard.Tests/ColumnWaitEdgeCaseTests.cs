@@ -549,19 +549,5 @@ public class ColumnWaitEdgeCaseTests
     /// <summary>The words a wait says its three parts in, taken in the invariant culture whatever the reader of this
     /// test happens to be: the record's own words follow whoever reads them, which is pinned on its own further up
     /// this file, so the strings here are the point and the culture only the way to say them once.</summary>
-    private static string Words(ColumnWait wait)
-    {
-        ArgumentNullException.ThrowIfNull(wait);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return wait.ToString()!;
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(ColumnWait wait) => ViewerCulture.Invariant(() => wait.ToString()!);
 }

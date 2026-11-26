@@ -484,19 +484,5 @@ public class CostServiceEdgeCaseTests
     /// this test happens to be: the record's own words follow whoever reads them, which is pinned on its own
     /// further up this file, so the strings there are the point and the culture only the way to say them
     /// once.</summary>
-    private static string Words(CostService service)
-    {
-        ArgumentNullException.ThrowIfNull(service);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return service.ToString()!;
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(CostService service) => ViewerCulture.Invariant(() => service.ToString()!);
 }

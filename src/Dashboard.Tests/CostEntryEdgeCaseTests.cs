@@ -481,19 +481,5 @@ public class CostEntryEdgeCaseTests
     /// <summary>The words an entry says its four parts in, taken in the invariant culture whatever the reader of
     /// this test happens to be: the record's own words follow whoever reads them, which is pinned on its own further
     /// up this file, so the strings there are the point and the culture only the way to say them once.</summary>
-    private static string Words(CostEntry entry)
-    {
-        ArgumentNullException.ThrowIfNull(entry);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return entry.ToString()!;
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(CostEntry entry) => ViewerCulture.Invariant(() => entry.ToString()!);
 }

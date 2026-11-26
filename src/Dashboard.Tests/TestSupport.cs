@@ -461,3 +461,48 @@ public static class ActivityLines
     public static bool TitleMentions(ActivityLine line, string word) =>
         line.Title.Contains(word, StringComparison.Ordinal);
 }
+
+/// <summary>
+/// The one way a health test names the node's states and tallies them into a summary: the four states
+/// by the word the tests say them - <see cref="Healthy" />, <see cref="Unhealthy" />, <see cref="Pending" />
+/// and <see cref="Unreachable" /> - the heap of answers a test builds from the answers given,
+/// <see cref="States(HealthState[])" />, and the heap of <see cref="States(HealthState, int)" /> answers that
+/// all say the one state, and the summary the counts make, <see cref="Summary(int, int, int)" />, beside
+/// the summary the states make, <see cref="Summary(HealthState[])" />, counted through
+/// <see cref="HealthSummary.Of" />. Ten health test files declared their own copies of these four
+/// aliases and built the summaries three more ways; the copies are held to these answers in
+/// <see cref="HealthStatesObjectMotherTests" />, so a copy may be retired file by file without changing
+/// a test's expectation. The sentinels a file casts for an absent state - the <c>Unknown</c> of the
+/// serving tests and the <c>Unnamed</c> of the version tests - are not kept here: they name one edge
+/// case of their own file, and a shared name would blur what they say.
+/// </summary>
+public static class HealthStates
+{
+    /// <summary>The endpoint answered, and answered well.</summary>
+    public const HealthState Healthy = HealthState.Healthy;
+
+    /// <summary>The endpoint answered, and answered anything but well.</summary>
+    public const HealthState Unhealthy = HealthState.Unhealthy;
+
+    /// <summary>The check has not been made yet.</summary>
+    public const HealthState Pending = HealthState.Pending;
+
+    /// <summary>The endpoint did not answer at all.</summary>
+    public const HealthState Unreachable = HealthState.Unreachable;
+
+    /// <summary>A heap of answers built from the answers given, in the order given.</summary>
+    public static HealthState[] States(params HealthState[] states) => states;
+
+    /// <summary>A heap of <paramref name="count" /> answers that all say the one <paramref name="state" />.</summary>
+    public static HealthState[] States(HealthState state, int count) =>
+        [.. Enumerable.Repeat(state, count)];
+
+    /// <summary>The summary built of the three counts the header weighs: the total, the healthy count, the pending count.</summary>
+    public static HealthSummary Summary(int total, int healthy, int pending) =>
+        new(total, healthy, pending);
+
+    /// <summary>The summary the answers make, counted through <see cref="HealthSummary.Of" />: one total for each,
+    /// the healthy and the pending of them counted as they say themselves.</summary>
+    public static HealthSummary Summary(params HealthState[] states) =>
+        HealthSummary.Of(states);
+}

@@ -58,16 +58,22 @@ public sealed record ProcessVitals(
 /// <summary>A process's vitals in the words of the tiles.</summary>
 public static class VitalsText
 {
-    /// <summary><c>3 %</c>; one decimal below ten.</summary>
+    /// <summary>The CPU percent below which the tile keeps one decimal: <see cref="Cpu" /> says <c>3.2 %</c> not <c>3 %</c>.</summary>
+    private const double OneDecimalBelow = 10;
+
+    /// <summary>The megabytes in one gigabyte: <see cref="Memory" /> switches from MB to GB at this point and divides by it.</summary>
+    private const double MegabytesPerGigabyte = 1024;
+
+    /// <summary><c>3 %</c>; one decimal below <see cref="OneDecimalBelow" />.</summary>
     public static string Cpu(double percent) =>
-        percent < 10 && Math.Round(percent, 1) != Math.Round(percent)
+        percent < OneDecimalBelow && Math.Round(percent, 1) != Math.Round(percent)
             ? string.Create(CultureInfo.InvariantCulture, $"{percent:0.0} %")
             : string.Create(CultureInfo.InvariantCulture, $"{percent:0} %");
 
-    /// <summary><c>412 MB</c>, and from 1024 MB on <c>1.4 GB</c>.</summary>
+    /// <summary><c>412 MB</c>, and from <see cref="MegabytesPerGigabyte" /> MB on <c>1.4 GB</c>.</summary>
     public static string Memory(double megabytes) =>
-        megabytes >= 1024
-            ? string.Create(CultureInfo.InvariantCulture, $"{megabytes / 1024:0.0} GB")
+        megabytes >= MegabytesPerGigabyte
+            ? string.Create(CultureInfo.InvariantCulture, $"{megabytes / MegabytesPerGigabyte:0.0} GB")
             : string.Create(CultureInfo.InvariantCulture, $"{megabytes:0} MB");
 
     /// <summary><c>up 2 h</c>; below <see cref="ProcessVitals.RecentRestart" /> <c>restarted 3 min ago</c>.</summary>

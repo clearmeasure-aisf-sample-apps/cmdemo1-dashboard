@@ -97,6 +97,20 @@ public class TestCountsEdgeCaseTests
     public void TheTotalStandsAtTheEndsOfTheCountWithoutSpilling(int? unit, int? integration, int? acceptance, int total) =>
         Assert.Equal(total, new TestCounts(unit, integration, acceptance).Total);
 
+    /// <summary>
+    /// The total the parts cannot make is pinned on purpose, the way <see cref="TestCounts" />'s doc says it is
+    /// decided: added in the <c>int</c> the parts are held in, past the top the total comes back around - the top
+    /// and one more is the bottom, the top twice over is <c>-2</c>, and the bottom twice over is nothing again.
+    /// </summary>
+    [Theory]
+    [InlineData(int.MaxValue, 1, null, int.MinValue)]
+    [InlineData(int.MaxValue, int.MaxValue, null, -2)]
+    [InlineData(null, int.MaxValue, int.MaxValue, -2)]
+    [InlineData(int.MinValue, int.MinValue, null, 0)]
+    [InlineData(int.MinValue, null, int.MinValue, 0)]
+    public void TheTotalPastTheTopComesBackAroundOnPurpose(int? unit, int? integration, int? acceptance, int total) =>
+        Assert.Equal(total, new TestCounts(unit, integration, acceptance).Total);
+
     // ----- the record itself
 
     /// <summary>Two counts are one while their three parts are - each an integer's own equality - and a difference

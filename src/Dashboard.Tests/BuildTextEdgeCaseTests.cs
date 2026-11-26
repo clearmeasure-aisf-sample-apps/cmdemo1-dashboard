@@ -408,6 +408,19 @@ public class BuildTextEdgeCaseTests
         Assert.Equal("2,147,483,647 unit", BuildText.Tests(new TestCounts(int.MaxValue, null, null)));
     }
 
+    /// <summary>
+    /// The card's words of the total the parts cannot make are pinned on purpose, the way <see cref="TestCounts" />
+    /// 's doc says it is decided: the total comes back around in the <c>int</c> the counts are held in, and the
+    /// line says it first, where a reader looks - the top twice over is <c>-2</c> before the colon, and the bottom
+    /// twice over is the zero that adds the two bottoms up.
+    /// </summary>
+    [Theory]
+    [InlineData(int.MaxValue, 1, null, "-2,147,483,648: 2,147,483,647 unit, 1 integration")]
+    [InlineData(int.MaxValue, int.MaxValue, null, "-2: 2,147,483,647 unit, 2,147,483,647 integration")]
+    [InlineData(int.MinValue, int.MinValue, null, "0: -2,147,483,648 unit, -2,147,483,648 integration")]
+    public void TheCardWordOfTheTotalPastTheTopIsTheWrap(int? unit, int? integration, int? acceptance, string expected) =>
+        Assert.Equal(expected, BuildText.Tests(new TestCounts(unit, integration, acceptance)));
+
     /// <summary>Coverage the build did not measure says nothing: no percent of lines, no percent of branches, and
     /// no comma where the two would meet - the empty string, which leaves the line off the card. Either half alone
     /// stands, the zero that was measured is said as <c>0 %</c> rather than left out as if it had not been, and a

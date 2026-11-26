@@ -146,4 +146,35 @@ public class AksAvailabilityEdgeCaseTests
             "AksAvailability { State = Available, Summary = No known problems., Reason = , OccurredAt =  }",
             new AksAvailability(AksAvailability.Available, "No known problems.", null, null).ToString());
     }
+
+    // ------------------------------------------------------------------ the record's own shape
+
+    /// <summary>
+    /// The whole public surface of <see cref="AksAvailability" /> as it stands: its four parts in the order the
+    /// constructor names them, the four state words the constants own, and the members every record is asked -
+    /// falling apart, comparing, hashing and saying itself - and nothing else. A fifth part, a fifth state word,
+    /// or a computed property added to the record without a test is refused here by name.
+    /// </summary>
+    [Fact]
+    public void TheAvailabilityHasFourPartsAndTheFourStateWordsAndTheMembersEveryRecordIsAsked()
+    {
+        Assert.Equal(
+            ["State", "Summary", "Reason", "OccurredAt"],
+            RecordSurface.PropertyNamesOf<AksAvailability>());
+
+        Assert.Equal(
+            [
+                "Available", "Deconstruct", "Degraded", "Equals", "GetHashCode", "OccurredAt", "Reason",
+                "State", "Summary", "ToString", "Unavailable", "Unknown", "op_Equality", "op_Inequality",
+            ],
+            RecordSurface.WithFieldsOf(typeof(AksAvailability)));
+
+        Assert.Equal(
+            ["Available", "Degraded", "Unavailable", "Unknown"],
+            RecordSurface.FieldNamesOf<AksAvailability>());
+
+        var parameters = RecordSurface.ParametersOf<AksAvailability>();
+        Assert.Equal(["State", "Summary", "Reason", "OccurredAt"], [.. parameters.Select(p => p.Name!)]);
+        Assert.Equal([false, true, true, true], RecordSurface.NullableParts<AksAvailability>());
+    }
 }

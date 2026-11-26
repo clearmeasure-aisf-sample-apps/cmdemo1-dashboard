@@ -175,4 +175,38 @@ public class AksMetricsEdgeCaseTests
             text.IndexOf("ApiServerMemoryPercent =", StringComparison.Ordinal) < text.IndexOf("HasAny =", StringComparison.Ordinal),
             text);
     }
+
+    // ------------------------------------------------------------------ the record's own shape
+
+    /// <summary>
+    /// The whole public surface of <see cref="AksMetrics" /> as it stands: its six parts in the order the constructor
+    /// names them, the one computed property the block makes of them (<see cref="AksMetrics.HasAny" />), and the
+    /// members every record is asked - falling apart, comparing, hashing and saying itself - and nothing else. A
+    /// seventh part, a second computed property, or a static helper added to the record without a test is refused
+    /// here by name.
+    /// </summary>
+    [Fact]
+    public void TheMetricsHaveSixPartsAndOneDecisionAndTheMembersEveryRecordIsAsked()
+    {
+        Assert.Equal(
+            ["WindowMinutes", "NodeCpuPercent", "NodeMemoryPercent", "NodeDiskPercent", "ApiServerCpuPercent", "ApiServerMemoryPercent", "HasAny"],
+            RecordSurface.PropertyNamesOf<AksMetrics>());
+
+        Assert.Equal(
+            [
+                "ApiServerCpuPercent", "ApiServerMemoryPercent", "Deconstruct", "Equals", "GetHashCode",
+                "HasAny", "NodeCpuPercent", "NodeDiskPercent", "NodeMemoryPercent", "ToString", "WindowMinutes",
+                "op_Equality", "op_Inequality",
+            ],
+            RecordSurface.Of<AksMetrics>());
+
+        var parameters = RecordSurface.ParametersOf<AksMetrics>();
+        Assert.Equal(
+            ["WindowMinutes", "NodeCpuPercent", "NodeMemoryPercent", "NodeDiskPercent", "ApiServerCpuPercent", "ApiServerMemoryPercent"],
+            [.. parameters.Select(p => p.Name!)]);
+
+        // The first four are required, the last two optional with a default of null.
+        Assert.Equal([true, true, true, true, true, true], RecordSurface.NullableParts<AksMetrics>());
+        Assert.Equal([false, false, false, false, true, true], [.. parameters.Select(p => p.HasDefaultValue)]);
+    }
 }

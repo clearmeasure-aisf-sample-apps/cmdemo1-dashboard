@@ -406,4 +406,34 @@ public class AksPoolEdgeCaseTests
 
         Assert.Equal(("pool-alpha", null, null, null, null, null, null, null), (onlyName, onlyMode, onlyCount, onlySize, onlyDisk, onlyPower, onlyProvisioning, onlyVersion));
     }
+
+    // ------------------------------------------------------------------ the record's own shape
+
+    /// <summary>
+    /// The whole public surface of <see cref="AksPool" /> as it stands: its eight parts in the order the constructor
+    /// names them, and the members every record is asked - falling apart, comparing, hashing and saying itself -
+    /// and nothing else to call. The pool says nothing of its own about its words: no computed property, no static
+    /// field, no helper method. A ninth part, a computed property, or a static word added to the record without a
+    /// test is refused here by name.
+    /// </summary>
+    [Fact]
+    public void ThePoolHasEightPartsAndTheMembersEveryRecordIsAsked()
+    {
+        Assert.Equal(
+            ["Name", "Mode", "Count", "Size", "OsDiskGb", "PowerState", "ProvisioningState", "KubernetesVersion"],
+            RecordSurface.PropertyNamesOf<AksPool>());
+
+        Assert.Equal(
+            [
+                "Count", "Deconstruct", "Equals", "GetHashCode", "KubernetesVersion", "Mode", "Name",
+                "OsDiskGb", "PowerState", "ProvisioningState", "Size", "ToString", "op_Equality", "op_Inequality",
+            ],
+            RecordSurface.Of<AksPool>());
+
+        var parameters = RecordSurface.ParametersOf<AksPool>();
+        Assert.Equal(
+            ["Name", "Mode", "Count", "Size", "OsDiskGb", "PowerState", "ProvisioningState", "KubernetesVersion"],
+            [.. parameters.Select(p => p.Name!)]);
+        Assert.Equal([false, true, true, true, true, true, true, true], RecordSurface.NullableParts<AksPool>());
+    }
 }

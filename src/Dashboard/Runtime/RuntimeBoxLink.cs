@@ -31,11 +31,11 @@ public static class RuntimeBoxLink
         ArgumentNullException.ThrowIfNull(frame);
         return Of(frame.Links, frame.Name, frame.Kind switch
         {
-            "subscription" => "The Azure subscription",
-            "resourceGroup" => $"The resource group {frame.Name}",
-            "frontDoorProfile" => $"The Front Door profile {frame.Name}",
-            "plan" => $"The App Service plan {frame.Name}",
-            "cluster" => $"The AKS cluster {frame.Name}",
+            RuntimeFrameKinds.Subscription => "The Azure subscription",
+            RuntimeFrameKinds.ResourceGroup => $"The resource group {frame.Name}",
+            RuntimeFrameKinds.FrontDoorProfile => $"The Front Door profile {frame.Name}",
+            RuntimeFrameKinds.Plan => $"The App Service plan {frame.Name}",
+            RuntimeFrameKinds.Cluster => $"The AKS cluster {frame.Name}",
             _ => frame.Name,
         });
     }

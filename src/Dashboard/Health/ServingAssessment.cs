@@ -172,7 +172,7 @@ public sealed record ServingAssessment(
         }
 
         var listed = NamedList.Words([.. stopped.Select(node => node.Label)], MostNamed);
-        return $"Front Door rotates over {count - stopped.Count} of {count} regions: {listed} {Plural.Noun(stopped.Count, "is", "are")} not healthy";
+        return $"Front Door rotates over {count - stopped.Count} of {count} regions: {listed} {Plural.Agreement(stopped.Count, "is", "are")} not healthy";
     }
 
     private static (ServingState State, NodeHealth? Expected) Decide(List<NodeHealth> byPriority)

@@ -6,7 +6,7 @@ namespace Dashboard.Tests;
 /// <summary>
 /// <see cref="ComplexityFacts" /> asked from the side that goes out rather than the side that comes in: what the
 /// record's three public parts - the average its methods make, the worst of them and the count of the methods they
-/// are of, declared in <c>src/Dashboard/Health/BuildInfo.cs</c> - hand a JSON writer, and what stands at the end of
+/// are of, declared in <c>src/Dashboard/Health/ComplexityFacts.cs</c> - hand a JSON writer, and what stands at the end of
 /// that when the writing is read back the only way these facts can be read, through
 /// <see cref="BuildInfo.Parse" /> of a build endpoint's answer.
 /// <para>

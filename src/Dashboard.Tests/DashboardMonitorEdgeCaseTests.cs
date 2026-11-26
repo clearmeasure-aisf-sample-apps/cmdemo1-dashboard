@@ -49,14 +49,16 @@ public class DashboardMonitorEdgeCaseTests
 
     // ----- the intervals -----
 
-    /// <summary>The intervals the page and the site agree on: the delivery facts, the cost and the dashboard's own
-    /// build facts are each read every five minutes. The deployments file is read every minute; that one stands in
-    /// <see cref="DeploymentsTests" />.</summary>
+    /// <summary>The intervals the page and the site agree on: the delivery facts, the cost, the work items, Resource
+    /// Health and the dashboard's own build facts are each read every five minutes. The deployments file is read every
+    /// minute; that one stands in <see cref="DeploymentsTests" />.</summary>
     [Fact]
     public void TheDeliveryCostAndDashboardBuildIntervalsAreFiveMinutes()
     {
         Assert.Equal(TimeSpan.FromMinutes(5), DashboardMonitor.DeliveryInterval);
         Assert.Equal(TimeSpan.FromMinutes(5), DashboardMonitor.CostInterval);
+        Assert.Equal(TimeSpan.FromMinutes(5), DashboardMonitor.WorkItemsInterval);
+        Assert.Equal(TimeSpan.FromMinutes(5), DashboardMonitor.ResourceHealthInterval);
         Assert.Equal(TimeSpan.FromMinutes(5), DashboardMonitor.DashboardBuildRetry);
     }
 

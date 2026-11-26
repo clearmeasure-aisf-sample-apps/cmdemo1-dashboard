@@ -334,7 +334,7 @@ public class WorkItemsTests
         Assert.Equal(7, Assert.Single(monitor.WorkItems!.Items).Number);
 
         offline = true;
-        time.Advance(DashboardMonitor.DeliveryInterval);
+        time.Advance(DashboardMonitor.WorkItemsInterval);
         await monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
 
         Assert.Equal(7, Assert.Single(monitor.WorkItems.Items).Number);

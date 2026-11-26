@@ -21,7 +21,7 @@ namespace Dashboard.Tests;
 /// The walk includes this file: the real-value test below is the coverage it is, the last word, not a hole.
 /// </para>
 /// <para>
-/// As of today the allowlist is empty: every one of the 46 methods of the 9 helper types is called by name in at
+/// As of today the allowlist is empty: every one of the 47 methods of the 9 helper types is called by name in at
 /// least one test file. The five whose coverage rests on a single call site elsewhere - <c>ClusterAssessment.
 /// Problems</c>, <c>ClusterEventDetector.Status</c>, <c>ClusterText.PodWords</c>, <c>ClusterText.Cores</c> and
 /// <c>ClusterText.Memory</c> - get a second, independent call with real values in this file.
@@ -79,7 +79,7 @@ public class ClusterHelperCoverageTests
 
     /// <summary>
     /// The guard read the right thing: the source walk reads the eight files of <c>src/Dashboard/Cluster</c>, the
-    /// enumeration names the 46 public static methods of the 9 helper types and agrees, one for one, with what the
+    /// enumeration names the 47 public static methods of the 9 helper types and agrees, one for one, with what the
     /// source declares; and the test walk reaches the tests, reading well over a hundred call sites of the helpers
     /// - among them the string mentions that are not calls, so the read can tell the two apart.
     /// </summary>
@@ -91,12 +91,13 @@ public class ClusterHelperCoverageTests
         var declared = Declared();
 
         Assert.Equal(8, sources.Count);
-        Assert.Equal(46, methods.Count);
+        Assert.Equal(47, methods.Count);
         Assert.Equal(9, methods.Select(method => method.Type).Distinct(StringComparer.Ordinal).Count());
         Assert.Contains("ClusterText.Cores", methods.Select(method => method.Full));
         Assert.Contains("ClusterAssessment.Live", methods.Select(method => method.Full));
         Assert.Contains("AksService.Parse", methods.Select(method => method.Full));
         Assert.Contains("PodRules.StateOf", methods.Select(method => method.Full));
+        Assert.Contains("PodRules.ReadyOutnumbersContainers", methods.Select(method => method.Full));
 
         // The enumeration and the declarations are two reads of the same set: neither may find what the other misses.
         var enumerated = methods.Select(method => method.Full).ToHashSet(StringComparer.Ordinal);

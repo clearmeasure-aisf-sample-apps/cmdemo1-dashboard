@@ -169,4 +169,55 @@ public class PodRulesEdgeCaseTests
         Assert.Equal(PodState.Unhealthy, PodRules.StateOf(ancientRunning, DateTimeOffset.MaxValue));
         Assert.Equal(PodState.Ready, PodRules.StateOf(ancientReady, DateTimeOffset.MaxValue));
     }
+    // ----- The rule the container counts keep -----
+
+    /// <summary>
+    /// The pod holds its two container numbers as the file gives them (<see cref="ClusterPodEdgeCaseTests" />);
+    /// <see cref="PodRules.ReadyOutnumbersContainers" /> is where the one thing they may not say gets its name:
+    /// more ready than there are. As many ready as there are, fewer, none, or a number the file leaves out is not
+    /// impossible, and neither is the nothing on both sides.
+    /// </summary>
+    [Theory]
+    [InlineData(1, 3, true)]
+    [InlineData(0, 1, true)]
+    [InlineData(int.MaxValue - 1, int.MaxValue, true)]
+    [InlineData(-1, 0, true)]
+    [InlineData(1, 1, false)]
+    [InlineData(3, 0, false)]
+    [InlineData(0, 0, false)]
+    [InlineData(int.MaxValue, int.MaxValue, false)]
+    [InlineData(null, 3, false)]
+    [InlineData(1, null, false)]
+    [InlineData(null, null, false)]
+    public void ReadyOutnumbersContainersOnlyWhenTheFileSaysMoreReadyThanThereAre(int? containers, int? ready, bool impossible)
+    {
+        var pod = ClusterFixture.SilentPod("ui-0") with { Containers = containers, ContainersReady = ready };
+
+        Assert.Equal(impossible, PodRules.ReadyOutnumbersContainers(pod));
+        Assert.Equal(containers, pod.Containers);
+        Assert.Equal(ready, pod.ContainersReady);
+    }
+
+    /// <summary>
+    /// A file that says one container and three ready is still read as it is - the reader works out nothing - and
+    /// the rule names what it says as impossible, while the state the phase and readiness make is untouched by it.
+    /// </summary>
+    [Fact]
+    public void AFileThatSaysMoreReadyThanThereAreIsReadAsItIsAndNamedImpossible()
+    {
+        var parsed = ClusterStatus.Parse(
+            """{"namespaces":[{"name":"web","pods":[{"name":"ui-0","phase":"Running","ready":true,"containers":1,"containersReady":3}]}]}""");
+
+        var pod = Assert.Single(parsed.Value!.Pods).Pod;
+        Assert.Equal((1, 3), (pod.Containers, pod.ContainersReady));
+        Assert.True(PodRules.ReadyOutnumbersContainers(pod));
+        Assert.Equal(PodState.Ready, PodRules.StateOf(pod, Generated));
+    }
+
+    /// <summary>The rule asks a pod: it refuses the nothing rather than answer for a pod that is not there.</summary>
+    [Fact]
+    public void ReadyOutnumbersContainersRefusesTheNothing()
+    {
+        Assert.Throws<ArgumentNullException>(() => PodRules.ReadyOutnumbersContainers(null!));
+    }
 }

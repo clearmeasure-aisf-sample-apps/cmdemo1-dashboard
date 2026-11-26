@@ -72,8 +72,8 @@ public class ClusterEventDetectorTests
     [Fact]
     public void ARestartCountThatRoseIsAnEventOfThePodsEnvironment()
     {
-        var before = With(ClusterFixture.Pod("ui", ready: false, restarts: 6, reason: "CrashLoopBackOff"));
-        var after = With(ClusterFixture.Pod("ui", ready: false, restarts: 7, reason: "CrashLoopBackOff"));
+        var before = With(ClusterFixture.Pod("ui", restarts: 6, reason: "CrashLoopBackOff").NotReady());
+        var after = With(ClusterFixture.Pod("ui", restarts: 7, reason: "CrashLoopBackOff").NotReady());
 
         Assert.Equal([Event(EventLevel.Warning, "tdd", "ui in cmdemo3-tdd restarted (7 restarts): CrashLoopBackOff")], Between(before, after));
     }
@@ -91,8 +91,8 @@ public class ClusterEventDetectorTests
     public void APodThatBecomesUnhealthyAndOneThatIsReadyAgainAreEvents()
     {
         var ready = With(ClusterFixture.Pod("ui"));
-        var failing = With(ClusterFixture.Pod("ui", ready: false, reason: "ImagePullBackOff"));
-        var quiet = With(ClusterFixture.Pod("ui", ready: false));
+        var failing = With(ClusterFixture.Pod("ui", reason: "ImagePullBackOff").NotReady());
+        var quiet = With(ClusterFixture.Pod("ui").NotReady());
 
         Assert.Equal([Event(EventLevel.Warning, "tdd", "ui in cmdemo3-tdd is unhealthy: ImagePullBackOff")], Between(ready, failing));
         Assert.Equal([Event(EventLevel.Warning, "tdd", "ui in cmdemo3-tdd is unhealthy: not ready")], Between(ready, quiet));
@@ -104,7 +104,7 @@ public class ClusterEventDetectorTests
     public void APodHasOneEventPerRoundAndTheRestartComesFirst()
     {
         var before = With(ClusterFixture.Pod("ui"));
-        var after = With(ClusterFixture.Pod("ui", ready: false, restarts: 1, reason: "CrashLoopBackOff"));
+        var after = With(ClusterFixture.Pod("ui", restarts: 1, reason: "CrashLoopBackOff").NotReady());
 
         Assert.Equal([Event(EventLevel.Warning, "tdd", "ui in cmdemo3-tdd restarted (1 restart): CrashLoopBackOff")], Between(before, after));
     }
@@ -113,8 +113,8 @@ public class ClusterEventDetectorTests
     public void ANewPodIsAnEventOnlyWhenItIsUnhealthyAndAPodThatStartsIsNone()
     {
         var before = With(ClusterFixture.Pod("ui"));
-        var replaced = With(ClusterFixture.Pod("ui"), ClusterFixture.Pod("ui", name: "ui-1", ready: false, age: TimeSpan.FromSeconds(20)));
-        var evicted = With(ClusterFixture.Pod("ui"), ClusterFixture.Pod("ui", ClusterPod.Failed, false, restarts: 3, reason: "Evicted", name: "ui-1"));
+        var replaced = With(ClusterFixture.Pod("ui"), ClusterFixture.Pod("ui", name: "ui-1").NotReady().Started(TimeSpan.FromSeconds(20)));
+        var evicted = With(ClusterFixture.Pod("ui"), ClusterFixture.Pod("ui", ClusterPod.Failed, restarts: 3, reason: "Evicted", name: "ui-1").NotReady());
 
         Assert.Empty(Between(before, replaced));
         Assert.Equal([Event(EventLevel.Warning, "tdd", "ui in cmdemo3-tdd is unhealthy: Evicted")], Between(before, evicted));
@@ -124,8 +124,8 @@ public class ClusterEventDetectorTests
     [Fact]
     public void APodThatOutgrowsItsGraceBecomesUnhealthy()
     {
-        var young = With(ClusterFixture.Pod("ui", ClusterPod.Pending, false, age: TimeSpan.FromMinutes(4)));
-        var old = With(ClusterFixture.Pod("ui", ClusterPod.Pending, false, age: TimeSpan.FromMinutes(6)));
+        var young = With(ClusterFixture.Pod("ui", ClusterPod.Pending).NotReady().Started(TimeSpan.FromMinutes(4)));
+        var old = With(ClusterFixture.Pod("ui", ClusterPod.Pending).NotReady().Started(TimeSpan.FromMinutes(6)));
 
         Assert.Equal([Event(EventLevel.Warning, "tdd", "ui in cmdemo3-tdd is unhealthy: Pending for 6 min")], Between(young, old));
     }
@@ -135,7 +135,7 @@ public class ClusterEventDetectorTests
     {
         var names = Enumerable.Range(1, 14).Select(index => $"app{index:00}").ToList();
         var before = With([.. names.Select(name => ClusterFixture.Pod(name))]);
-        var after = With([.. names.Select(name => ClusterFixture.Pod(name, ready: false))]);
+        var after = With([.. names.Select(name => ClusterFixture.Pod(name).NotReady())]);
 
         var events = Between(before, after);
 

@@ -126,7 +126,7 @@ public class ClusterDeliveryHelperTests
     [InlineData(ClusterPod.Unknown, "ContainerStatusUnknown", 2, 86400, "api in apps: ContainerStatusUnknown, 2 restarts")]
     public void AProblemWithAPodNamesThePodWhatItSaysAndHowOftenItRestarted(string phase, string? reason, int restarts, int ageSeconds, string expected)
     {
-        var pod = ClusterFixture.Pod("api", phase, ready: false, restarts: restarts, reason: reason, age: TimeSpan.FromSeconds(ageSeconds));
+        var pod = ClusterFixture.Pod("api", phase, restarts: restarts, reason: reason).NotReady().Started(TimeSpan.FromSeconds(ageSeconds));
 
         Assert.Equal(expected, ClusterAssessment.PodProblem(pod, "apps", Generated));
     }
@@ -134,7 +134,7 @@ public class ClusterDeliveryHelperTests
     [Fact]
     public void APendingPodThatDoesNotSayWhenItStartedIsPendingWithoutAnAge()
     {
-        var pod = ClusterFixture.Pod("new", ClusterPod.Pending, ready: false, started: false);
+        var pod = ClusterFixture.Pod("new", ClusterPod.Pending).NotReady().StartedAt(null);
 
         Assert.Equal("new in apps: Pending", ClusterAssessment.PodProblem(pod, "apps", Generated));
         Assert.Equal("new in cmdemo3-tdd: Pending", ClusterAssessment.PodProblem(pod, "cmdemo3-tdd", Generated));
@@ -143,7 +143,7 @@ public class ClusterDeliveryHelperTests
     [Fact]
     public void APodsAgeInAProblemIsCountedToTheMomentTheFactsAreOf()
     {
-        var pod = ClusterFixture.Pod("slow", ClusterPod.Pending, ready: false, age: TimeSpan.FromMinutes(12));
+        var pod = ClusterFixture.Pod("slow", ClusterPod.Pending).NotReady().Started(TimeSpan.FromMinutes(12));
 
         // It started 12 min before the file was written: at that moment the pod is 12 min old (minutes are said up
         // to two hours), with a status a shift later it is 12 h old (hours are said up to two days).

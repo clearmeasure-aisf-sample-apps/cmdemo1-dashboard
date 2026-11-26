@@ -57,11 +57,11 @@ public class ClusterGroupsTests
             ClusterFixture.Space(
                 "apps",
                 ClusterFixture.Pod("web"),
-                ClusterFixture.Pod("backup", ClusterPod.Succeeded, false, reason: "Completed"),
-                ClusterFixture.Pod("new", ready: false, age: TimeSpan.FromSeconds(30)),
+                ClusterFixture.Pod("backup", ClusterPod.Succeeded, reason: "Completed").NotReady(),
+                ClusterFixture.Pod("new").NotReady().Started(TimeSpan.FromSeconds(30)),
                 ClusterFixture.Pod("api", name: "api-b"),
                 ClusterFixture.Pod("api", name: "api-a"),
-                ClusterFixture.Pod("broken", ready: false, restarts: 4, reason: "CrashLoopBackOff"),
+                ClusterFixture.Pod("broken", restarts: 4, reason: "CrashLoopBackOff").NotReady(),
                 ClusterFixture.Pod("Cache")));
 
         var group = Assert.Single(ClusterGroups.Of(status, [], Generated).Platform);
@@ -88,7 +88,7 @@ public class ClusterGroupsTests
     [Fact]
     public void ANamespaceWhosePodsReportNoUsageHasNoSumOfIt()
     {
-        var space = ClusterFixture.Space("jobs", ClusterFixture.Pod("backup", ClusterPod.Succeeded, false) with { Cpu = ResourceUse.None, Memory = ResourceUse.None });
+        var space = ClusterFixture.Space("jobs", ClusterFixture.Pod("backup", ClusterPod.Succeeded).NotReady() with { Cpu = ResourceUse.None, Memory = ResourceUse.None });
 
         var group = Assert.Single(ClusterGroups.Of(ClusterFixture.Status(null, space), [], Generated).Platform);
 
@@ -104,16 +104,16 @@ public class ClusterGroupsTests
             ClusterFixture.Status(
                 null,
                 ClusterFixture.Space("argocd", ClusterFixture.Pod("server"), ClusterFixture.Pod("repo")),
-                ClusterFixture.Space("kube-system", ClusterFixture.Pod("coredns"), ClusterFixture.Pod("job", ClusterPod.Succeeded, false)),
-                ClusterFixture.Space("cmdemo3-tdd", ClusterFixture.Pod("ui", ready: false, restarts: 7, reason: "CrashLoopBackOff"))),
+                ClusterFixture.Space("kube-system", ClusterFixture.Pod("coredns"), ClusterFixture.Pod("job", ClusterPod.Succeeded).NotReady()),
+                ClusterFixture.Space("cmdemo3-tdd", ClusterFixture.Pod("ui", restarts: 7, reason: "CrashLoopBackOff").NotReady())),
             Environments,
             Generated);
         var broken = ClusterGroups.Of(
-            ClusterFixture.Status(null, ClusterFixture.Space("argocd", ClusterFixture.Pod("server", ready: false))),
+            ClusterFixture.Status(null, ClusterFixture.Space("argocd", ClusterFixture.Pod("server").NotReady())),
             Environments,
             Generated);
         var starting = ClusterGroups.Of(
-            ClusterFixture.Status(null, ClusterFixture.Space("argocd", ClusterFixture.Pod("server", ready: false, age: TimeSpan.FromSeconds(10)))),
+            ClusterFixture.Status(null, ClusterFixture.Space("argocd", ClusterFixture.Pod("server").NotReady().Started(TimeSpan.FromSeconds(10)))),
             Environments,
             Generated);
 

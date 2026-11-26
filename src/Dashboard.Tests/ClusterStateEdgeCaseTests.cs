@@ -90,9 +90,9 @@ public class ClusterStateEdgeCaseTests
     [Fact]
     public void APodThatStartsAfterTheFactsAreOfCountsAsYoung()
     {
-        var ahead = ClusterFixture.Pod("ui", ClusterPod.Running, ready: false, age: TimeSpan.FromMinutes(-5));
-        var onTheDot = ClusterFixture.Pod("ui", ClusterPod.Running, ready: false, age: TimeSpan.Zero);
-        var waiting = ClusterFixture.Pod("ui", ClusterPod.Pending, false, age: TimeSpan.FromMinutes(-5));
+        var ahead = ClusterFixture.Pod("ui", ClusterPod.Running).NotReady().Started(TimeSpan.FromMinutes(-5));
+        var onTheDot = ClusterFixture.Pod("ui", ClusterPod.Running).NotReady().Started(TimeSpan.Zero);
+        var waiting = ClusterFixture.Pod("ui", ClusterPod.Pending).NotReady().Started(TimeSpan.FromMinutes(-5));
 
         Assert.Equal(PodState.Starting, PodRules.StateOf(ahead, Generated));
         Assert.Equal(PodState.Starting, PodRules.StateOf(onTheDot, Generated));
@@ -103,7 +103,7 @@ public class ClusterStateEdgeCaseTests
     /// finished however ready it is, the readiness the page would call a problem never read.</summary>
     [Fact]
     public void APodThatFinishedIsFinishedHoweverReadyItIs() =>
-        Assert.Equal(PodState.Finished, PodRules.StateOf(ClusterFixture.Pod("job", ClusterPod.Succeeded, ready: true), Generated));
+        Assert.Equal(PodState.Finished, PodRules.StateOf(ClusterFixture.Pod("job", ClusterPod.Succeeded).Ready(), Generated));
 
     // ----- The record -----
 
@@ -284,10 +284,10 @@ public class ClusterStateEdgeCaseTests
             null,
             ClusterFixture.Space(
                 "apps",
-                ClusterFixture.Pod("one", ready: false, age: TimeSpan.FromSeconds(30)),
-                ClusterFixture.Pod("two", ready: false, age: TimeSpan.FromSeconds(30)),
-                ClusterFixture.Pod("three", ready: false, age: TimeSpan.FromSeconds(30)),
-                ClusterFixture.Pod("four", ready: false, age: TimeSpan.FromSeconds(30))));
+                ClusterFixture.Pod("one").NotReady().Started(TimeSpan.FromSeconds(30)),
+                ClusterFixture.Pod("two").NotReady().Started(TimeSpan.FromSeconds(30)),
+                ClusterFixture.Pod("three").NotReady().Started(TimeSpan.FromSeconds(30)),
+                ClusterFixture.Pod("four").NotReady().Started(TimeSpan.FromSeconds(30))));
 
         Assert.Equal(
             new ClusterAssessment(
@@ -340,9 +340,9 @@ public class ClusterStateEdgeCaseTests
             null,
             ClusterFixture.Space(
                 "apps",
-                ClusterFixture.Pod("ui", ready: false, age: TimeSpan.FromSeconds(40)),
-                ClusterFixture.Pod("db", ClusterPod.Pending, false, started: false),
-                ClusterFixture.Pod("job", ClusterPod.Succeeded, false, reason: "Completed"),
+                ClusterFixture.Pod("ui").NotReady().Started(TimeSpan.FromSeconds(40)),
+                ClusterFixture.Pod("db", ClusterPod.Pending).NotReady().StartedAt(null),
+                ClusterFixture.Pod("job", ClusterPod.Succeeded, reason: "Completed").NotReady(),
                 ClusterFixture.Pod("ok")));
 
         Assert.Empty(ClusterAssessment.Problems(status, Generated));
@@ -358,9 +358,9 @@ public class ClusterStateEdgeCaseTests
             null,
             ClusterFixture.Space(
                 "apps",
-                ClusterFixture.Pod("lost", ClusterPod.Unknown, false),
-                ClusterFixture.Pod("slow", ClusterPod.Pending, false, age: TimeSpan.FromMinutes(12)),
-                ClusterFixture.Pod("api", ready: false, restarts: 2, reason: "CrashLoopBackOff")));
+                ClusterFixture.Pod("lost", ClusterPod.Unknown).NotReady(),
+                ClusterFixture.Pod("slow", ClusterPod.Pending).NotReady().Started(TimeSpan.FromMinutes(12)),
+                ClusterFixture.Pod("api", restarts: 2, reason: "CrashLoopBackOff").NotReady()));
 
         Assert.Equal(
             [
@@ -378,7 +378,7 @@ public class ClusterStateEdgeCaseTests
     [Fact]
     public void APodThatIsInNoSpaceIsSaidToBeInNone()
     {
-        Assert.Equal("ui in : not ready", ClusterAssessment.PodProblem(ClusterFixture.Pod("ui", ready: false), null!, Generated));
+        Assert.Equal("ui in : not ready", ClusterAssessment.PodProblem(ClusterFixture.Pod("ui").NotReady(), null!, Generated));
     }
 
     // ----- ClusterAssessment.Named -----

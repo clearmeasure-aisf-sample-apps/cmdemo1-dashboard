@@ -32,7 +32,7 @@ public class ClusterEventDetectorPlaceTests
 
         var names = Enumerable.Range(1, 12).Select(index => $"app{index:00}").ToList();
         var ready = With([ClusterFixture.Node()], [.. names.Select(name => ClusterFixture.Pod(name))]);
-        var failing = With([ClusterFixture.Node(ready: false)], [.. names.Select(name => ClusterFixture.Pod(name, ready: false))]);
+        var failing = With([ClusterFixture.Node(ready: false)], [.. names.Select(name => ClusterFixture.Pod(name).NotReady())]);
         events.AddRange(ClusterEventDetector.Status(ready, failing, Environments, Now));
         events.AddRange(ClusterEventDetector.Status(failing, ready, Environments, Now));
         return events;
@@ -74,7 +74,7 @@ public class ClusterEventDetectorPlaceTests
     {
         var names = Enumerable.Range(1, 12).Select(index => $"app{index:00}").ToList();
         var ready = With([ClusterFixture.Node()], [.. names.Select(name => ClusterFixture.Pod(name))]);
-        var failing = With([ClusterFixture.Node(ready: false)], [.. names.Select(name => ClusterFixture.Pod(name, ready: false))]);
+        var failing = With([ClusterFixture.Node(ready: false)], [.. names.Select(name => ClusterFixture.Pod(name).NotReady())]);
 
         var events = ClusterEventDetector.Status(ready, failing, Environments, Now);
 

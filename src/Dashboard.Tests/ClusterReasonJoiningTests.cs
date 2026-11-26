@@ -22,8 +22,8 @@ public class ClusterReasonJoiningTests
     [InlineData("CrashLoopBackOff..")]
     public void ARestartSaysAReasonTrimmed(string reason)
     {
-        var before = With(ClusterFixture.Pod("ui", ready: false, restarts: 6, reason: reason));
-        var after = With(ClusterFixture.Pod("ui", ready: false, restarts: 7, reason: reason));
+        var before = With(ClusterFixture.Pod("ui", restarts: 6, reason: reason).NotReady());
+        var after = With(ClusterFixture.Pod("ui", restarts: 7, reason: reason).NotReady());
 
         Assert.Equal(
             [new DashboardEvent(Now, EventKind.Cluster, EventLevel.Warning, "tdd", "cluster", "ui in cmdemo3-tdd restarted (7 restarts): CrashLoopBackOff")],
@@ -33,8 +33,8 @@ public class ClusterReasonJoiningTests
     [Fact]
     public void ARestartWithAReasonOfOnlySpacesSaysNoReason()
     {
-        var before = With(ClusterFixture.Pod("ui", ready: false, restarts: 6, reason: "  "));
-        var after = With(ClusterFixture.Pod("ui", ready: false, restarts: 7, reason: "  "));
+        var before = With(ClusterFixture.Pod("ui", restarts: 6, reason: "  ").NotReady());
+        var after = With(ClusterFixture.Pod("ui", restarts: 7, reason: "  ").NotReady());
 
         Assert.Equal(
             [new DashboardEvent(Now, EventKind.Cluster, EventLevel.Warning, "tdd", "cluster", "ui in cmdemo3-tdd restarted (7 restarts)")],
@@ -45,7 +45,7 @@ public class ClusterReasonJoiningTests
     public void AnUnhealthyPodSaysItsReasonTrimmed()
     {
         var ready = With(ClusterFixture.Pod("ui"));
-        var failing = With(ClusterFixture.Pod("ui", ready: false, reason: "ImagePullBackOff. "));
+        var failing = With(ClusterFixture.Pod("ui", reason: "ImagePullBackOff. ").NotReady());
 
         Assert.Equal(
             [new DashboardEvent(Now, EventKind.Cluster, EventLevel.Warning, "tdd", "cluster", "ui in cmdemo3-tdd is unhealthy: ImagePullBackOff")],
@@ -57,19 +57,19 @@ public class ClusterReasonJoiningTests
     {
         Assert.Equal(
             "CrashLoopBackOff",
-            ClusterText.PodWords(ClusterFixture.Pod("ui", ready: false, restarts: 7, reason: "CrashLoopBackOff. "), PodState.Unhealthy, Generated));
+            ClusterText.PodWords(ClusterFixture.Pod("ui", restarts: 7, reason: "CrashLoopBackOff. ").NotReady(), PodState.Unhealthy, Generated));
         Assert.Equal(
             "Starting: ContainerCreating",
-            ClusterText.PodWords(ClusterFixture.Pod("ui", ready: false, reason: " ContainerCreating."), PodState.Starting, Generated));
+            ClusterText.PodWords(ClusterFixture.Pod("ui", reason: " ContainerCreating.").NotReady(), PodState.Starting, Generated));
         Assert.Equal(
             "Starting",
-            ClusterText.PodWords(ClusterFixture.Pod("ui", ready: false, reason: " . "), PodState.Starting, Generated));
+            ClusterText.PodWords(ClusterFixture.Pod("ui", reason: " . ").NotReady(), PodState.Starting, Generated));
         Assert.Equal(
             "Pending for 90 min: Unschedulable",
-            ClusterText.PodWords(ClusterFixture.Pod("new", ClusterPod.Pending, false, reason: "Unschedulable. ", age: TimeSpan.FromMinutes(90)), PodState.Unhealthy, Generated));
+            ClusterText.PodWords(ClusterFixture.Pod("new", ClusterPod.Pending, reason: "Unschedulable. ").NotReady().Started(TimeSpan.FromMinutes(90)), PodState.Unhealthy, Generated));
         Assert.Equal(
             "Evicted",
-            ClusterText.PodWords(ClusterFixture.Pod("ui", ClusterPod.Failed, false, reason: "Evicted."), PodState.Unhealthy, Generated));
+            ClusterText.PodWords(ClusterFixture.Pod("ui", ClusterPod.Failed, reason: "Evicted.").NotReady(), PodState.Unhealthy, Generated));
     }
 
     [Fact]
@@ -77,6 +77,6 @@ public class ClusterReasonJoiningTests
     {
         Assert.Equal(
             "ui in cmdemo3-tdd: CrashLoopBackOff, 7 restarts",
-            ClusterAssessment.PodProblem(ClusterFixture.Pod("ui", ready: false, restarts: 7, reason: "CrashLoopBackOff. "), "cmdemo3-tdd", Generated));
+            ClusterAssessment.PodProblem(ClusterFixture.Pod("ui", restarts: 7, reason: "CrashLoopBackOff. ").NotReady(), "cmdemo3-tdd", Generated));
     }
 }

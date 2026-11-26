@@ -104,8 +104,8 @@ public class ClusterAssessmentEdgeCaseTests
     [Fact]
     public void WhatIsWrongIsSaidBeforeWhatIsOnlyStarting()
     {
-        var starting = ClusterFixture.Pod("ui", ready: false, age: TimeSpan.FromSeconds(40));
-        var broken = ClusterFixture.Pod("api", ready: false, restarts: 2, reason: "CrashLoopBackOff");
+        var starting = ClusterFixture.Pod("ui").NotReady().Started(TimeSpan.FromSeconds(40));
+        var broken = ClusterFixture.Pod("api", restarts: 2, reason: "CrashLoopBackOff").NotReady();
 
         Assert.Equal(
             new ClusterAssessment(ClusterState.Unhealthy, "Unhealthy", "api in apps: CrashLoopBackOff, 2 restarts"),
@@ -295,9 +295,9 @@ public class ClusterAssessmentEdgeCaseTests
         Assert.Equal("ui in apps: not ready", ClusterAssessment.PodProblem(ClusterFixture.Pod("ui"), "apps", Generated));
         Assert.Equal(
             "job in apps: Completed",
-            ClusterAssessment.PodProblem(ClusterFixture.Pod("job", ClusterPod.Succeeded, false, reason: "Completed"), "apps", Generated));
+            ClusterAssessment.PodProblem(ClusterFixture.Pod("job", ClusterPod.Succeeded, reason: "Completed").NotReady(), "apps", Generated));
         Assert.Equal(
             "new in apps: Pending for 90 min",
-            ClusterAssessment.PodProblem(ClusterFixture.Pod("new", ClusterPod.Pending, ready: true, age: TimeSpan.FromMinutes(90)), "apps", Generated));
+            ClusterAssessment.PodProblem(ClusterFixture.Pod("new", ClusterPod.Pending).Ready().Started(TimeSpan.FromMinutes(90)), "apps", Generated));
     }
 }

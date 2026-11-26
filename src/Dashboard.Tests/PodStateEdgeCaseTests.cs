@@ -36,9 +36,14 @@ public class PodStateEdgeCaseTests
     private static readonly DateTimeOffset AsOf = new(2026, 10, 6, 20, 15, 30, TimeSpan.Zero);
 
     /// <summary>A pod of a phase and a readiness, started so long before <see cref="AsOf" /> - or, for
-    /// <see langword="null" />, saying nothing about when it started.</summary>
-    private static ClusterPod Aged(string phase, bool ready, TimeSpan? age) =>
-        ClusterFixture.Pod("ui", phase, ready, started: false) with { StartedAt = age is { } span ? AsOf - span : null };
+    /// <see langword="null" />, saying nothing about when it started: the readiness and the start are the
+    /// pod-level steps the pod carries rather than the flags a factory used to gate.</summary>
+    private static ClusterPod Aged(string phase, bool ready, TimeSpan? age)
+    {
+        var pod = ClusterFixture.Pod("ui", phase);
+        pod = ready ? pod.Ready() : pod.NotReady();
+        return pod.StartedAt(age is { } span ? AsOf - span : null);
+    }
 
     // ------------------------------------------------------------------------ the four states
 

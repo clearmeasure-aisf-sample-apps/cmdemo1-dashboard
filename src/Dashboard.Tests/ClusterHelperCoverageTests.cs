@@ -150,8 +150,8 @@ public class ClusterHelperCoverageTests
             [ClusterFixture.Node("aks-system-12148983-vmss000002", ready: false)],
             ClusterFixture.Space(
                 "apps",
-                ClusterFixture.Pod("gone", ClusterPod.Failed, false, reason: "Evicted"),
-                ClusterFixture.Pod("ui", ready: false, restarts: 2, reason: "CrashLoopBackOff")));
+                ClusterFixture.Pod("gone", ClusterPod.Failed, reason: "Evicted").NotReady(),
+                ClusterFixture.Pod("ui", restarts: 2, reason: "CrashLoopBackOff").NotReady()));
 
         Assert.Equal(
             [
@@ -173,10 +173,10 @@ public class ClusterHelperCoverageTests
         EnvironmentInfo[] environments = [ClusterFixture.Environment("tdd", "cmdemo3-tdd")];
         var before = ClusterFixture.Status(
             [ClusterFixture.Node()],
-            ClusterFixture.Space("cmdemo3-tdd", ClusterFixture.Pod("ui", ready: false, restarts: 6, reason: "CrashLoopBackOff")));
+            ClusterFixture.Space("cmdemo3-tdd", ClusterFixture.Pod("ui", restarts: 6, reason: "CrashLoopBackOff").NotReady()));
         var after = ClusterFixture.Status(
             [ClusterFixture.Node(ready: false)],
-            ClusterFixture.Space("cmdemo3-tdd", ClusterFixture.Pod("ui", ready: false, restarts: 7, reason: "CrashLoopBackOff")));
+            ClusterFixture.Space("cmdemo3-tdd", ClusterFixture.Pod("ui", restarts: 7, reason: "CrashLoopBackOff").NotReady()));
 
         Assert.Equal(
             [
@@ -194,12 +194,12 @@ public class ClusterHelperCoverageTests
         var asOf = ClusterFixture.Generated;
 
         Assert.Equal("Ready", ClusterText.PodWords(ClusterFixture.Pod("ui"), PodState.Ready, asOf));
-        Assert.Equal("Finished", ClusterText.PodWords(ClusterFixture.Pod("job", ClusterPod.Succeeded, false, reason: "Completed"), PodState.Finished, asOf));
-        Assert.Equal("Starting", ClusterText.PodWords(ClusterFixture.Pod("ui", ready: false, age: TimeSpan.FromSeconds(30)), PodState.Starting, asOf));
-        Assert.Equal("CrashLoopBackOff", ClusterText.PodWords(ClusterFixture.Pod("ui", ready: false, restarts: 7, reason: "CrashLoopBackOff"), PodState.Unhealthy, asOf));
-        Assert.Equal("Not ready", ClusterText.PodWords(ClusterFixture.Pod("ui", ready: false), PodState.Unhealthy, asOf));
-        Assert.Equal("Pending for 12 min", ClusterText.PodWords(ClusterFixture.Pod("ui", ClusterPod.Pending, false, age: TimeSpan.FromMinutes(12)), PodState.Unhealthy, asOf));
-        Assert.Equal("Pending for 12 min: ImagePullBackOff", ClusterText.PodWords(ClusterFixture.Pod("ui", ClusterPod.Pending, false, reason: "ImagePullBackOff", age: TimeSpan.FromMinutes(12)), PodState.Unhealthy, asOf));
+        Assert.Equal("Finished", ClusterText.PodWords(ClusterFixture.Pod("job", ClusterPod.Succeeded, reason: "Completed").NotReady(), PodState.Finished, asOf));
+        Assert.Equal("Starting", ClusterText.PodWords(ClusterFixture.Pod("ui").NotReady().Started(TimeSpan.FromSeconds(30)), PodState.Starting, asOf));
+        Assert.Equal("CrashLoopBackOff", ClusterText.PodWords(ClusterFixture.Pod("ui", restarts: 7, reason: "CrashLoopBackOff").NotReady(), PodState.Unhealthy, asOf));
+        Assert.Equal("Not ready", ClusterText.PodWords(ClusterFixture.Pod("ui").NotReady(), PodState.Unhealthy, asOf));
+        Assert.Equal("Pending for 12 min", ClusterText.PodWords(ClusterFixture.Pod("ui", ClusterPod.Pending).NotReady().Started(TimeSpan.FromMinutes(12)), PodState.Unhealthy, asOf));
+        Assert.Equal("Pending for 12 min: ImagePullBackOff", ClusterText.PodWords(ClusterFixture.Pod("ui", ClusterPod.Pending, reason: "ImagePullBackOff").NotReady().Started(TimeSpan.FromMinutes(12)), PodState.Unhealthy, asOf));
     }
 
     /// <summary>Millicores as cores, without the unit: the node's <c>0.81</c>, the whole number of a core, and

@@ -71,12 +71,12 @@ public class NamespaceGroupTests
             ClusterFixture.Space(
                 "apps",
                 ClusterFixture.Pod("web"),
-                ClusterFixture.Pod("backup", ClusterPod.Succeeded, false, reason: "Completed"),
-                ClusterFixture.Pod("new", ready: false, age: TimeSpan.FromSeconds(30)),
+                ClusterFixture.Pod("backup", ClusterPod.Succeeded, reason: "Completed").NotReady(),
+                ClusterFixture.Pod("new").NotReady().Started(TimeSpan.FromSeconds(30)),
                 ClusterFixture.Pod("api", name: "api-b"),
                 ClusterFixture.Pod("api", name: "api-a"),
-                ClusterFixture.Pod("broken", ready: false, restarts: 4, reason: "CrashLoopBackOff"),
-                ClusterFixture.Pod("late", ClusterPod.Pending, false, age: TimeSpan.FromMinutes(10)),
+                ClusterFixture.Pod("broken", restarts: 4, reason: "CrashLoopBackOff").NotReady(),
+                ClusterFixture.Pod("late", ClusterPod.Pending).NotReady().Started(TimeSpan.FromMinutes(10)),
                 ClusterFixture.Pod("Zeta")));
 
         var group = Assert.Single(ClusterGroups.Of(status, [], Generated).Platform);
@@ -100,9 +100,9 @@ public class NamespaceGroupTests
             [
                 new PodRow(ClusterFixture.Pod("web"), PodState.Ready),
                 new PodRow(ClusterFixture.Pod("api", restarts: 2) with { Cpu = new ResourceUse(25, 100, 500) }, PodState.Ready),
-                new PodRow(ClusterFixture.Pod("new", ready: false, age: TimeSpan.FromSeconds(30), restarts: 1) with { Cpu = new ResourceUse(5, 100, 500) }, PodState.Starting),
-                new PodRow(ClusterFixture.Pod("broken", ready: false, restarts: 4) with { Cpu = ResourceUse.None }, PodState.Unhealthy),
-                new PodRow(ClusterFixture.Pod("backup", ClusterPod.Succeeded, false) with { Cpu = new ResourceUse(0.5, 0, null) }, PodState.Finished),
+                new PodRow(ClusterFixture.Pod("new", restarts: 1).NotReady().Started(TimeSpan.FromSeconds(30)) with { Cpu = new ResourceUse(5, 100, 500) }, PodState.Starting),
+                new PodRow(ClusterFixture.Pod("broken", restarts: 4).NotReady() with { Cpu = ResourceUse.None }, PodState.Unhealthy),
+                new PodRow(ClusterFixture.Pod("backup", ClusterPod.Succeeded).NotReady() with { Cpu = new ResourceUse(0.5, 0, null) }, PodState.Finished),
             ],
             []);
 
@@ -119,7 +119,7 @@ public class NamespaceGroupTests
             "jobs",
             null,
             true,
-            [new PodRow(ClusterFixture.Pod("backup", ClusterPod.Succeeded, false) with { Cpu = ResourceUse.None, Memory = ResourceUse.None }, PodState.Finished)],
+            [new PodRow(ClusterFixture.Pod("backup", ClusterPod.Succeeded).NotReady() with { Cpu = ResourceUse.None, Memory = ResourceUse.None }, PodState.Finished)],
             []);
 
         Assert.Equal((0, 0, 1), (group.Ready, group.Total, group.Finished));
@@ -134,15 +134,15 @@ public class NamespaceGroupTests
             ClusterFixture.Status(
                 null,
                 ClusterFixture.Space("a", ClusterFixture.Pod("web")),
-                ClusterFixture.Space("b", ClusterFixture.Pod("job", ClusterPod.Succeeded, false, reason: "Completed"))),
+                ClusterFixture.Space("b", ClusterFixture.Pod("job", ClusterPod.Succeeded, reason: "Completed").NotReady())),
             [],
             Generated);
         var starting = ClusterGroups.Of(
-            ClusterFixture.Status(null, ClusterFixture.Space("a", ClusterFixture.Pod("new", ready: false, age: TimeSpan.FromSeconds(30)))),
+            ClusterFixture.Status(null, ClusterFixture.Space("a", ClusterFixture.Pod("new").NotReady().Started(TimeSpan.FromSeconds(30)))),
             [],
             Generated);
         var broken = ClusterGroups.Of(
-            ClusterFixture.Status(null, ClusterFixture.Space("a", ClusterFixture.Pod("broken", ready: false, restarts: 3, reason: "CrashLoopBackOff"))),
+            ClusterFixture.Status(null, ClusterFixture.Space("a", ClusterFixture.Pod("broken", restarts: 3, reason: "CrashLoopBackOff").NotReady())),
             [],
             Generated);
 

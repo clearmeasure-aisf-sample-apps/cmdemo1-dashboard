@@ -21,28 +21,36 @@ internal static class ClusterFixture
     public static ClusterNode Node(string name = "aks-system-12148983-vmss000000", bool ready = true, params string[] pressures) =>
         new(name, ready, pressures, false, "system", "Standard_D4as_v6", null, "v1.33.3", Generated.AddDays(-3), new ResourceUse(812, 2450, 9100, 3860), new ResourceUse(9876543210, 6200000000, 11800000000, 13400000000), 63, 110);
 
-    /// <param name="age">How long before <see cref="Generated"/> the pod started; null for a pod that does not say.</param>
+    /// <summary>
+    /// The pod the tests build, named by the parts a pod is named by: its workload (and the name it carries),
+    /// the word its phase stands on, its restarts and its reason. It is ready and it started an hour before
+    /// <see cref="Generated"/>, and nothing about it is said by a flag: the readiness and the start a test
+    /// wants otherwise are the pod-level steps of <see cref="PodSteps"/> - <c>NotReady()</c>,
+    /// <c>Started(age)</c>, <c>StartedAt(moment)</c> - which a pod carries like the parts they set.
+    /// </summary>
+    /// <param name="workload">The workload the pod belongs to; the pod is named <c>{workload}-0</c> without a name.</param>
+    /// <param name="phase">The word the pod's phase stands on; <see cref="ClusterPod.Running"/> without one.</param>
+    /// <param name="restarts">How often its containers were started again.</param>
+    /// <param name="reason">Why a container that is not ready waits or ended; null without one.</param>
+    /// <param name="name">The name the pod carries; <c>{workload}-0</c> without one.</param>
     public static ClusterPod Pod(
         string workload,
         string phase = ClusterPod.Running,
-        bool ready = true,
         int restarts = 0,
         string? reason = null,
-        TimeSpan? age = null,
-        string? name = null,
-        bool started = true) =>
+        string? name = null) =>
         new(
             name ?? $"{workload}-0",
             workload,
             "Deployment",
             "aks-system-12148983-vmss000000",
             phase,
-            ready,
+            true,
             1,
-            ready ? 1 : 0,
+            1,
             restarts,
             reason,
-            started ? Generated - (age ?? TimeSpan.FromHours(1)) : null,
+            Generated - TimeSpan.FromHours(1),
             new ResourceUse(10, 100, 500),
             new ResourceUse(100 * 1024 * 1024, 268435456, 536870912));
 
@@ -97,4 +105,29 @@ internal static class ClusterFixture
 
     public static EnvironmentInfo Environment(string name, string? space, string? tier = "nonprod") =>
         new(name, tier, [], Namespace: space);
+}
+
+/// <summary>
+/// The steps a test takes on a pod the fixture built, said on the pod rather than as the flags a factory used
+/// to gate: the readiness the containers stand in and the moment the pod started. Each step is the copy of the
+/// pod with the one thing it says, so the words a pod is said in and the parts it stands on cannot be told apart
+/// by a flag that stands for another.
+/// </summary>
+internal static class PodSteps
+{
+    /// <summary>The pod is ready: its one container is, which is what the readiness stands in for.</summary>
+    public static ClusterPod Ready(this ClusterPod pod) => pod with { Ready = true, ContainersReady = 1 };
+
+    /// <summary>The pod is not ready: no container is, which is what the readiness stands in for.</summary>
+    public static ClusterPod NotReady(this ClusterPod pod) => pod with { Ready = false, ContainersReady = 0 };
+
+    /// <summary>
+    /// The pod started <paramref name="age"/> before <see cref="ClusterFixture.Generated"/>, the moment the facts
+    /// are of: a negative age is a start after it, the pod the clock has not reached.
+    /// </summary>
+    public static ClusterPod Started(this ClusterPod pod, TimeSpan age) =>
+        pod with { StartedAt = ClusterFixture.Generated - age };
+
+    /// <summary>The moment the pod started, said outright - or the nothing it is not said with.</summary>
+    public static ClusterPod StartedAt(this ClusterPod pod, DateTimeOffset? moment) => pod with { StartedAt = moment };
 }

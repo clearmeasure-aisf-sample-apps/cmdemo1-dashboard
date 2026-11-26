@@ -236,21 +236,23 @@ public sealed record ClusterPod(
     /// <summary>What the page calls the pod: its workload, or its own name without one.</summary>
     public string Label => Workload ?? Name;
 
+    /// <summary>The pod the file's object says, part for part: every argument named so the file's keys and the
+    /// record's parts stand tied line by line - five words in a row are a swap no compiler would call out.</summary>
     internal static ClusterPod Read(string name, JsonElement element) =>
         new(
-            name,
-            JsonRead.Text(element, "workload"),
-            JsonRead.Text(element, "kind"),
-            JsonRead.Text(element, "node"),
-            JsonRead.Text(element, "phase") ?? Unknown,
-            JsonRead.Flag(element, "ready") ?? false,
-            JsonRead.Count(element, "containers"),
-            JsonRead.Count(element, "containersReady"),
-            JsonRead.Count(element, "restarts") ?? 0,
-            JsonRead.Text(element, "reason"),
-            JsonRead.Time(element, "startedAt"),
-            ResourceUse.Read(JsonRead.Section(element, "cpu")),
-            ResourceUse.Read(JsonRead.Section(element, "memory")));
+            Name: name,
+            Workload: JsonRead.Text(element, "workload"),
+            Kind: JsonRead.Text(element, "kind"),
+            Node: JsonRead.Text(element, "node"),
+            Phase: JsonRead.Text(element, "phase") ?? Unknown,
+            Ready: JsonRead.Flag(element, "ready") ?? false,
+            Containers: JsonRead.Count(element, "containers"),
+            ContainersReady: JsonRead.Count(element, "containersReady"),
+            Restarts: JsonRead.Count(element, "restarts") ?? 0,
+            Reason: JsonRead.Text(element, "reason"),
+            StartedAt: JsonRead.Time(element, "startedAt"),
+            Cpu: ResourceUse.Read(JsonRead.Section(element, "cpu")),
+            Memory: ResourceUse.Read(JsonRead.Section(element, "memory")));
 }
 
 /// <summary>One volume claim of a namespace.</summary>

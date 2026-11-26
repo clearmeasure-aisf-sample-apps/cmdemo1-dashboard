@@ -76,9 +76,9 @@ public class ClusterLivenessEdgeCaseTests
     [Fact]
     public void APodThatStartsAfterTheFactsAreOfIsYoungerThanAnyGrace()
     {
-        var future = ClusterFixture.Pod("ui", ready: false, age: TimeSpan.FromMinutes(-5));
-        var pending = ClusterFixture.Pod("ui", ClusterPod.Pending, false, age: TimeSpan.FromMinutes(-5));
-        var justNow = ClusterFixture.Pod("ui", ready: false, age: TimeSpan.Zero);
+        var future = ClusterFixture.Pod("ui").NotReady().Started(TimeSpan.FromMinutes(-5));
+        var pending = ClusterFixture.Pod("ui", ClusterPod.Pending).NotReady().Started(TimeSpan.FromMinutes(-5));
+        var justNow = ClusterFixture.Pod("ui").NotReady().Started(TimeSpan.Zero);
 
         Assert.Equal(PodState.Starting, PodRules.StateOf(future, Generated));
         Assert.Equal(PodState.Starting, PodRules.StateOf(pending, Generated));

@@ -404,7 +404,7 @@ public class TargetTileClusterCardEnvironmentDeliveryTests
         // The sums the card says for one ready node with one ready pod and one finished job.
         var status = ClusterFixture.Status(
             null,
-            ClusterFixture.Space("apps", ClusterFixture.Pod("ui"), ClusterFixture.Pod("job", ClusterPod.Succeeded, false, reason: "Completed")));
+            ClusterFixture.Space("apps", ClusterFixture.Pod("ui"), ClusterFixture.Pod("job", ClusterPod.Succeeded, reason: "Completed").NotReady()));
         var totalsOf = ClusterTotals.Of(status, ClusterFixture.Generated);
         Assert.Equal((1, 1, 1, 1, 1, 0, 63, 110),
             (totalsOf.NodesReady, totalsOf.Nodes, totalsOf.PodsReady, totalsOf.Pods, totalsOf.PodsFinished, totalsOf.Restarts, totalsOf.PodsOnNodes!.Value, totalsOf.PodCapacity!.Value));

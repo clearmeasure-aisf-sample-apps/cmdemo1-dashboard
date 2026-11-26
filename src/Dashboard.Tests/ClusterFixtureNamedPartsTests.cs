@@ -1,14 +1,14 @@
 namespace Dashboard.Tests;
 
 /// <summary>
-/// <see cref="ClusterFixture.Node(string, bool, string[])" /> and
-/// <see cref="ClusterFixture.Pod(string, string, bool, int, string?, TimeSpan?, string?, bool)" /> build their records
-/// positionally: the node's pool, size, zone and kubelet version are four words in a row, the pod's workload, kind and
-/// node three, the pod's two container counts two numbers in a row, and both records' cpu and memory two resources in
-/// a row - a swap of two of them compiles and says nothing. Pinned here: what each factory builds, part for part,
-/// against the same record written out with every argument named, so a swap inside the shared ObjectMother shows as
-/// the swap it is; and each of the pod factory's optional parameters, named by its caller, landing on the one part it
-/// stands for and nowhere else.
+/// <see cref="ClusterFixture.Node(string, bool, string[])" />, <see cref="ClusterFixture.Pod(string, string, int, string?, string?)" />
+/// and the steps of <see cref="PodSteps" /> build their records positionally: the node's pool, size, zone and kubelet
+/// version are four words in a row, the pod's two resources are two in a row - a swap of two of them compiles and
+/// says nothing. Pinned here: what each factory builds, part for part, against the same record written out with
+/// every argument named, so a swap inside the shared ObjectMother shows as the swap it is; each of the pod
+/// factory's parameters, named by its caller, landing on the one part it stands for and nowhere else; and each of
+/// the pod-level steps - the readiness and the start the factory no longer gates by a flag - landing on the one
+/// part it sets and keeping the rest.
 /// </summary>
 public class ClusterFixtureNamedPartsTests
 {
@@ -60,7 +60,8 @@ public class ClusterFixtureNamedPartsTests
         Assert.Equal(110, node.PodCapacity);
     }
 
-    /// <summary>The pod the fixture builds from its workload alone is the pod written out with every part named.</summary>
+    /// <summary>The pod the fixture builds from its workload alone is the pod written out with every part named:
+    /// ready, its one container ready, and started an hour before the moment the facts are of.</summary>
     [Fact]
     public void TheDefaultFixturePodIsThePodWithEveryPartNamed()
     {
@@ -82,20 +83,18 @@ public class ClusterFixtureNamedPartsTests
         Assert.Equal(named, ClusterFixture.Pod("ui"));
     }
 
-    /// <summary>Every optional parameter named by its caller lands on the one part it stands for: the pod built with
-    /// all of them is the pod written out with every part named.</summary>
+    /// <summary>Every parameter named by its caller lands on the one part it stands for: the pod built with all of
+    /// them - and not ready, the readiness the steps set rather than a flag the factory gates - is the pod written
+    /// out with every part named.</summary>
     [Fact]
     public void EveryNamedOptionOfTheFixturePodLandsOnItsOwnPart()
     {
         var pod = ClusterFixture.Pod(
             workload: "db",
             phase: ClusterPod.Failed,
-            ready: false,
             restarts: 7,
             reason: "CrashLoopBackOff",
-            age: TimeSpan.FromMinutes(5),
-            name: "db-7f6b5c4d3-m8n2p",
-            started: true);
+            name: "db-7f6b5c4d3-m8n2p").NotReady();
 
         var named = new ClusterPod(
             Name: "db-7f6b5c4d3-m8n2p",
@@ -108,16 +107,42 @@ public class ClusterFixtureNamedPartsTests
             ContainersReady: 0,
             Restarts: 7,
             Reason: "CrashLoopBackOff",
-            StartedAt: ClusterFixture.Generated - TimeSpan.FromMinutes(5),
+            StartedAt: ClusterFixture.Generated - TimeSpan.FromHours(1),
             Cpu: PodCpu,
             Memory: PodMemory);
         Assert.Equal(named, pod);
     }
 
-    /// <summary>A pod that was not started says no moment, whatever age it is handed.</summary>
+    /// <summary>Each of the pod-level steps lands on the one part it sets and keeps the rest: the readiness the
+    /// containers stand in for, the start counted back from the moment the facts are of, and the moment said
+    /// outright - the pod's name, phase and restarts standing where they stood before the step.</summary>
     [Fact]
-    public void AFixturePodNotStartedSaysNoMomentWhateverItsAge() =>
-        Assert.Null(ClusterFixture.Pod("ui", age: TimeSpan.FromDays(2), started: false).StartedAt);
+    public void EachStepOfTheFixturePodLandsOnTheOnePartItSets()
+    {
+        var ready = ClusterFixture.Pod("ui").Ready();
+        var notReady = ClusterFixture.Pod("ui").NotReady();
+        var started = ClusterFixture.Pod("ui").Started(TimeSpan.FromMinutes(5));
+        var startedAt = ClusterFixture.Pod("ui").StartedAt(DateTimeOffset.MinValue);
+
+        Assert.True(ready.Ready);
+        Assert.Equal(1, ready.ContainersReady);
+        Assert.False(notReady.Ready);
+        Assert.Equal(0, notReady.ContainersReady);
+        Assert.Equal(ClusterFixture.Generated - TimeSpan.FromMinutes(5), started.StartedAt);
+        Assert.Equal(DateTimeOffset.MinValue, startedAt.StartedAt);
+
+        Assert.Equal("ui-0", notReady.Name);
+        Assert.Equal(ClusterPod.Running, started.Phase);
+        Assert.Equal(0, startedAt.Restarts);
+        Assert.Equal(PodCpu, ready.Cpu);
+        Assert.Equal(PodMemory, notReady.Memory);
+    }
+
+    /// <summary>A pod told no start moment says no moment, whatever age it was started with: the step that says
+    /// nothing is the one that stands, and no age reaches a pod whose start is the nothing it is.</summary>
+    [Fact]
+    public void AFixturePodToldNoStartSaysNoMomentWhateverItsAge() =>
+        Assert.Null(ClusterFixture.Pod("ui").Started(TimeSpan.FromDays(2)).StartedAt(null).StartedAt);
 
     /// <summary>The kind and the node are the two words the fixture writes itself, and neither is the workload or the
     /// name: a swap of the three words in a row would put one where the other stands.</summary>

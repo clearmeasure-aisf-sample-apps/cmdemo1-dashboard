@@ -36,7 +36,7 @@ public class ClusterGroupsEdgeCaseTests
         IReadOnlyList<PodRow> rows =
         [
             new PodRow(ClusterFixture.Pod("ui"), PodState.Ready),
-            new PodRow(ClusterFixture.Pod("job", ClusterPod.Succeeded, false, reason: "Completed"), PodState.Finished),
+            new PodRow(ClusterFixture.Pod("job", ClusterPod.Succeeded, reason: "Completed").NotReady(), PodState.Finished),
         ];
         IReadOnlyList<ClusterVolume> volumes = [new ClusterVolume("data", 8589934592d, "Bound")];
 
@@ -68,7 +68,7 @@ public class ClusterGroupsEdgeCaseTests
         ];
         IReadOnlyList<NamespaceGroup> platform =
         [
-            new NamespaceGroup("argocd", null, true, [new PodRow(ClusterFixture.Pod("server", ready: false, restarts: 3, reason: "CrashLoopBackOff"), PodState.Unhealthy)], []),
+            new NamespaceGroup("argocd", null, true, [new PodRow(ClusterFixture.Pod("server", restarts: 3, reason: "CrashLoopBackOff").NotReady(), PodState.Unhealthy)], []),
         ];
 
         var groups = new ClusterGroups(environments, platform);

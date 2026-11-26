@@ -48,9 +48,9 @@ public class PodRulesEdgeCaseTests
     [Fact]
     public void APendingPodTurnsUnhealthyOneTickPastTheGraceAndNotOneTickBefore()
     {
-        var oneTickYoung = ClusterFixture.Pod("ui", ClusterPod.Pending, false, age: PodRules.PendingGrace - TimeSpan.FromTicks(1));
-        var onTheDot = ClusterFixture.Pod("ui", ClusterPod.Pending, false, age: PodRules.PendingGrace);
-        var oneTickOld = ClusterFixture.Pod("ui", ClusterPod.Pending, false, age: PodRules.PendingGrace + TimeSpan.FromTicks(1));
+        var oneTickYoung = ClusterFixture.Pod("ui", ClusterPod.Pending).NotReady().Started(PodRules.PendingGrace - TimeSpan.FromTicks(1));
+        var onTheDot = ClusterFixture.Pod("ui", ClusterPod.Pending).NotReady().Started(PodRules.PendingGrace);
+        var oneTickOld = ClusterFixture.Pod("ui", ClusterPod.Pending).NotReady().Started(PodRules.PendingGrace + TimeSpan.FromTicks(1));
 
         Assert.Equal(PodState.Starting, PodRules.StateOf(oneTickYoung, Generated));
         Assert.Equal(PodState.Starting, PodRules.StateOf(onTheDot, Generated));
@@ -67,9 +67,9 @@ public class PodRulesEdgeCaseTests
     [Fact]
     public void ARunningPodTurnsUnhealthyAtTheGraceItselfAndStaysThereOneTickAfter()
     {
-        var oneTickYoung = ClusterFixture.Pod("ui", ClusterPod.Running, false, age: PodRules.StartingGrace - TimeSpan.FromTicks(1));
-        var onTheDot = ClusterFixture.Pod("ui", ClusterPod.Running, false, age: PodRules.StartingGrace);
-        var oneTickOld = ClusterFixture.Pod("ui", ClusterPod.Running, false, age: PodRules.StartingGrace + TimeSpan.FromTicks(1));
+        var oneTickYoung = ClusterFixture.Pod("ui", ClusterPod.Running).NotReady().Started(PodRules.StartingGrace - TimeSpan.FromTicks(1));
+        var onTheDot = ClusterFixture.Pod("ui", ClusterPod.Running).NotReady().Started(PodRules.StartingGrace);
+        var oneTickOld = ClusterFixture.Pod("ui", ClusterPod.Running).NotReady().Started(PodRules.StartingGrace + TimeSpan.FromTicks(1));
 
         Assert.Equal(PodState.Starting, PodRules.StateOf(oneTickYoung, Generated));
         Assert.Equal(PodState.Unhealthy, PodRules.StateOf(onTheDot, Generated));
@@ -88,10 +88,10 @@ public class PodRulesEdgeCaseTests
     [Fact]
     public void APhaseThatDoesNotAskForAnAgeIsDecidedWithoutOne()
     {
-        Assert.Equal(PodState.Finished, PodRules.StateOf(ClusterFixture.Pod("job", ClusterPod.Succeeded, started: false), Generated));
-        Assert.Equal(PodState.Unhealthy, PodRules.StateOf(ClusterFixture.Pod("ui", ClusterPod.Failed, started: false), Generated));
-        Assert.Equal(PodState.Ready, PodRules.StateOf(ClusterFixture.Pod("ui", ClusterPod.Running, true, started: false), Generated));
-        Assert.Equal(PodState.Ready, PodRules.StateOf(ClusterFixture.Pod("ui", ClusterPod.Unknown, true, started: false), Generated));
+        Assert.Equal(PodState.Finished, PodRules.StateOf(ClusterFixture.Pod("job", ClusterPod.Succeeded).StartedAt(null), Generated));
+        Assert.Equal(PodState.Unhealthy, PodRules.StateOf(ClusterFixture.Pod("ui", ClusterPod.Failed).StartedAt(null), Generated));
+        Assert.Equal(PodState.Ready, PodRules.StateOf(ClusterFixture.Pod("ui", ClusterPod.Running).Ready().StartedAt(null), Generated));
+        Assert.Equal(PodState.Ready, PodRules.StateOf(ClusterFixture.Pod("ui", ClusterPod.Unknown).Ready().StartedAt(null), Generated));
     }
 
     // ----- A phase the page does not know -----
@@ -106,20 +106,20 @@ public class PodRulesEdgeCaseTests
     [Fact]
     public void APhaseThePageDoesNotKnowStandsBeforeTheAge()
     {
-        var youngReady = ClusterFixture.Pod("ui", "Terminating", true, age: TimeSpan.FromSeconds(30));
-        var youngNotReady = ClusterFixture.Pod("ui", "Terminating", false, age: TimeSpan.FromSeconds(30));
+        var youngReady = ClusterFixture.Pod("ui", "Terminating").Ready().Started(TimeSpan.FromSeconds(30));
+        var youngNotReady = ClusterFixture.Pod("ui", "Terminating").NotReady().Started(TimeSpan.FromSeconds(30));
 
         Assert.Equal(PodState.Ready, PodRules.StateOf(youngReady, Generated));
         Assert.Equal(PodState.Unhealthy, PodRules.StateOf(youngNotReady, Generated));
 
-        var youngReadyAlone = ClusterFixture.Pod("ui", string.Empty, true, age: TimeSpan.FromSeconds(30));
-        var youngNotReadyAlone = ClusterFixture.Pod("ui", string.Empty, false, age: TimeSpan.FromSeconds(30));
+        var youngReadyAlone = ClusterFixture.Pod("ui", string.Empty).Ready().Started(TimeSpan.FromSeconds(30));
+        var youngNotReadyAlone = ClusterFixture.Pod("ui", string.Empty).NotReady().Started(TimeSpan.FromSeconds(30));
 
         Assert.Equal(PodState.Ready, PodRules.StateOf(youngReadyAlone, Generated));
         Assert.Equal(PodState.Unhealthy, PodRules.StateOf(youngNotReadyAlone, Generated));
 
-        Assert.Equal(PodState.Unhealthy, PodRules.StateOf(ClusterFixture.Pod("ui", "Terminating", false, age: TimeSpan.FromHours(2)), Generated));
-        Assert.Equal(PodState.Unhealthy, PodRules.StateOf(ClusterFixture.Pod("ui", "Terminating", false, age: TimeSpan.FromHours(-2)), Generated));
+        Assert.Equal(PodState.Unhealthy, PodRules.StateOf(ClusterFixture.Pod("ui", "Terminating").NotReady().Started(TimeSpan.FromHours(2)), Generated));
+        Assert.Equal(PodState.Unhealthy, PodRules.StateOf(ClusterFixture.Pod("ui", "Terminating").NotReady().Started(TimeSpan.FromHours(-2)), Generated));
     }
 
     // ----- The moment the age is counted from -----
@@ -135,12 +135,12 @@ public class PodRulesEdgeCaseTests
     [Fact]
     public void TheAgeIsCountedFromTheInstantNotFromTheWallClocks()
     {
-        var pod = ClusterFixture.Pod("ui", ClusterPod.Running, false, age: TimeSpan.FromMinutes(2));
+        var pod = ClusterFixture.Pod("ui", ClusterPod.Running).NotReady().Started(TimeSpan.FromMinutes(2));
         var onTheDot = pod with { StartedAt = pod.StartedAt!.Value.ToOffset(TimeSpan.FromHours(2)) };
 
         Assert.Equal(PodState.Unhealthy, PodRules.StateOf(onTheDot, Generated));
 
-        var pending = ClusterFixture.Pod("ui", ClusterPod.Pending, false, age: TimeSpan.FromMinutes(6));
+        var pending = ClusterFixture.Pod("ui", ClusterPod.Pending).NotReady().Started(TimeSpan.FromMinutes(6));
         var overTheGrace = pending with { StartedAt = pending.StartedAt!.Value.ToOffset(TimeSpan.FromHours(-12)) };
         var asOf = Generated.ToOffset(TimeSpan.FromHours(10));
 
@@ -156,14 +156,14 @@ public class PodRulesEdgeCaseTests
     [Fact]
     public void TheEndsOfTheClockAreMomentsTheRulesCountFrom()
     {
-        var neverStarted = ClusterFixture.Pod("ui", ClusterPod.Pending, false, started: false);
+        var neverStarted = ClusterFixture.Pod("ui", ClusterPod.Pending).NotReady().StartedAt(null);
 
         Assert.Equal(PodState.Starting, PodRules.StateOf(neverStarted, DateTimeOffset.MinValue));
         Assert.Equal(PodState.Starting, PodRules.StateOf(neverStarted, DateTimeOffset.MaxValue));
 
-        var ancientPending = ClusterFixture.Pod("ui", ClusterPod.Pending, false) with { StartedAt = DateTimeOffset.MinValue };
-        var ancientRunning = ClusterFixture.Pod("ui", ClusterPod.Running, false) with { StartedAt = DateTimeOffset.MinValue };
-        var ancientReady = ClusterFixture.Pod("ui", ClusterPod.Running, true) with { StartedAt = DateTimeOffset.MinValue };
+        var ancientPending = ClusterFixture.Pod("ui", ClusterPod.Pending).NotReady() with { StartedAt = DateTimeOffset.MinValue };
+        var ancientRunning = ClusterFixture.Pod("ui", ClusterPod.Running).NotReady() with { StartedAt = DateTimeOffset.MinValue };
+        var ancientReady = ClusterFixture.Pod("ui", ClusterPod.Running).Ready() with { StartedAt = DateTimeOffset.MinValue };
 
         Assert.Equal(PodState.Unhealthy, PodRules.StateOf(ancientPending, DateTimeOffset.MaxValue));
         Assert.Equal(PodState.Unhealthy, PodRules.StateOf(ancientRunning, DateTimeOffset.MaxValue));

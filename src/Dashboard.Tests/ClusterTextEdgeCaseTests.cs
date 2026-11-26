@@ -386,10 +386,10 @@ public class ClusterTextEdgeCaseTests
     [Fact]
     public void TheWordsOfAPodThatDoesNotSayWhenItStartedAreTheWordsTheFileSays()
     {
-        var noStart = ClusterFixture.Pod("ui", ClusterPod.Pending, false, started: false);
-        var noStartEvicted = ClusterFixture.Pod("ui", ClusterPod.Pending, false, reason: "Evicted", started: false);
-        var unknown = ClusterFixture.Pod("ui", ClusterPod.Unknown, false);
-        var pendingAWhile = ClusterFixture.Pod("ui", ClusterPod.Pending, false, age: TimeSpan.FromSeconds(301));
+        var noStart = ClusterFixture.Pod("ui", ClusterPod.Pending).NotReady().StartedAt(null);
+        var noStartEvicted = ClusterFixture.Pod("ui", ClusterPod.Pending, reason: "Evicted").NotReady().StartedAt(null);
+        var unknown = ClusterFixture.Pod("ui", ClusterPod.Unknown).NotReady();
+        var pendingAWhile = ClusterFixture.Pod("ui", ClusterPod.Pending).NotReady().Started(TimeSpan.FromSeconds(301));
 
         Assert.Equal("Pending", ClusterText.PodWords(noStart, PodState.Unhealthy, Now));
         Assert.Equal("Evicted", ClusterText.PodWords(noStartEvicted, PodState.Unhealthy, Now));

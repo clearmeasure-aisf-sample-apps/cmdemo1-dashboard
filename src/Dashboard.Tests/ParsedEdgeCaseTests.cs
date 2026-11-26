@@ -175,7 +175,7 @@ public class ParsedEdgeCaseTests
     public void ThePodsStandInTheOrderTheNamespacesListThem()
     {
         var first = ClusterFixture.Space("apps", ClusterFixture.Pod("ui"), ClusterFixture.Pod("db"));
-        var second = ClusterFixture.Space("jobs", ClusterFixture.Pod("backup", ClusterPod.Succeeded, false, reason: "Completed"));
+        var second = ClusterFixture.Space("jobs", ClusterFixture.Pod("backup", ClusterPod.Succeeded, reason: "Completed").NotReady());
         var status = ClusterFixture.Status([], first, second);
 
         Assert.Equal(

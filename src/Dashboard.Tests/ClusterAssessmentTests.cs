@@ -25,7 +25,9 @@ public class ClusterAssessmentTests
     [InlineData(ClusterPod.Unknown, true, 3600, PodState.Ready)]
     public void APodsStateFollowsItsPhaseItsReadinessAndItsAge(string phase, bool ready, int ageSeconds, PodState expected)
     {
-        var pod = ClusterFixture.Pod("ui", phase, ready, age: TimeSpan.FromSeconds(ageSeconds));
+        var pod = ClusterFixture.Pod("ui", phase);
+        pod = ready ? pod.Ready() : pod.NotReady();
+        pod = pod.Started(TimeSpan.FromSeconds(ageSeconds));
 
         Assert.Equal(expected, PodRules.StateOf(pod, Generated));
     }
@@ -33,8 +35,8 @@ public class ClusterAssessmentTests
     [Fact]
     public void APodThatDoesNotSayWhenItStartedIsStartingWhilePendingAndUnhealthyWhileRunningWithoutBeingReady()
     {
-        Assert.Equal(PodState.Starting, PodRules.StateOf(ClusterFixture.Pod("ui", ClusterPod.Pending, false, started: false), Generated));
-        Assert.Equal(PodState.Unhealthy, PodRules.StateOf(ClusterFixture.Pod("ui", ClusterPod.Running, false, started: false), Generated));
+        Assert.Equal(PodState.Starting, PodRules.StateOf(ClusterFixture.Pod("ui", ClusterPod.Pending).NotReady().StartedAt(null), Generated));
+        Assert.Equal(PodState.Unhealthy, PodRules.StateOf(ClusterFixture.Pod("ui", ClusterPod.Running).NotReady().StartedAt(null), Generated));
     }
 
     [Fact]
@@ -43,15 +45,15 @@ public class ClusterAssessmentTests
         string Words(ClusterPod pod) => ClusterText.PodWords(pod, PodRules.StateOf(pod, Generated), Generated);
 
         Assert.Equal("Ready", Words(ClusterFixture.Pod("ui")));
-        Assert.Equal("Finished", Words(ClusterFixture.Pod("job", ClusterPod.Succeeded, false, reason: "Completed")));
-        Assert.Equal("Starting", Words(ClusterFixture.Pod("ui", ready: false, age: TimeSpan.FromSeconds(30))));
-        Assert.Equal("Starting: ContainerCreating", Words(ClusterFixture.Pod("ui", ClusterPod.Pending, false, reason: "ContainerCreating", age: TimeSpan.FromSeconds(30))));
-        Assert.Equal("CrashLoopBackOff", Words(ClusterFixture.Pod("ui", ready: false, restarts: 7, reason: "CrashLoopBackOff")));
-        Assert.Equal("Not ready", Words(ClusterFixture.Pod("ui", ready: false)));
-        Assert.Equal("Pending for 12 min", Words(ClusterFixture.Pod("ui", ClusterPod.Pending, false, age: TimeSpan.FromMinutes(12))));
-        Assert.Equal("Pending for 12 min: ImagePullBackOff", Words(ClusterFixture.Pod("ui", ClusterPod.Pending, false, reason: "ImagePullBackOff", age: TimeSpan.FromMinutes(12))));
-        Assert.Equal("Evicted", Words(ClusterFixture.Pod("ui", ClusterPod.Failed, false, reason: "Evicted")));
-        Assert.Equal("Failed", Words(ClusterFixture.Pod("ui", ClusterPod.Failed, false)));
+        Assert.Equal("Finished", Words(ClusterFixture.Pod("job", ClusterPod.Succeeded, reason: "Completed").NotReady()));
+        Assert.Equal("Starting", Words(ClusterFixture.Pod("ui").NotReady().Started(TimeSpan.FromSeconds(30))));
+        Assert.Equal("Starting: ContainerCreating", Words(ClusterFixture.Pod("ui", ClusterPod.Pending, reason: "ContainerCreating").NotReady().Started(TimeSpan.FromSeconds(30))));
+        Assert.Equal("CrashLoopBackOff", Words(ClusterFixture.Pod("ui", restarts: 7, reason: "CrashLoopBackOff").NotReady()));
+        Assert.Equal("Not ready", Words(ClusterFixture.Pod("ui").NotReady()));
+        Assert.Equal("Pending for 12 min", Words(ClusterFixture.Pod("ui", ClusterPod.Pending).NotReady().Started(TimeSpan.FromMinutes(12))));
+        Assert.Equal("Pending for 12 min: ImagePullBackOff", Words(ClusterFixture.Pod("ui", ClusterPod.Pending, reason: "ImagePullBackOff").NotReady().Started(TimeSpan.FromMinutes(12))));
+        Assert.Equal("Evicted", Words(ClusterFixture.Pod("ui", ClusterPod.Failed, reason: "Evicted").NotReady()));
+        Assert.Equal("Failed", Words(ClusterFixture.Pod("ui", ClusterPod.Failed).NotReady()));
     }
 
     // ----- The cluster, live -----
@@ -61,7 +63,7 @@ public class ClusterAssessmentTests
     {
         var status = ClusterFixture.Status(
             null,
-            ClusterFixture.Space("apps", ClusterFixture.Pod("ui"), ClusterFixture.Pod("backup", ClusterPod.Succeeded, false, reason: "Completed")));
+            ClusterFixture.Space("apps", ClusterFixture.Pod("ui"), ClusterFixture.Pod("backup", ClusterPod.Succeeded, reason: "Completed").NotReady()));
 
         Assert.Equal(
             new ClusterAssessment(ClusterState.Healthy, "Healthy", "Every node is ready and under no pressure, and every pod is ready"),
@@ -94,11 +96,11 @@ public class ClusterAssessmentTests
             ],
             ClusterFixture.Space(
                 "apps",
-                ClusterFixture.Pod("slow", ClusterPod.Pending, false, age: TimeSpan.FromMinutes(12)),
-                ClusterFixture.Pod("api", ready: false, restarts: 2, reason: "CrashLoopBackOff"),
-                ClusterFixture.Pod("ui", ready: false, restarts: 7, reason: "CrashLoopBackOff"),
-                ClusterFixture.Pod("quiet", ready: false),
-                ClusterFixture.Pod("gone", ClusterPod.Failed, false, reason: "Evicted"),
+                ClusterFixture.Pod("slow", ClusterPod.Pending).NotReady().Started(TimeSpan.FromMinutes(12)),
+                ClusterFixture.Pod("api", restarts: 2, reason: "CrashLoopBackOff").NotReady(),
+                ClusterFixture.Pod("ui", restarts: 7, reason: "CrashLoopBackOff").NotReady(),
+                ClusterFixture.Pod("quiet").NotReady(),
+                ClusterFixture.Pod("gone", ClusterPod.Failed, reason: "Evicted").NotReady(),
                 ClusterFixture.Pod("fine")));
 
         Assert.Equal(
@@ -139,10 +141,10 @@ public class ClusterAssessmentTests
     [Fact]
     public void PodsThatAreOnlyStartingMakeTheClusterStartNotUnhealthy()
     {
-        var one = ClusterFixture.Status(null, ClusterFixture.Space("apps", ClusterFixture.Pod("ui", ready: false, age: TimeSpan.FromSeconds(40)), ClusterFixture.Pod("db")));
+        var one = ClusterFixture.Status(null, ClusterFixture.Space("apps", ClusterFixture.Pod("ui").NotReady().Started(TimeSpan.FromSeconds(40)), ClusterFixture.Pod("db")));
         var two = ClusterFixture.Status(
             null,
-            ClusterFixture.Space("apps", ClusterFixture.Pod("ui", ready: false, age: TimeSpan.FromSeconds(40)), ClusterFixture.Pod("db", ClusterPod.Pending, false, started: false)));
+            ClusterFixture.Space("apps", ClusterFixture.Pod("ui").NotReady().Started(TimeSpan.FromSeconds(40)), ClusterFixture.Pod("db", ClusterPod.Pending).NotReady().StartedAt(null)));
 
         Assert.Equal(new ClusterAssessment(ClusterState.Checking, "Starting", "1 pod is starting: ui in apps"), Live(one));
         Assert.Equal(new ClusterAssessment(ClusterState.Checking, "Starting", "2 pods are starting: ui in apps; db in apps"), Live(two));

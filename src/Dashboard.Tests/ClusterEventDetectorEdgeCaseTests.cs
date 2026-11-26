@@ -136,7 +136,7 @@ public class ClusterEventDetectorEdgeCaseTests
     public void TheChangeBetweenTwoStatusesIsSaidWithoutTheEnvironments()
     {
         var ready = With(ClusterFixture.Pod("ui"));
-        var failing = With(ClusterFixture.Pod("ui", ready: false));
+        var failing = With(ClusterFixture.Pod("ui").NotReady());
 
         var error = Assert.Throws<ArgumentNullException>(() => ClusterEventDetector.Status(ready, failing, null!, Now));
 
@@ -168,7 +168,7 @@ public class ClusterEventDetectorEdgeCaseTests
     {
         var names = Enumerable.Range(1, 10).Select(index => $"app{index:00}").ToList();
         var before = With([.. names.Select(name => ClusterFixture.Pod(name))]);
-        var after = With([.. names.Select(name => ClusterFixture.Pod(name, ready: false))]);
+        var after = With([.. names.Select(name => ClusterFixture.Pod(name).NotReady())]);
         var expected = names
             .Select(name => Event(EventLevel.Warning, "tdd", $"{name} in cmdemo3-tdd is unhealthy: not ready"))
             .ToList();
@@ -185,7 +185,7 @@ public class ClusterEventDetectorEdgeCaseTests
     {
         var names = Enumerable.Range(1, 11).Select(index => $"app{index:00}").ToList();
         var before = With([.. names.Select(name => ClusterFixture.Pod(name))]);
-        var after = With([.. names.Select(name => ClusterFixture.Pod(name, ready: false))]);
+        var after = With([.. names.Select(name => ClusterFixture.Pod(name).NotReady())]);
         var expected = names
             .Take(ClusterEventDetector.NamedPods)
             .Select(name => Event(EventLevel.Warning, "tdd", $"{name} in cmdemo3-tdd is unhealthy: not ready"))
@@ -203,8 +203,8 @@ public class ClusterEventDetectorEdgeCaseTests
     [Fact]
     public void ARestartCountThatFallsIsNoEvent()
     {
-        var before = With(ClusterFixture.Pod("ui", ready: false, restarts: 7, reason: "CrashLoopBackOff"));
-        var after = With(ClusterFixture.Pod("ui", ready: false, restarts: 6, reason: "CrashLoopBackOff"));
+        var before = With(ClusterFixture.Pod("ui", restarts: 7, reason: "CrashLoopBackOff").NotReady());
+        var after = With(ClusterFixture.Pod("ui", restarts: 6, reason: "CrashLoopBackOff").NotReady());
 
         Assert.Empty(Between(before, after));
     }
@@ -228,8 +228,8 @@ public class ClusterEventDetectorEdgeCaseTests
     [Fact]
     public void ARestartOfAPodThatIsNotReadyAndNamesNoReasonIsSaidWithoutOne()
     {
-        var before = With(ClusterFixture.Pod("ui", ready: false, restarts: 1));
-        var after = With(ClusterFixture.Pod("ui", ready: false, restarts: 2));
+        var before = With(ClusterFixture.Pod("ui", restarts: 1).NotReady());
+        var after = With(ClusterFixture.Pod("ui", restarts: 2).NotReady());
 
         Assert.Equal([Event(EventLevel.Warning, "tdd", "ui in cmdemo3-tdd restarted (2 restarts)")], Between(before, after));
     }
@@ -246,7 +246,7 @@ public class ClusterEventDetectorEdgeCaseTests
     public void TheChangeOfAPodIsSaidWithoutAnEnvironmentWithoutANamespace()
     {
         var ready = With(ClusterFixture.Pod("ui"));
-        var failing = With(ClusterFixture.Pod("ui", ready: false));
+        var failing = With(ClusterFixture.Pod("ui").NotReady());
 
         Assert.Equal(
             [Event(EventLevel.Warning, null, "ui in cmdemo3-tdd is unhealthy: not ready")],
@@ -264,7 +264,7 @@ public class ClusterEventDetectorEdgeCaseTests
     public void TheTwoEnvironmentsOfOneNamespaceNameItByTheFirst()
     {
         var before = ClusterFixture.Status(null, ClusterFixture.Space("apps", ClusterFixture.Pod("ui")));
-        var after = ClusterFixture.Status(null, ClusterFixture.Space("apps", ClusterFixture.Pod("ui", ready: false)));
+        var after = ClusterFixture.Status(null, ClusterFixture.Space("apps", ClusterFixture.Pod("ui").NotReady()));
         EnvironmentInfo[] environments = [ClusterFixture.Environment("first", "apps"), ClusterFixture.Environment("second", "apps")];
 
         Assert.Equal(

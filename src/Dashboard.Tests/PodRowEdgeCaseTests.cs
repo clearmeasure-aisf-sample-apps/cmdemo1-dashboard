@@ -184,7 +184,7 @@ public class PodRowEdgeCaseTests
                 "Cpu = ResourceUse { Usage = 10, Requests = 100, Limits = 500, Allocatable =  }, " +
                 "Memory = ResourceUse { Usage = 104857600, Requests = 268435456, Limits = 536870912, " +
                 "Allocatable =  }, Label = ui }, State = Unhealthy }",
-            new PodRow(ClusterFixture.Pod("ui", started: false), PodState.Unhealthy).ToString());
+            new PodRow(ClusterFixture.Pod("ui").StartedAt(null), PodState.Unhealthy).ToString());
 
         Assert.Equal(
             "PodRow { Pod = ClusterPod { Name = , Workload = , Kind = , Node = , Phase = Running, " +

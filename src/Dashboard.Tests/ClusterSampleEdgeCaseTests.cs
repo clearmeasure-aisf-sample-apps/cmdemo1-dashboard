@@ -167,7 +167,7 @@ public class ClusterSampleEdgeCaseTests
         var status = ClusterFixture.Status(
             [],
             ClusterFixture.Space("apps", ClusterFixture.Pod("ui")),
-            ClusterFixture.Space("jobs", ClusterFixture.Pod("backup", ClusterPod.Succeeded, false, reason: "Completed")));
+            ClusterFixture.Space("jobs", ClusterFixture.Pod("backup", ClusterPod.Succeeded, reason: "Completed").NotReady()));
 
         Assert.Equal(new ClusterSample(null, null), ClusterSample.Of(status));
     }

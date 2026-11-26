@@ -69,7 +69,7 @@ public class ClusterTotalsEdgeCaseTests
             ClusterFixture.Space(
                 "apps",
                 ClusterFixture.Pod("ui"),
-                ClusterFixture.Pod("backup", ClusterPod.Succeeded, false, restarts: 3, reason: "Completed")));
+                ClusterFixture.Pod("backup", ClusterPod.Succeeded, restarts: 3, reason: "Completed").NotReady()));
 
         var totals = ClusterTotals.Of(status, AsOf);
 
@@ -166,7 +166,7 @@ public class ClusterTotalsEdgeCaseTests
     [Fact]
     public void TheTotalsDoNotTellApartTheStartingPodFromTheUnhealthyOne()
     {
-        var pod = ClusterFixture.Pod("ui", ready: false, age: TimeSpan.FromSeconds(90));
+        var pod = ClusterFixture.Pod("ui").NotReady().Started(TimeSpan.FromSeconds(90));
         var started = pod.StartedAt!.Value;
         var status = ClusterFixture.Status(null, ClusterFixture.Space("apps", pod));
 

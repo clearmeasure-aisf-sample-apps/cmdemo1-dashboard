@@ -347,13 +347,17 @@ public static class RuntimePayloadBuilder
 
     /// <summary>
     /// The static site of the environment that is not this page: what Resource Health said of it, or not probed with
-    /// its host (or why it has none).
+    /// its host (or why it has none). One reason, said in the same words on both sides, with the host in brackets
+    /// where the node has one.
     /// </summary>
-    private static RuntimeTile UncheckedStaticSiteTile(RuntimeNode node, HealthSource health) =>
-        health.Tile(node, $"the dashboard of this environment{(node.Url is null ? string.Empty : $" ({node.Url.Host})")}. This page does not check it.") ?? NotProbedTile(
+    private static RuntimeTile UncheckedStaticSiteTile(RuntimeNode node, HealthSource health)
+    {
+        var why = $"the dashboard of this environment{(node.Url is null ? string.Empty : $" ({node.Url.Host})")}. This page does not check it.";
+        return health.Tile(node, why) ?? NotProbedTile(
             node,
             node.Url is null ? "its address is not in this deployment" : node.Url.Host,
-            $"{node.Name}: the dashboard of this environment. It does not check itself.");
+            $"{node.Name}: {why}");
+    }
 
     /// <summary>A Front Door endpoint the deployment found no address for: not deployed yet.</summary>
     private static RuntimeTile UndeployedFrontDoorTile(RuntimeNode node) =>

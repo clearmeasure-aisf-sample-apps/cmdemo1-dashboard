@@ -20,7 +20,7 @@ public class RuntimeUnmonitoredTileTests
 
         Assert.Equal(("neutral", "Not probed"), (tile.State, tile.Label));
         Assert.Equal([new RuntimeTileLine("its address is not in this deployment", "muted")], tile.Lines);
-        Assert.Equal("swa-uat-dashboard: the dashboard of this environment. It does not check itself.", tile.Title);
+        Assert.Equal("swa-uat-dashboard: the dashboard of this environment. This page does not check it.", tile.Title);
     }
 
     [Fact]
@@ -30,7 +30,7 @@ public class RuntimeUnmonitoredTileTests
 
         Assert.Equal(("neutral", "Not probed"), (tile.State, tile.Label));
         Assert.Equal([new RuntimeTileLine("dashboard.uat.example.net", "muted")], tile.Lines);
-        Assert.Equal("swa-uat-dashboard: the dashboard of this environment. It does not check itself.", tile.Title);
+        Assert.Equal("swa-uat-dashboard: the dashboard of this environment (dashboard.uat.example.net). This page does not check it.", tile.Title);
     }
 
     [Fact]

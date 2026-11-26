@@ -18,11 +18,6 @@ namespace Dashboard.Tests;
 /// </summary>
 public class PodRowEdgeCaseTests
 {
-    /// <summary>A pod that says as little as the record allows: no workload, no kind, no node, no containers, no
-    /// reason, no start and no measurement, so the row's own words stand on what the test put there alone.</summary>
-    private static ClusterPod Silent(string name) =>
-        new(name, null, null, null, ClusterPod.Running, false, null, null, 0, null, null, ResourceUse.None, ResourceUse.None);
-
     /// <summary>The whole word the row of a silent pod says up to its state: every part of the pod said as the record
     /// says it, in the order the record declares them, and the separator that goes before the state. The bytes are
     /// the pinned bytes the two literal pins of <see cref="TheRowSaysItsPodAndItsStateInTheirOrder"/> hold verbatim,
@@ -70,7 +65,7 @@ public class PodRowEdgeCaseTests
         var solo = ClusterFixture.Pod("solo") with { Workload = null };
         Assert.Equal("solo-0", new PodRow(solo, PodState.Ready).Pod.Label);
 
-        var row = new PodRow(Silent("") with { Phase = "", Reason = "" }, PodState.Unhealthy);
+        var row = new PodRow(ClusterFixture.SilentPod("") with { Phase = "", Reason = "" }, PodState.Unhealthy);
 
         Assert.Equal("", row.Pod.Name);
         Assert.Null(row.Pod.Workload);
@@ -98,7 +93,7 @@ public class PodRowEdgeCaseTests
         Assert.Null(default(PodRow));
 
         PodRow? none = null;
-        var there = new PodRow(Silent("ui-0"), PodState.Ready);
+        var there = new PodRow(ClusterFixture.SilentPod("ui-0"), PodState.Ready);
 
         Assert.False(none == there);
         Assert.True(none != there);
@@ -125,7 +120,7 @@ public class PodRowEdgeCaseTests
         Assert.Equal(row.GetHashCode(), new PodRow(null!, PodState.Ready).GetHashCode());
         Assert.False(row.Equals(null));
         Assert.True(row != new PodRow(null!, PodState.Starting));
-        Assert.True(row != new PodRow(Silent("ui-0"), PodState.Ready));
+        Assert.True(row != new PodRow(ClusterFixture.SilentPod("ui-0"), PodState.Ready));
     }
 
     /// <summary>The words of the row of the pod that is not there are the row's own: the pod not there is said as the
@@ -180,7 +175,7 @@ public class PodRowEdgeCaseTests
                 "Cpu = ResourceUse { Usage = , Requests = , Limits = , Allocatable =  }, " +
                 "Memory = ResourceUse { Usage = , Requests = , Limits = , Allocatable =  }, Label =  }, " +
                 "State = Finished }",
-            new PodRow(Silent(""), PodState.Finished).ToString());
+            new PodRow(ClusterFixture.SilentPod(""), PodState.Finished).ToString());
 
         Assert.Equal(
             "PodRow { Pod = ClusterPod { Name = ui-0, Workload = ui, Kind = Deployment, Node = " +
@@ -197,7 +192,7 @@ public class PodRowEdgeCaseTests
                 "Cpu = ResourceUse { Usage = , Requests = , Limits = , Allocatable =  }, " +
                 "Memory = ResourceUse { Usage = , Requests = , Limits = , Allocatable =  }, Label =  }, " +
                 "State = 4 }",
-            new PodRow(Silent(""), (PodState)4).ToString());
+            new PodRow(ClusterFixture.SilentPod(""), (PodState)4).ToString());
     }
 
     /// <summary>The shared block of the silent row and the state alone make the row's words: the same pinned bytes the
@@ -207,8 +202,8 @@ public class PodRowEdgeCaseTests
     [Fact]
     public void TheSilentRowSaysTheSharedBlockAndTheStateItWasGiven()
     {
-        Assert.Equal(SilentPodWords + "State = Finished }", new PodRow(Silent(""), PodState.Finished).ToString());
-        Assert.Equal(SilentPodWords + "State = 4 }", new PodRow(Silent(""), (PodState)4).ToString());
+        Assert.Equal(SilentPodWords + "State = Finished }", new PodRow(ClusterFixture.SilentPod(""), PodState.Finished).ToString());
+        Assert.Equal(SilentPodWords + "State = 4 }", new PodRow(ClusterFixture.SilentPod(""), (PodState)4).ToString());
     }
 
     /// <summary>The shared block stops where the state begins: it says no state of its own, opens with the row's own
@@ -358,12 +353,12 @@ public class PodRowEdgeCaseTests
     [InlineData(int.MaxValue)]
     public void AStateTheEnumDoesNotNameIsHeldAsTheNumberItStandsOn(int number)
     {
-        var row = new PodRow(Silent("ui-0"), (PodState)number);
+        var row = new PodRow(ClusterFixture.SilentPod("ui-0"), (PodState)number);
 
         Assert.Equal(number, (int)row.State);
         Assert.False(Enum.IsDefined(row.State));
-        Assert.Equal(row, new PodRow(Silent("ui-0"), (PodState)number));
-        Assert.True(row == new PodRow(Silent("ui-0"), (PodState)number));
+        Assert.Equal(row, new PodRow(ClusterFixture.SilentPod("ui-0"), (PodState)number));
+        Assert.True(row == new PodRow(ClusterFixture.SilentPod("ui-0"), (PodState)number));
     }
 
     /// <summary>The restart count the pod says is the row's to hold: the zero the pod that says nothing stands on,
@@ -372,9 +367,9 @@ public class PodRowEdgeCaseTests
     [Fact]
     public void TheRestartCountStandsInTheRowAtTheEndsOfTheCount()
     {
-        var zero = new PodRow(Silent("ui-0"), PodState.Ready);
-        var bottom = new PodRow(Silent("ui-0") with { Restarts = int.MinValue }, PodState.Ready);
-        var top = new PodRow(Silent("ui-0") with { Restarts = int.MaxValue }, PodState.Ready);
+        var zero = new PodRow(ClusterFixture.SilentPod("ui-0"), PodState.Ready);
+        var bottom = new PodRow(ClusterFixture.SilentPod("ui-0") with { Restarts = int.MinValue }, PodState.Ready);
+        var top = new PodRow(ClusterFixture.SilentPod("ui-0") with { Restarts = int.MaxValue }, PodState.Ready);
 
         Assert.Equal(0, zero.Pod.Restarts);
         Assert.Equal(int.MinValue, bottom.Pod.Restarts);
@@ -391,7 +386,7 @@ public class PodRowEdgeCaseTests
     {
         foreach (var at in new[] { DateTimeOffset.MinValue, DateTimeOffset.MaxValue })
         {
-            var row = new PodRow(Silent("ui-0") with { StartedAt = at }, PodState.Ready);
+            var row = new PodRow(ClusterFixture.SilentPod("ui-0") with { StartedAt = at }, PodState.Ready);
 
             Assert.Equal(at, row.Pod.StartedAt);
         }

@@ -48,18 +48,21 @@ public class RuntimePayloadFactoryEdgeCaseTests
 
     // ------------------------------------------------------------------------------- RuntimeTileLine.Of
 
-    /// <summary>A line's words are worked out once, when the line is made: a list of pieces that changes afterwards
-    /// changes the pieces the line holds, since it holds that very list, and not the words it was given.</summary>
+    /// <summary>A line's words are what its pieces say, then and later: it holds the very list it was handed, so a list
+    /// of pieces that changes afterwards changes the pieces and the words together - the line never says one thing and
+    /// carries another.</summary>
     [Fact]
-    public void ALinesWordsAreWorkedOutOnceAndNotAgainWhenItsPiecesChange()
+    public void ALinesWordsFollowItsPiecesWhenThePiecesChange()
     {
         var parts = new List<RuntimeTextPart> { new("12 req/min", ToPortal), new(" · p95 85 ms") };
         var line = RuntimeTileLine.Of("plain", parts);
 
+        Assert.Equal("12 req/min · p95 85 ms", line.Text);
+
         parts.Add(new RuntimeTextPart(" · 3 errors"));
         parts[0] = new RuntimeTextPart("13 req/min");
 
-        Assert.Equal("12 req/min · p95 85 ms", line.Text);
+        Assert.Equal("13 req/min · p95 85 ms · 3 errors", line.Text);
         Assert.Same(parts, line.Parts);
         Assert.Equal(3, line.Parts!.Count);
         Assert.Null(line.Parts[0].Link);
@@ -140,19 +143,21 @@ public class RuntimePayloadFactoryEdgeCaseTests
         Assert.Same(trend, RuntimeTileLine.Of("plain", [], trend).Trend);
     }
 
-    /// <summary>A list of pieces that holds nothing in a slot is no line: the words of a piece that is not there cannot
-    /// be read, whichever slot it stands in - while the constructor, which works nothing out, holds such a list.</summary>
+    /// <summary>A list of pieces that holds nothing in a slot is no line, and the refusal is the caller's fault named
+    /// as the missing list is: <c>parts</c>, with the slot - whichever slot it stands in. The constructor, which is
+    /// handed its pieces as they are, holds such a list and says what the other pieces say.</summary>
     [Fact]
     public void AListOfPiecesWithNothingInASlotIsNoLine()
     {
-        Assert.Throws<NullReferenceException>(() => RuntimeTileLine.Of("plain", [null!]));
-        Assert.Throws<NullReferenceException>(() => RuntimeTileLine.Of("plain", [new RuntimeTextPart("a", ToPortal), null!]));
-        Assert.Throws<NullReferenceException>(() => RuntimeTileLine.Of("plain", [null!, new RuntimeTextPart("a", ToPortal)]));
+        Assert.Equal("parts", Assert.Throws<ArgumentException>(() => RuntimeTileLine.Of("plain", [null!])).ParamName);
+        Assert.Contains("at 1", Assert.Throws<ArgumentException>(() => RuntimeTileLine.Of("plain", [new RuntimeTextPart("a", ToPortal), null!])).Message, StringComparison.Ordinal);
+        Assert.Contains("at 0", Assert.Throws<ArgumentException>(() => RuntimeTileLine.Of("plain", [null!, new RuntimeTextPart("a", ToPortal)])).Message, StringComparison.Ordinal);
 
         var held = new RuntimeTileLine("a", "plain", [null!]);
 
         Assert.Single(held.Parts!);
         Assert.Null(held.Parts![0]);
+        Assert.Equal(string.Empty, held.Text);
     }
 
     // ---------------------------------------------------------------------------------- RuntimeLink.To

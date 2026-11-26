@@ -66,7 +66,7 @@ public class RuntimePayloadBoundaryEdgeCaseTests
     /// <summary>A line whose every part needs escaping: its words, the place one of its pieces leads, and the tooltip
     /// of the one mark of a detailed health check it carries.</summary>
     private static readonly RuntimeTileLine AwkwardLine = new(
-        "pinned 2.4.43: in \"sync\"", "insync",
+        "pinned 2.4.43: in \"sync\" & differs", "insync",
         [new RuntimeTextPart("pinned 2.4.43: in \"sync\" "), new RuntimeTextPart("& differs", Awkward)],
         null, [new RuntimeCheckMark("healthy", "API: Healthy <200 OK> \"once\" & twice")]);
 
@@ -184,7 +184,7 @@ public class RuntimePayloadBoundaryEdgeCaseTests
         Assert.Equal("HTTP 200\t\u00B7 85 ms\n", node.GetProperty("facts").GetString());
         Assert.Equal("cmdemo2-ui primary: \u2603 \U0001F600 \u00E9", node.GetProperty("title").GetString());
         Assert.Equal("<checking>", node.GetProperty("history")[1].GetString());
-        Assert.Equal("pinned 2.4.43: in \"sync\"", line.GetProperty("text").GetString());
+        Assert.Equal("pinned 2.4.43: in \"sync\" & differs", line.GetProperty("text").GetString());
         Assert.Equal("& differs", line.GetProperty("parts")[1].GetProperty("text").GetString());
         Assert.Equal("API: Healthy <200 OK> \"once\" & twice", line.GetProperty("marks")[0].GetProperty("title").GetString());
         Assert.Equal(AwkwardWords, node.GetProperty("link").GetProperty("title").GetString());
@@ -319,8 +319,9 @@ public class RuntimePayloadBoundaryEdgeCaseTests
         Assert.Equal(bytes, update.ToJson());
     }
 
-    /// <summary>A list the payload holds may carry nothing in one of its slots, and no record looks inside or refuses
-    /// it: the writer puts a <c>null</c> exactly where a slot is nothing and writes the parts beside it as they stand -
+    /// <summary>A list the payload holds may carry nothing in one of its slots, and no record refuses it: the writer
+    /// puts a <c>null</c> exactly where a slot is nothing and writes the parts beside it as they stand (a line's words
+    /// being what its pieces say, a piece that is nothing adding none) -
     /// which is what a page has to read as a slot nobody filled, and what no builder of this deployment ever makes.</summary>
     [Fact]
     public void AListOfThePayloadThatHoldsNothingInItsPlaceIsWrittenWithNothingInItsPlace()
@@ -341,7 +342,7 @@ public class RuntimePayloadBoundaryEdgeCaseTests
         Assert.Null(tile.Lines[1].Marks![0]);
 
         Assert.Equal(
-            """{"nodes":[{"alias":"a","state":"neutral","label":"N","lines":[null,{"text":"x","tone":"plain","parts":[null,{"text":"p"}],"marks":[null,{"state":"failed","title":"DataAccess: Unhealthy."}]}],"history":[null,"healthy"],"title":"t"}],"regions":[],"edges":[]}""",
+            """{"nodes":[{"alias":"a","state":"neutral","label":"N","lines":[null,{"text":"p","tone":"plain","parts":[null,{"text":"p"}],"marks":[null,{"state":"failed","title":"DataAccess: Unhealthy."}]}],"history":[null,"healthy"],"title":"t"}],"regions":[],"edges":[]}""",
             new RuntimePayload(new List<RuntimeTile> { tile }, new List<RuntimeRegionMark>(), new List<RuntimeEdgeMark>()).ToJson());
 
         // The four lists of the update itself behave the same way: a box that is nothing is a null in the row of them.
@@ -389,19 +390,32 @@ public class RuntimePayloadBoundaryEdgeCaseTests
 
     // ------------------------------------------------------------------- the two factories, at their open ends
 
-    /// <summary>A line is given its own words and keeps them: it is never worked out of the pieces a caller hands
-    /// beside it, and a piece that says nothing adds nothing to the row of them - not the word <c>null</c>, not a
-    /// space. The pieces are still kept when one of them leads, whichever one it is, and the line of a thousand
-    /// pieces of one letter is a thousand letters of words and no pieces at all, since none of them leads anywhere.</summary>
+    /// <summary>A line with pieces says what its pieces say: words handed beside pieces that spell something else
+    /// give way to the pieces, so a line never says one thing and carries another, and a piece that says nothing adds
+    /// nothing to the row of them - not the word <c>null</c>, not a space. A missing list and a missing piece are both
+    /// the caller's fault, named <c>parts</c>. The pieces are still kept when one of them leads, whichever one it is,
+    /// and the line of a thousand pieces of one letter is a thousand letters of words and no pieces at all, since none
+    /// of them leads anywhere.</summary>
     [Fact]
-    public void ALineIsGivenItsOwnWordsAndKeepsThemAndNotTheOnesItsPiecesSay()
+    public void ALineWithPiecesSaysWhatItsPiecesSayAndAMissingPieceIsRefusedByName()
     {
         var whole = new RuntimeTileLine("whole", "muted", new List<RuntimeTextPart> { new("a"), new("b") });
 
-        Assert.Equal("whole", whole.Text);
+        Assert.Equal("ab", whole.Text);
         Assert.Equal(2, whole.Parts!.Count);
         Assert.Equal("ab", string.Concat(whole.Parts.Select(part => part.Text)));
-        Assert.Equal("""{"text":"whole","tone":"muted","parts":[{"text":"a"},{"text":"b"}]}""", Bytes(whole));
+        Assert.Equal("""{"text":"ab","tone":"muted","parts":[{"text":"a"},{"text":"b"}]}""", Bytes(whole));
+
+        // The words handed beside the pieces come back once the pieces are gone, and new words beside pieces give way.
+        Assert.Equal("whole", (whole with { Parts = null }).Text);
+        Assert.Equal("ab", (whole with { Text = "other" }).Text);
+
+        // No list and a list with a hole in it are refused alike, both naming the argument.
+        Assert.Equal("parts", Assert.Throws<ArgumentNullException>(() => RuntimeTileLine.Of("plain", null!)).ParamName);
+        var hole = Assert.Throws<ArgumentException>(() => RuntimeTileLine.Of("plain", new List<RuntimeTextPart> { new("a"), null! }));
+        Assert.Equal("parts", hole.ParamName);
+        Assert.Contains("at 1", hole.Message, StringComparison.Ordinal);
+        Assert.IsNotType<ArgumentNullException>(hole);
 
         // A piece of no words is a piece of no words: the line made of them says nothing, and not "null".
         var silent = RuntimeTileLine.Of("muted", new List<RuntimeTextPart> { new(null!), new(string.Empty) });

@@ -8,8 +8,13 @@ public sealed record RuntimeIndexResult(RuntimeAvailability Availability, Runtim
     /// <summary>The index was read: available, with no errors.</summary>
     internal static RuntimeIndexResult Read(RuntimeIndex index) => new(RuntimeAvailability.Available, index, []);
 
-    /// <summary>The files are there and cannot be read: no index, the reasons why.</summary>
-    internal static RuntimeIndexResult Failed(IReadOnlyList<string> errors) => new(RuntimeAvailability.Failed, null, errors);
+    /// <summary>
+    /// The files are there and cannot be read: no index, the reasons why. Said in the word and the way of
+    /// <see cref="RuntimeParseResult{T}.Failed"/>: one reason or many, given one by one, or a list gathered beforehand
+    /// and handed over as it is (the same list, not a copy).
+    /// </summary>
+    /// <param name="errors">Why there is no index, in the order they were found.</param>
+    internal static RuntimeIndexResult Failed(params IReadOnlyList<string> errors) => new(RuntimeAvailability.Failed, null, errors);
 
     /// <summary>The site has no <c>runtime/</c>: the page says so, not as a problem.</summary>
     internal bool IsNotDeployed => Availability == RuntimeAvailability.NotDeployed;

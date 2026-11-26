@@ -299,6 +299,43 @@ public class MarkupGuardSupportTests
         Assert.Equal(helpers.Count, components + pages + roots + tests + sources);
     }
 
+    // ----- the line
+
+    /// <summary>
+    /// Every private <c>LineOf(string, int)</c> still standing in a guard file says exactly what the shared
+    /// <see cref="MarkupGuards.LineOf" /> says - on the real markup the guards read and on a hand-written line of
+    /// its own, at the first position, at each line break and past it, and at the text's end. This is the pin that
+    /// lets a file drop its copy and call <see cref="MarkupGuards.LineOf" /> without the <c>file:line</c> of its
+    /// offender messages moving. As with the count, the set of the copies is pinned from above as well as below:
+    /// it may only shrink, never grow, so the duplication this change homes cannot spread while the follow-up
+    /// files retire the copies one file at a time.
+    /// </summary>
+    [Fact]
+    public void TheSharedLineSaysWhatEveryFilesOwnCopyOfItSays()
+    {
+        var copies = MethodsNamed(nameof(MarkupGuards.LineOf), typeof(int), LineSignature);
+
+        Assert.True(
+            copies.Count >= 26,
+            $"only {copies.Count} private copy(ies) of LineOf were found: the walk no longer reaches the guard files, so this test proves nothing");
+        Assert.True(
+            copies.Count <= 28,
+            $"{copies.Count} private copies of LineOf stand in the guard files: the duplication may only shrink as the files call MarkupGuards.LineOf, never grow");
+
+        foreach (var copy in copies)
+        {
+            foreach (var (text, at) in LineSamples())
+            {
+                var expected = MarkupGuards.LineOf(text, at);
+
+                var said = (int)copy.Invoke(null, [text, at])!;
+                Assert.True(
+                    expected == said,
+                    $"{copy.DeclaringType!.Name}.{copy.Name} says {said} and MarkupGuards.LineOf says {expected} about position {at}.");
+            }
+        }
+    }
+
     // ----- the two walks
 
     /// <summary>The text and the needles the shared count and its copies are set against: the markup the guards
@@ -311,8 +348,21 @@ public class MarkupGuardSupportTests
         return markup.SelectMany(text => needles.Select(value => (text, value)));
     }
 
+    /// <summary>The texts and the positions the shared line and its copies are set against: the markup the guards
+    /// actually read, and a hand-written line of its own, each at the first position, at the line break and past it,
+    /// and at the text's end - so every line the texts hold is counted and the first line is never dropped.</summary>
+    private static IEnumerable<(string Text, int At)> LineSamples()
+    {
+        var texts = new[] { MarkupGuards.AppText(), MarkupGuards.ComponentText("WorkItemsView"), MarkupGuards.ComponentText("DeployableFacts"), "a\nb\nc\n" };
+
+        return texts.SelectMany(text => new[] { 0, 1, text.Length - 1, text.Length }.Select(at => (text, at)));
+    }
+
     /// <summary>The signature of the count the guard files copied.</summary>
     private static readonly Type[] CountSignature = [typeof(string), typeof(string)];
+
+    /// <summary>The signature of the line helper the guard files copied.</summary>
+    private static readonly Type[] LineSignature = [typeof(string), typeof(int)];
 
     /// <summary>The private static methods of the test assembly under the name and the signature named - the copies
     /// the shared helper answers for.</summary>

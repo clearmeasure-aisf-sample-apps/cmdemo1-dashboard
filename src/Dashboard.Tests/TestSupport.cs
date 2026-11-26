@@ -313,6 +313,13 @@ internal static class MarkupGuards
 
         return count;
     }
+
+    /// <summary>
+    /// The one-based line <paramref name="at" /> stands on in <paramref name="text" />: the number of line
+    /// breaks before it, plus the first line, so the offender message that prints <c>file:line</c> points at the
+    /// line the offending letter is written on and not at the line above it.
+    /// </summary>
+    public static int LineOf(string text, int at) => text.AsSpan(0, at).Count('\n') + 1;
 }
 
 /// <summary>

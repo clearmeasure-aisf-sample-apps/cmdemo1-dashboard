@@ -3,7 +3,12 @@ using Dashboard.Health;
 
 namespace Dashboard.Runtime;
 
-/// <summary>The outcome of reading a file of <c>runtime/</c>: the value, or the reasons there is none.</summary>
+/// <summary>
+/// The outcome of reading a file of the app: the value, or the reasons there is none. The one value-or-problems record
+/// of the file readers (#1811): the readers of <c>runtime/</c> hand it back as it is, and the reader of
+/// <c>topology.json</c> makes its <see cref="TopologyParseResult"/> through it. The cluster's
+/// <see cref="Cluster.Parsed{T}"/> stays apart: it carries one problem, the end of a sentence, not a list.
+/// </summary>
 public sealed record RuntimeParseResult<T>(T? Value, IReadOnlyList<string> Errors)
     where T : class
 {

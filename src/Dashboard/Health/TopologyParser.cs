@@ -4,20 +4,29 @@ using Dashboard.Runtime;
 
 namespace Dashboard.Health;
 
-/// <summary>The outcome of reading <c>topology.json</c>: a topology, or the reasons there is none.</summary>
+/// <summary>
+/// The outcome of reading <c>topology.json</c>: a topology, or the reasons there is none. The health page's name for
+/// the app's one value-or-problems record, <see cref="RuntimeParseResult{T}"/> of a <see cref="Health.Topology"/>
+/// (#1811): both ways of making one go through that record, so the rules of "no value, and here is why" are written
+/// once for every file reader.
+/// </summary>
 public sealed record TopologyParseResult(Topology? Topology, IReadOnlyList<string> Errors)
 {
     public bool IsValid => Topology is not null;
 
-    public static TopologyParseResult Failed(params string[] errors) => new(null, errors);
+    /// <summary>No topology, the problems as they were given: <see cref="RuntimeParseResult{T}.Failed"/>.</summary>
+    public static TopologyParseResult Failed(params string[] errors) => From(RuntimeParseResult<Topology>.Failed(errors));
 
     /// <summary>
-    /// The one way the reader of <c>topology.json</c> hands over the problems it gathered while reading, as
-    /// <see cref="RuntimeParseResult{T}.Collected"/> is for <c>runtime/</c>: any problem means no topology and the
-    /// problems as they are, in their order; no problem means the topology, made only then.
+    /// The one way the reader of <c>topology.json</c> hands over the problems it gathered while reading:
+    /// <see cref="RuntimeParseResult{T}.Collected"/>, the same way as for <c>runtime/</c>. Any problem means no
+    /// topology and the problems as they are, in their order; no problem means the topology, made only then.
     /// </summary>
     internal static TopologyParseResult Collected(IReadOnlyList<string> errors, Func<Topology> topology) =>
-        errors.Count > 0 ? new(null, errors) : new(topology(), []);
+        From(RuntimeParseResult<Topology>.Collected(errors, topology));
+
+    /// <summary>The shared record, under the name and the parts the health page reads.</summary>
+    internal static TopologyParseResult From(RuntimeParseResult<Topology> result) => new(result.Value, result.Errors);
 }
 
 /// <summary>

@@ -9,7 +9,8 @@ namespace Dashboard.Tests;
 /// <see cref="HealthState.Pending" /> with nothing behind it, that the state is the last check's, that the history
 /// holds the last thirty checks oldest first, that a node which stops answering keeps its last known version, and
 /// which end of a deployable a tile is built for; <see cref="TargetKindEdgeCaseTests" /> pins
-/// <see cref="TargetKind" /> itself and the kind a tile carries; <see cref="TrendTests" /> pins
+/// <see cref="TargetKind" /> itself, <see cref="TargetKindBoundaryEdgeCaseTests" /> the kinds combined, stepped and
+/// absent, and the kind a tile carries; <see cref="TrendTests" /> pins
 /// <see cref="TargetStatus.RecordTelemetry" />, <see cref="TargetStatus.Samples" /> and
 /// <see cref="TargetStatus.Telemetry" /> - the gap a round
 /// without a reading leaves once the node has reported, the nothing before the first report and the sixty readings

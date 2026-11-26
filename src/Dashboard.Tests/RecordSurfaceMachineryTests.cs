@@ -4,9 +4,10 @@ namespace Dashboard.Tests;
 
 /// <summary>
 /// The tests of the walks <see cref="RecordSurface" /> gathers beside its first one: for every file that still carries
-/// its own private copy of a surface-reading helper - the record walk that keeps fields, the static-class walk, and the
-/// generic machinery of <see cref="TopologyEdgeCaseTests" /> - the shared walk says exactly what that copy says, so a
-/// file may call the shared one and keep its expected list as the pin.
+/// its own private copy of a surface-reading helper - the record walk that keeps fields and the static-class walk - the
+/// shared walk says exactly what that copy says, so a file may call the shared one and keep its expected list as the
+/// pin. The generic readers <see cref="TopologyEdgeCaseTests" /> once carried now live in <see cref="RecordSurface" />
+/// alone; their old copies stand at the foot of this file as an independent second reading of the same records.
 /// </summary>
 public class RecordSurfaceMachineryTests
 {
@@ -53,18 +54,18 @@ public class RecordSurfaceMachineryTests
     [Theory]
     [MemberData(nameof(TopologyRecords))]
     public void PropertyNamesOfSaysWhatTopologysNamesOfSays(Type record) =>
-        Assert.Equal(TopologyCopy<string[]>("NamesOf", record), Shared<string[]>(nameof(RecordSurface.PropertyNamesOf), record));
+        Assert.Equal(OwnReading<string[]>(nameof(NamesOf), record), Shared<string[]>(nameof(RecordSurface.PropertyNamesOf), record));
 
     [Theory]
     [MemberData(nameof(TopologyRecords))]
     public void OfSaysWhatTopologysPublicSurfaceOfSays(Type record) =>
-        Assert.Equal(TopologyCopy<string[]>("PublicSurfaceOf", record), RecordSurface.Of(record));
+        Assert.Equal(OwnReading<string[]>(nameof(PublicSurfaceOf), record), RecordSurface.Of(record));
 
     [Theory]
     [MemberData(nameof(TopologyRecords))]
     public void PropertiesOfSaysWhatTopologysPropertiesOfSays(Type record)
     {
-        var copy = TopologyCopy<Dictionary<string, PropertyInfo>>("PropertiesOf", record);
+        var copy = OwnReading<Dictionary<string, PropertyInfo>>(nameof(PropertiesOf), record);
         var shared = Shared<Dictionary<string, PropertyInfo>>(nameof(RecordSurface.PropertiesOf), record);
 
         Assert.Equal(copy.Keys.Order(StringComparer.Ordinal), shared.Keys.Order(StringComparer.Ordinal));
@@ -75,21 +76,20 @@ public class RecordSurfaceMachineryTests
     [MemberData(nameof(TopologyRecords))]
     public void ParametersOfSaysWhatTopologysParametersOfSays(Type record)
     {
-        var copy = TopologyCopy<ParameterInfo[]>("ParametersOf", record);
+        var copy = OwnReading<ParameterInfo[]>(nameof(ParametersOf), record);
         var shared = Shared<ParameterInfo[]>(nameof(RecordSurface.ParametersOf), record);
 
         Assert.Equal(copy, shared);
 
-        var isNullable = typeof(TopologyEdgeCaseTests).GetMethod("IsNullable", Private)!;
         Assert.Equal(
-            [.. copy.Select(parameter => (bool)isNullable.Invoke(null, [parameter])!)],
+            [.. copy.Select(IsNullable)],
             [.. shared.Select(RecordSurface.IsNullable)]);
     }
 
     [Theory]
     [MemberData(nameof(TopologyRecords))]
     public void FieldNamesOfSaysWhatTopologysNamesOfFieldsSays(Type record) =>
-        Assert.Equal(TopologyCopy<string[]>("NamesOfFields", record), Shared<string[]>(nameof(RecordSurface.FieldNamesOf), record));
+        Assert.Equal(OwnReading<string[]>(nameof(NamesOfFields), record), Shared<string[]>(nameof(RecordSurface.FieldNamesOf), record));
 
     [Fact]
     public void SignatureSaysWhatProbeUrlEdgeCaseTestsPrivateCopySays()
@@ -156,15 +156,58 @@ public class RecordSurfaceMachineryTests
         return Assert.IsType<List<string>>(copy.Invoke(null, [type]));
     }
 
-    private static T TopologyCopy<T>(string name, Type record)
+    private static T OwnReading<T>(string name, Type record)
     {
-        var copy = typeof(TopologyEdgeCaseTests).GetMethod(name, Private, Type.EmptyTypes);
+        var copy = typeof(RecordSurfaceMachineryTests).GetMethod(name, Private, Type.EmptyTypes);
         Assert.NotNull(copy);
         return Assert.IsType<T>(copy.MakeGenericMethod(record).Invoke(null, null));
     }
 
     private static T Shared<T>(string name, Type record) =>
         Assert.IsType<T>(typeof(RecordSurface).GetMethod(name, Type.EmptyTypes)!.MakeGenericMethod(record).Invoke(null, null));
+
+    // ------------------------------------------- the second reading, as TopologyEdgeCaseTests once wrote it
+
+    /// <summary>The public properties a record declares itself, in the order they stand in it.</summary>
+    private static string[] NamesOf<T>() =>
+        [.. typeof(T)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Select(property => property.Name)];
+
+    /// <summary>The public members a record declares itself: its properties and the methods that are not the get
+    /// and the set of one - the two operators kept - with the record's compiler-named clone walked past.</summary>
+    private static string[] PublicSurfaceOf<T>() =>
+        [.. typeof(T)
+            .GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
+            .Where(member => member is PropertyInfo
+                             || member is MethodInfo method
+                             && (!method.IsSpecialName || method.Name.StartsWith("op_", StringComparison.Ordinal)))
+            .Where(member => !member.Name.Contains('<', StringComparison.Ordinal))
+            .Select(member => member.Name)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)];
+
+    /// <summary>The public properties of a record, by name, looked up one by one.</summary>
+    private static Dictionary<string, PropertyInfo> PropertiesOf<T>() =>
+        NamesOf<T>()
+            .ToDictionary(
+                name => name,
+                name => typeof(T).GetProperty(name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)!,
+                StringComparer.Ordinal);
+
+    /// <summary>The parts a record's one constructor names, in the order it names them.</summary>
+    private static ParameterInfo[] ParametersOf<T>() => typeof(T).GetConstructors().Single().GetParameters();
+
+    /// <summary>True when the record says a part may be nothing.</summary>
+    private static bool IsNullable(ParameterInfo parameter) =>
+        new NullabilityInfoContext().Create(parameter).WriteState == NullabilityState.Nullable;
+
+    /// <summary>The public static fields a record declares itself, in ordinal order.</summary>
+    private static string[] NamesOfFields<T>() =>
+        [.. typeof(T)
+            .GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)
+            .Select(field => field.Name)
+            .Order(StringComparer.Ordinal)];
 
     private sealed record WithAField(string Left, string? Right)
     {

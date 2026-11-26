@@ -40,8 +40,8 @@ public class RuntimePayloadBuilderTests
 
     private static RuntimeTile Tile(RuntimePayload payload, string alias) => payload.Nodes.Single(tile => tile.Alias == alias);
 
-    /// <summary>A tile's lines as words and tone: what a reader sees, whatever is a link.</summary>
-    private static (string Text, string Tone)[] Words(RuntimeTile tile) => [.. tile.Lines.Select(line => (line.Text, line.Tone))];
+    /// <summary>A tile's lines as text and tone: what a reader sees, whatever is a link.</summary>
+    private static (string Text, string Tone)[] LinesOf(RuntimeTile tile) => [.. tile.Lines.Select(line => (line.Text, line.Tone))];
 
     // The marks below are compared without the link of the region's name, which the sample manifest gives every
     // region (RuntimeBoxLinkTests has the links).
@@ -86,12 +86,12 @@ public class RuntimePayloadBuilderTests
         Assert.Equal("healthy", primary.State);
         Assert.Equal("Healthy", primary.Label);
         Assert.Equal("HTTP 200 · 40 ms", primary.Facts);
-        Assert.Equal([("version 2.4.21", "strong"), ("pinned 2.4.21: in sync", "insync"), ("primary: serves traffic", "serving")], Words(primary));
+        Assert.Equal([("version 2.4.21", "strong"), ("pinned 2.4.21: in sync", "insync"), ("primary: serves traffic", "serving")], LinesOf(primary));
         Assert.Equal(["healthy"], primary.History!);
         Assert.Contains("https://app-cmdemo2-uat-ui.azurewebsites.net/", primary.Title, StringComparison.Ordinal);
 
         var standby = Tile(payload, "app_ui_standby");
-        Assert.Equal([("version 2.4.20", "strong"), ("differs from pinned 2.4.21", "differs"), ("standby: ready, no traffic", "muted")], Words(standby));
+        Assert.Equal([("version 2.4.20", "strong"), ("differs from pinned 2.4.21", "differs"), ("standby: ready, no traffic", "muted")], LinesOf(standby));
 
         Assert.Equal(new RuntimeRegionMark("region_primary", "serving", "serving traffic"), payload.Regions.Single(region => region.Alias == "region_primary") with { NameLink = null });
         Assert.Equal(new RuntimeRegionMark("region_standby", "standby", "standby: ready"), payload.Regions.Single(region => region.Alias == "region_standby") with { NameLink = null });
@@ -102,7 +102,7 @@ public class RuntimePayloadBuilderTests
         Assert.Equal("active", Edge(payload, "browser-to-fd_ui"));
 
         var frontDoor = Tile(payload, "fd_ui");
-        Assert.Equal([("version 2.4.21", "strong"), ("routes to westus3 (priority 1)", "plain"), ("agrees with the web apps", "ok")], Words(frontDoor));
+        Assert.Equal([("version 2.4.21", "strong"), ("routes to westus3 (priority 1)", "plain"), ("agrees with the web apps", "ok")], LinesOf(frontDoor));
     }
 
     [Fact]
@@ -306,7 +306,7 @@ public class RuntimePayloadBuilderTests
         Assert.Equal(("healthy", "Healthy", "HTTP 200 · 85 ms"), (tile.State, tile.Label, tile.Facts));
         Assert.Equal(
             [(ContainerHost, "muted"), ("hourly: healthy, 40 min ago", "plain"), ("24 h: 23 of 24 · 7 d: 160 of 168", "muted")],
-            Words(tile));
+            LinesOf(tile));
         Assert.Null(tile.History);
         Assert.Contains("The last report that asked it ended 2026-10-04 21:20 +00:00 (40 min ago) and found it healthy.", tile.Title, StringComparison.Ordinal);
         Assert.Contains("Healthy in 23 of the 24 reports of 24 hours that asked it. Healthy in 160 of the 168 reports of 7 days that asked it.", tile.Title, StringComparison.Ordinal);
@@ -322,7 +322,7 @@ public class RuntimePayloadBuilderTests
         var tile = ContainerTile(Delivery(Reported(result, Now.AddMinutes(minutes))), Now, Probed(ContainerAppState.Healthy, 200));
 
         Assert.Equal("healthy", tile.State);
-        Assert.Equal((line, "plain"), Words(tile)[1]);
+        Assert.Equal((line, "plain"), LinesOf(tile)[1]);
     }
 
     [Theory]
@@ -336,8 +336,8 @@ public class RuntimePayloadBuilderTests
         var tile = ContainerTile(Delivery(Reported(result, at)), Now);
 
         Assert.Equal("checking", tile.State);
-        Assert.Equal(("no recent hourly check", "muted"), Words(tile)[1]);
-        Assert.Equal(("24 h: 23 of 24 · 7 d: 160 of 168", "muted"), Words(tile)[2]);
+        Assert.Equal(("no recent hourly check", "muted"), LinesOf(tile)[1]);
+        Assert.Equal(("24 h: 23 of 24 · 7 d: 160 of 168", "muted"), LinesOf(tile)[2]);
         Assert.Contains($"found it {result}: none in the last two hours, so the box says no recent hourly check.", tile.Title, StringComparison.Ordinal);
     }
 
@@ -346,8 +346,8 @@ public class RuntimePayloadBuilderTests
     {
         var delivery = Delivery(Reported("healthy", Now.AddMinutes(-100)));
 
-        Assert.Equal("hourly: healthy, 100 min ago", Words(ContainerTile(delivery, Now))[1].Text);
-        Assert.Equal("no recent hourly check", Words(ContainerTile(delivery, Now.AddMinutes(21)))[1].Text);
+        Assert.Equal("hourly: healthy, 100 min ago", LinesOf(ContainerTile(delivery, Now))[1].Text);
+        Assert.Equal("no recent hourly check", LinesOf(ContainerTile(delivery, Now.AddMinutes(21)))[1].Text);
         Assert.Null(HourlyCheckText.RecentResult(delivery.ContainerAppsOf("uat")![0], Now.AddMinutes(21)));
         Assert.NotNull(HourlyCheckText.RecentResult(delivery.ContainerAppsOf("uat")![0], Now.AddMinutes(20)));
     }
@@ -358,9 +358,9 @@ public class RuntimePayloadBuilderTests
         var never = ContainerTile(Delivery("""[ { "name": "scorecard", "last": null, "last24Hours": { "reports": 0, "healthy": 0 }, "last7Days": { "reports": 0, "healthy": 0 } } ]"""), Now);
         var unnamed = ContainerTile(Delivery("""[ { "name": "ui", "last": null, "last24Hours": null, "last7Days": null } ]"""), Now);
 
-        Assert.Equal([(ContainerHost, "muted"), ("no recent hourly check", "muted"), ("24 h: none · 7 d: none", "muted")], Words(never));
+        Assert.Equal([(ContainerHost, "muted"), ("no recent hourly check", "muted"), ("24 h: none · 7 d: none", "muted")], LinesOf(never));
         Assert.Contains("No report of the last 7 days asked it.", never.Title, StringComparison.Ordinal);
-        Assert.Equal([(ContainerHost, "muted"), ("no recent hourly check", "muted")], Words(unnamed));
+        Assert.Equal([(ContainerHost, "muted"), ("no recent hourly check", "muted")], LinesOf(unnamed));
         Assert.Contains("The delivery facts name no report of it yet.", unnamed.Title, StringComparison.Ordinal);
     }
 
@@ -369,7 +369,7 @@ public class RuntimePayloadBuilderTests
     {
         var tile = ContainerTile(Delivery("""[ { "name": "scorecard", "last": { "result": "healthy", "at": "2026-10-04T21:30:00Z" }, "last24Hours": { "reports": 24, "healthy": 24 }, "last7Days": null } ]"""), Now);
 
-        Assert.Equal(("24 h: 24 of 24", "muted"), Words(tile)[2]);
+        Assert.Equal(("24 h: 24 of 24", "muted"), LinesOf(tile)[2]);
         Assert.DoesNotContain("7 days that asked it", tile.Title, StringComparison.Ordinal);
     }
 
@@ -379,9 +379,9 @@ public class RuntimePayloadBuilderTests
         // An older file, a system whose logs could not be read, and an update without the time: the address alone.
         var older = DeliveryReport.Parse("""{ "environments": [ { "name": "uat", "health": { "last24Hours": { "reports": 24, "healthy": 24 }, "last7Days": null } } ] }""");
 
-        Assert.Equal([(ContainerHost, "muted")], Words(ContainerTile(older, Now)));
-        Assert.Equal([(ContainerHost, "muted")], Words(ContainerTile(Delivery("null"), Now)));
-        Assert.Equal([(ContainerHost, "muted")], Words(ContainerTile(Delivery(Reported("healthy", Now)), null)));
+        Assert.Equal([(ContainerHost, "muted")], LinesOf(ContainerTile(older, Now)));
+        Assert.Equal([(ContainerHost, "muted")], LinesOf(ContainerTile(Delivery("null"), Now)));
+        Assert.Equal([(ContainerHost, "muted")], LinesOf(ContainerTile(Delivery(Reported("healthy", Now)), null)));
     }
 
     [Fact]
@@ -395,7 +395,7 @@ public class RuntimePayloadBuilderTests
 
         Assert.Equal(
             [(ContainerHost, "muted"), ("hourly: healthy, 5 min ago", "plain"), ("24 h: 23 of 24 · 7 d: 160 of 168", "muted"), ("1.0.3 reached uat 4 min ago", ActivityKind.Deployed)],
-            Words(tile));
+            LinesOf(tile));
     }
 
     [Fact]
@@ -448,7 +448,7 @@ public class RuntimePayloadBuilderTests
         var tile = ResourceTile(vault, Readings());
 
         Assert.Equal(("neutral", "Available", (string?)null), (tile.State, tile.Label, tile.Facts));
-        Assert.Equal([("Resource Health, 40 min ago", "plain")], Words(tile));
+        Assert.Equal([("Resource Health, 40 min ago", "plain")], LinesOf(tile));
         Assert.Contains(ResourceHealthText.Source, tile.Title, StringComparison.Ordinal);
         Assert.Contains("KV-DEMO: available (by Resource Health), read 2026-10-04 21:20 +00:00 (40 min ago). There aren't any known Azure platform problems", tile.Title, StringComparison.Ordinal);
     }
@@ -462,7 +462,7 @@ public class RuntimePayloadBuilderTests
         var tile = ResourceTile(several, Readings());
 
         Assert.Equal(("neutral", "Not known"), (tile.State, tile.Label));
-        Assert.Equal([("1 not known · 1 provisioned · 1 available, 40 min ago", "plain")], Words(tile));
+        Assert.Equal([("1 not known · 1 provisioned · 1 available, 40 min ago", "plain")], LinesOf(tile));
         Assert.Contains("stnew: not in the hourly reading.", tile.Title, StringComparison.Ordinal);
     }
 
@@ -471,10 +471,10 @@ public class RuntimePayloadBuilderTests
     {
         var vault = new RuntimeNode("res_1", RuntimeNodeKind.Resource, "kv-demo", Ids: [$"{Group}/Microsoft.KeyVault/vaults/kv-demo"]);
 
-        Assert.Equal([("Resource Health, 2 h ago", "muted")], Words(ResourceTile(vault, Readings(), Now.AddHours(2))));
+        Assert.Equal([("Resource Health, 2 h ago", "muted")], LinesOf(ResourceTile(vault, Readings(), Now.AddHours(2))));
         var unread = ResourceTile(vault, null);
         Assert.Equal(("neutral", "Not known"), (unread.State, unread.Label));
-        Assert.Equal([("no Resource Health read yet", "muted")], Words(unread));
+        Assert.Equal([("no Resource Health read yet", "muted")], LinesOf(unread));
     }
 
     [Fact]
@@ -499,7 +499,7 @@ public class RuntimePayloadBuilderTests
         var database = Tile(RuntimePayloadBuilder.Build(manifest, Uat(), Page, TimeZoneInfo.Utc, now: Now, resources: Readings()), "sqldb");
 
         Assert.Equal(("neutral", "Degraded"), (database.State, database.Label));
-        Assert.Equal([("Resource Health, 40 min ago", "plain")], Words(database));
+        Assert.Equal([("Resource Health, 40 min ago", "plain")], LinesOf(database));
         Assert.StartsWith("sqldb-cmdemo2-uat: the database takes no call from a browser", database.Title, StringComparison.Ordinal);
     }
 
@@ -552,7 +552,7 @@ public class RuntimePayloadBuilderTests
 
         Assert.Equal(new ContainerAppTarget(app.Url!), asked);
         Assert.Equal("/_healthcheck", asked!.PathFor(ProbeKind.Health));
-        Assert.Equal([("ca-ai-factory.happyisland-1.southcentralus.azurecontainerapps.io", "muted")], Words(tile));
+        Assert.Equal([("ca-ai-factory.happyisland-1.southcentralus.azurecontainerapps.io", "muted")], LinesOf(tile));
     }
 
     [Fact]

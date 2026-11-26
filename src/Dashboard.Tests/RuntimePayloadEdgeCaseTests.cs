@@ -1234,7 +1234,8 @@ public class RuntimePayloadEdgeCaseTests
 
     // ---------------------------------------------------------------------- the surface of every record
 
-    /// <summary>One record of the payload, with the parts it is named by in the order it declares them, the words
+    /// <summary>The declared shape of one record of the payload - a row of the table below, not the surface
+    /// <see cref="RecordSurface" /> reads - with the parts it is named by in the order it declares them, the words
     /// that say which of them a caller may leave out and which of them may be nothing, and the methods it has besides
     /// the four every record is asked.</summary>
     /// <param name="Type">The record type itself.</param>
@@ -1242,7 +1243,7 @@ public class RuntimePayloadEdgeCaseTests
     /// <param name="NamedByNobody">The parts a caller may leave out, which the constructor gives a default.</param>
     /// <param name="MayBeNothing">The parts that may be nothing at all, as the record declares them.</param>
     /// <param name="Methods">The methods written beside the parts, and not the members every record is asked.</param>
-    public sealed record Surface(
+    public sealed record DeclaredShape(
         Type Type,
         string[] Parts,
         string[] NamedByNobody,
@@ -1252,7 +1253,7 @@ public class RuntimePayloadEdgeCaseTests
     /// <summary>The records <c>RuntimePayload.cs</c> declares, bar <see cref="RuntimeTrend" /> and
     /// <see cref="RuntimeName" />, whose whole surface - parts, copy and all - <see cref="RuntimeTrendEdgeCaseTests" />
     /// and <see cref="RuntimeTrendAndNameTests" /> already pin.</summary>
-    private static readonly Surface[] Records =
+    private static readonly DeclaredShape[] Records =
     [
         new(
             typeof(RuntimeTile),
@@ -1291,7 +1292,7 @@ public class RuntimePayloadEdgeCaseTests
     /// every other default is the nothing a caller leaves out of the update.</summary>
     [Theory]
     [MemberData(nameof(TheRecordsOfOneUpdate))]
-    public void EveryRecordOfThePayloadCarriesJustThePartsItIsNamedBy(Surface record)
+    public void EveryRecordOfThePayloadCarriesJustThePartsItIsNamedBy(DeclaredShape record)
     {
         var nullability = new NullabilityInfoContext();
         var properties = record.Type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);

@@ -19,6 +19,7 @@ public class RuntimeEdgeMarkNamedArgumentsTests
     public void TheBuilderNamesEveryArgumentOfEveryEdgeMarkItMakes()
     {
         var builds = EdgeMarkBuilds(File.ReadAllText(BuilderPath()));
+        builds = EdgeMarkBuilds(File.ReadAllText(MarkupGuards.SourcePath(Path.Combine("Runtime", "RuntimeEdgeMarks.cs")))); // #1829: the edge marks moved to RuntimeEdgeMarks.cs
 
         Assert.Equal(7, builds.Count);
         Assert.All(builds, arguments => Assert.Equal(Parts, NamesOf(arguments).Take(Parts.Count).ToList()));

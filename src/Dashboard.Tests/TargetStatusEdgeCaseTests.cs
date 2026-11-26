@@ -453,6 +453,81 @@ public class TargetStatusEdgeCaseTests
         Assert.Same(empty, tile.LastReadHealthDetail);
     }
 
+    // ----- the edge where a node goes quiet: Telemetry and Samples.Last agree
+
+    /// <summary>
+    /// A node that reported and then stopped: the round that went quiet records null, and the tile's two ways of
+    /// reading the last telemetry - <see cref="TargetStatus.Telemetry" /> and <see cref="TargetStatus.Samples" />
+    /// read by their other end - are the same thing at every step, null after the quiet round and the last
+    /// reading before it. The run of readings the sparkline draws still holds the earlier readings; only the
+    /// newest entry is null, which is what the tile says the node last said: nothing.
+    /// </summary>
+    [Fact]
+    public void ANodeThatReportedAndThenStoppedSaysNothingAndBothEndsAgree()
+    {
+        var tile = Node();
+
+        tile.RecordTelemetry(Sample(24));
+        Assert.Equal(24, tile.Telemetry!.Requests);
+        Assert.Equal(tile.Telemetry, tile.Samples.Last);
+        Assert.Single(tile.Samples);
+
+        tile.RecordTelemetry(Sample(36));
+        Assert.Equal(36, tile.Telemetry!.Requests);
+        Assert.Equal(tile.Telemetry, tile.Samples.Last);
+        Assert.Equal(2, tile.Samples.Count);
+
+        tile.RecordTelemetry(null);
+        Assert.Null(tile.Telemetry);
+        Assert.Null(tile.Samples.Last);
+        Assert.Equal(tile.Telemetry, tile.Samples.Last);
+        Assert.Equal(3, tile.Samples.Count);
+        Assert.Equal(24, tile.Samples[0]!.Requests);
+        Assert.Equal(36, tile.Samples[1]!.Requests);
+    }
+
+    /// <summary>
+    /// A node that never reported: every round records null, the buffer stays empty, and the tile's two ways of
+    /// reading the last telemetry are both null and equal at every step - a trend never starts, and the tile
+    /// holds no reading to keep.
+    /// </summary>
+    [Fact]
+    public void ANodeThatNeverReportedKeepsNoReadingAndBothEndsAreNull()
+    {
+        var tile = Node();
+
+        for (var round = 0; round < 3; round++)
+        {
+            tile.RecordTelemetry(null);
+            Assert.Null(tile.Telemetry);
+            Assert.Null(tile.Samples.Last);
+            Assert.Equal(tile.Telemetry, tile.Samples.Last);
+            Assert.Empty(tile.Samples);
+        }
+    }
+
+    /// <summary>
+    /// A node whose first reading is null: the round records null into an empty buffer, the buffer stays empty
+    /// (a gap with nothing to be a gap in is not recorded), and the tile's two ways of reading the last telemetry
+    /// are both null and equal. The next round that reports starts the run; the tile's two ends still agree.
+    /// </summary>
+    [Fact]
+    public void ANodesFirstReadingBeingNullStartsNothingAndBothEndsStayNull()
+    {
+        var tile = Node();
+
+        tile.RecordTelemetry(null);
+        Assert.Null(tile.Telemetry);
+        Assert.Null(tile.Samples.Last);
+        Assert.Equal(tile.Telemetry, tile.Samples.Last);
+        Assert.Empty(tile.Samples);
+
+        tile.RecordTelemetry(Sample(10));
+        Assert.Equal(10, tile.Telemetry!.Requests);
+        Assert.Equal(tile.Telemetry, tile.Samples.Last);
+        Assert.Single(tile.Samples);
+    }
+
     // ----- the trend of one number of a tile's readings
 
     /// <summary>The number a trend is asked for is asked for by name: a selector that is not there is refused with

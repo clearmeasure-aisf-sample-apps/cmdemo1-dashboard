@@ -73,8 +73,12 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
     /// <summary>The version the endpoint last reported: a node that stops answering keeps its last known version.</summary>
     public string? Version { get; private set; }
 
-    /// <summary>The node's own count of its calls at the last check; null when it reported none.</summary>
-    public TelemetrySnapshot? Telemetry { get; private set; }
+    /// <summary>
+    /// The last reading of the node's telemetry, kept once in <see cref="Samples" /> and read from its other end:
+    /// the node's own count of its calls at the last check, null while the node has not reported or has gone quiet.
+    /// The tile holds one fact - the run of readings - and this is the newest entry of it, so the two cannot drift.
+    /// </summary>
+    public TelemetrySnapshot? Telemetry => Samples.Last;
 
     /// <summary>
     /// The reading of the node's detailed health check: what the page shows of it, and the last reading that
@@ -106,11 +110,7 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
     public HistoryBuffer<TelemetrySnapshot?> Samples { get; } = new(SampleLength);
 
     /// <summary>Records the telemetry of one check. A node that never reported any keeps no readings.</summary>
-    public void RecordTelemetry(TelemetrySnapshot? telemetry)
-    {
-        Telemetry = telemetry;
-        Samples.Record(telemetry);
-    }
+    public void RecordTelemetry(TelemetrySnapshot? telemetry) => Samples.Record(telemetry);
 
     /// <summary>The trend of one number of the telemetry over the readings kept; null with fewer than two.</summary>
     public Trend? TrendOf(Func<TelemetrySnapshot, double?> number, string what, string unit = "")

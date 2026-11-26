@@ -98,8 +98,20 @@ public sealed class DeployableStatus
     {
         var healths = Nodes.Select(node => node.ToNodeHealth()).ToList();
         var assessment = ServingAssessment.Assess(healths, FrontDoor?.State);
-        var expected = assessment.Serving;
-        serving = [.. Nodes.Where((_, index) => expected.Any(health => ReferenceEquals(health, healths[index])))];
+        serving = ServingTiles(assessment.Serving);
         return assessment;
+    }
+
+    /// <summary>
+    /// The tiles of the deployable's nodes that the healths of a serving decision name, in the order of the
+    /// topology: matched by the health a tile reads - every part of it, the state included - and not by which
+    /// instance the decision holds, so a decision that answers with a restated copy of a node's health still finds
+    /// the tile the node is.
+    /// </summary>
+    public IReadOnlyList<TargetStatus> ServingTiles(IReadOnlyList<NodeHealth> expected)
+    {
+        ArgumentNullException.ThrowIfNull(expected);
+        var serving = new HashSet<NodeHealth>(expected);
+        return [.. Nodes.Where(node => serving.Contains(node.ToNodeHealth()))];
     }
 }

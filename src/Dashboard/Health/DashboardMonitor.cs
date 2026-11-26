@@ -464,7 +464,7 @@ public sealed class DashboardMonitor
         Changed?.Invoke();
 
         // The build facts change only with a deployment: asked once, and again when the node reports another version.
-        if (ReferenceEquals(target, status.BuildSource) && deployable.BuildPath is { } buildPath
+        if (target == status.BuildSource && deployable.BuildPath is { } buildPath
             && result.State != HealthState.Unreachable && status.BuildIsDue(target.Version))
         {
             var version = target.Version;

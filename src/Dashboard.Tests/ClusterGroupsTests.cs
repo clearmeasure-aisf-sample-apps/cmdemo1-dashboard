@@ -144,14 +144,14 @@ public class ClusterGroupsTests
         var status = ClusterFixture.Status(
             [
                 ClusterFixture.Node("aks-a-000001"),
-                ClusterFixture.Node("aks-a-000002", false) with { Cpu = new ResourceUse(null, 1000, null, 3860), Pods = null },
+                ClusterFixture.Node("aks-a-000002", false) with { Cpu = ResourceUses.Node(requests: 1000, allocatable: 3860), Pods = null },
             ],
             ClusterFixture.Space("apps", ClusterFixture.Pod("ui")));
 
         var totals = ClusterTotals.Of(status, Generated);
 
         Assert.Equal((1, 2), (totals.NodesReady, totals.Nodes));
-        Assert.Equal(new ResourceUse(812, 3450, 9100, 7720), totals.Cpu);
+        Assert.Equal(ResourceUses.Node(usage: 812, requests: 3450, allocatable: 7720, limits: 9100), totals.Cpu);
         Assert.Equal((63, 220), (totals.PodsOnNodes, totals.PodCapacity));
         Assert.Equal(new ClusterSample(812, 2 * 9876543210d), ClusterSample.Of(status));
     }

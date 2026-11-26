@@ -126,10 +126,10 @@ public sealed record ResourceUse(double? Usage, double? Requests, double? Limits
         section is null
             ? None
             : new ResourceUse(
-                JsonRead.Number(section, "usage"),
-                JsonRead.Number(section, "requests"),
-                JsonRead.Number(section, "limits"),
-                JsonRead.Number(section, "allocatable"));
+                Usage: JsonRead.Number(section, "usage"),
+                Requests: JsonRead.Number(section, "requests"),
+                Limits: JsonRead.Number(section, "limits"),
+                Allocatable: JsonRead.Number(section, "allocatable"));
 }
 
 /// <summary>One node of the cluster.</summary>

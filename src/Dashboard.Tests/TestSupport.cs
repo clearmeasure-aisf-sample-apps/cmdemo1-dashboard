@@ -598,3 +598,56 @@ public static class Deployments
         string release = "2") =>
         InState(state, finished: finished, since: finished.AddMinutes(-10), project: project, environment: environment, release: release);
 }
+
+/// <summary>
+/// The one mother for the health tile: the tile itself (a node or a Front Door endpoint), the check of it
+/// (a <see cref="ProbeResult" /> at the moment every health test stands at), and the reading of its telemetry
+/// (a <see cref="TelemetrySnapshot" />). The six test files that each declared their own tile factory —
+/// <c>TargetStatusTests.Node</c>, <c>TrendTests.Node</c>, <c>TrendsHelperTests.Node</c>,
+/// <c>HealthHelperCoverageTests.Node</c>, <c>TargetTileClusterCardEnvironmentDeliveryTests.Node</c> and
+/// <c>TargetStatusEdgeCaseTests.Node</c> — now share the shape the mother keeps, and the eight files that
+/// each built their own <c>ProbeResult</c> or <c>TelemetrySnapshot</c> by hand can name the part they move
+/// rather than re-declaring the whole record.
+/// <para>
+/// The moment is the one the health tests have always stood at — 2026-10-04T22:00Z, the same instant as
+/// <see cref="ProbeResults" />'s and <see cref="NodeObservations" />'s default now — so a check built here
+/// and a check built there are the check of the same instant, and the fact that an unreachable node holds no
+/// status and no latency is written once, in <see cref="Check" />, and not in two files and left out in five.
+/// </para>
+/// </summary>
+public static class Tiles
+{
+    /// <summary>The moment every health test stands at: 2026-10-04T22:00Z, UTC.</summary>
+    public static readonly DateTimeOffset At = new(2026, 10, 4, 22, 0, 0, TimeSpan.Zero);
+
+    /// <summary>
+    /// The tile of a node: its name, region and role, each named or the default, the address derived from the name
+    /// the way every health test has always derived it — <c>https://{name}.example.net</c>.
+    /// </summary>
+    public static TargetStatus Node(string name = "app-west", string? region = "westus3", string? role = "primary") =>
+        new(TargetKind.Node, name, new Uri($"https://{name}.example.net"), region, role);
+
+    /// <summary>The tile of a deployable's Front Door endpoint, named or the default of <see cref="TargetStatus.FrontDoorName" />.</summary>
+    public static TargetStatus FrontDoor(string name = TargetStatus.FrontDoorName) =>
+        new(TargetKind.FrontDoor, name, new Uri($"https://{name.Replace(' ', '-')}.example.net"));
+
+    /// <summary>
+    /// The check of a tile at the <paramref name="second" /> offset from <see cref="At" />: an unreachable endpoint
+    /// holds no status and no latency, every other state has 200 in 12 ms, and the version named or the default of
+    /// nothing. The shape <c>TargetStatusTests.Result</c> and <c>TargetStatusEdgeCaseTests.Result</c> each wrote for
+    /// themselves, written here once.
+    /// </summary>
+    public static ProbeResult Check(HealthState state, int second = 0, string? version = null) =>
+        new(state, state == HealthState.Unreachable ? null : 200, state == HealthState.Unreachable ? null : 12, At.AddSeconds(second), version);
+
+    /// <summary>
+    /// The telemetry reading of a tile at <see cref="At" />: the requests and SQL named, and the CPU named as the
+    /// process's vitals with an uptime of 600 — the shape <c>TrendTests.Sample</c> wrote for itself, written here
+    /// once. A reading with no CPU says no process at all.
+    /// </summary>
+    public static TelemetrySnapshot Reading(int requests = 12, int sql = 0, double? cpu = null) =>
+        new(requests, requests, 0, 0, null, 0, 0, sql, null, 0, At)
+        {
+            Process = cpu is null ? null : new ProcessVitals(cpu, null, null, null, null, null, 600),
+        };
+}

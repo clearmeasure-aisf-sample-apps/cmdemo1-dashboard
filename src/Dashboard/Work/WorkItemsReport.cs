@@ -190,76 +190,94 @@ public sealed record WorkItemsStats(
     /// <summary>The duration object of <paramref name="name"/> under <paramref name="section"/>; null when it says nothing.</summary>
     private static WorkDuration? Duration(JsonElement? section, string name) => WorkDuration.Read(JsonRead.Section(section, name));
 
+    /// <summary>
+    /// The done count per agent: <c>throughputByAgent</c> (agent to count), most done first and then by the agent's
+    /// name; the older <c>throughput</c> array when that object is absent or no agent in it has a count; null when
+    /// neither has a row. Agents whose names differ only in case stay separate rows.
+    /// </summary>
     private static List<WorkThroughput>? ReadThroughput(JsonElement? section)
     {
-        if (JsonRead.Section(section, "throughputByAgent") is { } agents)
+        var rows = Keyed(JsonRead.Section(section, "throughputByAgent"), CountOf)
+            .Select(entry => new WorkThroughput(entry.Key, null, null, entry.Value))
+            .ToList();
+        if (rows.Count > 0)
         {
-            var rows = new List<WorkThroughput>();
-            foreach (var property in agents.EnumerateObject())
-            {
-                if (JsonRead.Count(agents, property.Name) is { } done && !string.IsNullOrWhiteSpace(property.Name))
-                {
-                    rows.Add(new WorkThroughput(property.Name.Trim(), null, null, done));
-                }
-            }
-
-            if (rows.Count > 0)
-            {
-                return [.. rows.OrderByDescending(row => row.Done ?? 0).ThenBy(row => row.Agent, StringComparer.OrdinalIgnoreCase)];
-            }
+            return [.. rows.OrderByDescending(row => row.Done ?? 0).ThenBy(row => row.Agent, StringComparer.OrdinalIgnoreCase)];
         }
 
         var listed = JsonRead.Items(section, "throughput").Select(WorkThroughput.Read).OfType<WorkThroughput>().ToList();
         return listed.Count == 0 ? null : listed;
     }
 
-    /// <summary><c>hoursByColumn</c> is the median hours per column. <c>timePerColumnHours</c> is the older object of durations.</summary>
+    /// <summary>
+    /// The time spent in each column, looked up without regard to case; null when the file has no such object or no
+    /// column in it reads as a duration (see <see cref="DurationOf"/>).
+    /// </summary>
     private static Dictionary<string, WorkDuration>? ColumnTimes(JsonElement? parent)
     {
-        if ((JsonRead.Section(parent, "hoursByColumn") ?? JsonRead.Section(parent, "timePerColumnHours")) is not { } section)
-        {
-            return null;
-        }
-
         var times = new Dictionary<string, WorkDuration>(StringComparer.OrdinalIgnoreCase);
-        foreach (var property in section.EnumerateObject())
+        foreach (var (column, duration) in Keyed(ColumnTimesSection(parent), (_, member) => DurationOf(member.Value)))
         {
-            if (string.IsNullOrWhiteSpace(property.Name))
-            {
-                continue;
-            }
-
-            var duration = property.Value.ValueKind == JsonValueKind.Object
-                ? WorkDuration.Read(property.Value)
-                : property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetDouble(out var hours) && double.IsFinite(hours) && hours >= 0
-                    ? new WorkDuration(hours, null, null)
-                    : null;
-            if (duration is not null)
-            {
-                times[property.Name.Trim()] = duration;
-            }
+            times[column] = duration!;
         }
 
         return times.Count == 0 ? null : times;
     }
 
+    /// <summary>The two file shapes of the column times: <c>hoursByColumn</c>, else the older <c>timePerColumnHours</c>.</summary>
+    private static JsonElement? ColumnTimesSection(JsonElement? parent) =>
+        JsonRead.Section(parent, "hoursByColumn") ?? JsonRead.Section(parent, "timePerColumnHours");
+
+    /// <summary>
+    /// A column's duration, written either way: an object of durations (<c>median</c>, <c>p85</c>, <c>n</c>), or a plain
+    /// number of hours that is finite and not negative. A duration read from a number is the median alone: it carries
+    /// no p85 and no count. Anything else is null.
+    /// </summary>
+    private static WorkDuration? DurationOf(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.Object => WorkDuration.Read(value),
+        JsonValueKind.Number when value.TryGetDouble(out var hours) && double.IsFinite(hours) && hours >= 0 => new WorkDuration(hours, null, null),
+        _ => null,
+    };
+
+    /// <summary>
+    /// The count of each key of the object of <paramref name="name"/>, looked up without regard to case; an empty
+    /// table (never null) when there is no such object or no key in it holds a count.
+    /// </summary>
     private static Dictionary<string, int> Counts(JsonElement? parent, string name)
     {
         var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        if (JsonRead.Section(parent, name) is not { } section)
+        foreach (var (key, count) in Keyed(JsonRead.Section(parent, name), CountOf))
         {
-            return counts;
-        }
-
-        foreach (var property in section.EnumerateObject())
-        {
-            if (JsonRead.Count(section, property.Name) is { } count && !string.IsNullOrWhiteSpace(property.Name))
-            {
-                counts[property.Name.Trim()] = count;
-            }
+            counts[key] = count!.Value;
         }
 
         return counts;
+    }
+
+    /// <summary>A member's count as <see cref="JsonRead.Count"/> reads it, looked up by the member's own name in <paramref name="section"/>.</summary>
+    private static int? CountOf(JsonElement section, JsonProperty member) => JsonRead.Count(section, member.Name);
+
+    /// <summary>
+    /// The one walk of a JSON object used as a dictionary: each member in the order written, its name trimmed, its
+    /// value made by <paramref name="read"/> (the strategy that says what a value is). A member with a blank name, or
+    /// whose value reads as null, is left out. None when there is no object. The callers choose their own table and
+    /// their own answer for "nothing survived".
+    /// </summary>
+    private static IEnumerable<(string Key, T Value)> Keyed<T>(JsonElement? section, Func<JsonElement, JsonProperty, T> read)
+    {
+        if (section is not { } keyed)
+        {
+            yield break;
+        }
+
+        foreach (var member in keyed.EnumerateObject())
+        {
+            if (!string.IsNullOrWhiteSpace(member.Name) && read(keyed, member) is { } value)
+            {
+                yield return (member.Name.Trim(), value);
+            }
+        }
     }
 }
 

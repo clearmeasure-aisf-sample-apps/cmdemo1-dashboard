@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -18,7 +19,59 @@ public sealed record RuntimePayload(
     IReadOnlyList<RuntimeEdgeMark> Edges,
     IReadOnlyList<RuntimeName>? Names = null)
 {
-    public string ToJson() => JsonSerializer.Serialize(this, RuntimePayloadJson.Default.RuntimePayload);
+    /// <summary>
+    /// The update as the script reads it. The finite-number rule of a sparkline lives here, with the one writer: the
+    /// records hold whatever heights they are handed, and JSON has no word for NaN or an infinity, so a height that is
+    /// no finite number is refused for the whole update - with the node and line, or the relationship, that carried it.
+    /// </summary>
+    /// <exception cref="ArgumentException">A trend of the update holds a height that is no finite number.</exception>
+    public string ToJson()
+    {
+        foreach (var (where, trend) in Trends())
+        {
+            RefuseAHeightThatIsNoFiniteNumber(where, trend);
+        }
+
+        return JsonSerializer.Serialize(this, RuntimePayloadJson.Default.RuntimePayload);
+    }
+
+    /// <summary>Every trend the update carries, with the words that say where it is drawn.</summary>
+    private IEnumerable<(string Where, RuntimeTrend Trend)> Trends()
+    {
+        foreach (var tile in Nodes ?? [])
+        {
+            var lines = tile?.Lines ?? [];
+            for (var index = 0; index < lines.Count; index++)
+            {
+                if (lines[index]?.Trend is { } trend)
+                {
+                    yield return (string.Create(CultureInfo.InvariantCulture, $"line {index + 1} of node '{tile!.Alias}'"), trend);
+                }
+            }
+        }
+
+        foreach (var edge in Edges ?? [])
+        {
+            if (edge?.Trend is { } trend)
+            {
+                yield return ($"relationship '{edge.Id}'", trend);
+            }
+        }
+    }
+
+    private static void RefuseAHeightThatIsNoFiniteNumber(string where, RuntimeTrend trend)
+    {
+        var points = trend.Points ?? [];
+        for (var index = 0; index < points.Count; index++)
+        {
+            if (!double.IsFinite(points[index]))
+            {
+                throw new ArgumentException(string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"The trend of {where} holds a height that is no finite number ({points[index]} at {index}); JSON cannot carry it, so the update is not written."));
+            }
+        }
+    }
 }
 
 [JsonSourceGenerationOptions(

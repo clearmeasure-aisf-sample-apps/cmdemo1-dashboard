@@ -218,7 +218,12 @@ public class RuntimePayloadBoundaryEdgeCaseTests
         var edges = new List<RuntimeEdgeMark> { new("e1", "active", null, null, null, "t", null, new RuntimeTrend(above, "requests/min")) };
         var partly = new RuntimePayload(boxes, new List<RuntimeRegionMark>(), edges);
 
-        Assert.Throws<ArgumentException>(() => partly.ToJson());
+        var refusal = Assert.Throws<ArgumentException>(() => partly.ToJson());
+
+        // ...and says which relationship carried the height, which height it was and where in the row it stood.
+        Assert.Contains("relationship 'e1'", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("(Infinity at 0)", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("(-Infinity at 1)", Assert.Throws<ArgumentException>(() => OfTrend(new RuntimeTrend(mixed, "requests/min")).ToJson()).Message, StringComparison.Ordinal);
 
         var finite = new double[] { -0.0, 1e300, 5e-324, 0.5, 1 };
 
@@ -238,6 +243,38 @@ public class RuntimePayloadBoundaryEdgeCaseTests
         Assert.Equal("requests/min", held.Title);
         Assert.Equal(held, new RuntimeTrend(above, "requests/min"));
         Assert.Single(held.Points);
+    }
+
+    /// <summary>A height that is no finite number on a tile's line is refused for the whole update like one on a
+    /// relationship, and the refusal names the node's alias and the line (counted from one) that carried it, so a
+    /// diagram lost to one number says which sparkline lost it.</summary>
+    [Fact]
+    public void AHeightThatIsNoFiniteNumberOnATileLineNamesTheNodeAndTheLine()
+    {
+        var lines = new List<RuntimeTileLine>
+        {
+            new("200 requests/min", "plain", null, new RuntimeTrend(new double[] { 0, 1 }, "fine")),
+            new("cpu 12%", "plain"),
+            new("sql 3/min", "plain", null, new RuntimeTrend(new double[] { 0.5, double.NaN }, "sql")),
+        };
+        var boxes = new List<RuntimeTile>
+        {
+            new("app_ui_primary", "healthy", "Healthy", null, [], null, "t"),
+            new("app_api_primary", "healthy", "Healthy", null, lines, null, "t"),
+        };
+        var update = new RuntimePayload(boxes, new List<RuntimeRegionMark>(), new List<RuntimeEdgeMark>());
+
+        var refusal = Assert.Throws<ArgumentException>(() => update.ToJson());
+
+        Assert.Contains("line 3 of node 'app_api_primary'", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("(NaN at 1)", refusal.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("app_ui_primary", refusal.Message, StringComparison.Ordinal);
+
+        // The same tile with the line's heights made finite is written whole.
+        lines[2] = lines[2] with { Trend = new RuntimeTrend(new double[] { 0.5, 1 }, "sql") };
+        using var written = JsonDocument.Parse(update.ToJson());
+
+        Assert.Equal(3, written.RootElement.GetProperty("nodes")[1].GetProperty("lines").GetArrayLength());
     }
 
     /// <summary>The very same link an update hands over in four places is written in full in every one of them: the

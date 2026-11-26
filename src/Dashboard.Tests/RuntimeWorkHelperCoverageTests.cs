@@ -609,4 +609,43 @@ public class RuntimeWorkHelperCoverageTests
 
     private static string TestsRoot([CallerFilePath] string here = "") =>
         Path.GetFullPath(Path.GetDirectoryName(here)!);
+
+    /// <summary>
+    /// The shared source read and this guard's own read are two reads of the same set of helpers: neither may
+    /// find what the other misses. The shared <see cref="SourceText" /> walk reads the <c>public static</c>
+    /// methods of <c>src/Dashboard/Runtime</c> and <c>src/Dashboard/Work</c> the same way this file's
+    /// <see cref="HelperMethods" /> does - a declaration attributed to the type that encloses it, the comments and
+    /// the content of the strings blanked so a name in a sentence is not a declaration - so the two reads name the
+    /// same <c>Type.Method</c> set, both ways, for the two folders together. This is the check the issue asks
+    /// for: the one shared read all three coverage guards hold themselves to, read beside this guard's own reader
+    /// rather than in place of it, so the guard's floors stand untouched.
+    /// </summary>
+    [Fact]
+    public void TheSharedSourceReadNamesTheSameRuntimeAndWorkHelpersAsThisGuardsOwnRead()
+    {
+        var own = HelperMethods()
+            .Select(method => $"{method.Class}.{method.Name}")
+            .ToHashSet(StringComparer.Ordinal);
+
+        var shared = SourceText.Files(Path.Combine(DashboardRoot(), "Runtime"))
+            .Concat(SourceText.Files(Path.Combine(DashboardRoot(), "Work")))
+            .SelectMany(source => SourceText.Declarations(source.Path, source.Text))
+            .Select(declaration => declaration.Key)
+            .ToHashSet(StringComparer.Ordinal);
+
+        // The shared read names at least everything this guard's own reader names: a shared read that missed a
+        // helper the guard sees would be a weaker read, and the one the three guards hold themselves to must not
+        // be weaker than any of them. The reverse is not asserted, since the shared read is the more complete of
+        // the two - it names the helpers the guard's own reader names, and more (the tuple-returning
+        // <c>DatabaseView.ReadAt</c> and the <c>ApplicationView.Boxes</c> overloads, which the hand-rolled reader
+        // reads past, stand among them).
+        Assert.Empty(own.Except(shared));
+
+        // The shared read reached the helpers at all, and named the ones this guard names: a shared read that
+        // reached nothing would agree with nothing and say nothing.
+        Assert.NotEmpty(shared);
+        Assert.Contains("RuntimeBoxLink.Of", shared);
+        Assert.Contains("RuntimePayloadBuilder.StateOf", shared);
+        Assert.Contains("WorkItemsText.Number", shared);
+    }
 }

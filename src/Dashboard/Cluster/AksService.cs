@@ -79,7 +79,7 @@ public sealed record AksService(
                 ProvisioningState: JsonRead.Text(root, "provisioningState"),
                 KubernetesVersion: JsonRead.Text(root, "kubernetesVersion"),
                 Tier: JsonRead.Text(root, "tier"),
-                Pools: [.. JsonRead.Items(root, "pools").Select(AksPool.Read).OfType<AksPool>()],
+                Pools: JsonRead.Named(root, "pools", AksPool.Read),
                 Metrics: AksMetrics.Read(JsonRead.Section(root, "metrics")));
             return service is { Availability: null, PowerState: null, ProvisioningState: null }
                 ? new Parsed<AksService>(null, "the file says nothing about the service: no availability, no powerState and no provisioningState")
@@ -123,8 +123,8 @@ public sealed record AksPool(
     string? ProvisioningState,
     string? KubernetesVersion)
 {
-    internal static AksPool? Read(JsonElement element) =>
-        JsonRead.Identified(element, "name", static (name, parts) => new AksPool(
+    internal static AksPool Read(string name, JsonElement parts) =>
+        new(
             name,
             JsonRead.Text(parts, "mode"),
             JsonRead.Count(parts, "count"),
@@ -132,7 +132,7 @@ public sealed record AksPool(
             JsonRead.Count(parts, "osDiskGb"),
             JsonRead.Text(parts, "powerState"),
             JsonRead.Text(parts, "provisioningState"),
-            JsonRead.Text(parts, "kubernetesVersion")));
+            JsonRead.Text(parts, "kubernetesVersion"));
 }
 
 /// <summary>

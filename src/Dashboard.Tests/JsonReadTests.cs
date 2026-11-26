@@ -273,6 +273,41 @@ public class JsonReadTests
         Assert.Null(JsonRead.Identified(null, "name", static (name, _) => new Named(name, null)));
 
     [Fact]
+    public void NamedRowsAreMadeFromTheirNameAndObjectInTheOrderWritten()
+    {
+        var rows = JsonRead.Named(
+            Root("""{ "rows": [ { "name": " b ", "count": 2 }, { "name": "a" } ] }"""),
+            "rows",
+            static (name, parts) => new Named(name, JsonRead.Count(parts, "count")));
+
+        Assert.Equal([new Named("b", 2), new Named("a", null)], rows);
+    }
+
+    [Theory]
+    [InlineData("""{ "rows": [ { "count": 2 }, { "name": "ui" } ] }""")] // no name
+    [InlineData("""{ "rows": [ { "name": "  " }, { "name": "ui" } ] }""")] // an empty name
+    [InlineData("""{ "rows": [ { "name": 7 }, { "name": "ui" } ] }""")] // a name of another type
+    [InlineData("""{ "rows": [ "ui", [ { "name": "x" } ], { "name": "ui" } ] }""")] // a row that is no object
+    public void ARowWithoutANameIsLeftOut(string json)
+    {
+        var rows = JsonRead.Named(Root(json), "rows", static (name, _) => new Named(name, null));
+
+        Assert.Equal([new Named("ui", null)], rows);
+    }
+
+    [Theory]
+    [InlineData("""{ }""")] // no such array
+    [InlineData("""{ "rows": { "name": "ui" } }""")] // an object, not an array
+    [InlineData("""{ "rows": [] }""")]
+    [InlineData("""[ { "name": "ui" } ]""")] // the parent is no object
+    public void ThereAreNoNamedRowsWithoutAnArrayOfThem(string json) =>
+        Assert.Empty(JsonRead.Named(Root(json), "rows", static (name, _) => new Named(name, null)));
+
+    [Fact]
+    public void ThereAreNoNamedRowsWithoutAParent() =>
+        Assert.Empty(JsonRead.Named(null, "rows", static (name, _) => new Named(name, null)));
+
+    [Fact]
     public void APresentRecordIsMadeFromAnyObjectEvenAnEmptyOne()
     {
         Assert.Equal(new Named("x", 2), JsonRead.Present(Root(Answer), static parts => new Named("x", JsonRead.Count(parts, "count"))));

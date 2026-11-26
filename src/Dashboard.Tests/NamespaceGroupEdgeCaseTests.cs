@@ -47,7 +47,7 @@ public class NamespaceGroupEdgeCaseTests
     [Fact]
     public void TheConstructorHandsEachPartToThePropertyOfItsName()
     {
-        PodRow[] rows = [Row("web", PodState.Ready), Row("broken", PodState.Unhealthy, restarts: 4)];
+        PodRow[] rows = [ClusterFixture.Row("web", PodState.Ready), ClusterFixture.Row("broken", PodState.Unhealthy, restarts: 4)];
         ClusterVolume[] volumes = [new ClusterVolume("data", 8589934592d, "Bound")];
 
         var group = new NamespaceGroup("cmdemo3-prod", Prod, true, rows, volumes);
@@ -71,9 +71,9 @@ public class NamespaceGroupEdgeCaseTests
     [Fact]
     public void TheRowsAndTheVolumesAreKeptAsTheyWereGiven()
     {
-        var web = Row("web", PodState.Ready);
-        var late = Row("backup", PodState.Finished);
-        var first = Row("api", PodState.Starting);
+        var web = ClusterFixture.Row("web", PodState.Ready);
+        var late = ClusterFixture.Row("backup", PodState.Finished);
+        var first = ClusterFixture.Row("api", PodState.Starting);
         PodRow[] rows = [late, web, first, web];
         ClusterVolume[] volumes =
         [
@@ -111,7 +111,7 @@ public class NamespaceGroupEdgeCaseTests
     [Fact]
     public void AGroupTakenApartGivesItsPartsBackInTheOrderTheyWereDeclared()
     {
-        PodRow[] rows = [Row("web", PodState.Ready)];
+        PodRow[] rows = [ClusterFixture.Row("web", PodState.Ready)];
         ClusterVolume[] volumes = [new ClusterVolume("data", 1024, "Bound")];
         var group = new NamespaceGroup("cmdemo3-prod", Prod, false, rows, volumes);
 
@@ -141,7 +141,7 @@ public class NamespaceGroupEdgeCaseTests
     [InlineData("kube-system")]
     public void ANameIsTheNameTheGroupWasGiven(string name)
     {
-        var group = new NamespaceGroup(name, null, true, [Row("web", PodState.Ready)], []);
+        var group = new NamespaceGroup(name, null, true, [ClusterFixture.Row("web", PodState.Ready)], []);
 
         Assert.Equal(name, group.Name);
         Assert.Equal(1, group.Total);
@@ -237,7 +237,7 @@ public class NamespaceGroupEdgeCaseTests
         int finished,
         int unhealthy)
     {
-        var group = new NamespaceGroup("apps", null, true, [Row("web", state)], []);
+        var group = new NamespaceGroup("apps", null, true, [ClusterFixture.Row("web", state)], []);
 
         Assert.Equal(ready, group.Ready);
         Assert.Equal(total, group.Total);
@@ -256,7 +256,7 @@ public class NamespaceGroupEdgeCaseTests
     [Fact]
     public void TheCountsReadTheRowsAndNothingElse()
     {
-        PodRow[] rows = [Row("web", PodState.Ready), Row("api", PodState.Unhealthy, restarts: 3)];
+        PodRow[] rows = [ClusterFixture.Row("web", PodState.Ready), ClusterFixture.Row("api", PodState.Unhealthy, restarts: 3)];
         ClusterVolume[] volumes =
         [
             new ClusterVolume("data", 8589934592d, "Bound"),
@@ -297,16 +297,16 @@ public class NamespaceGroupEdgeCaseTests
             null,
             true,
             [
-                Row("web", PodState.Ready),
-                Row("api", PodState.Starting, restarts: 1),
-                Row("broken", PodState.Unhealthy, restarts: 2),
-                Row("backup", PodState.Finished, restarts: 4),
+                ClusterFixture.Row("web", PodState.Ready),
+                ClusterFixture.Row("api", PodState.Starting, restarts: 1),
+                ClusterFixture.Row("broken", PodState.Unhealthy, restarts: 2),
+                ClusterFixture.Row("backup", PodState.Finished, restarts: 4),
             ],
             []);
 
         Assert.Equal(7, group.Restarts);
         Assert.Equal((1, 3, 1, 1), (group.Ready, group.Total, group.Finished, group.Unhealthy));
-        Assert.Equal(0, new NamespaceGroup("apps", null, true, [Row("web", PodState.Ready)], []).Restarts);
+        Assert.Equal(0, new NamespaceGroup("apps", null, true, [ClusterFixture.Row("web", PodState.Ready)], []).Restarts);
     }
 
     /// <summary>The restarts of a namespace are counted in an <see cref="int" /> and no wider: the largest count one
@@ -317,14 +317,14 @@ public class NamespaceGroupEdgeCaseTests
     [Fact]
     public void RestartsAreCountedInAnIntAndRefuseToGoPastIt()
     {
-        var largest = new NamespaceGroup("apps", null, true, [Row("web", PodState.Ready, restarts: int.MaxValue)], []);
+        var largest = new NamespaceGroup("apps", null, true, [ClusterFixture.Row("web", PodState.Ready, restarts: int.MaxValue)], []);
         var over = new NamespaceGroup(
             "apps",
             null,
             true,
             [
-                Row("web", PodState.Ready, restarts: int.MaxValue),
-                Row("api", PodState.Ready, restarts: 1),
+                ClusterFixture.Row("web", PodState.Ready, restarts: int.MaxValue),
+                ClusterFixture.Row("api", PodState.Ready, restarts: 1),
             ],
             []);
 
@@ -344,13 +344,13 @@ public class NamespaceGroupEdgeCaseTests
             "apps",
             null,
             true,
-            [Row("web", PodState.Ready, cpu: new ResourceUse(0, 100, 500), memory: new ResourceUse(0, 268435456, null))],
+            [ClusterFixture.Row("web", PodState.Ready, cpu: new ResourceUse(0, 100, 500), memory: new ResourceUse(0, 268435456, null))],
             []);
         var silent = new NamespaceGroup(
             "apps",
             null,
             true,
-            [Row("web", PodState.Ready, cpu: ResourceUse.None, memory: ResourceUse.None)],
+            [ClusterFixture.Row("web", PodState.Ready, cpu: ResourceUse.None, memory: ResourceUse.None)],
             []);
 
         Assert.Equal(0d, zero.CpuUsage);
@@ -377,10 +377,10 @@ public class NamespaceGroupEdgeCaseTests
             null,
             true,
             [
-                Row("web", PodState.Ready, cpu: new ResourceUse(2.5, null, null), memory: ResourceUse.None),
-                Row("api", PodState.Starting, cpu: ResourceUse.None, memory: new ResourceUse(1024, null, null)),
-                Row("broken", PodState.Unhealthy, cpu: ResourceUse.None, memory: ResourceUse.None),
-                Row("backup", PodState.Finished, cpu: new ResourceUse(0, null, null), memory: new ResourceUse(2048, null, null)),
+                ClusterFixture.Row("web", PodState.Ready, cpu: new ResourceUse(2.5, null, null), memory: ResourceUse.None),
+                ClusterFixture.Row("api", PodState.Starting, cpu: ResourceUse.None, memory: new ResourceUse(1024, null, null)),
+                ClusterFixture.Row("broken", PodState.Unhealthy, cpu: ResourceUse.None, memory: ResourceUse.None),
+                ClusterFixture.Row("backup", PodState.Finished, cpu: new ResourceUse(0, null, null), memory: new ResourceUse(2048, null, null)),
             ],
             []);
 
@@ -404,8 +404,8 @@ public class NamespaceGroupEdgeCaseTests
             null,
             true,
             [
-                Row("a", PodState.Ready, cpu: new ResourceUse(0.5, null, null), memory: new ResourceUse(4503599627370496d, null, null)),
-                Row("b", PodState.Ready, cpu: new ResourceUse(0.25, null, null), memory: new ResourceUse(4503599627370496d, null, null)),
+                ClusterFixture.Row("a", PodState.Ready, cpu: new ResourceUse(0.5, null, null), memory: new ResourceUse(4503599627370496d, null, null)),
+                ClusterFixture.Row("b", PodState.Ready, cpu: new ResourceUse(0.25, null, null), memory: new ResourceUse(4503599627370496d, null, null)),
             ],
             []);
 
@@ -417,8 +417,8 @@ public class NamespaceGroupEdgeCaseTests
             null,
             true,
             [
-                Row("a", PodState.Ready, cpu: new ResourceUse(double.MaxValue, null, null), memory: ResourceUse.None),
-                Row("b", PodState.Ready, cpu: new ResourceUse(double.MaxValue, null, null), memory: ResourceUse.None),
+                ClusterFixture.Row("a", PodState.Ready, cpu: new ResourceUse(double.MaxValue, null, null), memory: ResourceUse.None),
+                ClusterFixture.Row("b", PodState.Ready, cpu: new ResourceUse(double.MaxValue, null, null), memory: ResourceUse.None),
             ],
             []);
 
@@ -437,7 +437,7 @@ public class NamespaceGroupEdgeCaseTests
     [Fact]
     public void TwoGroupsAreOneGroupWhenEveryPartAndTheirListsAre()
     {
-        PodRow[] rows = [Row("web", PodState.Ready)];
+        PodRow[] rows = [ClusterFixture.Row("web", PodState.Ready)];
         ClusterVolume[] volumes = [new ClusterVolume("data", 1024, "Bound")];
         var one = new NamespaceGroup("apps", Prod, true, rows, volumes);
 
@@ -456,7 +456,7 @@ public class NamespaceGroupEdgeCaseTests
             new NamespaceGroup("apps", null, true, rows, volumes),
             new NamespaceGroup("apps", ClusterFixture.Environment("prod", "apps"), true, rows, volumes),
             new NamespaceGroup("apps", Prod, false, rows, volumes),
-            new NamespaceGroup("apps", Prod, true, [Row("web", PodState.Ready)], volumes),
+            new NamespaceGroup("apps", Prod, true, [ClusterFixture.Row("web", PodState.Ready)], volumes),
             new NamespaceGroup("apps", Prod, true, [], volumes),
             new NamespaceGroup("apps", Prod, true, rows, [new ClusterVolume("data", 1024, "Bound")]),
             new NamespaceGroup("apps", Prod, true, rows, []),
@@ -471,7 +471,7 @@ public class NamespaceGroupEdgeCaseTests
 
         // A row copied value for value is another row, and a group holding it is another group: the list is compared
         // as the object it is, never element by element.
-        Assert.NotEqual(one, new NamespaceGroup("apps", Prod, true, [Row("web", PodState.Ready)], volumes));
+        Assert.NotEqual(one, new NamespaceGroup("apps", Prod, true, [ClusterFixture.Row("web", PodState.Ready)], volumes));
         Assert.Equal(one, new NamespaceGroup("apps", Prod, true, rows, volumes));
     }
 
@@ -482,7 +482,7 @@ public class NamespaceGroupEdgeCaseTests
     [Fact]
     public void ACloneCarriesTheListsOfTheGroupItCameFrom()
     {
-        List<PodRow> rows = [Row("web", PodState.Ready)];
+        List<PodRow> rows = [ClusterFixture.Row("web", PodState.Ready)];
         var one = new NamespaceGroup("apps", Prod, true, rows, []);
         var renamed = one with { Name = "cmdemo3-prod" };
 
@@ -493,7 +493,7 @@ public class NamespaceGroupEdgeCaseTests
         Assert.Same(one.Volumes, renamed.Volumes);
 
         // The list is shared, not copied: what is added to it is in both groups, and they stay equal as they were.
-        rows.Add(Row("api", PodState.Unhealthy, restarts: 5));
+        rows.Add(ClusterFixture.Row("api", PodState.Unhealthy, restarts: 5));
 
         Assert.Equal([PodState.Ready, PodState.Unhealthy], one.Pods.Select(row => row.State));
         Assert.Equal((1, 2, 0, 1, 5), (one.Ready, one.Total, one.Finished, one.Unhealthy, one.Restarts));
@@ -514,7 +514,7 @@ public class NamespaceGroupEdgeCaseTests
             "apps",
             null,
             true,
-            [Row("web", PodState.Ready, cpu: new ResourceUse(0, null, null), memory: ResourceUse.None)],
+            [ClusterFixture.Row("web", PodState.Ready, cpu: new ResourceUse(0, null, null), memory: ResourceUse.None)],
             []).ToString();
 
         Assert.StartsWith("NamespaceGroup { Name = apps, ", text, StringComparison.Ordinal);
@@ -544,24 +544,4 @@ public class NamespaceGroupEdgeCaseTests
             Assert.True(at[i - 1] < at[i], $"{members[i - 1]} before {members[i]}: {text}");
         }
     }
-
-    // ---------------------------------------------------------------------------- helpers
-
-    /// <summary>A row of a workload, a state the test decides and the numbers the test asks for: the state is handed
-    /// to the row rather than worked out of the pod, so that no group here needs a moment to be counted at. What the
-    /// pod reports of itself is the fixture's, unless a usage or a restart count is asked for - and
-    /// <see cref="ResourceUse.None" /> asks for a resource the pod says nothing about.</summary>
-    private static PodRow Row(
-        string workload,
-        PodState state,
-        int restarts = 0,
-        ResourceUse? cpu = null,
-        ResourceUse? memory = null) =>
-        new(
-            ClusterFixture.Pod(workload, restarts: restarts) with
-            {
-                Cpu = cpu ?? new ResourceUse(10, 100, 500),
-                Memory = memory ?? new ResourceUse(104857600, 268435456, 536870912),
-            },
-            state);
 }

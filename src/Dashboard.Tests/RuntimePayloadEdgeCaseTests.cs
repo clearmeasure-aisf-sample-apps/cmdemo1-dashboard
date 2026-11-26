@@ -675,7 +675,7 @@ public class RuntimePayloadEdgeCaseTests
 
     /// <summary>A line carries its words, the tone they are drawn in, the pieces they may be split into, the sparkline
     /// that may follow them and the marks that may stand before them - each part coming back as the part it went in
-    /// as, and none of the five worked out of the others.</summary>
+    /// as; only the words give way to the pieces when there are pieces, which here spell the same words.</summary>
     [Fact]
     public void TheConstructorHandsEachPartOfALineToThePropertyOfItsName()
     {
@@ -721,7 +721,7 @@ public class RuntimePayloadEdgeCaseTests
         Assert.Equal("waiting", RuntimeTileLine.Of("waiting", plain).Tone);
     }
 
-    /// <summary>The smallest lines <see cref="RuntimeTileLine.Of" /> is given, and the one thing it refuses: no piece
+    /// <summary>The smallest lines <see cref="RuntimeTileLine.Of" /> is given, and what it refuses: no piece
     /// at all is a line of no words, which the page draws as an empty row, and no line is what no caller ever meant -
     /// the only argument of the payload's that is asked for by name.</summary>
     [Fact]

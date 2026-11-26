@@ -19,7 +19,7 @@ public sealed class RuntimeLoader(HttpClient http)
 
         if (error is not null)
         {
-            return RuntimeIndexResult.Failed([error]);
+            return RuntimeIndexResult.Failed(error);
         }
 
         var parsed = RuntimeManifestParser.ParseIndex(text);

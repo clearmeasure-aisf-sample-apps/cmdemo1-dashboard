@@ -18,6 +18,9 @@ public enum SummaryLevel
 /// <summary>The counts behind the header: every tile counts as one node (Front Door endpoints and web apps).</summary>
 public sealed record HealthSummary(int Total, int Healthy, int Pending)
 {
+    /// <summary>The summary before anything is counted: no node at all, so its level is <see cref="SummaryLevel.Empty" />.</summary>
+    public static HealthSummary Empty { get; } = new(0, 0, 0);
+
     public int NotHealthy => Total - Healthy - Pending;
 
     /// <summary>

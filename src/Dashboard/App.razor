@@ -303,7 +303,7 @@
 
     private int IntervalSeconds => (int)_poller.Interval.TotalSeconds;
 
-    private HealthSummary Summary => _monitor?.Summary ?? new HealthSummary(0, 0, 0);
+    private HealthSummary Summary => _monitor?.Summary ?? HealthSummary.Empty;
 
     private string SummaryText => _monitor is not null ? Summary.Text : _errors is not null ? "No topology" : LoadingText;
 

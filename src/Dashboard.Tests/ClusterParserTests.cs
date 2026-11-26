@@ -18,8 +18,8 @@ public class ClusterParserTests
         Assert.False(node.Unschedulable);
         Assert.Equal(("system", "Standard_D4as_v6", null, "v1.33.3"), (node.Pool, node.Size, node.Zone, node.KubeletVersion));
         Assert.Equal(new DateTimeOffset(2026, 10, 3, 14, 2, 11, TimeSpan.Zero), node.CreatedAt);
-        Assert.Equal(new ResourceUse(812, 2450, 9100, 3860), node.Cpu);
-        Assert.Equal(new ResourceUse(9876543210, 6200000000, 11800000000, 13400000000), node.Memory);
+        Assert.Equal(ResourceUses.Node(usage: 812, requests: 2450, allocatable: 3860, limits: 9100), node.Cpu);
+        Assert.Equal(ResourceUses.Node(usage: 9876543210, requests: 6200000000, allocatable: 13400000000, limits: 11800000000), node.Memory);
         Assert.Equal((63, 110), (node.Pods, node.PodCapacity));
 
         Assert.Equal(["argocd", "cmdemo3-prod", "cmdemo3-tdd"], status.Namespaces.Select(space => space.Name));
@@ -32,7 +32,7 @@ public class ClusterParserTests
         Assert.Equal(("ui-7f6b5c4d3-m8n2p", "ui", "Deployment", "aks-system-12148983-vmss000000"), (ui.Name, ui.Workload, ui.Kind, ui.Node));
         Assert.Equal((ClusterPod.Running, false, 1, 0, 7, "CrashLoopBackOff"), (ui.Phase, ui.Ready, ui.Containers, ui.ContainersReady, ui.Restarts, ui.Reason));
         Assert.Equal(new DateTimeOffset(2026, 10, 6, 20, 1, 12, TimeSpan.Zero), ui.StartedAt);
-        Assert.Equal(new ResourceUse(0, 100, 500), ui.Cpu);
+        Assert.Equal(ResourceUses.Pod(usage: 0, requests: 100, limit: 500), ui.Cpu);
     }
 
     [Fact]
@@ -43,13 +43,13 @@ public class ClusterParserTests
         var backup = status.Namespaces[1].Pods[3];
 
         // No limit is set.
-        Assert.Equal(new ResourceUse(61, 250, null), controller.Cpu);
-        Assert.Equal(new ResourceUse(412000000, 268435456, null), controller.Memory);
+        Assert.Equal(ResourceUses.Pod(usage: 61, requests: 250), controller.Cpu);
+        Assert.Equal(ResourceUses.Pod(usage: 412000000, requests: 268435456), controller.Memory);
 
         // A finished pod has no usage.
         Assert.Equal((ClusterPod.Succeeded, "Completed"), (backup.Phase, backup.Reason));
-        Assert.Equal(new ResourceUse(null, 50, 500), backup.Cpu);
-        Assert.Equal(new ResourceUse(null, 67108864, 268435456), backup.Memory);
+        Assert.Equal(ResourceUses.Pod(requests: 50, limit: 500), backup.Cpu);
+        Assert.Equal(ResourceUses.Pod(requests: 67108864, limit: 268435456), backup.Memory);
     }
 
     [Fact]

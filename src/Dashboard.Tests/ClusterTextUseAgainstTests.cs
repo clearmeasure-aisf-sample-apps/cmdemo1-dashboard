@@ -16,7 +16,7 @@ public class ClusterTextUseAgainstTests
     [Fact]
     public void EachOfTheFourSaysNothingWithoutAUsage()
     {
-        var use = new ResourceUse(null, 100, 500, 1000);
+        var use = new ResourceUse(Usage: null, Requests: 100, Limits: 500, Allocatable: 1000);
         Assert.Null(ClusterText.CpuUse(use));
         Assert.Null(ClusterText.MemoryUse(use));
         Assert.Null(ClusterText.NodeCpu(use));
@@ -31,18 +31,18 @@ public class ClusterTextUseAgainstTests
     [InlineData(double.NaN)]
     public void EachOfTheFourSaysThePlainNumberWithoutAWholeMoreThanZero(double? whole)
     {
-        Assert.Equal("1.5 cores", ClusterText.CpuUse(new ResourceUse(1500, null, whole)));
-        Assert.Equal("2 MiB", ClusterText.MemoryUse(new ResourceUse(2 * Mebibyte, null, whole)));
-        Assert.Equal("1.5 cores", ClusterText.NodeCpu(new ResourceUse(1500, null, null, whole)));
-        Assert.Equal("2 MiB", ClusterText.NodeMemory(new ResourceUse(2 * Mebibyte, null, null, whole)));
+        Assert.Equal("1.5 cores", ClusterText.CpuUse(ResourceUses.Pod(usage: 1500, limit: whole)));
+        Assert.Equal("2 MiB", ClusterText.MemoryUse(ResourceUses.Pod(usage: 2 * Mebibyte, limit: whole)));
+        Assert.Equal("1.5 cores", ClusterText.NodeCpu(ResourceUses.Node(usage: 1500, allocatable: whole)));
+        Assert.Equal("2 MiB", ClusterText.NodeMemory(ResourceUses.Node(usage: 2 * Mebibyte, allocatable: whole)));
     }
 
     /// <summary>The node's plain CPU says "cores" even for one whole core, unlike the pod's.</summary>
     [Fact]
     public void TheNodesPlainCpuIsAlwaysInCores()
     {
-        Assert.Equal("1 cores", ClusterText.NodeCpu(new ResourceUse(1000, null, null)));
-        Assert.Equal("1 core", ClusterText.CpuUse(new ResourceUse(1000, null, null)));
+        Assert.Equal("1 cores", ClusterText.NodeCpu(ResourceUses.Node(usage: 1000)));
+        Assert.Equal("1 core", ClusterText.CpuUse(ResourceUses.Pod(usage: 1000)));
     }
 
     /// <summary>
@@ -65,17 +65,17 @@ public class ClusterTextUseAgainstTests
     [InlineData(double.PositiveInfinity, "Infinity cores")]
     [InlineData(double.NegativeInfinity, "-Infinity cores")]
     public void TheNodesPlainCpuSaysThePluralWordForEveryQuantity(double millicores, string expected) =>
-        Assert.Equal(expected, ClusterText.NodeCpu(new ResourceUse(millicores, null, null)));
+        Assert.Equal(expected, ClusterText.NodeCpu(ResourceUses.Node(usage: millicores)));
 
     /// <summary>The pod's members read the limit and not what the node offers; the node's read what it offers and not the limit.</summary>
     [Fact]
     public void ThePodReadsItsLimitAndTheNodeWhatItOffers()
     {
-        var use = new ResourceUse(500, null, 1000, 4000);
+        var use = new ResourceUse(Usage: 500, Requests: null, Limits: 1000, Allocatable: 4000);
         Assert.Equal("500 m of 1 core", ClusterText.CpuUse(use));
         Assert.Equal("0.5 of 4 cores", ClusterText.NodeCpu(use));
 
-        var memory = new ResourceUse(Mebibyte, null, 2 * Mebibyte, Gibibyte);
+        var memory = new ResourceUse(Usage: Mebibyte, Requests: null, Limits: 2 * Mebibyte, Allocatable: Gibibyte);
         Assert.Equal("1 of 2 MiB", ClusterText.MemoryUse(memory));
         Assert.Equal("1 MiB of 1 GiB", ClusterText.NodeMemory(memory));
     }

@@ -107,12 +107,12 @@ public class ClusterTextEdgeCaseTests
     [Fact]
     public void TheCpuUseOfALimitThatIsNotMoreThanZeroIsThePlainUsage()
     {
-        Assert.Equal("61 m", ClusterText.CpuUse(new ResourceUse(61, 250, 0)));
-        Assert.Equal("61 m", ClusterText.CpuUse(new ResourceUse(61, 250, -5)));
-        Assert.Equal("0 of 100 m", ClusterText.CpuUse(new ResourceUse(0, 0, 100)));
-        Assert.Equal("0 m", ClusterText.CpuUse(new ResourceUse(0, 0, 0)));
-        Assert.Equal("NaN cores of 500 m", ClusterText.CpuUse(new ResourceUse(double.NaN, 0, 500)));
-        Assert.Equal("Infinity cores of 500 m", ClusterText.CpuUse(new ResourceUse(double.PositiveInfinity, 0, 500)));
+        Assert.Equal("61 m", ClusterText.CpuUse(ResourceUses.Pod(usage: 61, requests: 250, limit: 0)));
+        Assert.Equal("61 m", ClusterText.CpuUse(ResourceUses.Pod(usage: 61, requests: 250, limit: -5)));
+        Assert.Equal("0 of 100 m", ClusterText.CpuUse(ResourceUses.Pod(usage: 0, requests: 0, limit: 100)));
+        Assert.Equal("0 m", ClusterText.CpuUse(ResourceUses.Pod(usage: 0, requests: 0, limit: 0)));
+        Assert.Equal("NaN cores of 500 m", ClusterText.CpuUse(ResourceUses.Pod(usage: double.NaN, requests: 0, limit: 500)));
+        Assert.Equal("Infinity cores of 500 m", ClusterText.CpuUse(ResourceUses.Pod(usage: double.PositiveInfinity, requests: 0, limit: 500)));
     }
 
     /// <summary>The use that is nothing is no row at all: the rule says so before it says anything else, each
@@ -135,11 +135,11 @@ public class ClusterTextEdgeCaseTests
     [Fact]
     public void TheMemoryUseOfALimitThatIsNotMoreThanZeroIsThePlainUsage()
     {
-        Assert.Equal("512 KiB", ClusterText.MemoryUse(new ResourceUse(524288, 0, 0)));
-        Assert.Equal("512 KiB", ClusterText.MemoryUse(new ResourceUse(524288, 0, -1)));
-        Assert.Equal("0 KiB of 512 MiB", ClusterText.MemoryUse(new ResourceUse(0, 0, 536870912)));
-        Assert.Equal("NaN KiB", ClusterText.MemoryUse(new ResourceUse(double.NaN, 0, null)));
-        Assert.Equal("Infinity GiB of 512 MiB", ClusterText.MemoryUse(new ResourceUse(double.PositiveInfinity, 0, 536870912)));
+        Assert.Equal("512 KiB", ClusterText.MemoryUse(ResourceUses.Pod(usage: 524288, requests: 0, limit: 0)));
+        Assert.Equal("512 KiB", ClusterText.MemoryUse(ResourceUses.Pod(usage: 524288, requests: 0, limit: -1)));
+        Assert.Equal("0 KiB of 512 MiB", ClusterText.MemoryUse(ResourceUses.Pod(usage: 0, requests: 0, limit: 536870912)));
+        Assert.Equal("NaN KiB", ClusterText.MemoryUse(ResourceUses.Pod(usage: double.NaN, requests: 0)));
+        Assert.Equal("Infinity GiB of 512 MiB", ClusterText.MemoryUse(ResourceUses.Pod(usage: double.PositiveInfinity, requests: 0, limit: 536870912)));
     }
 
     /// <summary>The bytes of the node or of all nodes against what they offer: the offer that is not there,
@@ -147,9 +147,9 @@ public class ClusterTextEdgeCaseTests
     [Fact]
     public void TheMemoryOfANodeAgainstItsOfferSaysTheUnitsApart()
     {
-        Assert.Equal("9.2 GiB", ClusterText.NodeMemory(new ResourceUse(9876543210, null, null, null)));
-        Assert.Equal("9.2 GiB", ClusterText.NodeMemory(new ResourceUse(9876543210, 0, null, 0)));
-        Assert.Equal("512 KiB of 2 GiB", ClusterText.NodeMemory(new ResourceUse(524288, 0, null, 2147483648)));
+        Assert.Equal("9.2 GiB", ClusterText.NodeMemory(ResourceUses.Node(usage: 9876543210)));
+        Assert.Equal("9.2 GiB", ClusterText.NodeMemory(ResourceUses.Node(usage: 9876543210, requests: 0, allocatable: 0)));
+        Assert.Equal("512 KiB of 2 GiB", ClusterText.NodeMemory(ResourceUses.Node(usage: 524288, requests: 0, allocatable: 2147483648)));
     }
 
     /// <summary>The cpu of the node or of all nodes against what they offer: the offer that is there but not
@@ -158,10 +158,10 @@ public class ClusterTextEdgeCaseTests
     [Fact]
     public void TheCpuOfANodeAgainstItsOfferSaysTheOfferItHas()
     {
-        Assert.Equal("0.81 cores", ClusterText.NodeCpu(new ResourceUse(812, 0, null, 0)));
-        Assert.Equal("0.81 cores", ClusterText.NodeCpu(new ResourceUse(812, 0, null, -1)));
-        Assert.Equal("0.81 of 1 core", ClusterText.NodeCpu(new ResourceUse(812, null, null, 1000)));
-        Assert.Equal("0 of 3.86 cores", ClusterText.NodeCpu(new ResourceUse(0, null, null, 3860)));
+        Assert.Equal("0.81 cores", ClusterText.NodeCpu(ResourceUses.Node(usage: 812, requests: 0, allocatable: 0)));
+        Assert.Equal("0.81 cores", ClusterText.NodeCpu(ResourceUses.Node(usage: 812, requests: 0, allocatable: -1)));
+        Assert.Equal("0.81 of 1 core", ClusterText.NodeCpu(ResourceUses.Node(usage: 812, allocatable: 1000)));
+        Assert.Equal("0 of 3.86 cores", ClusterText.NodeCpu(ResourceUses.Node(usage: 0, allocatable: 3860)));
     }
 
     /// <summary>The share the pods ask for: the ask that is there as zero, the offer that is there but not
@@ -169,12 +169,12 @@ public class ClusterTextEdgeCaseTests
     [Fact]
     public void TheRequestedOfANumberThatIsNotANumberIsSaidAsTheNumberItIs()
     {
-        Assert.Equal("0 % requested", ClusterText.Requested(new ResourceUse(0, 0, null, 1000)));
-        Assert.Null(ClusterText.Requested(new ResourceUse(10, 10, null, 0)));
-        Assert.Null(ClusterText.Requested(new ResourceUse(10, 10, null, -5)));
-        Assert.Equal("NaN % requested", ClusterText.Requested(new ResourceUse(0, double.NaN, null, 1000)));
-        Assert.Equal("Infinity % requested", ClusterText.Requested(new ResourceUse(0, double.PositiveInfinity, null, 1000)));
-        Assert.Equal("-10 % requested", ClusterText.Requested(new ResourceUse(0, -10, null, 100)));
+        Assert.Equal("0 % requested", ClusterText.Requested(ResourceUses.Node(usage: 0, requests: 0, allocatable: 1000)));
+        Assert.Null(ClusterText.Requested(ResourceUses.Node(usage: 10, requests: 10, allocatable: 0)));
+        Assert.Null(ClusterText.Requested(ResourceUses.Node(usage: 10, requests: 10, allocatable: -5)));
+        Assert.Equal("NaN % requested", ClusterText.Requested(ResourceUses.Node(usage: 0, requests: double.NaN, allocatable: 1000)));
+        Assert.Equal("Infinity % requested", ClusterText.Requested(ResourceUses.Node(usage: 0, requests: double.PositiveInfinity, allocatable: 1000)));
+        Assert.Equal("-10 % requested", ClusterText.Requested(ResourceUses.Node(usage: 0, requests: -10, allocatable: 100)));
     }
 
     /// <summary>The bytes at every end of a unit: the byte that is one short of the next unit still in the
@@ -411,11 +411,11 @@ public class ClusterTextEdgeCaseTests
     {
         Assert.Equal("0 of 0 ready · 0 restarts", ClusterText.Summary(new NamespaceGroup("apps", null, true, [], [])));
 
-        var cpuOnly = ClusterFixture.Pod("ui") with { Cpu = new ResourceUse(53, null, null), Memory = ResourceUse.None };
+        var cpuOnly = ClusterFixture.Pod("ui") with { Cpu = ResourceUses.Pod(usage: 53), Memory = ResourceUse.None };
         Assert.Equal("1 of 1 ready · 0 restarts · CPU 53 m",
             ClusterText.Summary(new NamespaceGroup("apps", null, true, [new PodRow(cpuOnly, PodState.Ready)], [])));
 
-        var memoryOnly = ClusterFixture.Pod("ui") with { Cpu = ResourceUse.None, Memory = new ResourceUse(1572864, null, null) };
+        var memoryOnly = ClusterFixture.Pod("ui") with { Cpu = ResourceUse.None, Memory = ResourceUses.Pod(usage: 1572864) };
         Assert.Equal("1 of 1 ready · 0 restarts · memory 2 MiB",
             ClusterText.Summary(new NamespaceGroup("apps", null, true, [new PodRow(memoryOnly, PodState.Ready)], [])));
     }

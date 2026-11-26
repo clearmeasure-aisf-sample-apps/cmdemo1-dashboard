@@ -195,10 +195,10 @@ public sealed record ClusterTotals(
     {
         var all = uses.ToList();
         return new ResourceUse(
-            Sums.Of(all.Select(use => use.Usage)),
-            Sums.Of(all.Select(use => use.Requests)),
-            Sums.Of(all.Select(use => use.Limits)),
-            Sums.Of(all.Select(use => use.Allocatable)));
+            Usage: Sums.Of(all.Select(use => use.Usage)),
+            Requests: Sums.Of(all.Select(use => use.Requests)),
+            Limits: Sums.Of(all.Select(use => use.Limits)),
+            Allocatable: Sums.Of(all.Select(use => use.Allocatable)));
     }
 }
 

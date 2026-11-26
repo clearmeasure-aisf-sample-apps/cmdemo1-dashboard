@@ -54,11 +54,11 @@ public class ClusterTextTests
     [Fact]
     public void APodsUseIsAgainstItsLimitWhereItHasOneAndNullWithoutAUsage()
     {
-        Assert.Equal("14 of 500 m", ClusterText.CpuUse(new ResourceUse(14, 100, 500)));
-        Assert.Equal("61 m", ClusterText.CpuUse(new ResourceUse(61, 250, null)));
-        Assert.Null(ClusterText.CpuUse(new ResourceUse(null, 50, 500)));
-        Assert.Equal("258 of 512 MiB", ClusterText.MemoryUse(new ResourceUse(271000000, 268435456, 536870912)));
-        Assert.Equal("393 MiB", ClusterText.MemoryUse(new ResourceUse(412000000, 268435456, null)));
+        Assert.Equal("14 of 500 m", ClusterText.CpuUse(ResourceUses.Pod(usage: 14, requests: 100, limit: 500)));
+        Assert.Equal("61 m", ClusterText.CpuUse(ResourceUses.Pod(usage: 61, requests: 250)));
+        Assert.Null(ClusterText.CpuUse(ResourceUses.Pod(requests: 50, limit: 500)));
+        Assert.Equal("258 of 512 MiB", ClusterText.MemoryUse(ResourceUses.Pod(usage: 271000000, requests: 268435456, limit: 536870912)));
+        Assert.Equal("393 MiB", ClusterText.MemoryUse(ResourceUses.Pod(usage: 412000000, requests: 268435456)));
         Assert.Null(ClusterText.MemoryUse(ResourceUse.None));
     }
 
@@ -71,10 +71,10 @@ public class ClusterTextTests
         Assert.Equal("9.2 of 12.5 GiB", ClusterText.NodeMemory(node.Memory));
         Assert.Equal("63 % requested", ClusterText.Requested(node.Cpu));
         Assert.Equal("46 % requested", ClusterText.Requested(node.Memory));
-        Assert.Equal("0.81 cores", ClusterText.NodeCpu(new ResourceUse(812, null, null)));
+        Assert.Equal("0.81 cores", ClusterText.NodeCpu(ResourceUses.Node(usage: 812)));
         Assert.Null(ClusterText.NodeCpu(ResourceUse.None));
         Assert.Null(ClusterText.NodeMemory(ResourceUse.None));
-        Assert.Null(ClusterText.Requested(new ResourceUse(1, 2, 3)));
+        Assert.Null(ClusterText.Requested(ResourceUses.Node(usage: 1, requests: 2, limits: 3)));
     }
 
     [Fact]

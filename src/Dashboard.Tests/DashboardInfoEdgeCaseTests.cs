@@ -596,8 +596,8 @@ public class DashboardInfoEdgeCaseTests
 
     /// <summary>The public field names the dashboard declares itself, in the given scope -
     /// <see cref="BindingFlags.Static" /> for the fixed word it carries, <see cref="BindingFlags.Instance" /> for
-    /// the words each dashboard is made of. The field helpers of <see cref="TopologyEdgeCaseTests" /> are private to
-    /// that file, so this one stands here.</summary>
+    /// the words each dashboard is made of. <see cref="RecordSurface.FieldNamesOf{T}" /> reads the static fields only,
+    /// so this one, which reads either scope, stands here.</summary>
     private static string[] PublicFieldNames(BindingFlags scope) =>
         [.. typeof(DashboardInfo)
             .GetFields(BindingFlags.Public | BindingFlags.DeclaredOnly | scope)

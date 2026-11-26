@@ -654,7 +654,7 @@ public class TopologyEdgeCaseTests
                 "Slug", "Name", "Repository", "DeliveryUrl", "CostUrl", "Dashboard", "DeploymentsUrl",
                 "ContainersUrl", "WorkItemsUrl",
             ],
-            NamesOf<SystemInfo>());
+            RecordSurface.PropertyNamesOf<SystemInfo>());
 
         Assert.Equal(
             [
@@ -662,9 +662,9 @@ public class TopologyEdgeCaseTests
                 "GetHashCode", "Name", "Repository", "Slug", "ToString", "WorkItemsUrl", "op_Equality",
                 "op_Inequality",
             ],
-            PublicSurfaceOf<SystemInfo>());
+            RecordSurface.Of<SystemInfo>());
 
-        var properties = PropertiesOf<SystemInfo>();
+        var properties = RecordSurface.PropertiesOf<SystemInfo>();
 
         Assert.Equal(typeof(string), properties["Slug"].PropertyType);
         Assert.Equal(typeof(string), properties["Name"].PropertyType);
@@ -676,7 +676,7 @@ public class TopologyEdgeCaseTests
         Assert.Equal(typeof(Uri), properties["ContainersUrl"].PropertyType);
         Assert.Equal(typeof(Uri), properties["WorkItemsUrl"].PropertyType);
 
-        var parameters = ParametersOf<SystemInfo>();
+        var parameters = RecordSurface.ParametersOf<SystemInfo>();
 
         Assert.Equal(
             ["Slug", "Name", "Repository", "DeliveryUrl", "CostUrl", "Dashboard", "DeploymentsUrl"],
@@ -685,10 +685,10 @@ public class TopologyEdgeCaseTests
         Assert.All(parameters.Skip(2), parameter => Assert.Null(parameter.DefaultValue));
         Assert.Equal(
             [false, false, true, true, true, true, true],
-            [.. parameters.Select(IsNullable)]);
+            [.. parameters.Select(RecordSurface.IsNullable)]);
 
         Assert.Equal([typeof(IEquatable<SystemInfo>)], typeof(SystemInfo).GetInterfaces());
-        Assert.Empty(NamesOfFields<SystemInfo>());
+        Assert.Empty(RecordSurface.FieldNamesOf<SystemInfo>());
     }
 
     // ------------------------------------------------------------------ the dashboard itself
@@ -771,23 +771,23 @@ public class TopologyEdgeCaseTests
     [Fact]
     public void TheDashboardHasTwoPartsAndOneFixedName()
     {
-        Assert.Equal(["Name", "BuildPath"], NamesOf<DashboardInfo>());
-        Assert.Equal(["BuildPath", "Deconstruct", "Equals", "GetHashCode", "Name", "ToString", "op_Equality", "op_Inequality"], PublicSurfaceOf<DashboardInfo>());
+        Assert.Equal(["Name", "BuildPath"], RecordSurface.PropertyNamesOf<DashboardInfo>());
+        Assert.Equal(["BuildPath", "Deconstruct", "Equals", "GetHashCode", "Name", "ToString", "op_Equality", "op_Inequality"], RecordSurface.Of<DashboardInfo>());
 
-        var properties = PropertiesOf<DashboardInfo>();
+        var properties = RecordSurface.PropertiesOf<DashboardInfo>();
 
         Assert.Equal(typeof(string), properties["Name"].PropertyType);
         Assert.Equal(typeof(string), properties["BuildPath"].PropertyType);
 
-        var parameters = ParametersOf<DashboardInfo>();
+        var parameters = RecordSurface.ParametersOf<DashboardInfo>();
 
         Assert.Equal(["Name", "BuildPath"], [.. parameters.Select(parameter => parameter.Name!)]);
         Assert.Equal([false, false], [.. parameters.Select(parameter => parameter.HasDefaultValue)]);
         Assert.All(parameters, parameter => Assert.Equal(DBNull.Value, parameter.DefaultValue));
-        Assert.Equal([false, false], [.. parameters.Select(IsNullable)]);
+        Assert.Equal([false, false], [.. parameters.Select(RecordSurface.IsNullable)]);
 
         Assert.Equal([typeof(IEquatable<DashboardInfo>)], typeof(DashboardInfo).GetInterfaces());
-        Assert.Equal(["DefaultName"], NamesOfFields<DashboardInfo>());
+        Assert.Equal(["DefaultName"], RecordSurface.FieldNamesOf<DashboardInfo>());
         Assert.Equal("dashboard", typeof(DashboardInfo).GetField("DefaultName")!.GetRawConstantValue());
     }
 
@@ -906,29 +906,29 @@ public class TopologyEdgeCaseTests
     [Fact]
     public void ThePageHasThreePartsAndTheOneTitleItMakes()
     {
-        Assert.Equal(["Name", "Url", "Deployable", "Title"], NamesOf<PageLink>());
+        Assert.Equal(["Name", "Url", "Deployable", "Title"], RecordSurface.PropertyNamesOf<PageLink>());
         Assert.Equal(
             ["Deconstruct", "Deployable", "Equals", "GetHashCode", "Name", "Title", "ToString", "Url", "op_Equality", "op_Inequality"],
-            PublicSurfaceOf<PageLink>());
+            RecordSurface.Of<PageLink>());
 
-        var properties = PropertiesOf<PageLink>();
+        var properties = RecordSurface.PropertiesOf<PageLink>();
 
         Assert.Equal(typeof(string), properties["Name"].PropertyType);
         Assert.Equal(typeof(Uri), properties["Url"].PropertyType);
         Assert.Equal(typeof(string), properties["Deployable"].PropertyType);
         Assert.Equal(typeof(string), properties["Title"].PropertyType);
 
-        var parameters = ParametersOf<PageLink>();
+        var parameters = RecordSurface.ParametersOf<PageLink>();
 
         Assert.Equal(["Name", "Url", "Deployable"], [.. parameters.Select(parameter => parameter.Name!)]);
         Assert.Equal([false, false, true], [.. parameters.Select(parameter => parameter.HasDefaultValue)]);
         Assert.Equal(DBNull.Value, parameters[0].DefaultValue);
         Assert.Equal(DBNull.Value, parameters[1].DefaultValue);
         Assert.Null(parameters[2].DefaultValue);
-        Assert.Equal([false, false, true], [.. parameters.Select(IsNullable)]);
+        Assert.Equal([false, false, true], [.. parameters.Select(RecordSurface.IsNullable)]);
 
         Assert.Equal([typeof(IEquatable<PageLink>)], typeof(PageLink).GetInterfaces());
-        Assert.Empty(NamesOfFields<PageLink>());
+        Assert.Empty(RecordSurface.FieldNamesOf<PageLink>());
     }
 
     // ------------------------------------------------------------------ the cluster a system may name
@@ -1016,28 +1016,28 @@ public class TopologyEdgeCaseTests
     [Fact]
     public void TheClusterHasFourPartsAndDecidesNothingOfItsOwn()
     {
-        Assert.Equal(["Name", "StatusUrl", "ServiceUrl", "Links"], NamesOf<ClusterInfo>());
+        Assert.Equal(["Name", "StatusUrl", "ServiceUrl", "Links"], RecordSurface.PropertyNamesOf<ClusterInfo>());
         Assert.Equal(
             ["Deconstruct", "Equals", "GetHashCode", "Links", "Name", "ServiceUrl", "StatusUrl", "ToString", "op_Equality", "op_Inequality"],
-            PublicSurfaceOf<ClusterInfo>());
+            RecordSurface.Of<ClusterInfo>());
 
-        var properties = PropertiesOf<ClusterInfo>();
+        var properties = RecordSurface.PropertiesOf<ClusterInfo>();
 
         Assert.Equal(typeof(string), properties["Name"].PropertyType);
         Assert.Equal(typeof(Uri), properties["StatusUrl"].PropertyType);
         Assert.Equal(typeof(Uri), properties["ServiceUrl"].PropertyType);
         Assert.Equal(typeof(LinkSet), properties["Links"].PropertyType);
 
-        var parameters = ParametersOf<ClusterInfo>();
+        var parameters = RecordSurface.ParametersOf<ClusterInfo>();
 
         Assert.Equal(["Name", "StatusUrl", "ServiceUrl", "Links"], [.. parameters.Select(parameter => parameter.Name!)]);
         Assert.Equal([false, true, true, true], [.. parameters.Select(parameter => parameter.HasDefaultValue)]);
         Assert.All(parameters.Skip(1), parameter => Assert.Null(parameter.DefaultValue));
         Assert.Equal(DBNull.Value, parameters[0].DefaultValue);
-        Assert.Equal([true, true, true, true], [.. parameters.Select(IsNullable)]);
+        Assert.Equal([true, true, true, true], [.. parameters.Select(RecordSurface.IsNullable)]);
 
         Assert.Equal([typeof(IEquatable<ClusterInfo>)], typeof(ClusterInfo).GetInterfaces());
-        Assert.Empty(NamesOfFields<ClusterInfo>());
+        Assert.Empty(RecordSurface.FieldNamesOf<ClusterInfo>());
     }
 
     // ------------------------------------------------------------------ the topology's own shape
@@ -1050,16 +1050,16 @@ public class TopologyEdgeCaseTests
     [Fact]
     public void TheTopologyHasFourPartsAndTheOneDecisionItMakes()
     {
-        Assert.Equal(["System", "Generated", "Environments", "Cluster", "HasFrontDoor"], NamesOf<Topology>());
+        Assert.Equal(["System", "Generated", "Environments", "Cluster", "HasFrontDoor"], RecordSurface.PropertyNamesOf<Topology>());
 
         Assert.Equal(
             [
                 "Cluster", "Deconstruct", "Environments", "Equals", "Generated", "GetHashCode", "HasFrontDoor",
                 "System", "ToString", "op_Equality", "op_Inequality",
             ],
-            PublicSurfaceOf<Topology>());
+            RecordSurface.Of<Topology>());
 
-        var properties = PropertiesOf<Topology>();
+        var properties = RecordSurface.PropertiesOf<Topology>();
 
         Assert.Equal(typeof(SystemInfo), properties["System"].PropertyType);
         Assert.Equal(typeof(DateTimeOffset?), properties["Generated"].PropertyType);
@@ -1070,66 +1070,15 @@ public class TopologyEdgeCaseTests
         // The one constructor, naming its four parts as the properties are named: only the cluster may be left out,
         // the system and its environments being what a topology must be told, and the moment is a part a caller
         // must name although it may name it as nothing.
-        var parameters = ParametersOf<Topology>();
+        var parameters = RecordSurface.ParametersOf<Topology>();
 
         Assert.Equal(["System", "Generated", "Environments", "Cluster"], [.. parameters.Select(parameter => parameter.Name!)]);
         Assert.Equal([false, false, false, true], [.. parameters.Select(parameter => parameter.HasDefaultValue)]);
         Assert.All(parameters.Take(3), parameter => Assert.Equal(DBNull.Value, parameter.DefaultValue));
         Assert.Null(parameters[3].DefaultValue);
-        Assert.Equal([false, true, false, true], [.. parameters.Select(IsNullable)]);
+        Assert.Equal([false, true, false, true], [.. parameters.Select(RecordSurface.IsNullable)]);
 
         Assert.Equal([typeof(IEquatable<Topology>)], typeof(Topology).GetInterfaces());
-        Assert.Empty(NamesOfFields<Topology>());
+        Assert.Empty(RecordSurface.FieldNamesOf<Topology>());
     }
-
-    // ------------------------------------------------------------------ the machinery
-
-    /// <summary>The public properties a record declares itself, in the order they stand in it: its parts as the
-    /// constructor names them, and the decisions it makes of them after.</summary>
-    private static string[] NamesOf<T>() =>
-        [.. typeof(T)
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-            .Select(property => property.Name)];
-
-    /// <summary>The public members a record declares itself: its properties and the methods that are not the get
-    /// and the set of one - the two operators kept although the compiler names them specially, since they are the
-    /// <c>==</c> and the <c>!=</c> a caller writes - with the record's compiler-named clone walked past. The
-    /// constructor is no method, so it is named by each record's own test rather than by this list.</summary>
-    private static string[] PublicSurfaceOf<T>() =>
-        [.. typeof(T)
-            .GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
-            .Where(member => member is PropertyInfo
-                             || member is MethodInfo method
-                             && (!method.IsSpecialName || method.Name.StartsWith("op_", StringComparison.Ordinal)))
-            .Where(member => !member.Name.Contains('<', StringComparison.Ordinal))
-            .Select(member => member.Name)
-            .Distinct(StringComparer.Ordinal)
-            .Order(StringComparer.Ordinal)];
-
-    /// <summary>The public properties of a record, by name, so that a test can ask one of them what type it
-    /// says it is.</summary>
-    private static Dictionary<string, PropertyInfo> PropertiesOf<T>() =>
-        NamesOf<T>()
-            .ToDictionary(
-                name => name,
-                name => typeof(T).GetProperty(name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)!,
-                StringComparer.Ordinal);
-
-    /// <summary>The parts a record's one constructor names, in the order it names them.</summary>
-    private static ParameterInfo[] ParametersOf<T>() => typeof(T).GetConstructors().Single().GetParameters();
-
-    /// <summary>True when the record says a part may be nothing: what the compiler writes into the signature, and
-    /// what the reader of the file leans on.</summary>
-    private static bool IsNullable(ParameterInfo parameter) =>
-        new NullabilityInfoContext().Create(parameter).WriteState == NullabilityState.Nullable;
-
-    /// <summary>The fixed words a record carries, by name: the two records that carry three paths and two role
-    /// words have them pinned where they stand
-    /// (<see cref="DeployableInfoEdgeCaseTests" /> and <see cref="NodeInfoEdgeCaseTests" />), and the rest of them
-    /// carry nothing at all.</summary>
-    private static string[] NamesOfFields<T>() =>
-        [.. typeof(T)
-            .GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)
-            .Select(field => field.Name)
-            .Order(StringComparer.Ordinal)];
 }

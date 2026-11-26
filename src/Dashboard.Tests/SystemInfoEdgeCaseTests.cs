@@ -29,9 +29,9 @@ namespace Dashboard.Tests;
 /// beside the shapes of a delivery address a file really names, the two names apart, the files made anew at every
 /// ask, two systems one while their seven parts are, any one part telling them apart, the seven parts read out in
 /// their order, <c>with</c>, the words the system says about itself and its whole reflection surface. The surface
-/// pin there asks the shared walks of <see cref="RecordSurface" /> rather than the private copy
-/// <see cref="TopologyEdgeCaseTests" /> still hand-rolls; <see cref="RecordSurfaceMachineryTests" /> pins that the
-/// shared walk and that copy say one thing of this record, so the list pinned is the list pinned there. The same
+/// pin there asks the shared walks of <see cref="RecordSurface" />, as <see cref="TopologyEdgeCaseTests" /> now does
+/// too; <see cref="RecordSurfaceMachineryTests" /> pins that the shared walk says what an independent walk of its own
+/// says of this record, so the list pinned is the list pinned there. The same
 /// thirteen pins stand in that file too until the follow-up of cmdemo1-dashboard#1225 walks past them: landing the
 /// move dropped no pin and weakened none.
 /// </para>

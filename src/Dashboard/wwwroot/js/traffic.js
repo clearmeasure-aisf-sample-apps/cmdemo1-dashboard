@@ -5,7 +5,8 @@
 // the three, also after the last one was sent: the page keeps reading status() until none is on its way.
 let run = null;
 
-export function start(addresses, perSecond, seconds, answerWithinSeconds) {
+// A press is the addresses and one run, read by name as TrafficRun serialises it, so there is no order to get wrong.
+export function start(addresses, { perSecond, seconds, answerWithinSeconds }) {
   stop();
   const current = { sent: 0, answered: 0, failed: 0, unanswered: 0, sending: true, stopped: false };
   run = current;

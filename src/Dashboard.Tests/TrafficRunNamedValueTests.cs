@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace Dashboard.Tests;
@@ -8,9 +9,9 @@ namespace Dashboard.Tests;
 /// consts that reach <c>start</c> of <c>js/traffic.js</c> as three positional ints where every one of them is "how
 /// many of what": the run is written from the three consts of <see cref="TrafficPlan" />, so each number keeps the
 /// one home #1724 gave it; it carries exactly the three numbers of a press and not the interval the page checks on,
-/// which is a different rule; and the panel hands its properties to <c>start</c> in the order that function names
-/// them, which is what a swap of <c>Seconds</c> and <c>AnswerWithinSeconds</c> used to survive while changing what
-/// a run does.
+/// which is a different rule; and the panel hands the run to <c>start</c> whole, which reads it by name (#1776), so
+/// a swap of <c>Seconds</c> and <c>AnswerWithinSeconds</c> - which three positional ints used to survive while
+/// changing what a run does - has no order left to happen in.
 /// </summary>
 /// <remarks>
 /// The two readings are the app's own: the JS module for the names and the number of the parameters, and
@@ -71,22 +72,42 @@ public partial class TrafficRunNamedValueTests
     // ---------------------------------------------------------------- how the run reaches the browser
 
     /// <summary>
-    /// The three parameters <c>start</c> of <c>js/traffic.js</c> takes after the addresses, and the three properties
+    /// The three names <c>start</c> of <c>js/traffic.js</c> destructures from its run, and the three properties
     /// of <see cref="TrafficRun" />, are the same three numbers by the same names: the value the panel passes is
     /// named for the call it is passed to.
     /// </summary>
     [Fact]
     public void TheRunIsNamedForTheParametersOfTheCallItIsPassedTo() =>
         Assert.Equal(
-            StartParametersOfTheModule()[1..],
+            RunNamesOfTheModule(),
             NumbersOfARun,
             StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// What a press asks the browser for, in the order the browser asks for it: the addresses first, then the three
-    /// numbers of one run value, each argument read from a member named for the parameter it lands on. Swapping
-    /// <c>Run.Seconds</c> and <c>Run.AnswerWithinSeconds</c> here - which compiles, and sends for the time a single
-    /// request was meant to wait - fails this, and so does passing a bare const again.
+    /// The run crosses to the browser by property name (#1776): serialised with the camel-case web naming the
+    /// interop uses, the default run is one object whose keys are exactly the names <c>start</c> destructures,
+    /// carrying the numbers the button always sent.
+    /// </summary>
+    [Fact]
+    public void TheRunSerialisesToTheNamesTheModuleDestructures()
+    {
+        var json = JsonSerializer.Serialize(TrafficRun.Default, JsonSerializerOptions.Web);
+
+        Assert.Equal("""{"perSecond":2,"seconds":60,"answerWithinSeconds":10}""", json);
+
+        using var document = JsonDocument.Parse(json);
+
+        Assert.Equal(
+            RunNamesOfTheModule(),
+            document.RootElement.EnumerateObject().Select(property => property.Name),
+            StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// What a press asks the browser for (#1776): the addresses, then the run itself as one value that
+    /// <c>start</c> destructures by name, so the three numbers have no order to be swapped in on either side.
+    /// Passing <c>Run.Seconds</c> and <c>Run.AnswerWithinSeconds</c> as loose numbers again - where a swap compiles
+    /// and sends for the time a single request was meant to wait - fails this, and so does passing a bare const.
     /// </summary>
     [Fact]
     public void TheBrowserCallPassesTheRunsThreeNumbersInTheOrderTrafficJsNamesThem()
@@ -94,22 +115,22 @@ public partial class TrafficRunNamedValueTests
         var parameters = StartParametersOfTheModule();
         var arguments = StartArgumentsOfThePanel();
 
-        // Same JS arguments in the same order: the identifier, then the addresses, then three numbers.
-        Assert.Equal(4, parameters.Length);
+        // The identifier, then the addresses, then the run: two JS parameters, two arguments after the identifier.
+        Assert.Equal(2, parameters.Length);
         Assert.Equal(parameters.Length, arguments.Length - 1);
         Assert.Equal("\"start\"", arguments[0]);
         Assert.Contains("addresses", arguments[1], StringComparison.Ordinal);
 
-        // The JS parameter at index i lands on the panel's argument at index i + 1, which is one past the identifier.
-        for (var index = 1; index < parameters.Length; index++)
+        // The module takes the run as one object and names its numbers, not as a list of positions.
+        Assert.StartsWith("{", parameters[1], StringComparison.Ordinal);
+        Assert.Equal(NumbersOfARun.Length, RunNamesOfTheModule().Length);
+
+        // The panel hands over the run value itself, never one of its numbers picked out by position.
+        Assert.Equal("Run", arguments[2]);
+
+        foreach (var number in NumbersOfARun)
         {
-            var argument = arguments[index + 1];
-            var property = argument[(argument.LastIndexOf('.') + 1)..];
-
-            Assert.Equal(parameters[index], property, StringComparer.OrdinalIgnoreCase);
-
-            // And read from the run, not from a bare const: the qualifier is the run value, wherever it is held.
-            Assert.Contains("run", argument[..^(property.Length + 1)], StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(arguments, argument => argument.Contains($".{number}", StringComparison.Ordinal));
         }
     }
 
@@ -158,14 +179,27 @@ public partial class TrafficRunNamedValueTests
     private static string TrafficJsText() =>
         File.ReadAllText(MarkupGuards.SourcePath(Path.Combine("wwwroot", "js", "traffic.js")));
 
-    /// <summary>The parameter names of <c>start</c>, as the module declares them: addresses first, then the numbers.</summary>
+    /// <summary>The parameters of <c>start</c>, as the module declares them: addresses first, then the run, each on
+    /// one line (the run as its destructuring pattern, braces and all).</summary>
     private static string[] StartParametersOfTheModule()
     {
         var declared = StartParameterList().Match(TrafficJsText());
 
         Assert.True(declared.Success, "start of js/traffic.js was not read: the guard would be checking nothing");
 
-        return [.. declared.Groups[1].Value.Split(',').Select(name => name.Trim())];
+        return SplitArguments(declared.Groups[1].Value);
+    }
+
+    /// <summary>The names <c>start</c> destructures from the run it is passed, in the order the module writes them.</summary>
+    private static string[] RunNamesOfTheModule()
+    {
+        var run = StartParametersOfTheModule()[^1];
+
+        Assert.True(
+            run.StartsWith('{') && run.EndsWith('}'),
+            $"start of js/traffic.js does not destructure its run by name: '{run}'");
+
+        return [.. run[1..^1].Split(',').Select(name => name.Trim())];
     }
 
     /// <summary>The arguments of the panel's <c>InvokeVoidAsync("start", ...)</c>, the identifier first: the call is

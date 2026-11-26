@@ -98,11 +98,7 @@ public sealed class ClusterMonitor
         }
 
         // A check without a live status is a gap in the trend, once there is a trend.
-        var sample = liveness == ClusterLiveness.Live && reading.Value is { } live ? ClusterSample.Of(live) : null;
-        if (sample is not null || Samples.Count > 0)
-        {
-            Samples.Add(sample);
-        }
+        Samples.Record(liveness == ClusterLiveness.Live && reading.Value is { } live ? ClusterSample.Of(live) : null);
 
         _liveness = liveness;
         Status = reading;

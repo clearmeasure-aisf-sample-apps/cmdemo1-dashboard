@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 using Dashboard.Runtime;
 
@@ -49,7 +48,7 @@ public static class TopologyParser
             var root = document.RootElement;
             var errors = new List<string>();
             var system = ReadSystem(root, errors);
-            var generated = ReadTime(root, "generated");
+            var generated = JsonRead.Time(root, "generated");
             var environments = ReadEnvironments(root, errors);
             var cluster = ReadCluster(root, errors);
             return TopologyParseResult.Collected(errors, () => new Topology(system, generated, environments, cluster));
@@ -67,8 +66,8 @@ public static class TopologyParser
         DashboardInfo? dashboard = null;
         if (root.TryGetProperty("system", out var system) && system.ValueKind == JsonValueKind.Object)
         {
-            slug = ReadText(system, "slug") ?? string.Empty;
-            name = ReadText(system, "name");
+            slug = JsonRead.Text(system, "slug") ?? string.Empty;
+            name = JsonRead.Text(system, "name");
             repository = ReadOptionalAddress(system, "repository", "system", errors);
             delivery = ReadOptionalAddress(system, "deliveryUrl", "system", errors);
             cost = ReadOptionalAddress(system, "costUrl", "system", errors);
@@ -99,7 +98,7 @@ public static class TopologyParser
         }
 
         return ReadOptionalPath(dashboard, "buildPath") is { } build
-            ? new DashboardInfo(ReadText(dashboard, "name") ?? DashboardInfo.DefaultName, build)
+            ? new DashboardInfo(JsonRead.Text(dashboard, "name") ?? DashboardInfo.DefaultName, build)
             : null;
     }
 
@@ -114,7 +113,7 @@ public static class TopologyParser
 
         foreach (var (element, path, _) in Objects(array, "environments", errors))
         {
-            var name = ReadText(element, "name");
+            var name = JsonRead.Text(element, "name");
             if (name is null)
             {
                 errors.Add($"{path}.name: missing or empty.");
@@ -126,12 +125,12 @@ public static class TopologyParser
             var deployables = ReadDeployables(element, path, errors);
             environments.Add(new EnvironmentInfo(
                 name,
-                ReadText(element, "tier"),
+                JsonRead.Text(element, "tier"),
                 deployables,
                 versions,
                 history,
                 ReadLinks(element),
-                ReadText(element, "namespace"),
+                JsonRead.Text(element, "namespace"),
                 ReadPages(element)));
         }
 
@@ -154,11 +153,10 @@ public static class TopologyParser
         foreach (var page in pages.EnumerateArray())
         {
             if (page.ValueKind == JsonValueKind.Object
-                && ReadText(page, "name") is { } name
-                && page.TryGetProperty("url", out var url)
-                && ReadAddress(url) is { } address)
+                && JsonRead.Text(page, "name") is { } name
+                && JsonRead.Address(page, "url") is { } address)
             {
-                found.Add(new PageLink(name, address, ReadText(page, "deployable")));
+                found.Add(new PageLink(name, address, JsonRead.Text(page, "deployable")));
             }
         }
 
@@ -198,7 +196,7 @@ public static class TopologyParser
             }
         }
 
-        return new ClusterInfo(ReadText(cluster, "name"), status, service, found.Count == 0 ? null : new LinkSet(found));
+        return new ClusterInfo(JsonRead.Text(cluster, "name"), status, service, found.Count == 0 ? null : new LinkSet(found));
     }
 
     private static List<DeployableInfo> ReadDeployables(JsonElement environment, string environmentPath, List<string> errors)
@@ -217,7 +215,7 @@ public static class TopologyParser
             var pinHistory = ReadOptionalAddress(element, "pinHistoryUrl", path, errors);
             var nodes = ReadNodes(element, path, errors);
             deployables.Add(new DeployableInfo(
-                Name: ReadText(element, "name") ?? "app",
+                Name: JsonRead.Text(element, "name") ?? "app",
                 FrontDoor: frontDoor,
                 HealthPath: ReadPath(element, "healthPath", HealthPaths.DefaultHealthPath),
                 AlivePath: ReadPath(element, "alivePath", DeployableInfo.DefaultAlivePath),
@@ -244,7 +242,7 @@ public static class TopologyParser
             return null;
         }
 
-        var address = ReadAddress(value);
+        var address = JsonRead.Address(value);
         if (address is null)
         {
             errors.Add(Messages.Address(parentPath, property, required: false));
@@ -263,7 +261,7 @@ public static class TopologyParser
 
         foreach (var (element, path, _) in Objects(array, $"{deployablePath}.nodes", errors))
         {
-            var url = element.TryGetProperty("url", out var value) ? ReadAddress(value) : null;
+            var url = element.TryGetProperty("url", out var value) ? JsonRead.Address(value) : null;
             if (url is null)
             {
                 errors.Add(Messages.Address(path, "url", required: true));
@@ -271,8 +269,8 @@ public static class TopologyParser
             }
 
             // Without a role, the order of the nodes read decides: the first node read is the primary.
-            var role = ReadText(element, "role")?.ToLowerInvariant() ?? NodeRole.Default(nodes.Count);
-            nodes.Add(new NodeInfo(ReadText(element, "name") ?? url.Host, ReadText(element, "region"), role, url, ReadLinks(element)));
+            var role = JsonRead.Text(element, "role")?.ToLowerInvariant() ?? NodeRole.Default(nodes.Count);
+            nodes.Add(new NodeInfo(JsonRead.Text(element, "name") ?? url.Host, JsonRead.Text(element, "region"), role, url, ReadLinks(element)));
         }
 
         return nodes;
@@ -293,7 +291,7 @@ public static class TopologyParser
         var found = new Dictionary<string, Uri>(StringComparer.Ordinal);
         foreach (var property in links.EnumerateObject())
         {
-            if (ReadAddress(property.Value) is { } address)
+            if (JsonRead.Address(property.Value) is { } address)
             {
                 found[property.Name] = address;
             }
@@ -359,23 +357,12 @@ public static class TopologyParser
         return true;
     }
 
-    private static string? ReadText(JsonElement parent, string property)
-    {
-        if (!parent.TryGetProperty(property, out var value) || value.ValueKind != JsonValueKind.String)
-        {
-            return null;
-        }
-
-        var text = value.GetString()?.Trim();
-        return string.IsNullOrEmpty(text) ? null : text;
-    }
-
     private static string ReadPath(JsonElement parent, string property, string fallback) =>
         ReadOptionalPath(parent, property) ?? fallback;
 
-    /// <summary>An optional path, or none: <see cref="ReadText"/> answers null for anything but a word.</summary>
+    /// <summary>An optional path, or none: <see cref="JsonRead.Text"/> answers null for anything but a word.</summary>
     private static string? ReadOptionalPath(JsonElement parent, string property) =>
-        SitePath.Parse(ReadText(parent, property));
+        SitePath.Parse(JsonRead.Text(parent, property));
 
     /// <summary>An optional array of paths; null when absent, an error for anything but strings.</summary>
     private static List<string>? ReadPaths(JsonElement parent, string property, string parentPath, List<string> errors)
@@ -399,26 +386,5 @@ public static class TopologyParser
         }
 
         return paths;
-    }
-
-    private static DateTimeOffset? ReadTime(JsonElement parent, string property)
-    {
-        var text = ReadText(parent, property);
-        return DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var time)
-            ? time
-            : null;
-    }
-
-    private static Uri? ReadAddress(JsonElement value)
-    {
-        if (value.ValueKind != JsonValueKind.String)
-        {
-            return null;
-        }
-
-        return Uri.TryCreate(value.GetString()?.Trim(), UriKind.Absolute, out var address)
-            && (address.Scheme == Uri.UriSchemeHttp || address.Scheme == Uri.UriSchemeHttps)
-            ? address
-            : null;
     }
 }

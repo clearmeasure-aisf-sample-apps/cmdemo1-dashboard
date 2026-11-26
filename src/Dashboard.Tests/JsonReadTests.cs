@@ -193,6 +193,41 @@ public class JsonReadTests
         Assert.Null(JsonRead.Address(answer, "nothere"));
     }
 
+    /// <summary>A value that is itself an address (#1039): read as <see cref="JsonRead.Text"/> reads a word - so trimmed,
+    /// and nothing when empty or no string - and then held to the one rule of an address.</summary>
+    [Theory]
+    [InlineData("\"https://a.example/x\"", "https://a.example/x")]
+    [InlineData("\"  https://a.example/x  \"", "https://a.example/x")] // trimmed
+    [InlineData("\"http://a.example\"", "http://a.example/")]
+    [InlineData("\"ftp://a.example\"", null)] // another scheme
+    [InlineData("\"/relative\"", null)]
+    [InlineData("\"\"", null)] // the empty word
+    [InlineData("\"   \"", null)]
+    [InlineData("5", null)] // no string
+    [InlineData("null", null)]
+    [InlineData("{ \"url\": \"https://a.example/x\" }", null)]
+    public void AValueIsAnAddressWhenItIsAWordThatIsOne(string json, string? expected)
+    {
+        using var document = JsonDocument.Parse(json);
+
+        Assert.Equal(expected, JsonRead.Address(document.RootElement)?.AbsoluteUri);
+        Assert.Equal(expected, JsonRead.Address(Root($$"""{ "n": {{json}} }"""), "n")?.AbsoluteUri);
+    }
+
+    /// <summary>The moments <c>topology.json</c> is pinned on (#1039): in Zulu, trimmed, in another hour, and a bare day.</summary>
+    [Theory]
+    [InlineData("2026-10-04T22:00:00Z", "2026-10-04T22:00:00+00:00")]
+    [InlineData(" 2026-10-04T22:00:00Z ", "2026-10-04T22:00:00+00:00")]
+    [InlineData("2026-10-04T22:00:00+02:00", "2026-10-04T22:00:00+02:00")]
+    [InlineData("2026-10-04", "2026-10-04T00:00:00+00:00")]
+    public void ATimeIsReadInZuluInAnotherHourOrAsABareDay(string text, string expected)
+    {
+        var time = JsonRead.Time(Root($$"""{ "n": "{{text}}" }"""), "n");
+
+        Assert.Equal(DateTimeOffset.Parse(expected, System.Globalization.CultureInfo.InvariantCulture), time);
+        Assert.Equal(DateTimeOffset.Parse(expected, System.Globalization.CultureInfo.InvariantCulture).Offset, time?.Offset);
+    }
+
     [Fact]
     public void AParentThatIsThereNotReadsNothing()
     {

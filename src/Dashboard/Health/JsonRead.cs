@@ -5,7 +5,10 @@ namespace Dashboard.Health;
 
 /// <summary>
 /// Reads the optional parts of an answer the dashboard does not own (a node's telemetry and build facts, the delivery
-/// file, the cluster's files): a part that is absent or of another type is null, never an error.
+/// file, the cluster's files): a part that is absent or of another type is null, never an error. It is also the one
+/// reader of the words, moments and addresses of <c>topology.json</c> (#1039): <see cref="TopologyParser"/> asks
+/// whether a member is there itself and reports the one that is there and wrong, but what a word, a moment and an
+/// address are is said here only, so the two cannot drift.
 /// </summary>
 internal static class JsonRead
 {
@@ -107,14 +110,21 @@ internal static class JsonRead
     private static double Whole(double number) => Math.Round(number, MidpointRounding.AwayFromZero);
 
     /// <summary>Text that is not empty, trimmed.</summary>
-    public static string? Text(JsonElement? parent, string name)
+    public static string? Text(JsonElement? parent, string name) =>
+        parent is { ValueKind: JsonValueKind.Object } value && value.TryGetProperty(name, out var text) ? Word(text) : null;
+
+    /// <summary>
+    /// The one rule of what a word of a file is: a string, trimmed, and not empty; null for anything else. Both
+    /// <see cref="Text" /> and <see cref="Address(JsonElement)" /> ask it.
+    /// </summary>
+    private static string? Word(JsonElement value)
     {
-        if (parent is not { ValueKind: JsonValueKind.Object } value || !value.TryGetProperty(name, out var text) || text.ValueKind != JsonValueKind.String)
+        if (value.ValueKind != JsonValueKind.String)
         {
             return null;
         }
 
-        var trimmed = text.GetString()?.Trim();
+        var trimmed = value.GetString()?.Trim();
         return string.IsNullOrEmpty(trimmed) ? null : trimmed;
     }
 
@@ -123,6 +133,12 @@ internal static class JsonRead
 
     /// <summary>An absolute http or https address: the only kind the dashboard links to.</summary>
     public static Uri? Address(JsonElement? parent, string name) => Address(Text(parent, name));
+
+    /// <summary>
+    /// A value that is itself an address, such as an entry of a list of links read by its name: a word (as
+    /// <see cref="Text" /> reads one) that is an absolute http or https address; null for anything else.
+    /// </summary>
+    public static Uri? Address(JsonElement value) => Address(Word(value));
 
     /// <summary>The number under <paramref name="name"/> as a <see cref="double" />, infinite when it is too large for one; null for anything else.</summary>
     private static double? Real(JsonElement? parent, string name) =>

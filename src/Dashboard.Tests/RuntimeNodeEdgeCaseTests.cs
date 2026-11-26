@@ -937,21 +937,7 @@ public class RuntimeNodeEdgeCaseTests
     /// <summary>The words a box says about itself, taken in the invariant culture whatever the reader of this test
     /// happens to be: no part of a box is a number a reader spells, so these are the words every reader is
     /// given.</summary>
-    private static string Words(RuntimeNode node)
-    {
-        ArgumentNullException.ThrowIfNull(node);
-
-        var reader = CultureInfo.CurrentCulture;
-        try
-        {
-            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
-            return node.ToString()!;
-        }
-        finally
-        {
-            CultureInfo.CurrentCulture = reader;
-        }
-    }
+    private static string Words(RuntimeNode node) => ViewerCulture.Invariant(() => node.ToString()!);
 
     /// <summary>The public members the box declares itself: its parts and the methods that are not the get and the
     /// set of one - the two operators kept although the compiler names them specially, since they are the <c>==</c>

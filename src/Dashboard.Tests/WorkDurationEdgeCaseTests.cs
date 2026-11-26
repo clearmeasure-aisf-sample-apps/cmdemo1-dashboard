@@ -623,19 +623,5 @@ public class WorkDurationEdgeCaseTests
     /// <summary>The words a duration says its three parts in, taken in the invariant culture whatever the reader of
     /// this test happens to be: the record's own words follow whoever reads them, which is pinned on its own further
     /// up this file, so the strings there are the point and the culture only the way to say them once.</summary>
-    private static string Words(WorkDuration duration)
-    {
-        ArgumentNullException.ThrowIfNull(duration);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return duration.ToString()!;
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(WorkDuration duration) => ViewerCulture.Invariant(() => duration.ToString()!);
 }

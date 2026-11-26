@@ -519,21 +519,7 @@ public class CostPartEdgeCaseTests
     /// <summary>The words a part says its two words in, taken in the invariant culture whatever the reader of this
     /// test happens to be: the words themselves are letters and outlast any reader, which is pinned on its own
     /// further up this file, so the strings there are the point and the culture only the way to say them once.</summary>
-    private static string Words(CostPart part)
-    {
-        ArgumentNullException.ThrowIfNull(part);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return part.ToString();
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(CostPart part) => ViewerCulture.Invariant(() => part.ToString()!);
 
     /// <summary>The letters of a word gathered into a string of its own, which no other word in the test shares a
     /// reference with: what the record does with a word it is given - keeping the one and not another that spells

@@ -270,11 +270,3 @@ public class TrendsHelperTests
     public void WithoutANodeThereIsNothingToDraw() => Assert.Throws<ArgumentNullException>(() => Trends.Http(null!));
 }
 
-/// <summary>
-/// Runs what the page formats as a viewer whose culture writes dates and numbers differently: the dashboard's own
-/// words are the invariant culture's, so a number or a day never changes with whoever looks.
-/// </summary>
-internal static class ViewerCulture
-{
-    public static void German(Action what) => CultureScope.Runs("de-DE", what);
-}

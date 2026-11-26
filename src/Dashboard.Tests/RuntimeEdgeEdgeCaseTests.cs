@@ -746,19 +746,5 @@ public class RuntimeEdgeEdgeCaseTests
 
     /// <summary>The words an edge says about itself, taken in the invariant culture whatever the reader of this test
     /// happens to be: the parts are words and a number, and the culture is only the way the number is said once.</summary>
-    private static string Words(RuntimeEdge edge)
-    {
-        ArgumentNullException.ThrowIfNull(edge);
-
-        var reader = CultureInfo.CurrentCulture;
-        try
-        {
-            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
-            return edge.ToString()!;
-        }
-        finally
-        {
-            CultureInfo.CurrentCulture = reader;
-        }
-    }
+    private static string Words(RuntimeEdge edge) => ViewerCulture.Invariant(() => edge.ToString()!);
 }

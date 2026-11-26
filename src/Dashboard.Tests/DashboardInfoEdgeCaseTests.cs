@@ -222,21 +222,13 @@ public class DashboardInfoEdgeCaseTests
             Thread.CurrentThread.CurrentCulture = reader;
         }
 
-        string namedSaidAsInvariant;
-        string dottedSaidAsInvariant;
-
-        var invariantReader = Thread.CurrentThread.CurrentCulture;
-        try
+        string namedSaidAsInvariant = null!;
+        string dottedSaidAsInvariant = null!;
+        ViewerCulture.Invariant(() =>
         {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-
-            namedSaidAsInvariant = named.ToString();
-            dottedSaidAsInvariant = dotted.ToString();
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = invariantReader;
-        }
+            namedSaidAsInvariant = named.ToString()!;
+            dottedSaidAsInvariant = dotted.ToString()!;
+        });
 
         // The words a dashboard says itself are the two words it is made of, and no reader says them differently.
         Assert.Equal(namedSaidAsInvariant, namedSaidAsTurkish);

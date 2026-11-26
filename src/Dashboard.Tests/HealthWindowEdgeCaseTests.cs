@@ -427,19 +427,5 @@ public class HealthWindowEdgeCaseTests
     /// <summary>The words a window says its counts in, taken in the invariant culture whatever the reader of
     /// this test happens to be: the words are the numbers the window holds, and the culture is only the way to
     /// say them once.</summary>
-    private static string Words(HealthWindow window)
-    {
-        ArgumentNullException.ThrowIfNull(window);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return window.ToString();
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(HealthWindow window) => ViewerCulture.Invariant(() => window.ToString()!);
 }

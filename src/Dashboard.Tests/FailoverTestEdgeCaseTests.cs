@@ -603,19 +603,5 @@ public class FailoverTestEdgeCaseTests
     /// <summary>The words a test says, taken in the invariant culture whatever the reader of this test happens to
     /// be: the moment and the tenths of a second are the reader's to say, and the record's own words are only
     /// comparable one way.</summary>
-    private static string Words(FailoverTest test)
-    {
-        ArgumentNullException.ThrowIfNull(test);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return test.ToString();
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(FailoverTest test) => ViewerCulture.Invariant(() => test.ToString()!);
 }

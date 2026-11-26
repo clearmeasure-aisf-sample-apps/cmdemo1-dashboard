@@ -671,19 +671,5 @@ public class DeploymentFreezeEdgeCaseTests
     /// <summary>The words a freeze says its six parts in, taken in the invariant culture whatever the reader of
     /// this test happens to be: the two moments follow whoever reads them and the sentence is the point, so the
     /// culture is only the way to say it once - which of them a German reader turns is pinned on its own above.</summary>
-    private static string Words(DeploymentFreeze freeze)
-    {
-        ArgumentNullException.ThrowIfNull(freeze);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return freeze.ToString();
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(DeploymentFreeze freeze) => ViewerCulture.Invariant(() => freeze.ToString()!);
 }

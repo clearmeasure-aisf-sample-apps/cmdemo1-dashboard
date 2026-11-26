@@ -801,21 +801,7 @@ public class RuntimeFrameEdgeCaseTests
     /// <summary>The words a frame says about itself, taken in the invariant culture whatever the reader of this test
     /// happens to be: no part of a frame is a number a reader spells, so these are the words every reader is
     /// given.</summary>
-    private static string Words(RuntimeFrame frame)
-    {
-        ArgumentNullException.ThrowIfNull(frame);
-
-        var reader = CultureInfo.CurrentCulture;
-        try
-        {
-            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
-            return frame.ToString()!;
-        }
-        finally
-        {
-            CultureInfo.CurrentCulture = reader;
-        }
-    }
+    private static string Words(RuntimeFrame frame) => ViewerCulture.Invariant(() => frame.ToString()!);
 
     /// <summary>The public members the frame declares itself: its parts and the methods that are not the get and the
     /// set of one - the two operators kept although the compiler names them specially, since they are the <c>==</c>

@@ -482,19 +482,5 @@ public class HealthReportsSurfaceEdgeCaseTests
 
     /// <summary>The words a report says, taken in the invariant culture whatever the reader of this test happens
     /// to be: the moment is the reader's to say, and the record's own words are only comparable one way.</summary>
-    private static string Words(HealthReports reports)
-    {
-        ArgumentNullException.ThrowIfNull(reports);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return reports.ToString();
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(HealthReports reports) => ViewerCulture.Invariant(() => reports.ToString()!);
 }

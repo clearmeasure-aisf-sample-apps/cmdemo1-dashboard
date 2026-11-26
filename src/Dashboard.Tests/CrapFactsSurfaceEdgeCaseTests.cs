@@ -315,21 +315,7 @@ public class CrapFactsSurfaceEdgeCaseTests
     /// test happens to be: the record's own words follow whoever reads them, which
     /// <see cref="CrapFactsBoundaryEdgeCaseTests" /> pins on its own, so the strings above are the point and the
     /// culture only the way to say them once.</summary>
-    private static string Words(CrapFacts crap)
-    {
-        ArgumentNullException.ThrowIfNull(crap);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return crap.ToString()!;
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(CrapFacts crap) => ViewerCulture.Invariant(() => crap.ToString()!);
 
     /// <summary>What three numbers say about a build, asked through a pattern rather than through the words of
     /// <see cref="BuildText" />: some methods over, none over, or the count left unsaid.</summary>

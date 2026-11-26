@@ -689,21 +689,7 @@ public class ApplicationVersionEdgeCaseTests
 
     /// <summary>The words a version says its two members in, taken in the invariant culture whatever the reader of
     /// this test happens to be: the point below is the words, and the reader's own culture is pinned apart.</summary>
-    private static string Words(ApplicationVersion version)
-    {
-        ArgumentNullException.ThrowIfNull(version);
-
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return version.ToString();
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    private static string Words(ApplicationVersion version) => ViewerCulture.Invariant(() => version.ToString()!);
 
     /// <summary>The letters of a word gathered into a string of its own, which no other word in the test shares a
     /// reference with: what the version does with a word it is given - keeping the one and not another that spells

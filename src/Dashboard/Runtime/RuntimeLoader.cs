@@ -86,17 +86,22 @@ public sealed class RuntimeLoader(HttpClient http)
                 return ApplicationRead.Missing;
             }
 
-            return response.IsSuccessStatusCode && ApplicationParser.Parse(await response.Content.ReadAsStringAsync(linked.Token)) is { } architecture
-                ? new ApplicationRead(ApplicationReadState.Read, architecture)
-                : ApplicationRead.Failed;
+            if (!response.IsSuccessStatusCode)
+            {
+                return ApplicationRead.Failed($"The server answered HTTP {(int)response.StatusCode} for {address}.");
+            }
+
+            return ApplicationParser.Parse(await response.Content.ReadAsStringAsync(linked.Token)) is { } architecture
+                ? ApplicationRead.Read(architecture)
+                : ApplicationRead.Failed($"{address} is no JSON object.");
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return ApplicationRead.Failed;
+            return ApplicationRead.Failed($"{address} did not answer in time.");
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException exception)
         {
-            return ApplicationRead.Failed;
+            return ApplicationRead.Failed($"{address} could not be loaded: {exception.Message}");
         }
     }
 

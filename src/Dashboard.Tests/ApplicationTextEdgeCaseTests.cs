@@ -1001,23 +1001,24 @@ public class ApplicationTextEdgeCaseTests
             ],
             PublicSurface());
 
-    /// <summary>The two members that are asked in two ways are asked in exactly those two ways: the boxes of a diagram
-    /// and of one deployable, the version of a sequence of nodes and of the boxes with their environment - and a third
-    /// way of either would be a decision nobody wrote down.</summary>
+    /// <summary>The three members that are asked in two ways are asked in exactly those two ways: the boxes of a diagram
+    /// and of one deployable, the version of a sequence of nodes and of the boxes with their environment, and the line
+    /// of a file by its read and by its state alone - and a third way of any would be a decision nobody wrote down.</summary>
     [Fact]
     public void TheTwoWordsAskedInTwoWaysAreAskedInExactlyTwo()
     {
         Assert.Equal(2, Overloads("Boxes"));
         Assert.Equal(2, Overloads("Version"));
+        Assert.Equal(2, Overloads("ProblemLine"));
         Assert.All(Single, name => Assert.Equal(1, Overloads(name)));
     }
 
-    /// <summary>The words the class says in exactly one way - everything but the two views of the boxes and the two
-    /// views of the version.</summary>
+    /// <summary>The words the class says in exactly one way - everything but the two views of the boxes, the two views
+    /// of the version and the two lines of a file.</summary>
     private static readonly string[] Single =
     [
         "AltText", "BoxLabel", "DiagramLink", "File", "IsName", "IsVersion", "KindLine",
-        "Links", "Package", "ProblemLine", "RefusedLine", "TruncatedLine", "VersionLine", "VersionTitle",
+        "Links", "Package", "RefusedLine", "TruncatedLine", "VersionLine", "VersionTitle",
     ];
 
     /// <summary>How many public methods of the class carry the given name.</summary>

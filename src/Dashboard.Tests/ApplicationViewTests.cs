@@ -456,6 +456,26 @@ public partial class ApplicationViewTests
         Assert.Null(ApplicationText.ProblemLine("ui", "1.0.42", ApplicationReadState.Read));
     }
 
+    /// <summary>
+    /// The line the view says for the read it holds: a failure that carries its reasons says them in the line, and a
+    /// failure with none keeps its old words; the named outcome and the read keep their own.
+    /// </summary>
+    [Fact]
+    public void TheLineOfAReadSaysWhatItCouldNotRead()
+    {
+        Assert.Equal(
+            "The architecture diagram of ui 1.0.42 could not be read: https://repo.example.net/ui/1.0.42.json is no JSON object.",
+            ApplicationText.ProblemLine("ui", "1.0.42", ApplicationRead.Failed("https://repo.example.net/ui/1.0.42.json is no JSON object.")));
+        Assert.Equal(
+            "The architecture diagram of ui 1.0.42 could not be read: first; second",
+            ApplicationText.ProblemLine("ui", "1.0.42", ApplicationRead.Failed("first", "second")));
+        Assert.Equal("The architecture diagram of ui 1.0.42 could not be read.", ApplicationText.ProblemLine("ui", "1.0.42", new ApplicationRead(ApplicationReadState.Failed, null, [])));
+        Assert.Equal(
+            "No architecture diagram of ui 1.0.42 yet: its repository publishes one with each release.",
+            ApplicationText.ProblemLine("ui", "1.0.42", ApplicationRead.Missing));
+        Assert.Null(ApplicationText.ProblemLine("ui", "1.0.42", ApplicationRead.Read(ApplicationParser.Parse("{ }")!)));
+    }
+
     [Fact]
     public void TheFileOfAVersionIsAskedForOnceAndAgainOnlyForAnotherVersion()
     {
@@ -492,8 +512,24 @@ public partial class ApplicationViewTests
         var file = ApplicationText.File(new Uri(Base), "1.0.42", "json")!;
 
         Assert.Same(ApplicationRead.Missing, await Loader(new StubHandler(_ => StubHandler.Answer(HttpStatusCode.NotFound, "404: Not Found"))).ReadArchitectureAsync(file, CancellationToken.None));
-        Assert.Same(ApplicationRead.Failed, await Loader(new StubHandler(_ => StubHandler.Answer(HttpStatusCode.InternalServerError))).ReadArchitectureAsync(file, CancellationToken.None));
-        Assert.Same(ApplicationRead.Failed, await Loader(new StubHandler(_ => throw new HttpRequestException("CORS"))).ReadArchitectureAsync(file, CancellationToken.None));
-        Assert.Same(ApplicationRead.Failed, await Loader(new StubHandler(_ => StubHandler.Answer(HttpStatusCode.OK, "<html>"))).ReadArchitectureAsync(file, CancellationToken.None));
+        Assert.Equal(ApplicationRead.Missing, await Loader(new StubHandler(_ => StubHandler.Answer(HttpStatusCode.NotFound, "404: Not Found"))).ReadArchitectureAsync(file, CancellationToken.None));
+
+        // A status that is not a success says the status it was given.
+        var refused = await Loader(new StubHandler(_ => StubHandler.Answer(HttpStatusCode.InternalServerError))).ReadArchitectureAsync(file, CancellationToken.None);
+        Assert.Equal(ApplicationReadState.Failed, refused.State);
+        Assert.Null(refused.Architecture);
+        Assert.Equal([@$"The server answered HTTP 500 for {file}."], refused.Problems);
+
+        // A request that failed says where it failed.
+        var unreachable = await Loader(new StubHandler(_ => throw new HttpRequestException("CORS"))).ReadArchitectureAsync(file, CancellationToken.None);
+        Assert.Equal(ApplicationReadState.Failed, unreachable.State);
+        Assert.Null(unreachable.Architecture);
+        Assert.Equal([@$"{file} could not be loaded: CORS"], unreachable.Problems);
+
+        // A success that is no JSON object says it is no JSON object.
+        var noJson = await Loader(new StubHandler(_ => StubHandler.Answer(HttpStatusCode.OK, "<html>"))).ReadArchitectureAsync(file, CancellationToken.None);
+        Assert.Equal(ApplicationReadState.Failed, noJson.State);
+        Assert.Null(noJson.Architecture);
+        Assert.Equal([@$"{file} is no JSON object."], noJson.Problems);
     }
 }

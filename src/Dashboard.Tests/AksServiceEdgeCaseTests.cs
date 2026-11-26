@@ -579,17 +579,17 @@ public class AksServiceEdgeCaseTests
     /// <summary>A whole service round the pools it is handed, so that two of them can be given one and the same list.</summary>
     private static AksService Built(IReadOnlyList<AksPool> pools) =>
         new(
-            Generated,
-            "aks-cmdemo3",
-            "rg-cmdemo3-cluster",
-            "southcentralus",
-            new AksAvailability("Available", null, null, Generated),
-            "Running",
-            "Succeeded",
-            "1.33.3",
-            "Free",
-            pools,
-            new AksMetrics(15, 21.4, 63, 18.2));
+            Generated: Generated,
+            Name: "aks-cmdemo3",
+            ResourceGroup: "rg-cmdemo3-cluster",
+            Location: "southcentralus",
+            Availability: new AksAvailability("Available", null, null, Generated),
+            PowerState: "Running",
+            ProvisioningState: "Succeeded",
+            KubernetesVersion: "1.33.3",
+            Tier: "Free",
+            Pools: pools,
+            Metrics: new AksMetrics(15, 21.4, 63, 18.2));
 
     /// <summary>The service a file holds. A file the reader answers with a problem fails here with that problem to
     /// read, so the tests below say what the service is rather than that there is one.</summary>

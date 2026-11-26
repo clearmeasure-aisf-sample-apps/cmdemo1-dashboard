@@ -4,12 +4,13 @@ namespace Dashboard.Tests;
 
 /// <summary>
 /// <see cref="Shares" /> is the one rule of the dashboard for the percent a part holds of a whole: the part over
-/// the whole, on the hundred. The language bar of the "Code" card, the share of the cluster view and the estimate
-/// of the cost card all cut their percents by it, and what is pinned here is the rule itself - the order it cuts
-/// in, bit for bit, the scale it stands on under its name, and the three sites that route through it - beside
-/// the words the cards already say, which <see cref="BuildTextEdgeCaseTests" />, <see cref="ClusterTextTests" />,
-/// <see cref="ClusterTextEdgeCaseTests" /> and <see cref="CostTextEdgeCaseTests" /> pin where the fixtures answer
-/// them.
+/// the whole, on the hundred. The language bar of the "Code" card, the share of the cluster view, the estimate
+/// of the cost card and the availability line of the "Delivery" card all cut their percents by it, and what is
+/// pinned here is the rule itself - the order it cuts in, bit for bit, the scale it stands on under its name, and
+/// the four sites that route through it - beside the words the cards already say, which
+/// <see cref="BuildTextEdgeCaseTests" />, <see cref="ClusterTextTests" />, <see cref="ClusterTextEdgeCaseTests" />,
+/// <see cref="CostTextEdgeCaseTests" /> and <see cref="AvailabilityTextEdgeCaseTests" /> pin where the fixtures
+/// answer them.
 /// <para>
 /// The order the rule cuts in is the deliberate one: the part over the whole first, then the scale - the order the
 /// cluster's own share has always been cut in. The other order, the scale on the part first, differs from it by
@@ -77,7 +78,7 @@ public class SharesTests
         Assert.Equal([typeof(double), typeof(double)], of.GetParameters().Select(parameter => parameter.ParameterType).ToArray());
     }
 
-    // ----- the three sites that route through the rule
+    // ----- the four sites that route through the rule
 
     /// <summary>The bar cuts each part by the rule, bit for bit - the lines of the part over the lines of all
     /// languages - and says the word the rule's number rounds to. The share of twenty-three of forty stood exactly
@@ -125,6 +126,19 @@ public class SharesTests
 
         Assert.EndsWith($"({said} % of what all pods request)", CostText.Estimate(estimate, Report, Now), StringComparison.Ordinal);
     }
+
+    /// <summary>The availability line of the "Delivery" card cuts the healthy share of a window by the rule, bit
+    /// for bit - the healthy over the reports, then the scale - and rounds it to one tenth, the rounding the card
+    /// says its percents in: the number the rule gives, the word the card says. A window of one report in a
+    /// hundred says the tenth the rule's number rounds to, and a window without a report is the dash the card says
+    /// for no share.</summary>
+    [Theory]
+    [InlineData(24, 23, "95.8 %")]
+    [InlineData(168, 167, "99.4 %")]
+    [InlineData(1000, 1, "0.1 %")]
+    [InlineData(0, 0, "–")]
+    public void TheAvailabilityLineCutsItsShareByTheRule(int reports, int healthy, string expected) =>
+        Assert.Equal(expected, AvailabilityText.Percent(new HealthWindow(reports, healthy)));
 
     /// <summary>The moment the estimate's line is said, and the report it is said of: the last complete UTC day
     /// before it, in the currency the file named, with nothing the file did not say.</summary>

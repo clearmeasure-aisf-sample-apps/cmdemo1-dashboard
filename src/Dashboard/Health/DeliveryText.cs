@@ -11,9 +11,6 @@ public static class AvailabilityText
     /// <summary>Said next to the numbers, so nobody reads them as monitoring.</summary>
     public const string Note = "Hourly checks by the pipeline, not continuous monitoring.";
 
-    /// <summary>The factor by which the healthy share is multiplied to become a percent.</summary>
-    private const double PercentScale = 100.0;
-
     /// <summary>The number of decimal places the percent is rounded to: one tenth of a percent.</summary>
     private const int PercentDecimals = 1;
 
@@ -119,7 +116,8 @@ public static class AvailabilityText
 
     /// <summary>
     /// <c>95.8 %</c>, <c>100 %</c>: one decimal, and never 100 while a report failed (<c>99.9 %</c>) nor 0 while one
-    /// passed (<c>0.1 %</c>).
+    /// passed (<c>0.1 %</c>). The share is cut by the <see cref="Dashboard.Shares" /> rule - the healthy over the
+    /// reports, then the scale - in the one order the dashboard's percents of a part of a whole are cut.
     /// </summary>
     public static string Percent(HealthWindow window)
     {
@@ -129,7 +127,7 @@ public static class AvailabilityText
             return "–";
         }
 
-        var percent = Math.Round(PercentScale * window.Healthy / window.Reports, PercentDecimals);
+        var percent = Math.Round(Shares.Of(window.Healthy, window.Reports), PercentDecimals);
         percent = window.Healthy < window.Reports ? Math.Min(percent, BelowWhole) : percent;
         percent = window.Healthy > 0 ? Math.Max(percent, AboveNothing) : percent;
         return string.Create(CultureInfo.InvariantCulture, $"{percent:0.#} %");

@@ -55,11 +55,11 @@ public sealed record ViewAddress(DashboardView View, string? Environment = null,
             return Cluster;
         }
 
+        var tail = slash < 0 ? string.Empty : text[(slash + 1)..].Trim('/');
+
         if (string.Equals(head, WorkItemsName, StringComparison.OrdinalIgnoreCase))
         {
-            var rest = slash < 0 ? string.Empty : text[(slash + 1)..].Trim('/');
-            var segment = rest.Split('/', 2)[0];
-            return new ViewAddress(DashboardView.WorkItems, Audience: WorkItemsText.AudienceOf(segment));
+            return new ViewAddress(DashboardView.WorkItems, Audience: WorkItemsText.AudienceOf(AudienceSegment(tail)));
         }
 
         if (!string.Equals(head, RuntimeName, StringComparison.OrdinalIgnoreCase))
@@ -67,31 +67,62 @@ public sealed record ViewAddress(DashboardView View, string? Environment = null,
             return Health;
         }
 
-        var environment = slash < 0 ? string.Empty : text[(slash + 1)..].Trim('/');
+        return RuntimeOf(tail);
+    }
 
-        // An environment's name has no slash: what follows one is a part of its view, "app/<deployable>" or "database".
-        // A deployable's name the address refuses names no view: the environment's diagram is shown.
-        var last = environment.LastIndexOf('/');
-        var marker = $"/{ApplicationName}";
-        if (last > marker.Length && environment[..last].EndsWith(marker, StringComparison.OrdinalIgnoreCase))
+    /// <summary>
+    /// The first segment of a work items tail: the filter's word, or nothing. A trimmed tail has no slash at either
+    /// end, so the first segment is the whole of what stands before the first slash inside it.
+    /// </summary>
+    private static string AudienceSegment(string tail) => tail.Split('/', 2)[0];
+
+    /// <summary>
+    /// The runtime view a trimmed tail names: no tail is the plain runtime view; a tail whose last segment is
+    /// <c>database</c> is that environment's database view; a tail whose text before the last slash ends with
+    /// <c>/app</c> is that environment's application view of the deployable named in the last segment - a name the
+    /// address refuses is no view, and the environment's diagram is shown instead; anything else is the environment's
+    /// diagram, its name read whole, marks and all.
+    /// </summary>
+    private static ViewAddress RuntimeOf(string tail)
+    {
+        // A trimmed tail has no slash at either end.
+        if (string.IsNullOrWhiteSpace(tail))
         {
-            var application = environment[(last + 1)..];
-            environment = environment[..(last - marker.Length)].TrimEnd('/');
+            return new ViewAddress(DashboardView.Runtime);
+        }
+
+        var last = tail.LastIndexOf('/');
+        if (last < 0)
+        {
+            return new ViewAddress(DashboardView.Runtime, tail);
+        }
+
+        var beforeLastSlash = tail[..last];
+        var lastSegment = tail[(last + 1)..];
+
+        // Application zoom: the text before the last slash ends with "/app".
+        // The trimmed tail never begins with a slash, so EndsWith is the whole check - no length guard needed.
+        if (beforeLastSlash.EndsWith($"/{ApplicationName}", StringComparison.OrdinalIgnoreCase))
+        {
+            // Strip the "app" word; TrimEnd handles the edge case of consecutive slashes.
+            var environment = beforeLastSlash[..^ApplicationName.Length].TrimEnd('/');
             return string.IsNullOrWhiteSpace(environment)
                 ? new ViewAddress(DashboardView.Runtime)
-                : new ViewAddress(DashboardView.Runtime, environment, Application: ApplicationText.IsName(application) ? application : null);
+                : new ViewAddress(DashboardView.Runtime, environment, Application: ApplicationText.IsName(lastSegment) ? lastSegment : null);
         }
 
-        var database = false;
-        if (last > 0 && string.Equals(environment[(last + 1)..], DatabaseName, StringComparison.OrdinalIgnoreCase))
+        // Database zoom: the last segment is the whole word "database".
+        if (string.Equals(lastSegment, DatabaseName, StringComparison.OrdinalIgnoreCase))
         {
-            database = true;
-            environment = environment[..last].TrimEnd('/');
+            // TrimEnd handles the edge case of consecutive slashes ("uat//database" → "uat/").
+            var environment = beforeLastSlash.TrimEnd('/');
+            return string.IsNullOrWhiteSpace(environment)
+                ? new ViewAddress(DashboardView.Runtime)
+                : new ViewAddress(DashboardView.Runtime, environment, Database: true);
         }
 
-        return string.IsNullOrWhiteSpace(environment)
-            ? new ViewAddress(DashboardView.Runtime)
-            : new ViewAddress(DashboardView.Runtime, environment, database);
+        // No zoom: the whole tail is the environment's name.
+        return new ViewAddress(DashboardView.Runtime, tail);
     }
 
     /// <summary>The hash for this view, without <c>#</c>: empty for the health view.</summary>

@@ -19,9 +19,10 @@ namespace Dashboard.Tests;
 public class PodRowEdgeCaseTests
 {
     /// <summary>The whole word the row of a silent pod says up to its state: every part of the pod said as the record
-    /// says it, in the order the record declares them, and the separator that goes before the state. The bytes are
-    /// the pinned bytes the two literal pins of <see cref="TheRowSaysItsPodAndItsStateInTheirOrder"/> hold verbatim,
-    /// so the state alone is what a pin of the silent row has to name.</summary>
+    /// says it, in the order the record declares them, and the separator that goes before the state. This is the one
+    /// home of those pinned bytes: the silent-row pins of <see cref="TheRowSaysItsPodAndItsStateInTheirOrder"/> and
+    /// <see cref="TheSilentRowSaysTheSharedBlockAndTheStateItWasGiven"/> both say it, so the state alone is what a pin
+    /// of the silent row has to name.</summary>
     private const string SilentPodWords =
         "PodRow { Pod = ClusterPod { Name = , Workload = , Kind = , Node = , Phase = Running, "
         + "Ready = False, Containers = , ContainersReady = , Restarts = 0, Reason = , StartedAt = , "
@@ -170,11 +171,7 @@ public class PodRowEdgeCaseTests
     public void TheRowSaysItsPodAndItsStateInTheirOrder()
     {
         Assert.Equal(
-            "PodRow { Pod = ClusterPod { Name = , Workload = , Kind = , Node = , Phase = Running, " +
-                "Ready = False, Containers = , ContainersReady = , Restarts = 0, Reason = , StartedAt = , " +
-                "Cpu = ResourceUse { Usage = , Requests = , Limits = , Allocatable =  }, " +
-                "Memory = ResourceUse { Usage = , Requests = , Limits = , Allocatable =  }, Label =  }, " +
-                "State = Finished }",
+            SilentPodWords + "State = Finished }",
             new PodRow(ClusterFixture.SilentPod(""), PodState.Finished).ToString());
 
         Assert.Equal(
@@ -187,16 +184,12 @@ public class PodRowEdgeCaseTests
             new PodRow(ClusterFixture.Pod("ui", started: false), PodState.Unhealthy).ToString());
 
         Assert.Equal(
-            "PodRow { Pod = ClusterPod { Name = , Workload = , Kind = , Node = , Phase = Running, " +
-                "Ready = False, Containers = , ContainersReady = , Restarts = 0, Reason = , StartedAt = , " +
-                "Cpu = ResourceUse { Usage = , Requests = , Limits = , Allocatable =  }, " +
-                "Memory = ResourceUse { Usage = , Requests = , Limits = , Allocatable =  }, Label =  }, " +
-                "State = 4 }",
+            SilentPodWords + "State = 4 }",
             new PodRow(ClusterFixture.SilentPod(""), (PodState)4).ToString());
     }
 
     /// <summary>The shared block of the silent row and the state alone make the row's words: the same pinned bytes the
-    /// literal pins of <see cref="TheRowSaysItsPodAndItsStateInTheirOrder"/> hold, said once as the block and again
+    /// silent-row pins of <see cref="TheRowSaysItsPodAndItsStateInTheirOrder"/> say, said once as the block and again
     /// with the state named - the word the enum names and the number the enum does not - so a state that moved shows
     /// as the one difference and the block is not copied a third time as the file grows.</summary>
     [Fact]

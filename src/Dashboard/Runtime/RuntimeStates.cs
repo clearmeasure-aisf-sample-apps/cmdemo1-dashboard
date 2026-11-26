@@ -23,15 +23,36 @@ public enum EdgeState
     Neutral,
 }
 
+/// <summary>The look of a region's mark in the runtime view; written into <see cref="RuntimeRegionMark.State"/> by <see cref="RuntimeStateWords.Word(RegionState)"/>.</summary>
+public enum RegionState
+{
+    /// <summary>At least one web app in the region serves traffic.</summary>
+    Serving,
+
+    /// <summary>Every web app in the region is healthy, but none serves.</summary>
+    Standby,
+
+    /// <summary>No web app in the region is healthy or pending.</summary>
+    Down,
+
+    /// <summary>A web app in the region is still being checked.</summary>
+    Checking,
+
+    /// <summary>The region is not checked.</summary>
+    Neutral,
+}
+
 /// <summary>
-/// The words of the tile and edge states at the JSON boundary, the words <c>js/runtime.js</c> draws by: one arm per
-/// state so a new state fails the build, and a value the enum does not name fails loud.
+/// The words of the tile, edge, and region states at the JSON boundary, the words <c>js/runtime.js</c> draws by: one
+/// arm per state so a new state fails the build, and a value the enum does not name fails loud.
 /// </summary>
 public static class RuntimeStateWords
 {
     public const string Active = "active";
     public const string Idle = "idle";
     public const string Down = "down";
+    public const string Serving = "serving";
+    public const string Standby = "standby";
 
     /// <summary>The word of a tile's state, as the payload carries it.</summary>
     public static string Word(this TileState state) => state switch
@@ -52,6 +73,17 @@ public static class RuntimeStateWords
         EdgeState.Down => Down,
         EdgeState.Checking => RuntimePayloadBuilder.Checking,
         EdgeState.Neutral => RuntimePayloadBuilder.Neutral,
+        _ => throw new ArgumentOutOfRangeException(nameof(state), state, null),
+    };
+
+    /// <summary>The word of a region's state, as the payload carries it.</summary>
+    public static string Word(this RegionState state) => state switch
+    {
+        RegionState.Serving => Serving,
+        RegionState.Standby => Standby,
+        RegionState.Down => Down,
+        RegionState.Checking => RuntimePayloadBuilder.Checking,
+        RegionState.Neutral => RuntimePayloadBuilder.Neutral,
         _ => throw new ArgumentOutOfRangeException(nameof(state), state, null),
     };
 

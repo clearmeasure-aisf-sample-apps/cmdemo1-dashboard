@@ -1057,29 +1057,29 @@ public static class RuntimePayloadBuilder
                 parts.Add($"{string.Join(", ", others)}: not probed");
             }
 
-            return new RuntimeRegionMark(region.Alias, Neutral, string.Join("; ", parts));
+            return new RuntimeRegionMark(region.Alias, RegionState.Neutral.Word(), string.Join("; ", parts));
         }
 
         // A web app the topology does not have is left out; a region with none the topology has is not checked.
         var known = apps.OfType<Entry>().ToList();
-        return known.Count == 0 ? new RuntimeRegionMark(region.Alias, Neutral, "not checked") : Region(region.Alias, known);
+        return known.Count == 0 ? new RuntimeRegionMark(region.Alias, RegionState.Neutral.Word(), "not checked") : Region(region.Alias, known);
     }
 
     private static RuntimeRegionMark Region(string alias, List<Entry> apps)
     {
         if (apps.Any(entry => entry.Serves))
         {
-            return new RuntimeRegionMark(alias, "serving", "serving traffic");
+            return new RuntimeRegionMark(alias, RegionState.Serving.Word(), "serving traffic");
         }
 
         if (apps.All(entry => entry.Target.State == HealthState.Healthy))
         {
-            return new RuntimeRegionMark(alias, "standby", "standby: ready");
+            return new RuntimeRegionMark(alias, RegionState.Standby.Word(), "standby: ready");
         }
 
         return apps.Any(entry => entry.Target.State == HealthState.Pending)
-            ? new RuntimeRegionMark(alias, Checking, "checking")
-            : new RuntimeRegionMark(alias, "down", "not serving");
+            ? new RuntimeRegionMark(alias, RegionState.Checking.Word(), "checking")
+            : new RuntimeRegionMark(alias, RegionState.Down.Word(), "not serving");
     }
 
     private static RuntimeEdgeMark Edge(RuntimeEdge edge, RuntimeDiagramIndex<Entry> index, Dictionary<string, ContainerAppStatus> probed)

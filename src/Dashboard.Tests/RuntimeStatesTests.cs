@@ -4,8 +4,8 @@ using Dashboard.Runtime;
 namespace Dashboard.Tests;
 
 /// <summary>
-/// The tile and edge states as enums (<see cref="TileState"/>, <see cref="EdgeState"/>), written as the words
-/// <c>js/runtime.js</c> draws by only at the JSON boundary (<see cref="RuntimeStateWords"/>).
+/// The tile, edge, and region states as enums (<see cref="TileState"/>, <see cref="EdgeState"/>, <see cref="RegionState"/>),
+/// written as the words <c>js/runtime.js</c> draws by only at the JSON boundary (<see cref="RuntimeStateWords"/>).
 /// </summary>
 public sealed class RuntimeStatesTests
 {
@@ -35,11 +35,21 @@ public sealed class RuntimeStatesTests
         Assert.Equal("Down: its end is not healthy.", RuntimeStateWords.Sentence(EdgeState.Down));
     }
 
+    [Theory]
+    [InlineData(RegionState.Serving, "serving")]
+    [InlineData(RegionState.Standby, "standby")]
+    [InlineData(RegionState.Down, "down")]
+    [InlineData(RegionState.Checking, "checking")]
+    [InlineData(RegionState.Neutral, "neutral")]
+    public void ARegionStateIsWrittenAsTheWordTheScriptDrawsBy(RegionState state, string word) =>
+        Assert.Equal(word, state.Word());
+
     [Fact]
     public void EveryStateHasItsOwnWord()
     {
         Assert.Equal(Enum.GetValues<TileState>().Length, Enum.GetValues<TileState>().Select(state => state.Word()).Distinct().Count());
         Assert.Equal(Enum.GetValues<EdgeState>().Length, Enum.GetValues<EdgeState>().Select(state => state.Word()).Distinct().Count());
+        Assert.Equal(Enum.GetValues<RegionState>().Length, Enum.GetValues<RegionState>().Select(state => state.Word()).Distinct().Count());
     }
 
     [Fact]
@@ -48,6 +58,7 @@ public sealed class RuntimeStatesTests
         Assert.Equal("state", Assert.Throws<ArgumentOutOfRangeException>(() => ((TileState)99).Word()).ParamName);
         Assert.Equal("state", Assert.Throws<ArgumentOutOfRangeException>(() => ((EdgeState)99).Word()).ParamName);
         Assert.Equal("state", Assert.Throws<ArgumentOutOfRangeException>(() => ((EdgeState)99).Sentence()).ParamName);
+        Assert.Equal("state", Assert.Throws<ArgumentOutOfRangeException>(() => ((RegionState)99).Word()).ParamName);
     }
 
     [Fact]
@@ -58,6 +69,16 @@ public sealed class RuntimeStatesTests
         Assert.Equal(RuntimePayloadBuilder.Unreachable, TileState.Unreachable.Word());
         Assert.Equal(RuntimePayloadBuilder.Checking, TileState.Checking.Word());
         Assert.Equal(RuntimePayloadBuilder.Neutral, TileState.Neutral.Word());
+    }
+
+    [Fact]
+    public void TheRegionStatesWordsMatchTheBuilderConstantsAndTheWordsOfTheSharedStates()
+    {
+        Assert.Equal(RuntimeStateWords.Serving, RegionState.Serving.Word());
+        Assert.Equal(RuntimeStateWords.Standby, RegionState.Standby.Word());
+        Assert.Equal(RuntimeStateWords.Down, RegionState.Down.Word());
+        Assert.Equal(RuntimePayloadBuilder.Checking, RegionState.Checking.Word());
+        Assert.Equal(RuntimePayloadBuilder.Neutral, RegionState.Neutral.Word());
     }
 
     [Theory]

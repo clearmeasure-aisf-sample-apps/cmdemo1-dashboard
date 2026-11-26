@@ -125,15 +125,7 @@ public static class WorkBotText
         var hours = new List<double>();
         foreach (var item in items)
         {
-            DateTimeOffset? merged = null;
-            foreach (var pull in item.PullRequests.Where(Merged))
-            {
-                if (pull.MergedAt is { } at && (merged is null || at < merged))
-                {
-                    merged = at;
-                }
-            }
-
+            var merged = Earliest(item.PullRequests, pull => pull.MergedAt);
             if (merged is not { } mergedAt || item.Environments.Prod?.DeployedAt is not { } deployed || deployed < mergedAt)
             {
                 continue;
@@ -263,32 +255,30 @@ public static class WorkBotText
         return Summarize(hours);
     }
 
-    private static DateTimeOffset? First(WorkItem item)
+    private static DateTimeOffset? First(WorkItem item) => Earliest(item.ColumnHistory, visit => visit.EnteredAt);
+
+    private static DateTimeOffset? FirstWorking(WorkItem item) =>
+        Earliest(
+            item.ColumnHistory.Where(visit => visit.Column is not null && !WorkColumns.Same(visit.Column, WorkColumns.Todo)),
+            visit => visit.EnteredAt)
+        ?? First(item);
+
+    /// <summary>
+    /// The earliest of the times the elements have, or null when none has one. A later equal time does not replace an
+    /// earlier one (strict <c>&lt;</c>), so ties keep the first element's offset.
+    /// </summary>
+    private static DateTimeOffset? Earliest<T>(IEnumerable<T> source, Func<T, DateTimeOffset?> time)
     {
         DateTimeOffset? found = null;
-        foreach (var visit in item.ColumnHistory)
+        foreach (var element in source)
         {
-            if (visit.EnteredAt is { } at && (found is null || at < found))
+            if (time(element) is { } at && (found is null || at < found))
             {
                 found = at;
             }
         }
 
         return found;
-    }
-
-    private static DateTimeOffset? FirstWorking(WorkItem item)
-    {
-        DateTimeOffset? found = null;
-        foreach (var visit in item.ColumnHistory)
-        {
-            if (visit.EnteredAt is { } at && visit.Column is not null && !WorkColumns.Same(visit.Column, WorkColumns.Todo) && (found is null || at < found))
-            {
-                found = at;
-            }
-        }
-
-        return found ?? First(item);
     }
 
     private static List<WorkWeek> Weeks(IReadOnlyList<WorkItem> items)

@@ -1,3 +1,5 @@
+using static Dashboard.Tests.HealthStates;
+
 namespace Dashboard.Tests;
 
 /// <summary>
@@ -32,11 +34,6 @@ namespace Dashboard.Tests;
 /// </summary>
 public class NodeHealthEdgeCaseTests
 {
-    private const HealthState Healthy = HealthState.Healthy;
-    private const HealthState Unhealthy = HealthState.Unhealthy;
-    private const HealthState Unreachable = HealthState.Unreachable;
-    private const HealthState Pending = HealthState.Pending;
-
     // ----- the four parts the node keeps
 
     /// <summary>The four parts stand where they are given, the primary's and the standby's alike: the node asks
@@ -75,7 +72,7 @@ public class NodeHealthEdgeCaseTests
     [InlineData(Unhealthy)]
     [InlineData(Unreachable)]
     [InlineData((HealthState)(-1))]
-    [InlineData((HealthState)4)]
+    [InlineData(Nodes.Unnamed)]
     [InlineData((HealthState)int.MaxValue)]
     public void TheStateStandsAsGivenEvenWhenTheEnumDoesNotNameIt(HealthState state)
     {
@@ -392,7 +389,7 @@ public class NodeHealthEdgeCaseTests
 
         Assert.Equal(
             "NodeHealth { Name = app-one, Region =  west 3 , IsPrimary = False, State = 4, Label =  west 3  }",
-            new NodeHealth("app-one", " west 3 ", false, (HealthState)4).ToString());
+            new NodeHealth("app-one", " west 3 ", false, Nodes.Unnamed).ToString());
 
         // The two words of no characters and the two of nothing are said apart, the label as the empty word the name
         // it stands on is.

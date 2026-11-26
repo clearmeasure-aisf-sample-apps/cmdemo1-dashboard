@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Reflection;
 
+using static Dashboard.Tests.HealthStates;
+
 namespace Dashboard.Tests;
 
 /// <summary>
@@ -38,11 +40,6 @@ namespace Dashboard.Tests;
 /// </summary>
 public class FrontDoorAgreementEdgeCaseTests
 {
-    private const HealthState Healthy = HealthState.Healthy;
-    private const HealthState Unhealthy = HealthState.Unhealthy;
-    private const HealthState Unreachable = HealthState.Unreachable;
-    private const HealthState Pending = HealthState.Pending;
-
     /// <summary>The endpoint's own answer, every shape a probe can bring back and the nothing of no endpoint.</summary>
     private static readonly HealthState?[] Endpoints = [null, Pending, Healthy, Unhealthy, Unreachable];
 

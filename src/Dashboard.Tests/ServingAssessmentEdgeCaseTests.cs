@@ -2,6 +2,8 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 
+using static Dashboard.Tests.HealthStates;
+
 namespace Dashboard.Tests;
 
 /// <summary>
@@ -46,11 +48,6 @@ namespace Dashboard.Tests;
 /// </summary>
 public class ServingAssessmentEdgeCaseTests
 {
-    private const HealthState Healthy = HealthState.Healthy;
-    private const HealthState Unhealthy = HealthState.Unhealthy;
-    private const HealthState Unreachable = HealthState.Unreachable;
-    private const HealthState Pending = HealthState.Pending;
-
     /// <summary>A state the enum does not name, which the record is as capable of holding as any of the four.</summary>
     private const HealthState Unknown = (HealthState)(-1);
 
@@ -489,7 +486,7 @@ public class ServingAssessmentEdgeCaseTests
     [InlineData(Healthy, "healthy")]
     [InlineData(Pending, "not checked")]
     [InlineData(Unknown, "not checked")]
-    [InlineData((HealthState)4, "not checked")]
+    [InlineData(Nodes.Unnamed, "not checked")]
     public void ThePrimaryAFailoverBlamesIsSaidInTheWordsOfItsOwnState(HealthState state, string word)
     {
         var assessment = new ServingAssessment(

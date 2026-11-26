@@ -1,5 +1,7 @@
 using System.Globalization;
 
+using static Dashboard.Tests.HealthStates;
+
 namespace Dashboard.Tests;
 
 /// <summary>
@@ -36,11 +38,6 @@ namespace Dashboard.Tests;
 /// </summary>
 public class ServingStateBoundaryEdgeCaseTests
 {
-    private const HealthState Healthy = HealthState.Healthy;
-    private const HealthState Unhealthy = HealthState.Unhealthy;
-    private const HealthState Unreachable = HealthState.Unreachable;
-    private const HealthState Pending = HealthState.Pending;
-
     /// <summary>The five states, in the order the enum declares them.</summary>
     private static readonly ServingState[] Five =
         [ServingState.NoNodes, ServingState.Pending, ServingState.Primary, ServingState.FailedOver, ServingState.Down];

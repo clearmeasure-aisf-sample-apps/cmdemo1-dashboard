@@ -1,18 +1,10 @@
+using static Dashboard.Tests.HealthStates;
+using static Dashboard.Tests.Nodes;
+
 namespace Dashboard.Tests;
 
 public class VersionAssessmentTests
 {
-    private const HealthState Healthy = HealthState.Healthy;
-    private const HealthState Unhealthy = HealthState.Unhealthy;
-    private const HealthState Unreachable = HealthState.Unreachable;
-    private const HealthState Pending = HealthState.Pending;
-
-    private static readonly PinnedVersions Pinned = PinnedVersions.Parse("""{ "dashboard": "1.0.1", "ui": "2.4.7" }""");
-
-    private static NodeVersion West(HealthState state, string? version) => new("westus3", state, version);
-
-    private static NodeVersion East(HealthState state, string? version) => new("eastus2", state, version);
-
     private static VersionAssessment Assess(params NodeVersion[] nodes) => VersionAssessment.Assess(Pinned, "ui", nodes);
 
     [Fact]
@@ -106,7 +98,7 @@ public class VersionAssessmentTests
     [Fact]
     public void SomeNodesInSyncAndSomeUnknownAreCounted()
     {
-        var assessment = Assess(West(Healthy, "2.4.7"), East(Healthy, "2.4.7"), new NodeVersion("centralus", Pending, null));
+        var assessment = Assess(West(Healthy, "2.4.7"), East(Healthy, "2.4.7"), Central(Pending, null));
 
         Assert.Equal(VersionState.InSync, assessment.State);
         Assert.Equal("In sync: 2 of 3 nodes run 2.4.7; centralus is being checked.", assessment.Detail);
@@ -124,7 +116,7 @@ public class VersionAssessmentTests
     [Fact]
     public void WhenNoNodeVersionIsKnownNothingIsCompared()
     {
-        var assessment = Assess(West(Unreachable, "2.4.6"), East(Pending, null), new NodeVersion("centralus", Healthy, null));
+        var assessment = Assess(West(Unreachable, "2.4.6"), East(Pending, null), Central(Healthy, null));
 
         Assert.Equal(VersionState.NodesUnknown, assessment.State);
         Assert.False(assessment.Differs);

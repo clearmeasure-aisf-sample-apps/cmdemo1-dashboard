@@ -1,12 +1,9 @@
+using static Dashboard.Tests.HealthStates;
+
 namespace Dashboard.Tests;
 
 public class ServingAssessmentTests
 {
-    private const HealthState Healthy = HealthState.Healthy;
-    private const HealthState Unhealthy = HealthState.Unhealthy;
-    private const HealthState Unreachable = HealthState.Unreachable;
-    private const HealthState Pending = HealthState.Pending;
-
     [Fact]
     public void ARotationIsBuiltWithEveryPartInItsPlace()
     {

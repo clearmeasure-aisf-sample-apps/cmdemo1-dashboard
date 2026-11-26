@@ -15,7 +15,7 @@ public class NamespaceGroupTests
         var status = ClusterFixture.Status(
             null,
             ClusterFixture.Space("cmdemo3-prod", ClusterFixture.Pod("ui"), ClusterFixture.Pod("db")),
-            new ClusterNamespace("kube-system", [ClusterFixture.Pod("coredns")], [new ClusterVolume("data", 8589934592d, "Bound")]),
+            new ClusterNamespace("kube-system", [ClusterFixture.Pod("coredns")], [ClusterFixture.Volume()]),
             ClusterFixture.Space("argocd", ClusterFixture.Pod("server")));
 
         var groups = ClusterGroups.Of(status, [ClusterFixture.Environment("prod", "cmdemo3-prod", "prod")], Generated);
@@ -37,7 +37,7 @@ public class NamespaceGroupTests
         Assert.Empty(argocd.Volumes);
         Assert.Equal("kube-system", kubeSystem.Name);
         Assert.Equal(["coredns-0"], kubeSystem.Pods.Select(row => row.Pod.Name));
-        Assert.Equal(new ClusterVolume("data", 8589934592d, "Bound"), Assert.Single(kubeSystem.Volumes));
+        Assert.Equal(ClusterFixture.Volume(), Assert.Single(kubeSystem.Volumes));
     }
 
     [Fact]

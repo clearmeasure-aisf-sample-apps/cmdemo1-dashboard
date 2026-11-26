@@ -119,7 +119,7 @@ public class ClusterTextTests
         Assert.Equal("PID pressure", ClusterText.Pressure("PIDPressure"));
         Assert.Equal("network unavailable", ClusterText.Pressure("NetworkUnavailable"));
         Assert.Equal("SomethingNew", ClusterText.Pressure("SomethingNew"));
-        Assert.Equal("data-db-0 8 GiB, Bound", ClusterText.Volume(new ClusterVolume("data-db-0", 8589934592, "Bound")));
+        Assert.Equal("data-db-0 8 GiB, Bound", ClusterText.Volume(ClusterFixture.Volume(name: "data-db-0")));
         Assert.Equal("data", ClusterText.Volume(new ClusterVolume("data", null, null)));
     }
 

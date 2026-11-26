@@ -48,7 +48,7 @@ public class NamespaceGroupEdgeCaseTests
     public void TheConstructorHandsEachPartToThePropertyOfItsName()
     {
         PodRow[] rows = [ClusterFixture.Row("web", PodState.Ready), ClusterFixture.Row("broken", PodState.Unhealthy, restarts: 4)];
-        ClusterVolume[] volumes = [new ClusterVolume("data", 8589934592d, "Bound")];
+        ClusterVolume[] volumes = [ClusterFixture.Volume()];
 
         var group = new NamespaceGroup("cmdemo3-prod", Prod, true, rows, volumes);
 
@@ -79,7 +79,7 @@ public class NamespaceGroupEdgeCaseTests
         [
             new ClusterVolume("zeta", null, null),
             new ClusterVolume("alpha", 0, "Pending"),
-            new ClusterVolume("data", 8589934592d, "Bound"),
+            ClusterFixture.Volume(),
         ];
 
         var group = new NamespaceGroup("apps", null, true, rows, volumes);
@@ -112,7 +112,7 @@ public class NamespaceGroupEdgeCaseTests
     public void AGroupTakenApartGivesItsPartsBackInTheOrderTheyWereDeclared()
     {
         PodRow[] rows = [ClusterFixture.Row("web", PodState.Ready)];
-        ClusterVolume[] volumes = [new ClusterVolume("data", 1024, "Bound")];
+        ClusterVolume[] volumes = [ClusterFixture.Volume(capacity: 1024)];
         var group = new NamespaceGroup("cmdemo3-prod", Prod, false, rows, volumes);
 
         var (name, environment, found, pods, spaces) = group;
@@ -259,7 +259,7 @@ public class NamespaceGroupEdgeCaseTests
         PodRow[] rows = [ClusterFixture.Row("web", PodState.Ready), ClusterFixture.Row("api", PodState.Unhealthy, restarts: 3)];
         ClusterVolume[] volumes =
         [
-            new ClusterVolume("data", 8589934592d, "Bound"),
+            ClusterFixture.Volume(),
             new ClusterVolume("cache", null, null),
             new ClusterVolume("logs", 0, "Pending"),
         ];
@@ -438,7 +438,7 @@ public class NamespaceGroupEdgeCaseTests
     public void TwoGroupsAreOneGroupWhenEveryPartAndTheirListsAre()
     {
         PodRow[] rows = [ClusterFixture.Row("web", PodState.Ready)];
-        ClusterVolume[] volumes = [new ClusterVolume("data", 1024, "Bound")];
+        ClusterVolume[] volumes = [ClusterFixture.Volume(capacity: 1024)];
         var one = new NamespaceGroup("apps", Prod, true, rows, volumes);
 
         Assert.Equal(one, one with { Name = one.Name });
@@ -458,7 +458,7 @@ public class NamespaceGroupEdgeCaseTests
             new NamespaceGroup("apps", Prod, false, rows, volumes),
             new NamespaceGroup("apps", Prod, true, [ClusterFixture.Row("web", PodState.Ready)], volumes),
             new NamespaceGroup("apps", Prod, true, [], volumes),
-            new NamespaceGroup("apps", Prod, true, rows, [new ClusterVolume("data", 1024, "Bound")]),
+            new NamespaceGroup("apps", Prod, true, rows, [ClusterFixture.Volume(capacity: 1024)]),
             new NamespaceGroup("apps", Prod, true, rows, []),
         ];
 

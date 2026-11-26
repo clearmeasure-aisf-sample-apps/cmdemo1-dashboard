@@ -7,9 +7,9 @@ namespace Dashboard.Tests;
 /// stale at the ends the count runs to, the moment the facts are of, and the order the pods stand in; the
 /// four numbers of <see cref="ResourceUse" /> and the nothing where no number is;
 /// <see cref="ClusterNode.IsHealthy" /> at every corner of the ready and the pressure; and the words and
-/// the words' ends the <see cref="ClusterPod" /> and the <see cref="ClusterVolume" /> stand on: the five
+/// the words' ends the <see cref="ClusterPod" /> stands on: the five
 /// words of the phase, the label where the workload is the empty word, the restarts at the two ends of the
-/// number, the capacity at its ends, and the parts the records keep and the copies that are them again.
+/// number, and the parts the record keeps and the copy that is it again.
 /// <see cref="ClusterParserTests" /> pins the sample file and the file every part of but the names is
 /// optional at, every part as the value it stands on, and the files that are not the file as the problems
 /// they are in words; <see cref="ClusterAssessmentTests" /> pins the tick the status turns stale at, a
@@ -25,8 +25,7 @@ namespace Dashboard.Tests;
 /// keeps - the zero that is a number and not the nothing it is not, the top and the bottom of the number -
 /// and the parts it falls apart into; the node that is ready and under no pressure, and the cordon that
 /// does not make it otherwise; the five words of the phase as the words Kubernetes uses, the workload that
-/// is the empty word and is no fallback to the name, and the restarts at the two ends of the number; and
-/// the volume's capacity at its ends and the phase that is the empty word.
+/// is the empty word and is no fallback to the name, and the restarts at the two ends of the number.
 /// <para>
 /// Nothing here reaches the network or asks a clock what time it is: every moment is one the test brings,
 /// and every status is one the test builds or the parser reads at a fixed file.
@@ -485,33 +484,4 @@ public class ParsedEdgeCaseTests
         Assert.NotSame(one, copy);
     }
 
-    // ----- ClusterVolume -----
-
-    /// <summary>The volume keeps the capacity it is given, at the zero that is a number and at the top of
-    /// the number, and says nothing where none is given: the phase the volume was not given stands the
-    /// nothing it is, and the phase that is the empty word stands the empty word it is, kept, not read as
-    /// absent.</summary>
-    [Fact]
-    public void AVolumeKeepsItsCapacityAtTheEndsAndSaysNothingWhereNoneIsGiven()
-    {
-        var noCapacity = new ClusterVolume("data", null, null);
-        Assert.Null(noCapacity.Capacity);
-        Assert.Null(noCapacity.Phase);
-
-        var zero = new ClusterVolume("data", 0, "Bound");
-        Assert.Equal(0d, zero.Capacity);
-        Assert.Equal("Bound", zero.Phase);
-
-        var top = new ClusterVolume("data", double.MaxValue, string.Empty);
-        Assert.Equal(double.MaxValue, top.Capacity);
-        Assert.Equal(string.Empty, top.Phase);
-
-        Assert.Equal(noCapacity, new ClusterVolume("data", null, null));
-        Assert.NotEqual(noCapacity, new ClusterVolume("data", 0, null));
-        Assert.NotEqual(zero, new ClusterVolume("data", 0, "Pending"));
-
-        var copy = noCapacity with { };
-        Assert.Equal(noCapacity, copy);
-        Assert.NotSame(noCapacity, copy);
-    }
 }

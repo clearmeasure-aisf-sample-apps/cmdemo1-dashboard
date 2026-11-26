@@ -761,10 +761,12 @@ public class DeployableStatusEdgeCaseTests
         Assert.Equal(typeof(IReadOnlyList<TargetStatus>), properties["Nodes"].PropertyType);
         Assert.Equal(typeof(IEnumerable<TargetStatus>), properties["Targets"].PropertyType);
 
-        // Everything is readable from outside and six of the twelve are writable from nowhere else.
+        // Everything is readable from outside. Four of the twelve are still writable from nowhere else; the pin
+        // pair (Pinned, LastReadPinned) is no longer written by a set method - the two memories are owned by one
+        // Reading<PinnedVersions> field and moved by RecordPin and RememberPin, which is why they are read-only here.
         Assert.All(properties.Values, property => Assert.NotNull(property.GetMethod));
         Assert.Equal(
-            ["Build", "BuildReadForVersion", "BuildWasRead", "LastReadPinned", "LastServing", "Pinned"],
+            ["Build", "BuildReadForVersion", "BuildWasRead", "LastServing"],
             [.. properties.Values.Where(property => property.SetMethod is not null).Select(property => property.Name).Order(StringComparer.Ordinal)]);
         Assert.All(properties.Values, property => Assert.True(property.SetMethod is null || property.SetMethod.IsPrivate));
 

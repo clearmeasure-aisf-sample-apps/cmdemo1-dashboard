@@ -8,8 +8,14 @@ public sealed class EnvironmentStatus
         ArgumentNullException.ThrowIfNull(info);
         Info = info;
         Deployables = [.. info.Deployables.Select(deployable => new DeployableStatus(deployable))];
-        Pinned = info.VersionsUrl is null ? PinnedVersions.NotTracked : PinnedVersions.Pending;
+        _pin.Show(info.VersionsUrl is null ? PinnedVersions.NotTracked : PinnedVersions.Pending);
     }
+
+    /// <summary>
+    /// The reading of the environment's <c>versions.json</c> pin: what it shows, and the last reading that
+    /// succeeded, owned by one <see cref="Reading{T}" />.
+    /// </summary>
+    private readonly Reading<PinnedVersions> _pin = new();
 
     public EnvironmentInfo Info { get; }
 
@@ -20,21 +26,21 @@ public sealed class EnvironmentStatus
     public IReadOnlyList<DeployableStatus> Deployables { get; }
 
     /// <summary>The last reading of the environment's <c>versions.json</c>; a failed reading replaces a good one.</summary>
-    public PinnedVersions Pinned { get; private set; }
+    public PinnedVersions Pinned => _pin.Current!;
 
     /// <summary>True when a deployable of this environment has a node that runs another version than the pinned one.</summary>
     public bool VersionsDiffer => Deployables.Any(deployable => AssessVersions(deployable) is { Differs: true });
 
     /// <summary>The last reading that succeeded: what a new reading is compared with to find a new pin.</summary>
-    public PinnedVersions? LastReadPinned { get; private set; }
+    public PinnedVersions? LastReadPinned => _pin.LastGood;
 
     public void Record(PinnedVersions pinned)
     {
         ArgumentNullException.ThrowIfNull(pinned);
-        Pinned = pinned;
+        _pin.Show(pinned);
     }
 
-    public void RememberPinned(PinnedVersions pinned) => LastReadPinned = pinned;
+    public void RememberPinned(PinnedVersions pinned) => _pin.Remember(pinned);
 
     /// <summary>
     /// The pinned version of a deployable next to the versions its nodes run: from the deployable's own pin where the

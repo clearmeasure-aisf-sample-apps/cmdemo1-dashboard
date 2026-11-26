@@ -77,23 +77,25 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
     public TelemetrySnapshot? Telemetry { get; private set; }
 
     /// <summary>
+    /// The reading of the node's detailed health check: what the tile shows of it, and the last answer that had
+    /// entries, owned by one <see cref="Reading{T}" /> so that the rule a new answer is kept by is written once.
+    /// </summary>
+    private readonly Reading<HealthDetail> _healthDetail = new();
+
+    /// <summary>
     /// The entries of the node's detailed health check at the last check; null when it was not read (the deployable
     /// has no <c>healthDetailPath</c>, the probe is Liveness) or gave no entries. Never the answer of an earlier check.
     /// </summary>
-    public HealthDetail? HealthDetail { get; private set; }
+    public HealthDetail? HealthDetail => _healthDetail.Current;
 
     /// <summary>
     /// The last answer of the detailed health check that had entries: what a new answer is compared with to find an
     /// entry that changed its state. Null until the node answered one.
     /// </summary>
-    public HealthDetail? LastReadHealthDetail { get; private set; }
+    public HealthDetail? LastReadHealthDetail => _healthDetail.LastGood;
 
     /// <summary>Records the detailed health check of one check; null replaces what an earlier check read.</summary>
-    public void RecordHealthDetail(HealthDetail? detail)
-    {
-        HealthDetail = detail;
-        LastReadHealthDetail = detail ?? LastReadHealthDetail;
-    }
+    public void RecordHealthDetail(HealthDetail? detail) => _healthDetail.Record(detail);
 
     /// <summary>
     /// The last <see cref="SampleLength"/> readings of the node's telemetry, oldest first, for the sparklines: one per

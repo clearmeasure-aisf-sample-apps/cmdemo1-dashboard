@@ -77,6 +77,16 @@ public sealed record RecentDeployment(
     string? StartedBy,
     Uri? Url)
 {
+    /// <summary>
+    /// The result a recent entry's word means: <see cref="DeploymentState.Succeeded"/>, <see cref="DeploymentState.Failed"/>
+    /// or <see cref="DeploymentState.Canceled"/> - the three ways a deployment ends; <see cref="DeploymentState.Unknown"/>
+    /// for any other word, a state of a deployment in flight included.
+    /// </summary>
+    private static DeploymentState ResultOf(string result) =>
+        Deployment.Of(result) is var state and (DeploymentState.Succeeded or DeploymentState.Failed or DeploymentState.Canceled)
+            ? state
+            : DeploymentState.Unknown;
+
     /// <summary>An entry without a project, an environment, a release, a result or a time it ended at is left out.</summary>
     internal static RecentDeployment? Read(JsonElement element) =>
         JsonRead.Text(element, "project") is { } project && JsonRead.Text(element, "environment") is { } environment
@@ -86,7 +96,7 @@ public sealed record RecentDeployment(
                 project,
                 environment,
                 release,
-                Deployment.Of(result) is var state and (DeploymentState.Succeeded or DeploymentState.Failed or DeploymentState.Canceled) ? state : DeploymentState.Unknown,
+                ResultOf(result),
                 result,
                 finished,
                 JsonRead.Text(element, "startedBy"),

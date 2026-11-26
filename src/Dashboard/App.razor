@@ -76,8 +76,10 @@
         <label class="field">
             <span>Probe</span>
             <select value="@_probe" title="@ProbeHelp" aria-describedby="probe-help" @onchange="OnProbeChanged">
-                <option value="@ProbeKind.Health">Health check</option>
-                <option value="@ProbeKind.Liveness">Liveness</option>
+                @foreach (var probe in ProbeChoices)
+                {
+                    <option value="@probe.Value">@probe.Label</option>
+                }
             </select>
         </label>
         <span id="probe-help" class="visually-hidden">@ProbeHelp</span>
@@ -259,6 +261,15 @@
     private const int DefaultIntervalSeconds = 30;
     private static readonly int[] IntervalChoices = [10, DefaultIntervalSeconds, 60];
     private static readonly TimeSpan DefaultInterval = TimeSpan.FromSeconds(DefaultIntervalSeconds);
+
+    /// <summary>
+    /// The probe the page opens on: one of <see cref="ProbeChoices"/>, and the one home of the default, which the
+    /// choices are built from, so the default is a named member of the list and never a second copy of the kind that
+    /// has to keep agreeing with it (#1815) - the shape the interval's <see cref="DefaultIntervalSeconds"/> keeps
+    /// (#1796) and <see cref="TrafficRun.Default"/> gives the traffic button's numbers (#1742).
+    /// </summary>
+    private const ProbeKind DefaultProbe = ProbeKind.Health;
+    private static readonly ProbeChoice[] ProbeChoices = [new(DefaultProbe, "Health check"), new(ProbeKind.Liveness, "Liveness")];
     private static readonly string DashboardVersion = VersionText.OfAssembly(typeof(App).Assembly);
 
     private readonly CancellationTokenSource _stopping = new();
@@ -271,7 +282,7 @@
     private DashboardMonitor? _monitor;
     private IReadOnlyList<string>? _errors;
     private bool _loading;
-    private ProbeKind _probe = ProbeKind.Health;
+    private ProbeKind _probe = DefaultProbe;
     private IJSObjectReference? _visibility;
     private IJSObjectReference? _location;
     private DotNetObjectReference<App>? _self;

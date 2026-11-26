@@ -98,8 +98,8 @@ public class NamespaceGroupTests
             null,
             true,
             [
-                new PodRow(ClusterFixture.Pod("web"), PodState.Ready),
-                new PodRow(ClusterFixture.Pod("api", restarts: 2) with { Cpu = new ResourceUse(25, 100, 500) }, PodState.Ready),
+                ClusterFixture.Row("web", PodState.Ready),
+                ClusterFixture.Row("api", PodState.Ready, restarts: 2, cpu: ResourceUses.Pod(usage: 25, requests: 100, limit: 500)),
                 new PodRow(ClusterFixture.Pod("new", ready: false, age: TimeSpan.FromSeconds(30), restarts: 1) with { Cpu = new ResourceUse(5, 100, 500) }, PodState.Starting),
                 new PodRow(ClusterFixture.Pod("broken", ready: false, restarts: 4) with { Cpu = ResourceUse.None }, PodState.Unhealthy),
                 new PodRow(ClusterFixture.Pod("backup", ClusterPod.Succeeded, false) with { Cpu = new ResourceUse(0.5, 0, null) }, PodState.Finished),

@@ -411,13 +411,13 @@ public class ClusterTextEdgeCaseTests
     {
         Assert.Equal("0 of 0 ready · 0 restarts", ClusterText.Summary(new NamespaceGroup("apps", null, true, [], [])));
 
-        var cpuOnly = ClusterFixture.Pod("ui") with { Cpu = ResourceUses.Pod(usage: 53), Memory = ResourceUse.None };
+        var cpuOnly = ClusterFixture.Row("ui", PodState.Ready, cpu: ResourceUses.Pod(usage: 53), memory: ResourceUse.None);
         Assert.Equal("1 of 1 ready · 0 restarts · CPU 53 m",
-            ClusterText.Summary(new NamespaceGroup("apps", null, true, [new PodRow(cpuOnly, PodState.Ready)], [])));
+            ClusterText.Summary(new NamespaceGroup("apps", null, true, [cpuOnly], [])));
 
-        var memoryOnly = ClusterFixture.Pod("ui") with { Cpu = ResourceUse.None, Memory = ResourceUses.Pod(usage: 1572864) };
+        var memoryOnly = ClusterFixture.Row("ui", PodState.Ready, cpu: ResourceUse.None, memory: ResourceUses.Pod(usage: 1572864));
         Assert.Equal("1 of 1 ready · 0 restarts · memory 2 MiB",
-            ClusterText.Summary(new NamespaceGroup("apps", null, true, [new PodRow(memoryOnly, PodState.Ready)], [])));
+            ClusterText.Summary(new NamespaceGroup("apps", null, true, [memoryOnly], [])));
     }
 
     /// <summary>The group that is nothing is no line at all: the rule says so before it says anything

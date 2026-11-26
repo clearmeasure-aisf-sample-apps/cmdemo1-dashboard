@@ -140,8 +140,8 @@ public class PodRowEdgeCaseTests
     [Fact]
     public void TwoRowsAreOneWhileThePodAndTheStateAre()
     {
-        var one = new PodRow(ClusterFixture.Pod("ui"), PodState.Ready);
-        var two = new PodRow(ClusterFixture.Pod("ui"), PodState.Ready);
+        var one = ClusterFixture.Row("ui", PodState.Ready);
+        var two = ClusterFixture.Row("ui", PodState.Ready);
 
         Assert.Equal(one, two);
         Assert.True(one == two);
@@ -298,7 +298,7 @@ public class PodRowEdgeCaseTests
     [Fact]
     public void TheCopyThatNamesThePodNotThereIsTheRowOfNoPod()
     {
-        var row = new PodRow(ClusterFixture.Pod("ui"), PodState.Ready);
+        var row = ClusterFixture.Row("ui", PodState.Ready);
         var copy = row with { Pod = null! };
 
         Assert.NotSame(row, copy);

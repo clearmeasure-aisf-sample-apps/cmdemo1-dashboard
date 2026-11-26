@@ -35,7 +35,7 @@ public class ClusterGroupsEdgeCaseTests
         var environment = ClusterFixture.Environment("tdd", "apps");
         IReadOnlyList<PodRow> rows =
         [
-            new PodRow(ClusterFixture.Pod("ui"), PodState.Ready),
+            ClusterFixture.Row("ui", PodState.Ready),
             new PodRow(ClusterFixture.Pod("job", ClusterPod.Succeeded, false, reason: "Completed"), PodState.Finished),
         ];
         IReadOnlyList<ClusterVolume> volumes = [new ClusterVolume("data", 8589934592d, "Bound")];
@@ -64,7 +64,7 @@ public class ClusterGroupsEdgeCaseTests
     {
         IReadOnlyList<NamespaceGroup> environments =
         [
-            new NamespaceGroup("apps", ClusterFixture.Environment("tdd", "apps"), true, [new PodRow(ClusterFixture.Pod("ui"), PodState.Ready)], []),
+            new NamespaceGroup("apps", ClusterFixture.Environment("tdd", "apps"), true, [ClusterFixture.Row("ui", PodState.Ready)], []),
         ];
         IReadOnlyList<NamespaceGroup> platform =
         [
@@ -127,7 +127,7 @@ public class ClusterGroupsEdgeCaseTests
     public void TwoNamespaceGroupsAreOneWhenAllFivePartsAre()
     {
         var environment = ClusterFixture.Environment("tdd", "apps");
-        IReadOnlyList<PodRow> rows = [new PodRow(ClusterFixture.Pod("ui"), PodState.Ready)];
+        IReadOnlyList<PodRow> rows = [ClusterFixture.Row("ui", PodState.Ready)];
         IReadOnlyList<ClusterVolume> volumes = [new ClusterVolume("data", 8589934592d, "Bound")];
 
         var one = new NamespaceGroup("apps", environment, true, rows, volumes);

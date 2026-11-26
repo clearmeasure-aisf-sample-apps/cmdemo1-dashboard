@@ -47,6 +47,23 @@ internal static class ClusterFixture
             ResourceUses.Pod(usage: 100 * 1024 * 1024, requests: 268435456, limit: 536870912));
 
     /// <summary>
+    /// One row of a namespace's table: the fixture's <see cref="Pod" />, on the state the test decides. The state is
+    /// handed to the row rather than worked out of the pod, so no row here needs a moment to be counted at. What the
+    /// pod reports of itself is <see cref="Pod" />'s own, asked of it once rather than written again, unless a restart
+    /// count or a usage is asked for - and <see cref="ResourceUse.None" /> asks for a resource the pod says nothing about.
+    /// </summary>
+    public static PodRow Row(
+        string workload,
+        PodState state,
+        int restarts = 0,
+        ResourceUse? cpu = null,
+        ResourceUse? memory = null)
+    {
+        var pod = Pod(workload, restarts: restarts);
+        return new PodRow(pod with { Cpu = cpu ?? pod.Cpu, Memory = memory ?? pod.Memory }, state);
+    }
+
+    /// <summary>
     /// A pod that says as little as the record allows: no workload, no kind, no node, no containers, no reason, no
     /// start and no measurement, so the only thing it brings is its name and the word its phase stands on. The one
     /// home of that pod, said with every argument named so a swap of two of the same type shows as the swap it is - the

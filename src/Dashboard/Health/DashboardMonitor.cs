@@ -13,6 +13,18 @@ public sealed class DashboardMonitor
     public static readonly TimeSpan CostInterval = DeliveryInterval;
 
     /// <summary>
+    /// How often the work items are read: they sit in <c>workitems.json</c> beside the delivery facts, so they are
+    /// re-read on the delivery facts' cadence.
+    /// </summary>
+    public static readonly TimeSpan WorkItemsInterval = DeliveryInterval;
+
+    /// <summary>
+    /// How often Resource Health is read: it is read beside the delivery facts while a box of the runtime view
+    /// shows it, so it re-reads on the delivery facts' cadence.
+    /// </summary>
+    public static readonly TimeSpan ResourceHealthInterval = DeliveryInterval;
+
+    /// <summary>
     /// How often the deployments in flight are read: the file is small, and GitHub may serve it a few minutes old, so
     /// more often gains nothing.
     /// </summary>
@@ -27,11 +39,11 @@ public sealed class DashboardMonitor
     private readonly List<(EnvironmentStatus Environment, DeployableStatus Deployable, TargetStatus Target)> _targets;
     private readonly Dictionary<ContainerAppTarget, ContainerAppProbe> _containerApps = [];
     private readonly IntervalRead<DeliveryReport> _delivery = new(DeliveryInterval);
-    private readonly IntervalRead<WorkItemsReport> _workItems = new(DeliveryInterval);
+    private readonly IntervalRead<WorkItemsReport> _workItems = new(WorkItemsInterval);
     private readonly IntervalRead<CostReport> _cost = new(CostInterval);
     private readonly IntervalRead<DeploymentsReport> _deployments = new(DeploymentsInterval);
     private readonly IntervalRead<BuildInfo> _dashboardBuild = new(DashboardBuildRetry);
-    private readonly IntervalRead<ResourceHealthReport> _resourceHealth = new(DeliveryInterval);
+    private readonly IntervalRead<ResourceHealthReport> _resourceHealth = new(ResourceHealthInterval);
     private IReadOnlyList<ContainerAppProbe> _watched = [];
     private bool _resourceHealthWanted;
 
@@ -208,12 +220,12 @@ public sealed class DashboardMonitor
     /// timeout delays neither the others nor their display. The pinned versions are read at the same time, once per
     /// environment, and once per deployable that has a pin of its own (<c>pinUrl</c>); with the probe Health check, a
     /// node whose deployable names a <c>healthDetailPath</c> is also asked for the entries of its health check. A file that cannot be read is a
-    /// result like any other and fails no check. So are the delivery facts and the work items, every
-    /// <see cref="DeliveryInterval"/>, the cost, every <see cref="CostInterval"/>, the deployments in flight, every
+    /// result like any other and fails no check. So are the delivery facts, every <see cref="DeliveryInterval"/>, the
+    /// work items, every <see cref="WorkItemsInterval"/>, the cost, every <see cref="CostInterval"/>, the deployments in flight, every
     /// <see cref="DeploymentsInterval"/>, the
     /// dashboard's own build facts, once, and the two files of the cluster view, every round, where the topology names
     /// a cluster. The container apps the runtime view shows are probed when their interval is due, and Resource Health
-    /// is read every <see cref="DeliveryInterval"/> while a box shows it (<see cref="Watch"/>).
+    /// is read every <see cref="ResourceHealthInterval"/> while a box shows it (<see cref="Watch"/>).
     /// </summary>
     public async Task CheckAllAsync(ProbeKind probe, CancellationToken cancellationToken)
     {

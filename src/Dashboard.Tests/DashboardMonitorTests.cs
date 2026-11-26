@@ -256,11 +256,11 @@ public class DashboardMonitorTests
         var text = File.ReadAllText(MarkupGuards.SourcePath("Health/DashboardMonitor.cs"));
 
         Assert.Contains("private readonly IntervalRead<DeliveryReport> _delivery = new(DeliveryInterval);", text, StringComparison.Ordinal);
-        Assert.Contains("private readonly IntervalRead<WorkItemsReport> _workItems = new(DeliveryInterval);", text, StringComparison.Ordinal);
+        Assert.Contains("private readonly IntervalRead<WorkItemsReport> _workItems = new(WorkItemsInterval);", text, StringComparison.Ordinal);
         Assert.Contains("private readonly IntervalRead<CostReport> _cost = new(CostInterval);", text, StringComparison.Ordinal);
         Assert.Contains("private readonly IntervalRead<DeploymentsReport> _deployments = new(DeploymentsInterval);", text, StringComparison.Ordinal);
         Assert.Contains("private readonly IntervalRead<BuildInfo> _dashboardBuild = new(DashboardBuildRetry);", text, StringComparison.Ordinal);
-        Assert.Contains("private readonly IntervalRead<ResourceHealthReport> _resourceHealth = new(DeliveryInterval);", text, StringComparison.Ordinal);
+        Assert.Contains("private readonly IntervalRead<ResourceHealthReport> _resourceHealth = new(ResourceHealthInterval);", text, StringComparison.Ordinal);
 
         foreach (var stamp in new[] { "_deliveryReadAt", "_workItemsReadAt", "_costReadAt", "_deploymentsReadAt", "_dashboardBuildAskedAt", "_resourceHealthReadAt" })
         {

@@ -49,8 +49,6 @@ namespace Dashboard.Tests;
 /// </summary>
 public class VersionAssessmentEdgeCaseTests
 {
-    private static VersionAssessment Assess(params NodeVersion[] nodes) => VersionAssessment.Assess(Pinned, "ui", nodes);
-
     /// <summary>A reading of the file that pins <c>ui</c> to this very text, as the record of a reading holds it and
     /// before the decision reads anything out of it - the empty word, a blank, and build metadata alone among them.</summary>
     private static PinnedVersions Read(string version) =>

@@ -5,8 +5,6 @@ namespace Dashboard.Tests;
 
 public class VersionAssessmentTests
 {
-    private static VersionAssessment Assess(params NodeVersion[] nodes) => VersionAssessment.Assess(Pinned, "ui", nodes);
-
     [Fact]
     public void EveryNodeOnThePinnedVersionIsInSync()
     {

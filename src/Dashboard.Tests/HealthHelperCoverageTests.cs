@@ -163,7 +163,7 @@ public partial class HealthHelperCoverageTests
     {
         var helpers = new List<Helper>();
 
-        foreach (var (file, text) in SourceFiles(HealthRoot()))
+        foreach (var (file, text) in SourceText.Files(HealthRoot()))
         {
             var line = 0;
             var type = string.Empty;
@@ -899,12 +899,17 @@ public partial class HealthHelperCoverageTests
         calls.Any(call => call.Type == type && call.Method == method);
 
     /// <summary>Every <c>public static</c> method declared in the app's <c>Health</c> folder, in the order of the
-    /// files and the lines, each attributed to the type declared above it.</summary>
-    private static List<Helper> Declared()
+    /// files and the lines, each attributed to the type declared above it - read once per test run, since the
+    /// source under test does not move while the tests run.</summary>
+    private static IReadOnlyList<Helper> Declared() => DeclaredOnce.Value;
+
+    private static readonly Lazy<IReadOnlyList<Helper>> DeclaredOnce = new(ReadDeclared);
+
+    private static System.Collections.ObjectModel.ReadOnlyCollection<Helper> ReadDeclared()
     {
         var helpers = new List<Helper>();
 
-        foreach (var (file, text) in SourceFiles(HealthRoot()))
+        foreach (var (file, text) in SourceText.Files(HealthRoot()))
         {
             var line = 0;
             var type = string.Empty;
@@ -936,12 +941,15 @@ public partial class HealthHelperCoverageTests
             }
         }
 
-        return helpers;
+        return helpers.AsReadOnly();
     }
 
-    /// <summary>Every <c>Type.Method(</c> of the test project's own source, outside the comments.</summary>
-    private static List<Reference> References() =>
-        [.. SourceFiles(TestRoot()).SelectMany(source => ReferencesOf(source.File, source.Text))];
+    /// <summary>Every <c>Type.Method(</c> of the test project's own source, outside the comments - read once per
+    /// test run.</summary>
+    private static IReadOnlyList<Reference> References() => ReferencesOnce.Value;
+
+    private static readonly Lazy<IReadOnlyList<Reference>> ReferencesOnce = new(() =>
+        SourceText.Files(TestRoot()).SelectMany(source => ReferencesOf(source.Path, source.Text)).ToList().AsReadOnly());
 
     /// <summary>The <c>Type.Method(</c> a piece of source writes: its calls, each reported on the line it opens on.
     /// Every comment line is blanked out first, so a doc comment that quotes a helper names nothing while the line
@@ -983,27 +991,8 @@ public partial class HealthHelperCoverageTests
     private static string TestRoot([CallerFilePath] string here = "") => Path.GetFullPath(Path.GetDirectoryName(here)!);
 
     /// <summary>The text of one file of this project, by its name: the tests of the eight helpers are held to this
-    /// file, so it is read by the name it is written under.</summary>
-    private static string SourceOf(string name) => File.ReadAllText(Path.Combine(TestRoot(), name));
-
-    /// <summary>Every <c>.cs</c> under a folder, as the path the assertion prints relative to it and its text. The
-    /// build's copies under <c>bin</c> and <c>obj</c> hold the same source twice, so those directories are walked
-    /// past.</summary>
-    private static IEnumerable<(string File, string Text)> SourceFiles(string root)
-    {
-        foreach (var path in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories).OrderBy(p => p, StringComparer.Ordinal))
-        {
-            var relative = Path.GetRelativePath(root, path);
-
-            if (relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(part =>
-                    part.Equals("bin", StringComparison.OrdinalIgnoreCase) || part.Equals("obj", StringComparison.OrdinalIgnoreCase)))
-            {
-                continue;
-            }
-
-            yield return (relative, File.ReadAllText(path));
-        }
-    }
+    /// file, so it is read by the name it is written under - from the same read of the project the guard takes.</summary>
+    private static string SourceOf(string name) => SourceText.Files(TestRoot()).Single(source => source.Path == name).Text;
 
     /// <summary>
     /// The shared source read and this guard's own read are two reads of the same set of helpers: neither may

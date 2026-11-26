@@ -50,7 +50,7 @@ public class ClusterHelperCoverageTests
     public void EveryClusterHelperMethodIsCalledByNameInTheTests()
     {
         var methods = Enumerated();
-        var calls = TestSources().SelectMany(source => OccurrencesOf(source.File, source.Text, methods)).ToList();
+        var calls = TestSources().SelectMany(source => OccurrencesOf(source.Path, source.Text, methods)).ToList();
         var codeCalls = calls.Where(call => call.InCode).ToList();
 
         var uncalled = methods.Where(method => !codeCalls.Any(call => call.Method == method.Full)).ToList();
@@ -110,7 +110,7 @@ public class ClusterHelperCoverageTests
             tests.Count >= 100,
             $"only {tests.Count} .cs file(s) were read under {TestsRoot()}: the walk does not reach the tests");
 
-        var calls = tests.SelectMany(test => OccurrencesOf(test.File, test.Text, methods)).ToList();
+        var calls = tests.SelectMany(test => OccurrencesOf(test.Path, test.Text, methods)).ToList();
         var codeCalls = calls.Where(call => call.InCode).ToList();
 
         Assert.True(
@@ -290,51 +290,13 @@ public class ClusterHelperCoverageTests
         Path.GetFullPath(Path.GetDirectoryName(here)!);
 
     /// <summary>Every <c>.cs</c> file of <c>src/Dashboard/Cluster</c>, as the path the assertion prints and its
-    /// text. The build's copies under <c>bin</c> and <c>obj</c> are walked past.</summary>
-    private static List<(string File, string Text)> ClusterSources()
-    {
-        var root = Path.Combine(DashboardRoot(), "Cluster");
-        var sources = new List<(string, string)>();
-
-        foreach (var path in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories).OrderBy(path => path, StringComparer.Ordinal))
-        {
-            var relative = Path.GetRelativePath(root, path);
-            if (IsBuildCopy(relative))
-            {
-                continue;
-            }
-
-            sources.Add((relative, File.ReadAllText(path)));
-        }
-
-        return sources;
-    }
+    /// text, from the shared read of the run. The build's copies under <c>bin</c> and <c>obj</c> are walked past.</summary>
+    private static IReadOnlyList<SourceText.SourceFile> ClusterSources() => SourceText.Files(Path.Combine(DashboardRoot(), "Cluster"));
 
     /// <summary>Every <c>.cs</c> file of the tests, as the path the assertion prints and its text, this file
-    /// included: a real-value test here is coverage. The build's copies under <c>bin</c> and <c>obj</c> are walked
-    /// past.</summary>
-    private static List<(string File, string Text)> TestSources()
-    {
-        var root = TestsRoot();
-        var sources = new List<(string, string)>();
-
-        foreach (var path in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories).OrderBy(path => path, StringComparer.Ordinal))
-        {
-            var relative = Path.GetRelativePath(root, path);
-            if (IsBuildCopy(relative))
-            {
-                continue;
-            }
-
-            sources.Add((relative, File.ReadAllText(path)));
-        }
-
-        return sources;
-    }
-
-    private static bool IsBuildCopy(string relative) =>
-        relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(part =>
-            part.Equals("bin", StringComparison.OrdinalIgnoreCase) || part.Equals("obj", StringComparison.OrdinalIgnoreCase));
+    /// included: a real-value test here is coverage. Taken from the shared read of the run, the build's copies
+    /// under <c>bin</c> and <c>obj</c> walked past.</summary>
+    private static IReadOnlyList<SourceText.SourceFile> TestSources() => SourceText.Files(TestsRoot());
 
     /// <summary>
     /// The public static methods of the public types of the <see cref="HelpersNamespace"/> namespace, as the
@@ -359,9 +321,14 @@ public class ClusterHelperCoverageTests
     /// <summary>
     /// The public static methods the source of <c>src/Dashboard/Cluster</c> declares, per file: a <c>public
     /// static</c> line whose name stands before the "(" that opens its parameters, read under the type the line
-    /// sits in. Comments and strings are walked past, so the words of a sentence are not a declaration.
+    /// sits in. Comments and strings are walked past, so the words of a sentence are not a declaration. Read once
+    /// per test run, since the source under test does not move while the tests run.
     /// </summary>
-    private static List<HelperMethod> Declared()
+    private static IReadOnlyList<HelperMethod> Declared() => DeclaredOnce.Value;
+
+    private static readonly Lazy<IReadOnlyList<HelperMethod>> DeclaredOnce = new(ReadDeclared);
+
+    private static System.Collections.ObjectModel.ReadOnlyCollection<HelperMethod> ReadDeclared()
     {
         var declared = new List<HelperMethod>();
 
@@ -384,7 +351,7 @@ public class ClusterHelperCoverageTests
             }
         }
 
-        return declared;
+        return declared.AsReadOnly();
     }
 
     /// <summary>The code of a file with its comments and the content of its strings walked past, the line breaks

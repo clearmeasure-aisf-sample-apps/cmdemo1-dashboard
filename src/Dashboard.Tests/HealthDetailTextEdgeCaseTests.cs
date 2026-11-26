@@ -437,15 +437,19 @@ public class HealthDetailTextEdgeCaseTests
     }
 
     /// <summary>An entry whose words are the empty word, a blank or nothing but full stops is named with its state
-    /// and a colon, and with whatever of its words the trimming leaves: the empty text and a row of full stops both
-    /// end as nothing after the colon, and the three spaces of a blank stand there as the blank they are - unlike
-    /// the entry that says no words at all, which is named with its state and no colon.</summary>
+    /// alone: the one trimming the words are joined by (#1167) leaves nothing of them, and an entry that is left
+    /// with nothing is named the way the entry that says no words at all is - with its state and no colon, and no
+    /// blank standing behind it.</summary>
     [Theory]
-    [InlineData("", "Not healthy: Queue (Unhealthy: )")]
-    [InlineData("   ", "Not healthy: Queue (Unhealthy:    )")]
-    [InlineData("...", "Not healthy: Queue (Unhealthy: )")]
+    [InlineData("", "Not healthy: Queue (Unhealthy)")]
+    [InlineData("   ", "Not healthy: Queue (Unhealthy)")]
+    [InlineData(".", "Not healthy: Queue (Unhealthy)")]
+    [InlineData(". .", "Not healthy: Queue (Unhealthy)")]
+    [InlineData("...", "Not healthy: Queue (Unhealthy)")]
     [InlineData("Login failed.", "Not healthy: Queue (Unhealthy: Login failed)")]
     [InlineData("Login failed....", "Not healthy: Queue (Unhealthy: Login failed)")]
+    [InlineData("Login failed. ", "Not healthy: Queue (Unhealthy: Login failed)")]
+    [InlineData("  Login failed", "Not healthy: Queue (Unhealthy: Login failed)")]
     public void TheReasonSaysAnEntryWhoseWordsAreBlankOrNothingButFullStops(string description, string expected) =>
         Assert.Equal(expected, HealthDetailText.Failed(Detail(Entry("Queue", CheckState.Unhealthy, description))));
 

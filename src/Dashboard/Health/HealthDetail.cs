@@ -194,6 +194,6 @@ public static class HealthDetailText
             return null;
         }
 
-        return $"Not healthy: {string.Join(", ", failing.Select(entry => entry.Description is { } description ? $"{entry.Name} ({Label(entry.State)}: {description.TrimEnd('.')})" : $"{entry.Name} ({Label(entry.State)})"))}";
+        return $"Not healthy: {string.Join(", ", failing.Select(entry => $"{entry.Name} ({Label(entry.State)}{TextReason.Reason(entry.Description)})"))}";
     }
 }

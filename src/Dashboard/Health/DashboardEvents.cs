@@ -194,7 +194,7 @@ public static class EventDetector
         foreach (var entry in after.Entries)
         {
             var label = HealthDetailText.Label(entry.State);
-            var words = entry.Description is { } description ? $": {description.TrimEnd('.')}" : string.Empty;
+            var words = TextReason.Reason(entry.Description);
             string? text = null;
             if (before is null)
             {
@@ -368,7 +368,7 @@ public static class EventDetector
         var facts = after.Last switch
         {
             { StatusCode: { } status } => string.Create(CultureInfo.InvariantCulture, $" (HTTP {status})"),
-            { Detail: { } detail } => $": {detail.TrimEnd('.')}",
+            { Detail: { } detail } => TextReason.Reason(detail),
             _ => string.Empty,
         };
         return before.State == HealthState.Pending

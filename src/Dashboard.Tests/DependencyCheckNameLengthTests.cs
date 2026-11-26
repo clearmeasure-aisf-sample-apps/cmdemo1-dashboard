@@ -22,8 +22,8 @@ public class DependencyCheckNameLengthTests
 
     private static RuntimeManifest Manifest(string healthCheck) => Sample with
     {
-        Nodes = [.. Sample.Nodes, new RuntimeNode(Gateway, RuntimeNodeKind.Dependency, "LLM gateway", Deployable: "ui", HealthCheck: healthCheck, DependencyKind: "external")],
-        Edges = [.. Sample.Edges, .. WebApps.Select(app => new RuntimeEdge($"{Gateway}-to-{app}", app, Gateway, RuntimeEdgeKind.Dependency))],
+        Nodes = [.. Sample.Nodes, ManifestNodes.ExternalDependency(Gateway, "LLM gateway", "ui", healthCheck)],
+        Edges = [.. Sample.Edges, .. WebApps.Select(app => ManifestEdges.ToDependency(app, Gateway))],
     };
 
     private static ProbeResult Answer() => new(HealthClassifier.FromStatusCode(200), 200, 40, Now, "2.4.21", Probe: ProbeKind.Health);

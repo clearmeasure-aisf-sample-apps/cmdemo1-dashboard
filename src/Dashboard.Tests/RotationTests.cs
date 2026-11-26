@@ -234,28 +234,28 @@ public class RotationTests
     private static readonly string[] Apps = ["west", "east", "north", "japan"];
 
     /// <summary>Front Door in front of three primary web apps and a standby, each in a region of its own.</summary>
-    private static readonly RuntimeManifest Manifest = new(
+    private static readonly RuntimeManifest Manifest = Manifests.Of(
         "prod",
         [
-            new RuntimeNode("browser", RuntimeNodeKind.Person, "Browser"),
-            new RuntimeNode("fd_ui", RuntimeNodeKind.FrontDoor, "fd-prod", new Uri("https://fd-prod.example.net"), "ui"),
-            new RuntimeNode("app_ui_west", RuntimeNodeKind.WebApp, "prod-west", new Uri("https://prod-west.example.net"), "ui", "primary", "westus3", "region_west"),
-            new RuntimeNode("app_ui_east", RuntimeNodeKind.WebApp, "prod-east", new Uri("https://prod-east.example.net"), "ui", "primary", "eastus2", "region_east"),
-            new RuntimeNode("app_ui_north", RuntimeNodeKind.WebApp, "prod-north", new Uri("https://prod-north.example.net"), "ui", "primary", "northeurope", "region_north"),
-            new RuntimeNode("app_ui_japan", RuntimeNodeKind.WebApp, "prod-japan", new Uri("https://prod-japan.example.net"), "ui", "standby", "japaneast", "region_japan"),
+            ManifestNodes.Browser(),
+            ManifestNodes.FrontDoor("fd_ui", "fd-prod", "https://fd-prod.example.net", "ui"),
+            ManifestNodes.WebApp("app_ui_west", "prod-west", "https://prod-west.example.net", "ui", "primary", "westus3", "region_west"),
+            ManifestNodes.WebApp("app_ui_east", "prod-east", "https://prod-east.example.net", "ui", "primary", "eastus2", "region_east"),
+            ManifestNodes.WebApp("app_ui_north", "prod-north", "https://prod-north.example.net", "ui", "primary", "northeurope", "region_north"),
+            ManifestNodes.WebApp("app_ui_japan", "prod-japan", "https://prod-japan.example.net", "ui", "standby", "japaneast", "region_japan"),
+        ],
+        [
+            ManifestEdges.Between("browser", "fd_ui", RuntimeEdgeKind.Public),
+            ManifestEdges.Between("fd_ui", "app_ui_west", RuntimeEdgeKind.Origin, 1),
+            ManifestEdges.Between("fd_ui", "app_ui_east", RuntimeEdgeKind.Origin, 1),
+            ManifestEdges.Between("fd_ui", "app_ui_north", RuntimeEdgeKind.Origin, 1),
+            ManifestEdges.Between("fd_ui", "app_ui_japan", RuntimeEdgeKind.Origin, 2),
         ],
         [
             new RuntimeRegion("region_west", "westus3", ["primary"]),
             new RuntimeRegion("region_east", "eastus2", ["primary"]),
             new RuntimeRegion("region_north", "northeurope", ["primary"]),
             new RuntimeRegion("region_japan", "japaneast", ["standby"]),
-        ],
-        [
-            new RuntimeEdge("browser-to-fd_ui", "browser", "fd_ui", RuntimeEdgeKind.Public),
-            new RuntimeEdge("fd_ui-to-app_ui_west", "fd_ui", "app_ui_west", RuntimeEdgeKind.Origin, 1),
-            new RuntimeEdge("fd_ui-to-app_ui_east", "fd_ui", "app_ui_east", RuntimeEdgeKind.Origin, 1),
-            new RuntimeEdge("fd_ui-to-app_ui_north", "fd_ui", "app_ui_north", RuntimeEdgeKind.Origin, 1),
-            new RuntimeEdge("fd_ui-to-app_ui_japan", "fd_ui", "app_ui_japan", RuntimeEdgeKind.Origin, 2),
         ]);
 
     /// <summary>The runtime view of prod with the nodes in the given states, in the order west, east, north, japan.</summary>

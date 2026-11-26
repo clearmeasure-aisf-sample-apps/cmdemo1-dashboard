@@ -8,25 +8,26 @@ namespace Dashboard.Tests;
 /// </summary>
 public class RuntimeClientsTests
 {
-    private static readonly RuntimeNode Database = new("db", RuntimeNodeKind.Sql, "sql-db");
-    private static readonly RuntimeNode Dependency = new("ext", RuntimeNodeKind.Dependency, "External");
+    private static readonly RuntimeNode Database = ManifestNodes.Database("db", "sql-db");
+    private static readonly RuntimeNode Dependency = ManifestNodes.Dependency("ext", "External");
 
-    private static RuntimeManifest Manifest() => new(
+    /// <summary>The last edge keeps the raw constructor on purpose: its id breaks the <c>-to-</c> convention, so a
+    /// second edge between the same two aliases stays a line of its own.</summary>
+    private static RuntimeManifest Manifest() => Manifests.Of(
         "tst",
         [
-            new RuntimeNode("web1", RuntimeNodeKind.WebApp, "app-1"),
-            new RuntimeNode("web2", RuntimeNodeKind.WebApp, "app-2"),
-            new RuntimeNode("job", RuntimeNodeKind.ContainerApp, "ca-job"),
+            ManifestNodes.WebApp("web1", "app-1"),
+            ManifestNodes.WebApp("web2", "app-2"),
+            ManifestNodes.ContainerApp("job", "ca-job"),
             Database,
             Dependency,
         ],
-        [],
         [
-            new RuntimeEdge("web2-to-db", "web2", "db", RuntimeEdgeKind.Sql),
-            new RuntimeEdge("web1-to-ext", "web1", "ext", RuntimeEdgeKind.Dependency),
-            new RuntimeEdge("job-to-db", "job", "db", RuntimeEdgeKind.Sql),
-            new RuntimeEdge("web1-to-db", "web1", "db", RuntimeEdgeKind.Sql),
-            new RuntimeEdge("db-to-web1", "db", "web1", RuntimeEdgeKind.Sql),
+            ManifestEdges.Between("web2", "db", RuntimeEdgeKind.Sql),
+            ManifestEdges.Between("web1", "ext", RuntimeEdgeKind.Dependency),
+            ManifestEdges.Between("job", "db", RuntimeEdgeKind.Sql),
+            ManifestEdges.Between("web1", "db", RuntimeEdgeKind.Sql),
+            ManifestEdges.Between("db", "web1", RuntimeEdgeKind.Sql),
             new RuntimeEdge("web2-to-db-other", "web2", "db", RuntimeEdgeKind.Other),
         ]);
 

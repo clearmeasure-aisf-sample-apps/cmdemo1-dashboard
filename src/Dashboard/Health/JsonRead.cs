@@ -52,6 +52,15 @@ internal static class JsonRead
         return strings.Count == 0 ? null : strings;
     }
 
+    /// <summary>
+    /// The names of the list under <paramref name="name"/>, in the order written, kept in the file's own letters -
+    /// nothing is trimmed and nothing is cased: an empty word is no name, as in <see cref="Text" />, and what is not
+    /// a word is left out. An empty list without the array, or when it names nothing: the list is the reading, and
+    /// the page says the names back, so the record it stands for keeps the very list it is handed.
+    /// </summary>
+    public static List<string> Names(JsonElement? parent, string name) =>
+        [.. Items(parent, name).Where(item => item.ValueKind == JsonValueKind.String).Select(item => item.GetString()!).Where(text => text.Length > 0)];
+
     /// <summary>A number that is not negative; null for anything else.</summary>
     public static double? Number(JsonElement? parent, string name) =>
         Signed(parent, name) is { } real and >= 0 ? real : null;

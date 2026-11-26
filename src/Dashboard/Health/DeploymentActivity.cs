@@ -140,11 +140,8 @@ public sealed record DeploymentFreeze(
     /// <summary>An entry without a name or a time it ends at is left out.</summary>
     internal static DeploymentFreeze? Read(JsonElement element) =>
         JsonRead.Text(element, "name") is { } name && JsonRead.Time(element, "to") is { } to
-            ? new DeploymentFreeze(name, JsonRead.Time(element, "from"), to, JsonRead.Flag(element, "active") ?? false, Names(element, "environments"), Names(element, "projects"))
+            ? new DeploymentFreeze(name, JsonRead.Time(element, "from"), to, JsonRead.Flag(element, "active") ?? false, JsonRead.Names(element, "environments"), JsonRead.Names(element, "projects"))
             : null;
-
-    private static List<string> Names(JsonElement element, string name) =>
-        [.. JsonRead.Items(element, name).Where(item => item.ValueKind == JsonValueKind.String).Select(item => item.GetString()!).Where(text => text.Length > 0)];
 }
 
 /// <summary>
@@ -296,8 +293,8 @@ public static class DeploymentActivity
             var first = freezes[0];
             var more = freezes.Count > 1 ? string.Create(CultureInfo.InvariantCulture, $", and {freezes.Count - 1} more") : string.Empty;
             var words = first.InForceAt(now)
-                ? $"deployment freeze {first.Name}: {Names(first.Projects)} frozen until {When(first.To, now, zone)}{more}"
-                : $"deployment freeze {first.Name}: {Names(first.Projects)} frozen from {When(Begins(first), now, zone)} until {When(first.To, now, zone)}{more}";
+                ? $"deployment freeze {first.Name}: {Words(first.Projects)} frozen until {When(first.To, now, zone)}{more}"
+                : $"deployment freeze {first.Name}: {Words(first.Projects)} frozen from {When(Begins(first), now, zone)} until {When(first.To, now, zone)}{more}";
             lines.Add(OfFreeze(first, now, zone, words) with { Title = string.Join('\n', freezes.Select(freeze => FreezeTitle(freeze, now, zone))) });
         }
 
@@ -364,7 +361,7 @@ public static class DeploymentActivity
         var state = freeze.InForceAt(now)
             ? "In force now"
             : $"Begins in {TimeText.Span(Begins(freeze) - now)}";
-        return $"Deployment freeze {freeze.Name}: no deployment of {Names(freeze.Projects)} to {Names(freeze.Environments)}{from} until {TimeText.DateAndTime(freeze.To, zone)}. {state}. "
+        return $"Deployment freeze {freeze.Name}: no deployment of {Words(freeze.Projects)} to {Words(freeze.Environments)}{from} until {TimeText.DateAndTime(freeze.To, zone)}. {state}. "
             + "A freeze belongs to the Octopus Deploy instance; a person with the right may override it for one deployment.";
     }
 
@@ -453,7 +450,11 @@ public static class DeploymentActivity
     /// <summary>The date and the time: <c>12 Oct 19:00</c>.</summary>
     private const string DateFormat = "d MMM HH:mm";
 
-    private static string Names(IReadOnlyList<string> names) => names.Count == 0 ? "the system" : string.Join(", ", names);
+    /// <summary>
+    /// The words of a list of names: the names joined, or <c>the system</c> when the list names nothing - a freeze
+    /// that names no projects covers the system as a whole.
+    /// </summary>
+    private static string Words(IReadOnlyList<string> names) => names.Count == 0 ? "the system" : string.Join(", ", names);
 
     /// <summary>
     /// The words cut to what a line of a node holds, with an ellipsis; the tooltip has them in full. A

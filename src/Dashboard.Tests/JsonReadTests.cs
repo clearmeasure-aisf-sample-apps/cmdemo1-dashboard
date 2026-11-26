@@ -345,4 +345,54 @@ public class JsonReadTests
         Assert.Equal(300, strings.Count);
         Assert.Equal("i199", strings[199]);
     }
+
+    // ----- The names of a list -----
+
+    /// <summary>
+    /// The names of the list: kept in the file's own letters - nothing is trimmed and nothing is cased - in the
+    /// order written; what is not a word is left out, and the empty word is no name, as in <see cref="JsonRead.Text"/>.
+    /// Unlike <see cref="JsonRead.Strings"/>, the reading is the list and not a word of it: without an array, or when
+    /// it names nothing, the answer is an empty list the record keeps, not a <c>null</c>.
+    /// </summary>
+    [Fact]
+    public void TheNamesOfAListAreItsWordsInTheOrderWrittenInItsOwnLetters()
+    {
+        var names = JsonRead.Names(Root("""{ "environments": [ "  prod  ", "", "uat", 7, null, true, {}, [], "PROD" ] }"""), "environments");
+
+        Assert.Equal(["  prod  ", "uat", "PROD"], names);
+    }
+
+    /// <summary>
+    /// A name is not trimmed and not cased: the padding of a name is its own, and a name in another case is another
+    /// name, since the page says the names back in the letters the file wrote them in.
+    /// </summary>
+    [Fact]
+    public void ANameIsKeptInTheLettersTheFileWroteItIn()
+    {
+        var names = JsonRead.Names(Root("""{ "projects": [ "  demo-ui  ", "Demo-UI" ] }"""), "projects");
+
+        Assert.Equal(["  demo-ui  ", "Demo-UI"], names);
+        Assert.Equal(2, names.Count);
+    }
+
+    /// <summary>
+    /// The answer of the reading is a list, empty when the field is not an array or names nothing - never a
+    /// <c>null</c>, which is what the record that keeps it is built on.
+    /// </summary>
+    [Theory]
+    [InlineData("""{ }""")] // no such name
+    [InlineData("""{ "environments": [] }""")] // an array with nothing in it
+    [InlineData("""{ "environments": [ "" ] }""")] // the empty word only
+    [InlineData("""{ "environments": [ 7, null, true, {}, [] ] }""")] // nothing that is a string
+    [InlineData("""{ "environments": { "a": 1 } }""")] // an object, not an array
+    [InlineData("""{ "environments": "prod" }""")] // text, not an array
+    [InlineData("""{ "environments": 7 }""")] // a number, not an array
+    [InlineData("""{ "environments": null }""")]
+    public void AnythingElseIsNoNames(string json) =>
+        Assert.Empty(JsonRead.Names(Root(json), "environments"));
+
+    /// <summary>A null parent is no object, and its reading is an empty list, as the record that keeps it expects.</summary>
+    [Fact]
+    public void NamesOnANullParentIsEmpty() =>
+        Assert.Empty(JsonRead.Names(null, "environments"));
 }

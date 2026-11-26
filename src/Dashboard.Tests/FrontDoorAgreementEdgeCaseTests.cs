@@ -54,25 +54,39 @@ public class FrontDoorAgreementEdgeCaseTests
 
     private static NodeHealth Standby(HealthState state, string region = "eastus2") => new($"app-{region}", region, false, state);
 
-    /// <summary>Two nodes, in the order of the topology, that leave the decision on the given state.</summary>
-    private static NodeHealth[] NodesFor(ServingState state) => state switch
+    /// <summary>The two shapes of nodes, in the order of the topology, that leave a decision on one serving state:
+    /// <see cref="Pair" />, a primary and its standby, and <see cref="Rotation" />, two primaries so the Front Door
+    /// rotates over them, with a standby only where it is the node that serves.</summary>
+    private sealed record NodeShapes(NodeHealth[] Pair, NodeHealth[] Rotation);
+
+    /// <summary>The one shape table: each of the five states as a pair and as a rotation, side by side, so a change to
+    /// the shape of one state is made to both in the same row. A rotation can hold no state of no nodes, so its row for
+    /// <see cref="ServingState.NoNodes" /> is the rotation of <see cref="ServingState.Down" />.</summary>
+    private static NodeShapes ShapesFor(ServingState state) => state switch
     {
-        ServingState.NoNodes => [],
-        ServingState.Pending => [Primary(Pending), Standby(Healthy)],
-        ServingState.Primary => [Primary(Healthy), Standby(Unreachable)],
-        ServingState.FailedOver => [Primary(Unreachable), Standby(Healthy)],
-        _ => [Primary(Unhealthy), Standby(Unreachable)],
+        ServingState.NoNodes => new(
+            Pair: [],
+            Rotation: [Primary(Unhealthy), Primary(Unreachable, "eastus2")]),
+        ServingState.Pending => new(
+            Pair: [Primary(Pending), Standby(Healthy)],
+            Rotation: [Primary(Pending), Primary(Healthy, "eastus2")]),
+        ServingState.Primary => new(
+            Pair: [Primary(Healthy), Standby(Unreachable)],
+            Rotation: [Primary(Unhealthy), Primary(Healthy, "eastus2")]),
+        ServingState.FailedOver => new(
+            Pair: [Primary(Unreachable), Standby(Healthy)],
+            Rotation: [Primary(Unreachable), Primary(Unhealthy, "eastus2"), Standby(Healthy, "japaneast")]),
+        _ => new(
+            Pair: [Primary(Unhealthy), Standby(Unreachable)],
+            Rotation: [Primary(Unhealthy), Primary(Unreachable, "eastus2")]),
     };
+
+    /// <summary>Two nodes, in the order of the topology, that leave the decision on the given state.</summary>
+    private static NodeHealth[] NodesFor(ServingState state) => ShapesFor(state).Pair;
 
     /// <summary>The same five states as a rotation: two primaries, so the Front Door rotates over them, and a standby
     /// that stands by until none of the primaries is healthy.</summary>
-    private static NodeHealth[] RotationFor(ServingState state) => state switch
-    {
-        ServingState.Pending => [Primary(Pending), Primary(Healthy, "eastus2")],
-        ServingState.Primary => [Primary(Unhealthy), Primary(Healthy, "eastus2")],
-        ServingState.FailedOver => [Primary(Unreachable), Primary(Unhealthy, "eastus2"), Standby(Healthy, "japaneast")],
-        _ => [Primary(Unhealthy), Primary(Unreachable, "eastus2")],
-    };
+    private static NodeHealth[] RotationFor(ServingState state) => ShapesFor(state).Rotation;
 
     /// <summary>An assessment holding the agreement and the endpoint's state exactly as they are given - the shapes the
     /// decision never produces, which are the only way the words of an unsettled endpoint can be read at all.</summary>
@@ -449,11 +463,13 @@ public class FrontDoorAgreementEdgeCaseTests
 
         foreach (var state in States)
         {
-            foreach (var shape in new Func<ServingState, NodeHealth[]>[] { NodesFor, RotationFor })
+            var shapes = ShapesFor(state);
+
+            foreach (var nodes in new[] { shapes.Pair, shapes.Rotation })
             {
                 foreach (var endpoint in Endpoints)
                 {
-                    var assessment = ServingAssessment.Assess(shape(state), endpoint);
+                    var assessment = ServingAssessment.Assess(nodes, endpoint);
 
                     Assert.True(
                         Enum.IsDefined(assessment.FrontDoor),

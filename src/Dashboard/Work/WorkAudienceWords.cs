@@ -17,13 +17,9 @@ internal static class WorkAudienceWords
         new(WorkAudience.Team, "Team", "team", WorkWorker.Team),
     ];
 
-    internal static string Label(WorkAudience audience) =>
-        WordsOf(audience)?.Label
-        ?? throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no name.");
+    internal static string Label(WorkAudience audience) => Of(audience, "A work filter has no name.").Label;
 
-    internal static string Hash(WorkAudience audience) =>
-        WordsOf(audience)?.Segment
-        ?? throw new ArgumentOutOfRangeException(nameof(audience), audience, "A work filter has no address.");
+    internal static string Hash(WorkAudience audience) => Of(audience, "A work filter has no address.").Segment;
 
     /// <summary>The audience whose segment is <paramref name="segment"/>, trimmed and in any case; All otherwise.</summary>
     internal static WorkAudience AudienceOf(string? segment) => WordsFor(segment)?.Audience ?? WorkAudience.All;
@@ -35,10 +31,18 @@ internal static class WorkAudienceWords
     internal static string? WorkerLabel(WorkWorker worker) =>
         worker == WorkWorker.Unknown
             ? null
-            : Array.Find(Audiences, words => words.Worker == worker)?.Segment
-              ?? throw new ArgumentOutOfRangeException(nameof(worker), worker, "A worker has no name.");
+            : Row(words => words.Worker == worker, nameof(worker), worker, "A worker has no name.").Segment;
 
-    private static Words? WordsOf(WorkAudience audience) => Array.Find(Audiences, words => words.Audience == audience);
+    /// <summary>The row of <paramref name="audience"/>; an audience the table does not hold is refused with <paramref name="refusal"/>.</summary>
+    private static Words Of(WorkAudience audience, string refusal) =>
+        Row(words => words.Audience == audience, nameof(audience), audience, refusal);
+
+    /// <summary>
+    /// The one lookup that must find its row, and the one refusal when it does not: the argument by name, the value
+    /// it had, and the caller's reason.
+    /// </summary>
+    private static Words Row(Predicate<Words> match, string argument, object value, string refusal) =>
+        Array.Find(Audiences, match) ?? throw new ArgumentOutOfRangeException(argument, value, refusal);
 
     private static Words? WordsFor(string? word)
     {

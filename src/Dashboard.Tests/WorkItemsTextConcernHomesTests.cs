@@ -72,6 +72,26 @@ public class WorkItemsTextConcernHomesTests
         Assert.Equal(audience, WorkItemsText.AudienceOf(WorkItemsText.AudienceHash(audience)));
     }
 
+    /// <summary>The table refuses an audience it does not hold in one way for every word: the argument by name, the
+    /// value it had, and the word's own reason.</summary>
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(3)]
+    public void TheTablesRefusalOfAnAudienceCarriesTheValueItRefused(int number)
+    {
+        var audience = (WorkAudience)number;
+
+        var label = Assert.Throws<ArgumentOutOfRangeException>(() => WorkItemsText.AudienceLabel(audience));
+        var hash = Assert.Throws<ArgumentOutOfRangeException>(() => WorkItemsText.AudienceHash(audience));
+
+        Assert.Equal("audience", label.ParamName);
+        Assert.Equal<object>(audience, label.ActualValue!);
+        Assert.StartsWith("A work filter has no name.", label.Message, StringComparison.Ordinal);
+        Assert.Equal("audience", hash.ParamName);
+        Assert.Equal<object>(audience, hash.ActualValue!);
+        Assert.StartsWith("A work filter has no address.", hash.Message, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(WorkWorker.Bot)]
     [InlineData(WorkWorker.Team)]

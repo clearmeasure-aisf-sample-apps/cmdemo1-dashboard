@@ -69,17 +69,25 @@ public static class HourlyCheckText
 {
     /// <summary>
     /// How old the newest result may be and still be said: the runbook runs hourly, and the delivery facts are
-    /// published hourly, so a result is up to two hours old when the box shows it. Older, the box says
-    /// <see cref="NoRecentCheck"/>: a report that stopped is no news about the app.
+    /// published hourly, so a result is up to two hours old when the box shows it. The two hours are an age, not a
+    /// signed difference: <see cref="RecentResult"/> bounds them both ways, so a result is said while its moment
+    /// stands within the two hours on either side of the moment asked. A moment more than two hours ahead of it is
+    /// no news either - a report stamped a day in the future by a host with a bad clock, or an offset written that
+    /// is not the one the report ended at, is no more "just now" than a report that stopped. Older, or further
+    /// ahead, the box says <see cref="NoRecentCheck"/>: a report that stopped, or one that never was, is no news
+    /// about the app.
     /// </summary>
     public static readonly TimeSpan Recent = TimeSpan.FromHours(2);
 
     /// <summary>The words of a box without a result of the last two hours.</summary>
     public const string NoRecentCheck = "no recent hourly check";
 
-    /// <summary>The newest result when it is at most <see cref="Recent"/> old; null otherwise.</summary>
+    /// <summary>
+    /// The newest result when its moment stands within <see cref="Recent"/> of the moment asked, either side - at
+    /// most <see cref="Recent"/> old and at most <see cref="Recent"/> ahead; null otherwise.
+    /// </summary>
     public static HourlyCheck? RecentResult(ContainerAppReports? reports, DateTimeOffset now) =>
-        reports?.Last is { } last && now - last.At <= Recent ? last : null;
+        reports?.Last is { } last && (now - last.At).Duration() <= Recent ? last : null;
 
     /// <summary><c>hourly: healthy, 40 min ago</c>; <see cref="NoRecentCheck"/> without a result of the last two hours.</summary>
     public static string Result(ContainerAppReports? reports, DateTimeOffset now) =>

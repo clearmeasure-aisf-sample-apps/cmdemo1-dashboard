@@ -127,7 +127,7 @@ public static class RuntimeManifestParser
                 return new RuntimeNode(
                     alias,
                     kind,
-                    JsonRead.Text(element, "name") ?? alias,
+                    TextOr(element, "name", alias),
                     url,
                     JsonRead.Text(element, "deployable"),
                     JsonRead.Text(element, "role")?.ToLowerInvariant(),
@@ -150,7 +150,7 @@ public static class RuntimeManifestParser
                 var roles = element.TryGetProperty("roles", out var array) && array.ValueKind == JsonValueKind.Array
                     ? array.EnumerateArray().Where(role => role.ValueKind == JsonValueKind.String).Select(role => role.GetString()!).ToList()
                     : [];
-                return new RuntimeRegion(alias, JsonRead.Text(element, "name") ?? alias, roles, Links(element));
+                return new RuntimeRegion(alias, TextOr(element, "name", alias), roles, Links(element));
             });
             var frames = ReadArray(root, "frames", errors, (element, path) =>
             {
@@ -159,7 +159,7 @@ public static class RuntimeManifestParser
                     return null;
                 }
 
-                return new RuntimeFrame(alias, JsonRead.Text(element, "kind") ?? string.Empty, JsonRead.Text(element, "name") ?? alias, Links(element));
+                return new RuntimeFrame(alias, TextOr(element, "kind", string.Empty), TextOr(element, "name", alias), Links(element));
             });
             var edges = ReadArray(root, "edges", errors, (element, path) =>
             {
@@ -275,6 +275,16 @@ public static class RuntimeManifestParser
 
         return texts!;
     }
+
+    /// <summary>
+    /// The one "a word the deployment left out" rule of a manifest element: the element's word, or the fallback the
+    /// element stands for without it. A node, a region and a frame are called by their alias without a <c>name</c>
+    /// (the box is drawn by the alias, so a manifest that names nothing is named all the same), and a frame without a
+    /// <c>kind</c> holds the empty word (a frame without a kind is still a frame, linked with its name alone). The
+    /// record cannot state the fallback: <c>RuntimeFrame</c>'s <c>Name</c> is non-nullable, so it lives here.
+    /// </summary>
+    private static string TextOr(JsonElement element, string property, string fallback) =>
+        JsonRead.Text(element, property) ?? fallback;
 
     /// <summary>A file next to the index: a plain name, never an address or a path that leaves <c>runtime/</c>.</summary>
     private static string RelativeFile(JsonElement element, string property, string fallback, string path, List<string> errors)

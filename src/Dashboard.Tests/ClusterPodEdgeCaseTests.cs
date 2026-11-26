@@ -401,7 +401,7 @@ public class ClusterPodEdgeCaseTests
         Assert.Equal(new ResourceUse(21000000, 268435456, 536870912), podMemory);
 
         var (bareName, bareWorkload, bareKind, bareNode, barePhase, bareReady, bareContainers, bareContainersReady, bareRestarts, bareReason, bareStartedAt, bareCpu, bareMemory) =
-            new ClusterPod("web-1", null, null, null, ClusterPod.Unknown, false, null, null, 0, null, null, ResourceUse.None, ResourceUse.None);
+            ClusterFixture.SilentPod("web-1", ClusterPod.Unknown);
 
         Assert.Equal("web-1", bareName);
         Assert.Null(bareWorkload);
@@ -442,7 +442,7 @@ public class ClusterPodEdgeCaseTests
             + "ContainersReady = , Restarts = 0, Reason = , StartedAt = , "
             + "Cpu = ResourceUse { Usage = , Requests = , Limits = , Allocatable =  }, "
             + "Memory = ResourceUse { Usage = , Requests = , Limits = , Allocatable =  }, Label = web-1 }",
-            Words(new ClusterPod("web-1", null, null, null, ClusterPod.Unknown, false, null, null, 0, null, null, ResourceUse.None, ResourceUse.None)));
+            Words(ClusterFixture.SilentPod("web-1", ClusterPod.Unknown)));
     }
 
     /// <summary>
@@ -614,7 +614,7 @@ public class ClusterPodEdgeCaseTests
     [Fact]
     public void APodWithNoResourcePartsSaidSaysTheEmptyResourceUseConstant()
     {
-        var pod = new ClusterPod("web-1", null, null, null, ClusterPod.Unknown, false, null, null, 0, null, null, ResourceUse.None, ResourceUse.None);
+        var pod = ClusterFixture.SilentPod("web-1", ClusterPod.Unknown);
 
         Assert.Contains($"Cpu = {RecordWords.EmptyResourceUse}", Words(pod), StringComparison.Ordinal);
         Assert.Contains($"Memory = {RecordWords.EmptyResourceUse}", Words(pod), StringComparison.Ordinal);

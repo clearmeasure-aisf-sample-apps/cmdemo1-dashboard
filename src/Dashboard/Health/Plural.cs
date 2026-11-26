@@ -7,8 +7,11 @@ namespace Dashboard.Health;
 /// <c>1 restart</c>, <c>7 restarts</c>) or as the noun on its own (<see cref="Noun(int, string, string?)" />), for
 /// the sentences that weave the noun between their own other words. Only a count of exactly one takes the singular;
 /// every other count - zero, two, the ends of the number - takes the plural, which by default is the singular with an
-/// <c>s</c> on it, and which a noun that does not pluralise that way is given as the third word. The rule is said
-/// once, below, and every member here asks it, so no caller has to write the singular/plural choice again.
+/// <c>s</c> on it, and which a noun that does not pluralise that way is given as the third word. The same rule
+/// reaches the words that are not nouns - the verb of a count (<c>is</c>/<c>are</c>) and the pronoun phrases a
+/// sentence agrees with it (<c>its answer</c>/<c>their answers</c>) - through <see cref="Agreement" />, which is
+/// given both words and never declines one from the other. The rule is said once, below, and every member here
+/// asks it, so no caller has to write the singular/plural choice again.
 /// <para>
 /// The words are the caller's and are counted in the invariant culture, so neither the noun chosen nor the separator
 /// of a long count changes with whoever looks.
@@ -24,7 +27,18 @@ public static class Plural
     /// <param name="count">How many there are.</param>
     /// <param name="singular">The noun of the one: <c>node</c>.</param>
     /// <param name="plural">The noun of every other count, when it is not the singular plus an <c>s</c>: <c>assemblies</c>.</param>
-    public static string Noun(int count, string singular, string? plural = null) => NounOf(count, singular, plural);
+    public static string Noun(int count, string singular, string? plural = null) => WordOf(count, singular, plural);
+
+    /// <summary>
+    /// The word, or short phrase, a sentence agrees with a count, asked on its own: the verb (<c>is</c> for one,
+    /// <c>are</c> for every other count) and the pronoun phrases (<c>its answer</c>, <c>their answers</c>) - the words
+    /// that are not nouns, which <see cref="Noun(int, string, string?)" /> does not own. Both words are given; one is
+    /// never declined from the other, because neither a verb nor a pronoun gets its plural by an <c>s</c>.
+    /// </summary>
+    /// <param name="count">How many there are.</param>
+    /// <param name="singular">The word of the one: <c>is</c>, <c>its answer</c>.</param>
+    /// <param name="plural">The word of every other count: <c>are</c>, <c>their answers</c>.</param>
+    public static string Agreement(int count, string singular, string plural) => WordOf(count, singular, plural);
 
     /// <summary>
     /// A count a page makes of the things it can see, written digit by digit with no separator - the way
@@ -44,13 +58,14 @@ public static class Plural
     /// <param name="singular">The noun of the one: <c>row</c>.</param>
     /// <param name="plural">The noun of every other count, when it is not the singular plus an <c>s</c>.</param>
     public static string Of(long count, string singular, string? plural = null) =>
-        string.Create(CultureInfo.InvariantCulture, $"{count:#,0} {NounOf(count, singular, plural)}");
+        string.Create(CultureInfo.InvariantCulture, $"{count:#,0} {WordOf(count, singular, plural)}");
 
     /// <summary>
-    /// The rule itself, said once for the whole repository: a count of exactly one takes the singular, every other
-    /// count takes the given plural or, with none given, the singular plus an <c>s</c>. Private, so that no caller
-    /// can write the count-and-noun sentence or the noun alone without coming through this sentence.
+    /// The rule itself, said once for the whole repository, for nouns, verbs and pronouns alike: a count of exactly
+    /// one takes the singular, every other count takes the given plural or, with none given, the singular plus an
+    /// <c>s</c>. Private, so that no caller can write the count-and-noun sentence, the noun alone, or an agreement
+    /// word without coming through this sentence.
     /// </summary>
-    private static string NounOf(long count, string singular, string? plural) =>
+    private static string WordOf(long count, string singular, string? plural) =>
         count == 1 ? singular : plural ?? singular + "s";
 }

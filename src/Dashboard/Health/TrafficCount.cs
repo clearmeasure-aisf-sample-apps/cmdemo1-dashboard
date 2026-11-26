@@ -46,7 +46,7 @@ public sealed record TrafficCount(int Sent, int Answered, int Failed, int Unansw
 
             if (OnTheirWay > 0)
             {
-                parts.Add(Part(OnTheirWay, Plural.Noun(OnTheirWay, "on its way", "on their way")));
+                parts.Add(Part(OnTheirWay, Plural.Agreement(OnTheirWay, "on its way", "on their way")));
             }
 
             return string.Join(", ", parts);
@@ -64,7 +64,7 @@ public sealed record TrafficCount(int Sent, int Answered, int Failed, int Unansw
     public string Status(int secondsLeft) =>
         Over ? $"Done: {Counts}."
         : Sending ? string.Create(CultureInfo.InvariantCulture, $"{Counts}; {secondsLeft} s left.")
-        : $"{Counts}; waiting for {Plural.Noun(OnTheirWay, "its answer", "their answers")}.";
+        : $"{Counts}; waiting for {Plural.Agreement(OnTheirWay, "its answer", "their answers")}.";
 
     /// <summary>The event at the end of a run: <c>Traffic ended: 119 sent, 119 answered</c>.</summary>
     public string Ended(bool stopped) => $"Traffic {(stopped ? "stopped" : "ended")}: {Counts}";

@@ -132,6 +132,58 @@ public class PluralTests
             Assert.Equal("assemblies", Plural.Noun(2, "assembly", "assemblies"));
         });
 
+    // ----- The agreement word -----
+
+    /// <summary>The agreement word a sentence agrees with a count follows the same rule as the noun, and writes no
+    /// digit: the verb singular for exactly one, the verb plural for every other count, zero included - and unlike a
+    /// noun, both words are always given, so no verb ever gets an <c>s</c> declined onto it.</summary>
+    [Theory]
+    [InlineData(0, "are")]
+    [InlineData(1, "is")]
+    [InlineData(2, "are")]
+    [InlineData(1234, "are")]
+    public void TheAgreementWordTakesTheSingularForACountOfOneOnly(int count, string expected) =>
+        Assert.Equal(expected, Plural.Agreement(count, "is", "are"));
+
+    /// <summary>The pronoun phrases a sentence agrees with a count are the agreement word's too: the singular phrase
+    /// for exactly one, the plural phrase for every other count, and no phrase ever gets an <c>s</c> declined onto it,
+    /// because the plural is the one given.</summary>
+    [Theory]
+    [InlineData(0, "their answers")]
+    [InlineData(1, "its answer")]
+    [InlineData(2, "their answers")]
+    [InlineData(50, "their answers")]
+    public void TheAgreementWordTakesThePronounPhrasesItWasGiven(int count, string expected) =>
+        Assert.Equal(expected, Plural.Agreement(count, "its answer", "their answers"));
+
+    /// <summary>The agreement word is the dashboard's word and not the viewer's: a reader of German is given the word
+    /// as it was written, singular for the one and the given plural for every other count.</summary>
+    [Fact]
+    public void TheAgreementWordDoesNotChangeWithTheViewersCulture() =>
+        ViewerCulture.German(() =>
+        {
+            Assert.Equal("is", Plural.Agreement(1, "is", "are"));
+            Assert.Equal("are", Plural.Agreement(0, "is", "are"));
+            Assert.Equal("are", Plural.Agreement(2, "is", "are"));
+            Assert.Equal("its answer", Plural.Agreement(1, "its answer", "their answers"));
+            Assert.Equal("their answers", Plural.Agreement(2, "its answer", "their answers"));
+        });
+
+    /// <summary>The sentences that agree a verb or a pronoun with their count take that word from this rule rather
+    /// than from a ternary of their own: the rotation headline's <c>is</c>/<c>are</c> and the traffic line's
+    /// <c>its answer</c>/<c>their answers</c> say what the rule says, for one and for every other count.</summary>
+    [Theory]
+    [InlineData(1, "is", "its answer", "on its way")]
+    [InlineData(0, "are", "their answers", "on their way")]
+    [InlineData(2, "are", "their answers", "on their way")]
+    [InlineData(1234, "are", "their answers", "on their way")]
+    public void TheAgreementWordIsTheOneRuleForVerbsAndPronouns(int count, string verb, string pronounNoun, string pronounPhrase)
+    {
+        Assert.Equal(Plural.Agreement(count, "is", "are"), verb);
+        Assert.Equal(Plural.Agreement(count, "its answer", "their answers"), pronounNoun);
+        Assert.Equal(Plural.Agreement(count, "on its way", "on their way"), pronounPhrase);
+    }
+
     /// <summary>The sentences of the header take their noun from this rule rather than from a second copy of it: the
     /// words each level says for a total of one are singular and the words for any other total are plural, the empty
     /// sentence included - which for a total of one says "No node in the topology".</summary>

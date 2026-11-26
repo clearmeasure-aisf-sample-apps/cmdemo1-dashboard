@@ -9,7 +9,9 @@ namespace Dashboard.Tests;
 /// here: a log made with a capacity of its own, as few as one slot, the capacity that is no capacity refused by
 /// name, and the log made for two, full at two and dropping its oldest at three; a log made with nothing in it;
 /// <c>Count</c> rising one at a time until it stands at the capacity; <c>Add</c> keeping one event word for word
-/// and refusing no event by its own parameter name; <c>Newest</c> sorting by the moment the event carries rather
+/// and refusing no event by its own parameter name; <c>Latest</c> - none while the log is empty, the newest by the
+/// moment the event carries and not the last written, two events of one moment giving theirs to the one observed
+/// first, and standing as the first of <c>Newest</c>; <c>Newest</c> sorting by the moment the event carries rather
 /// than by the moment the test wrote it, and standing as a list the log does not move afterwards; and
 /// <c>AddRange</c> - nothing changing nothing, the log filled to the brim in order, more than it fits keeping the
 /// last, more than it fits after what stood in the log, a lazy sequence walked one event at a time, a sequence
@@ -133,6 +135,75 @@ public class EventLogEdgeCaseTests
         Assert.Equal("prod", held.Environment);
         Assert.Equal("Front Door", held.Node);
         Assert.Equal("ui: 2.4.14 → 2.4.15, deployed", held.Text);
+    }
+
+    // ----- Latest -----
+
+    /// <summary>A log made with nothing in it has no newest event, whatever its capacity: the answer is null, and
+    /// the empty log says it with its count, the same way a log whose newest event is none would say it.</summary>
+    [Fact]
+    public void AFreshLogHasNoLatestWhateverItsCapacity()
+    {
+        Assert.Null(new EventLog().Latest);
+        Assert.Null(new EventLog(1).Latest);
+        Assert.Null(new EventLog(3).Latest);
+    }
+
+    /// <summary>Latest is the newest by the moment the event carries, not the last written: an event written last
+    /// whose moment is the earliest is not the newest, and an event written first whose moment is the latest is.</summary>
+    [Fact]
+    public void LatestIsTheNewestByTheMomentTheEventCarriesNotTheLastWritten()
+    {
+        var log = new EventLog(3);
+        log.Add(Event(3, "third"));
+        log.Add(Event(1, "first"));
+        log.Add(Event(2, "second"));
+
+        Assert.Equal("third", log.Latest!.Text);
+    }
+
+    /// <summary>Two events of one moment give their newest to the one observed first, the one the page reads first:
+    /// the moment does not tell them apart, the order observed does.</summary>
+    [Fact]
+    public void TwoEventsOfOneMomentGiveTheirLatestToTheOneObservedFirst()
+    {
+        var log = new EventLog(3);
+        log.Add(new DashboardEvent(Now, EventKind.Traffic, EventLevel.Info, "uat", null, "first seen"));
+        log.Add(new DashboardEvent(Now, EventKind.Cluster, EventLevel.Info, "uat", "cluster", "second seen"));
+
+        Assert.Equal("first seen", log.Latest!.Text);
+    }
+
+    /// <summary>Latest stands as the first of Newest: the one event a reader takes by name is the one the page
+    /// reads first, whatever the log holds, and both are none while the log is empty.</summary>
+    [Fact]
+    public void LatestStandsAsTheFirstOfNewest()
+    {
+        var log = new EventLog(3);
+        Assert.Null(log.Latest);
+        Assert.Empty(log.Newest);
+
+        log.Add(Event(2, "second"));
+        log.Add(Event(3, "third"));
+        log.Add(Event(1, "first"));
+
+        Assert.Same(log.Newest[0], log.Latest);
+        Assert.Equal("third", log.Latest!.Text);
+    }
+
+    /// <summary>The newest the log still keeps, after it has dropped: a log of two that took a third keeps the two
+    /// newest it holds, and Latest is the first of them, not the one it dropped.</summary>
+    [Fact]
+    public void LatestIsTheNewestTheLogStillKeepsAfterItDrops()
+    {
+        var log = new EventLog(2);
+        log.Add(Event(1, "first"));
+        log.Add(Event(2, "second"));
+        log.Add(Event(3, "third"));
+
+        Assert.Equal(2, log.Count);
+        Assert.Equal("third", log.Latest!.Text);
+        Assert.Equal(["third", "second"], log.Newest.Select(entry => entry.Text));
     }
 
     // ----- Newest -----

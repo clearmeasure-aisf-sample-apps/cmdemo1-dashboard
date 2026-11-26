@@ -22,6 +22,7 @@ public class ServingAssessmentFileLayoutTests
         nameof(ServingState),
         nameof(FrontDoorAgreement),
         nameof(ServingAssessment),
+        nameof(ServingShape),
         nameof(HealthState),
         nameof(HealthClassifier),
     };

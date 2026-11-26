@@ -29,56 +29,42 @@ public sealed record ServingAssessment(
 
     public bool IsFailedOver => State == ServingState.FailedOver;
 
-    /// <summary>The shape of a deployable, which decides the words its assessment says.</summary>
-    private enum ServingShape
-    {
-        /// <summary>One node, or primaries with standbys behind them: one node is expected to serve.</summary>
-        Plain,
-
-        /// <summary>The only node of a deployable without a Front Door endpoint: it serves, or it does not.</summary>
-        OnlyNode,
-
-        /// <summary>A Front Door endpoint rotating over several primary nodes.</summary>
-        Rotation,
-    }
-
     /// <summary>
-    /// The shape of the deployable, read once from the two optional parts: a rotation outranks an only node, and a
-    /// deployable with neither is plain. Private, so the public surface and the words of the record stay its own.
+    /// The shape of the deployable, said once from the two optional parts (see <see cref="ServingShape.Of"/>): every
+    /// member below reads it instead of asking the parts again. Private, so the public surface and the words of the
+    /// record stay its own.
     /// </summary>
-    private ServingShape Shape => Rotation is not null ? ServingShape.Rotation
-        : OnlyNode is not null ? ServingShape.OnlyNode
-        : ServingShape.Plain;
+    private ServingShape Shape => ServingShape.Of(OnlyNode, Rotation);
 
     /// <summary>True when the Front Door rotates over several primary nodes.</summary>
-    public bool IsRotation => Shape == ServingShape.Rotation;
+    public bool IsRotation => Shape is ServingShape.Rotation;
 
     /// <summary>
     /// The nodes expected to serve the traffic: every healthy primary node of a rotation, and otherwise the one node
     /// <see cref="Expected"/> names (none when nothing serves or nothing is decided).
     /// </summary>
     public IReadOnlyList<NodeHealth> Serving =>
-        IsRotation && State == ServingState.Primary ? [.. Rotation!.Where(node => node.State == HealthState.Healthy)]
+        Shape is ServingShape.Rotation rotation && State == ServingState.Primary ? rotation.Healthy
         : Expected is null ? []
         : [Expected];
 
     /// <summary>The primary nodes of a rotation that are not healthy, in the order of the topology; none without a rotation.</summary>
     public IReadOnlyList<NodeHealth> OutOfRotation =>
-        IsRotation ? [.. Rotation!.Where(node => node.State != HealthState.Healthy)] : [];
+        Shape is ServingShape.Rotation rotation ? rotation.NotHealthy : [];
 
     /// <summary>The headline in the words of the deployable's shape: a rotation, an only node, or a plain deployable.</summary>
     public string Headline => Shape switch
     {
-        ServingShape.Rotation => RotationWords(Rotation!),
-        ServingShape.OnlyNode => OnlyNodeWords(OnlyNode!),
+        ServingShape.Rotation rotation => RotationWords(rotation),
+        ServingShape.Only only => OnlyNodeWords(only.Node),
         _ => PlainWords(),
     };
 
     /// <summary>A rotation names regions in the plural: the Front Door rotates over several.</summary>
-    private string RotationWords(IReadOnlyList<NodeHealth> rotation) => State switch
+    private string RotationWords(ServingShape.Rotation rotation) => State switch
     {
         ServingState.Pending => "Checking which regions serve traffic",
-        ServingState.Primary => RotationHeadline(rotation.Count, OutOfRotation),
+        ServingState.Primary => RotationHeadline(rotation.Primaries.Count, rotation.NotHealthy),
         ServingState.FailedOver => FailedOverWords(),
         _ => "No region is healthy",
     };
@@ -106,8 +92,8 @@ public sealed record ServingAssessment(
 
     /// <summary>
     /// Why the deployable failed over; null in every other state, and for a single node. It asks for the only node
-    /// itself rather than <see cref="Shape"/>: an assessment handed both a rotation and an only node (which
-    /// <see cref="Assess"/> never builds) has always told no detail.
+    /// part itself rather than <see cref="Shape"/>, where a rotation outranks it: an assessment handed both a rotation
+    /// and an only node (which <see cref="Assess"/> never builds) has always told no detail.
     /// </summary>
     public string? FailoverDetail => State != ServingState.FailedOver || OnlyNode is not null
         ? null

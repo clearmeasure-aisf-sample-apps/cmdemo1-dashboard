@@ -70,17 +70,17 @@ public sealed record AksService(
             }
 
             var service = new AksService(
-                JsonRead.Time(root, "generated"),
-                JsonRead.Text(root, "name"),
-                JsonRead.Text(root, "resourceGroup"),
-                JsonRead.Text(root, "location"),
-                AksAvailability.Read(JsonRead.Section(root, "availability")),
-                JsonRead.Text(root, "powerState"),
-                JsonRead.Text(root, "provisioningState"),
-                JsonRead.Text(root, "kubernetesVersion"),
-                JsonRead.Text(root, "tier"),
-                [.. JsonRead.Items(root, "pools").Select(AksPool.Read).OfType<AksPool>()],
-                AksMetrics.Read(JsonRead.Section(root, "metrics")));
+                Generated: JsonRead.Time(root, "generated"),
+                Name: JsonRead.Text(root, "name"),
+                ResourceGroup: JsonRead.Text(root, "resourceGroup"),
+                Location: JsonRead.Text(root, "location"),
+                Availability: AksAvailability.Read(JsonRead.Section(root, "availability")),
+                PowerState: JsonRead.Text(root, "powerState"),
+                ProvisioningState: JsonRead.Text(root, "provisioningState"),
+                KubernetesVersion: JsonRead.Text(root, "kubernetesVersion"),
+                Tier: JsonRead.Text(root, "tier"),
+                Pools: [.. JsonRead.Items(root, "pools").Select(AksPool.Read).OfType<AksPool>()],
+                Metrics: AksMetrics.Read(JsonRead.Section(root, "metrics")));
             return service is { Availability: null, PowerState: null, ProvisioningState: null }
                 ? new Parsed<AksService>(null, "the file says nothing about the service: no availability, no powerState and no provisioningState")
                 : new Parsed<AksService>(service);

@@ -452,11 +452,8 @@ public class PersonSignOffEdgeCaseTests
     [Fact]
     public void TheSignOffSaysItsFivePartsInTheirOrder()
     {
-        var culture = Thread.CurrentThread.CurrentCulture;
-        try
+        CultureScope.Runs(CultureInfo.InvariantCulture, () =>
         {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-
             Assert.Equal(
                 "PersonSignOff { Version = 2.4.11, By = pat.morgan, At = 10/01/2026 15:12:41 +00:00, "
                 + "Reason = Reviewed with the customer, ReleaseUrl = https://octopus.example.net/r/2.4.11 }",
@@ -479,11 +476,7 @@ public class PersonSignOffEdgeCaseTests
             Assert.Equal(
                 "PersonSignOff { Version = , By = , At = 10/01/2026 20:42:41 +05:30, Reason = , ReleaseUrl =  }",
                 SignOff(at: SignedAtInOtherHours).ToString());
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = culture;
-        }
+        });
     }
 
     /// <summary>

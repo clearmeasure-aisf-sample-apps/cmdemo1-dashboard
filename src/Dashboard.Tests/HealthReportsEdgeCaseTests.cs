@@ -338,11 +338,8 @@ public class HealthReportsEdgeCaseTests
     [Fact]
     public void TheReportSaysItsFourPartsInTheirOrder()
     {
-        var culture = Thread.CurrentThread.CurrentCulture;
-        try
+        CultureScope.Runs(CultureInfo.InvariantCulture, () =>
         {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-
             Assert.Equal(
                 "HealthReports { Last24Hours = HealthWindow { Reports = 24, Healthy = 23, AllHealthy = False }, "
                 + "Last7Days = HealthWindow { Reports = 166, Healthy = 164, AllHealthy = False }, LastFailure = 10/06/2026 16:13:00 +00:00, "
@@ -358,10 +355,6 @@ public class HealthReportsEdgeCaseTests
             Assert.Equal(
                 "HealthReports { Last24Hours = , Last7Days = , LastFailure = , ContainerApps =  }",
                 Reports().ToString());
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = culture;
-        }
+        });
     }
 }

@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -319,15 +318,6 @@ public class ComplexityFactsJsonRoundTripEdgeCaseTests
     {
         ArgumentNullException.ThrowIfNull(facts);
 
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return facts.ToString()!;
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
+        return CultureScope.Words(facts);
     }
 }

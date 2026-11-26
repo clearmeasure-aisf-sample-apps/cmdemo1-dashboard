@@ -34,7 +34,7 @@ public class CrapFactsEdgeCaseTests
         Assert.Equal(28.5, crap.Max);
         Assert.Equal(30.0, crap.Threshold);
         Assert.Equal(0, crap.OverThreshold);
-        Assert.Equal("CrapFacts { Max = 28.5, Threshold = 30, OverThreshold = 0 }", crap.ToString());
+        Assert.Equal("CrapFacts { Max = 28.5, Threshold = 30, OverThreshold = 0 }", CultureScope.Words(crap));
     }
 
     /// <summary>The two numbers and the count stand where they are put, at the ends of the number each stands in
@@ -99,16 +99,16 @@ public class CrapFactsEdgeCaseTests
     [Fact]
     public void ARecordSaysItsPartsInTheWordsTheRecordSaysThem()
     {
-        Assert.Equal("CrapFacts { Max = 28.5, Threshold = 30, OverThreshold = 0 }", new CrapFacts(28.5, 30, 0).ToString());
-        Assert.Equal("CrapFacts { Max = 41, Threshold = 30, OverThreshold = 3 }", new CrapFacts(41, 30, 3).ToString());
-        Assert.Equal("CrapFacts { Max = , Threshold = 30, OverThreshold = 0 }", new CrapFacts(null, 30, 0).ToString());
-        Assert.Equal("CrapFacts { Max = 28.5, Threshold = , OverThreshold = 0 }", new CrapFacts(28.5, null, 0).ToString());
-        Assert.Equal("CrapFacts { Max = 28.5, Threshold = 30, OverThreshold =  }", new CrapFacts(28.5, 30, null).ToString());
-        Assert.Equal("CrapFacts { Max = , Threshold = , OverThreshold =  }", new CrapFacts(null, null, null).ToString());
+        Assert.Equal("CrapFacts { Max = 28.5, Threshold = 30, OverThreshold = 0 }", CultureScope.Words(new CrapFacts(28.5, 30, 0)));
+        Assert.Equal("CrapFacts { Max = 41, Threshold = 30, OverThreshold = 3 }", CultureScope.Words(new CrapFacts(41, 30, 3)));
+        Assert.Equal("CrapFacts { Max = , Threshold = 30, OverThreshold = 0 }", CultureScope.Words(new CrapFacts(null, 30, 0)));
+        Assert.Equal("CrapFacts { Max = 28.5, Threshold = , OverThreshold = 0 }", CultureScope.Words(new CrapFacts(28.5, null, 0)));
+        Assert.Equal("CrapFacts { Max = 28.5, Threshold = 30, OverThreshold =  }", CultureScope.Words(new CrapFacts(28.5, 30, null)));
+        Assert.Equal("CrapFacts { Max = , Threshold = , OverThreshold =  }", CultureScope.Words(new CrapFacts(null, null, null)));
         Assert.Equal(
             "CrapFacts { Max = 1.7976931348623157E+308, Threshold = -1.7976931348623157E+308, OverThreshold = 2147483647 }",
-            new CrapFacts(double.MaxValue, double.MinValue, int.MaxValue).ToString());
-        Assert.Equal("CrapFacts { Max = -1, Threshold = 0, OverThreshold = -2147483648 }", new CrapFacts(-1, 0, int.MinValue).ToString());
+            CultureScope.Words(new CrapFacts(double.MaxValue, double.MinValue, int.MaxValue)));
+        Assert.Equal("CrapFacts { Max = -1, Threshold = 0, OverThreshold = -2147483648 }", CultureScope.Words(new CrapFacts(-1, 0, int.MinValue)));
     }
 
     // ----- the parts the record falls apart into and the copies

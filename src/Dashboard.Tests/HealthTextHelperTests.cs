@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace Dashboard.Tests;
 
 /// <summary>
@@ -278,18 +276,5 @@ public class TrendsHelperTests
 /// </summary>
 internal static class ViewerCulture
 {
-    public static void German(Action what)
-    {
-        ArgumentNullException.ThrowIfNull(what);
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = new CultureInfo("de-DE");
-            what();
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
-    }
+    public static void German(Action what) => CultureScope.Runs("de-DE", what);
 }

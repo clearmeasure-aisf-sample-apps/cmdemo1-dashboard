@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -429,16 +428,7 @@ public class ComplexityFactsSurfaceEdgeCaseTests
     {
         ArgumentNullException.ThrowIfNull(complexity);
 
-        var reader = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            return complexity.ToString()!;
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = reader;
-        }
+        return CultureScope.Words(complexity);
     }
 
     /// <summary>The complexity one answer reports, as the dashboard reads it: the version stands so that the answer

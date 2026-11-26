@@ -199,17 +199,11 @@ public partial class DatabaseViewTests
     [InlineData(12345678, "12,345,678 rows")]
     public void ARowCountIsWrittenAsTheDiagramWritesIt(long rows, string text)
     {
-        var culture = Thread.CurrentThread.CurrentCulture;
-        try
+        // The diagram's separators are the invariant culture's, whatever the viewer's is.
+        CultureScope.Runs("de-DE", () =>
         {
-            // The diagram's separators are the invariant culture's, whatever the viewer's is.
-            Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("de-DE");
             Assert.Equal(text, DatabaseText.Rows(rows));
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = culture;
-        }
+        });
     }
 
     [Theory]

@@ -98,11 +98,8 @@ public class ComplexityFactsEdgeCaseTests
     [Fact]
     public void TheFactsSayTheirPartsInTheWordsTheRecordSaysThem()
     {
-        var culture = Thread.CurrentThread.CurrentCulture;
-        try
+        CultureScope.Runs(CultureInfo.InvariantCulture, () =>
         {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-
             Assert.Equal("ComplexityFacts { Average = 1.9, Max = 34, Methods = 5210 }", new ComplexityFacts(1.9, 34, 5210).ToString());
             Assert.Equal("ComplexityFacts { Average = 1, Max = 4, Methods = 2 }", new ComplexityFacts(1.0, 4, 2).ToString());
             Assert.Equal("ComplexityFacts { Average = 0, Max = 0, Methods = 0 }", new ComplexityFacts(0.0, 0, 0).ToString());
@@ -111,11 +108,7 @@ public class ComplexityFactsEdgeCaseTests
             Assert.Equal("ComplexityFacts { Average = NaN, Max = , Methods =  }", new ComplexityFacts(double.NaN, null, null).ToString());
             Assert.Equal("ComplexityFacts { Average = , Max = 34, Methods =  }", new ComplexityFacts(null, 34, null).ToString());
             Assert.Equal("ComplexityFacts { Average = , Max = , Methods =  }", new ComplexityFacts(null, null, null).ToString());
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = culture;
-        }
+        });
     }
 
     /// <summary>The zero and the negative zero the average may stand on are two words the record says and one
@@ -124,11 +117,8 @@ public class ComplexityFactsEdgeCaseTests
     [Fact]
     public void TheZeroAndTheNegativeZeroAreTwoWordsAndOneRecord()
     {
-        var culture = Thread.CurrentThread.CurrentCulture;
-        try
+        CultureScope.Runs(CultureInfo.InvariantCulture, () =>
         {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-
             var zero = new ComplexityFacts(0.0, 34, 5210);
             var negativeZero = new ComplexityFacts(-0.0, 34, 5210);
 
@@ -136,11 +126,7 @@ public class ComplexityFactsEdgeCaseTests
             Assert.Equal("ComplexityFacts { Average = -0, Max = 34, Methods = 5210 }", negativeZero.ToString());
             Assert.Equal(zero, negativeZero);
             Assert.Equal(zero.GetHashCode(), negativeZero.GetHashCode());
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = culture;
-        }
+        });
     }
 
     // ----- the records that are one

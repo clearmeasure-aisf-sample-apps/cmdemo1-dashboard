@@ -361,14 +361,14 @@ public class ServingStateEdgeCaseTests
     [InlineData((ServingState)5, false)]
     public void FailedOverIsTheOneServingStateThatHasFailedOver(ServingState state, bool failedOver)
     {
-        var assessment = new ServingAssessment(state, West, null, FrontDoorAgreement.NotPresent, null);
+        var assessment = new ServingAssessment(state, West, null, null);
 
         Assert.Equal(state, assessment.State);
         Assert.Equal(failedOver, assessment.IsFailedOver);
 
         // The other parts of the record say nothing to the member: without the node expected to serve, with the same
-        // node handed as the only one, and behind a Front Door that disagrees, the state is the whole answer.
-        var otherParts = assessment with { Expected = null, OnlyNode = West, FrontDoor = FrontDoorAgreement.Disagrees, FrontDoorState = HealthState.Healthy };
+        // node handed as the only one, and behind a healthy Front Door endpoint, the state is the whole answer.
+        var otherParts = assessment with { Expected = null, OnlyNode = West, FrontDoorState = HealthState.Healthy };
 
         Assert.Equal(failedOver, otherParts.IsFailedOver);
     }

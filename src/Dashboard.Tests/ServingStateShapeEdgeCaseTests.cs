@@ -19,10 +19,10 @@ public class ServingStateShapeEdgeCaseTests
 
     private static ServingAssessment Plain(ServingState state) =>
         new(state, state is ServingState.Primary or ServingState.FailedOver ? (state == ServingState.Primary ? West : Standby) : null,
-            state == ServingState.FailedOver ? East : null, FrontDoorAgreement.NotPresent, null);
+            state == ServingState.FailedOver ? East : null, null);
 
     private static ServingAssessment OnlyNode(ServingState state) =>
-        new(state, state is ServingState.Primary or ServingState.FailedOver ? One : null, null, FrontDoorAgreement.NotPresent, null, One);
+        new(state, state is ServingState.Primary or ServingState.FailedOver ? One : null, null, null, One);
 
     private static ServingAssessment Rotation(ServingState state) =>
         new(state, state switch
@@ -30,7 +30,7 @@ public class ServingStateShapeEdgeCaseTests
             ServingState.Primary => West,
             ServingState.FailedOver => Standby,
             _ => null,
-        }, null, FrontDoorAgreement.Agrees, HealthState.Healthy, null, [West, East]);
+        }, null, HealthState.Healthy, null, [West, East]);
 
     [Theory]
     [InlineData(ServingState.NoNodes, "No nodes in the topology")]
@@ -68,20 +68,20 @@ public class ServingStateShapeEdgeCaseTests
     }
 
     [Theory]
-    [InlineData(ServingState.NoNodes, "No region is healthy")]
-    [InlineData(ServingState.Pending, "Checking which regions serve traffic")]
-    [InlineData(ServingState.Primary, "Front Door rotates over 1 of 2 regions: eastus2 is not healthy")]
-    [InlineData(ServingState.FailedOver, "Failed over to centralus")]
-    [InlineData(ServingState.Down, "No region is healthy")]
-    [InlineData((ServingState)5, "No region is healthy")]
-    public void ARotationHasOneHeadlinePerState(ServingState state, string headline)
+    [InlineData(ServingState.NoNodes, "No region is healthy", "Front Door is being checked.")]
+    [InlineData(ServingState.Pending, "Checking which regions serve traffic", "Front Door is being checked.")]
+    [InlineData(ServingState.Primary, "Front Door rotates over 1 of 2 regions: eastus2 is not healthy", "Front Door agrees: it is healthy.")]
+    [InlineData(ServingState.FailedOver, "Failed over to centralus", "Front Door agrees: it is healthy.")]
+    [InlineData(ServingState.Down, "No region is healthy", "Front Door disagrees: it is healthy although no node is.")]
+    [InlineData((ServingState)5, "No region is healthy", "Front Door disagrees: it is healthy although no node is.")]
+    public void ARotationHasOneHeadlinePerState(ServingState state, string headline, string frontDoor)
     {
         var assessment = Rotation(state);
 
         Assert.Equal(headline, assessment.Headline);
         Assert.True(assessment.IsRotation);
         Assert.Equal(["eastus2"], assessment.OutOfRotation.Select(node => node.Label));
-        Assert.Equal("Front Door agrees: it is healthy.", assessment.FrontDoorText);
+        Assert.Equal(frontDoor, assessment.FrontDoorText);
     }
 
     [Theory]

@@ -258,6 +258,56 @@ public class ContainerAppReportsEdgeCaseTests
     }
 
     /// <summary>
+    /// The far side of the two hours, the way the guard bounds them now: the two hours are an age, not a signed
+    /// difference, so a moment more than two hours ahead of the clock is no news either. An hour ahead still stands
+    /// within them and is said "just now", the very two hours ahead stands at the edge and is still said, one
+    /// second past them is no longer said, and a report stamped a day ahead - the host with the bad clock, or the
+    /// offset written that is not the one the report ended at - is said <c>no recent hourly check</c>, not
+    /// "just now": the exact failure the two hours exist to catch.
+    /// </summary>
+    [Theory]
+    [InlineData(3600, true, "just now")]
+    [InlineData(7200, true, "just now")]
+    [InlineData(7201, false, null)]
+    [InlineData(86400, false, null)]
+    public void TheFarSideOfTheTwoHoursBoundedBothWaysIsSaidAndNotSaid(int secondsAhead, bool recent, string? ago)
+    {
+        var last = new HourlyCheck(HourlyCheck.Healthy, Now.AddSeconds(secondsAhead));
+        var reports = Reports("ui", last);
+
+        if (recent)
+        {
+            Assert.Equal(last, HourlyCheckText.RecentResult(reports, Now));
+            Assert.Equal($"hourly: healthy, {ago}", HourlyCheckText.Result(reports, Now));
+        }
+        else
+        {
+            Assert.Null(HourlyCheckText.RecentResult(reports, Now));
+            Assert.Equal(HourlyCheckText.NoRecentCheck, HourlyCheckText.Result(reports, Now));
+        }
+    }
+
+    /// <summary>
+    /// The far side of the two hours in the tooltip, the way the guard now says it: a report stamped a day ahead of
+    /// the clock is not the newest result, so the tooltip says the stale sentence - none in the last two hours, so
+    /// the box says no recent hourly check - and the line says the same. The newest report the box shows and the
+    /// words the tooltip makes of it standing on the same facts, not on a future stamp taken as "just now".
+    /// </summary>
+    [Fact]
+    public void TheTooltipOfAReportStampedADayAheadSaysNoRecentCheck()
+    {
+        var reports = Reports("ui", new HourlyCheck(HourlyCheck.Healthy, Now.AddDays(1)), new HealthWindow(24, 23));
+
+        Assert.Null(HourlyCheckText.RecentResult(reports, Now));
+        Assert.Equal(HourlyCheckText.NoRecentCheck, HourlyCheckText.Result(reports, Now));
+        Assert.Contains(
+            "The last report that asked it ended 2026-10-08 01:30 +00:00 (just now) and found it healthy: "
+            + "none in the last two hours, so the box says no recent hourly check.",
+            HourlyCheckText.Title(reports, Now, Utc),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// The line says the same in the hours the moment is written in: the report ended twenty-seven minutes before
     /// the box was asked, and the moment stands on the same instant spelled in the hours five and a half east of the
     /// meridian - the line the box shows, and not a line of the viewer's own clock.

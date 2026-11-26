@@ -506,3 +506,19 @@ public static class HealthStates
     public static HealthSummary Summary(params HealthState[] states) =>
         HealthSummary.Of(states);
 }
+
+/// <summary>
+/// The deployable-name boundary the address and <see cref="ApplicationText.IsName(string)" /> hold a name to: the
+/// longest name taken, sixty-four letters and digits, and the name one character past it. Three test files spelled
+/// these out on their own - a 64-character literal twice and a builder once (#1118) - so a change to the bound had to
+/// be chased into each; they now share these two, and <see cref="ApplicationNamesObjectMotherTests" /> holds them to
+/// the bound the class itself declares. They are constants so an <c>[InlineData]</c> may name them.
+/// </summary>
+public static class ApplicationNames
+{
+    /// <summary>The longest deployable name the address takes - 64 characters of letters and digits.</summary>
+    public const string Longest = "n123456789012345678901234567890123456789012345678901234567890123";
+
+    /// <summary>One character past the longest deployable name the address takes.</summary>
+    public const string LongestPlusOne = Longest + "4";
+}

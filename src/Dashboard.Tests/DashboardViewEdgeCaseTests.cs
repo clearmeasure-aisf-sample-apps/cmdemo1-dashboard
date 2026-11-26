@@ -42,12 +42,6 @@ namespace Dashboard.Tests;
 /// </remarks>
 public class DashboardViewEdgeCaseTests
 {
-    /// <summary>The longest deployable name the address takes - 64 characters of letters and digits.</summary>
-    private const string NameOf64 = "n123456789012345678901234567890123456789012345678901234567890123";
-
-    /// <summary>One character past the longest deployable name the address takes.</summary>
-    private const string NameOf65 = NameOf64 + "4";
-
     // ------------------------------------------------------------------ the four views, as a vocabulary
 
     /// <summary>
@@ -557,8 +551,8 @@ public class DashboardViewEdgeCaseTests
         Assert.Equal("runtime/uat", new ViewAddress(DashboardView.Runtime, "uat", Application: "ui.server").ToHash());
         Assert.Equal("runtime/uat", new ViewAddress(DashboardView.Runtime, "uat", Application: string.Empty).ToHash());
         Assert.Equal("runtime/uat", new ViewAddress(DashboardView.Runtime, "uat", Application: " ").ToHash());
-        Assert.Equal("runtime/uat", new ViewAddress(DashboardView.Runtime, "uat", Application: NameOf65).ToHash());
-        Assert.Equal($"runtime/uat/app/{NameOf64}", new ViewAddress(DashboardView.Runtime, "uat", Application: NameOf64).ToHash());
+        Assert.Equal("runtime/uat", new ViewAddress(DashboardView.Runtime, "uat", Application: ApplicationNames.LongestPlusOne).ToHash());
+        Assert.Equal($"runtime/uat/app/{ApplicationNames.Longest}", new ViewAddress(DashboardView.Runtime, "uat", Application: ApplicationNames.Longest).ToHash());
         Assert.Equal("runtime/uat/app/UI", new ViewAddress(DashboardView.Runtime, "uat", Application: "UI").ToHash());
         Assert.Equal("runtime/uat/app/-_", new ViewAddress(DashboardView.Runtime, "uat", Application: "-_").ToHash());
     }
@@ -688,14 +682,14 @@ public class DashboardViewEdgeCaseTests
     [Fact]
     public void TheFivePartsComeOutOfAnAddressInTheOrderTheyWentIn()
     {
-        var address = new ViewAddress(DashboardView.Runtime, "uat", Database: true, Application: NameOf64, Audience: WorkAudience.Team);
+        var address = new ViewAddress(DashboardView.Runtime, "uat", Database: true, Application: ApplicationNames.Longest, Audience: WorkAudience.Team);
 
         var (view, environment, database, application, audience) = address;
 
         Assert.Equal(DashboardView.Runtime, view);
         Assert.Equal("uat", environment);
         Assert.True(database);
-        Assert.Equal(NameOf64, application);
+        Assert.Equal(ApplicationNames.Longest, application);
         Assert.Equal(WorkAudience.Team, audience);
         Assert.Equal(address, new ViewAddress(view, environment, database, application, audience));
         Assert.Equal(address.GetHashCode(), new ViewAddress(view, environment, database, application, audience).GetHashCode());

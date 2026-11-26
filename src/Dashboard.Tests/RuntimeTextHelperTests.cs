@@ -6,8 +6,6 @@ namespace Dashboard.Tests;
 /// </summary>
 public class RuntimeTextHelperTests
 {
-    private const string NameOf64 = "n123456789012345678901234567890123456789012345678901234567890123";
-
     [Theory]
     [InlineData("ui", true)]
     [InlineData("UI", true)]
@@ -15,10 +13,10 @@ public class RuntimeTextHelperTests
     [InlineData("ui_server", true)]
     [InlineData("ui2", true)]
     [InlineData("-_-", true)]
-    [InlineData(NameOf64, true)]
+    [InlineData(ApplicationNames.Longest, true)]
     [InlineData(null, false)]
     [InlineData("", false)]
-    [InlineData(NameOf64 + "5", false)]
+    [InlineData(ApplicationNames.LongestPlusOne, false)]
     [InlineData("ui.server", false)]
     [InlineData("ui+1", false)]
     [InlineData("ui server", false)]

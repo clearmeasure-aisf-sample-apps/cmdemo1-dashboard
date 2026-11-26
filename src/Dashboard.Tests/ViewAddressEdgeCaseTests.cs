@@ -12,9 +12,6 @@ namespace Dashboard.Tests;
 /// </summary>
 public sealed class ViewAddressEdgeCaseTests
 {
-    private static readonly string NameOf64 = new('a', 64);
-    private static readonly string NameOf65 = new('a', 65);
-
     private static ViewAddress Runtime(string environment, bool database = false, string? application = null) =>
         new(DashboardView.Runtime, environment, database, application);
 
@@ -43,11 +40,11 @@ public sealed class ViewAddressEdgeCaseTests
     [Fact]
     public void ADeployableNameOfSixtyFourIsTakenAndOfSixtyFiveIsRefused()
     {
-        var longest = ViewAddress.Parse($"runtime/uat/app/{NameOf64}");
-        var tooLong = ViewAddress.Parse($"runtime/uat/app/{NameOf65}");
+        var longest = ViewAddress.Parse($"runtime/uat/app/{ApplicationNames.Longest}");
+        var tooLong = ViewAddress.Parse($"runtime/uat/app/{ApplicationNames.LongestPlusOne}");
 
-        Assert.Equal(Runtime("uat", application: NameOf64), longest);
-        Assert.Equal($"runtime/uat/app/{NameOf64}", longest.ToHash());
+        Assert.Equal(Runtime("uat", application: ApplicationNames.Longest), longest);
+        Assert.Equal($"runtime/uat/app/{ApplicationNames.Longest}", longest.ToHash());
 
         Assert.Equal(Runtime("uat"), tooLong);
         Assert.Null(tooLong.Application);

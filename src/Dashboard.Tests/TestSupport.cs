@@ -188,6 +188,31 @@ public static class NodeObservations
 }
 
 /// <summary>
+/// The one way a test calls the node detector: the events of one endpoint between two observations,
+/// given the moment and whether the endpoint is a node or its Front Door. The environment and deployable
+/// default to the words the event tests have always used; a test that needs other words names them.
+/// The two event test files used to declare their own copies of this call, and the copies were letter
+/// for letter the same - so a third event test would write the copy again, and the day the audience
+/// or the region changed the two files would say different things about the same endpoint.
+/// </summary>
+public static class EventCalls
+{
+    /// <summary>
+    /// The events of one endpoint between <paramref name="before" /> and <paramref name="after" /> at
+    /// <paramref name="at" />, for the environment and deployable named. A Front Door endpoint reports
+    /// its state only: no restart, no version, no health check.
+    /// </summary>
+    public static IReadOnlyList<DashboardEvent> Node(
+        NodeObservation before,
+        NodeObservation after,
+        bool isNode = true,
+        DateTimeOffset at = default,
+        string environment = "uat",
+        string deployable = "ui") =>
+        EventDetector.Node(before, after, environment, deployable, isNode ? "westus3" : "Front Door", isNode, at);
+}
+
+/// <summary>
 /// The one way a test asks a question as a reader of another culture: the thread's culture is set for the
 /// lifetime of the scope and put back as it was found when the scope ends, whatever the question did.
 /// </summary>

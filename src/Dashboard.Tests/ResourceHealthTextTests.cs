@@ -105,4 +105,49 @@ public class ResourceHealthTextTests
             $"{ResourceHealthText.Source}\nkv: available (by Resource Health), read 2026-10-04 21:37 +00:00. No incidents reported.",
             words.Title);
     }
+
+    // #688: the words of a box are this file's; what ResourceHealthTests.ABoxWithoutIdsHasNoWords and
+    // ResourceHealthTests.WithoutATimeTheLineHasNoAge alone asserted is folded in below, so those two can go.
+
+    /// <summary>No ids is no words - whether the file was read or not (the no-report half was ResourceHealthTests' alone).</summary>
+    [Fact]
+    public void ANullOrEmptyListOfIdsHasNoWordsWithOrWithoutAReport()
+    {
+        foreach (var report in new[] { Report(), null })
+        {
+            Assert.Null(ResourceHealthText.Of(null, report, Now, TimeZoneInfo.Utc));
+            Assert.Null(ResourceHealthText.Of([], report, Now, TimeZoneInfo.Utc));
+            Assert.Null(ResourceHealthText.Of(null, report, null, TimeZoneInfo.Utc));
+            Assert.Null(ResourceHealthText.Of([], report, null, TimeZoneInfo.Utc));
+        }
+    }
+
+    /// <summary>
+    /// With no <c>now</c>, a box of one from any source keeps its word and its origin, carries no age and is muted (the
+    /// provisioning-state row was ResourceHealthTests' alone).
+    /// </summary>
+    [Theory]
+    [InlineData(KeyVault, "Available", "Resource Health")]
+    [InlineData(Identity, "Provisioned", "provisioning state")]
+    [InlineData(App, "Not known", "no Resource Health")]
+    [InlineData("/s/missing", "Not known", "not in the hourly reading")]
+    public void WithoutATimeEveryBoxOfOneHasNoAgeAndIsMuted(string id, string label, string line)
+    {
+        var words = ResourceHealthText.Of([id], Report(), null, TimeZoneInfo.Utc)!;
+
+        Assert.Equal((label, line, HealthTone.Muted), (words.Label, words.Line, words.Tone));
+        Assert.DoesNotContain(" ago", words.Title, StringComparison.Ordinal);
+    }
+
+    /// <summary>A box finds its resource in the file whatever the case of its id, and names it as the box spells it.</summary>
+    [Fact]
+    public void ABoxFindsItsResourceWhateverTheCaseOfItsId()
+    {
+        var words = ResourceHealthText.Of([KeyVault.ToUpperInvariant()], Report(), Now, TimeZoneInfo.Utc)!;
+
+        Assert.Equal(("Available", "Resource Health, 40 min ago", "plain"), (words.Label, words.Line, words.Tone));
+        Assert.Equal(
+            $"{ResourceHealthText.Source}\nKV: available (by Resource Health), read 2026-10-04 21:37 +00:00 (40 min ago). No incidents reported.",
+            words.Title);
+    }
 }

@@ -11,6 +11,14 @@ namespace Dashboard.Health;
 /// <c>runtime/</c>, its own build facts.</description></item>
 /// </list>
 /// Neither one edits the path it is given beyond the slashes that join it: what is asked for is what was written.
+/// <para>
+/// The one join the two readings of a base share - the base, without its trailing slash, one slash, and the path,
+/// without its leading one - stands in <see cref="UriExtensions.Join(string, string)" />: <see cref="Combine" />
+/// says it with the base taken up to its path, and <see cref="UriExtensions.AppendPath(Uri, string)" /> says it
+/// with the base as it stands, which the release link <see cref="LinkText.Release(Uri?, string?)" /> and the
+/// diagram file of the runtime view say through. The segment a caller joins is the caller's own, and its escaping
+/// stays with the caller.
+/// </para>
 /// </summary>
 public static class ProbeUrl
 {
@@ -31,8 +39,7 @@ public static class ProbeUrl
     {
         ArgumentNullException.ThrowIfNull(baseAddress);
         ArgumentNullException.ThrowIfNull(path);
-        var root = baseAddress.GetLeftPart(UriPartial.Path).TrimEnd('/');
-        return new Uri($"{root}/{path.TrimStart('/')}", UriKind.Absolute);
+        return UriExtensions.Join(baseAddress.GetLeftPart(UriPartial.Path), path);
     }
 
     /// <summary>
@@ -59,4 +66,56 @@ public static class ProbeUrl
 
         return baseAddress is null ? relative : new Uri(baseAddress, relative);
     }
+}
+
+/// <summary>
+/// The one join the page says of a path that comes after an address, held in one place so that the places that
+/// build an address from a base and a path - the probe's <see cref="ProbeUrl.Combine"/>, the release link
+/// <see cref="LinkText.Release(Uri?, string?)"/>, the diagram file of the runtime view - all say it the same way:
+/// the base, without its trailing slash, one slash, and the path, without its leading one. The join edits nothing
+/// but the slashes between the base and the path: the segment a caller joins is the caller's own, and its escaping
+/// stays with the caller.
+/// <para>
+/// The callers read the base two ways, and the join serves both: <see cref="ProbeUrl.Combine" /> takes a node's
+/// base up to its path, so the query and the fragment the base carried do not stand in the address the probe asks
+/// at; <see cref="AppendPath(Uri, string)"/> takes the base as it stands, so the link the caller builds is the
+/// address the deployment wrote and nothing else - the fragment of an Octopus project page keeps the release the
+/// join writes under it.
+/// </para>
+/// <para>
+/// The refusals answer in this order: what is missing is said before what is wrong, a base address that is not
+/// there is refused first by the name <c>baseAddress</c>, then a path that is not there by the name <c>path</c>,
+/// and only then a base address that is relative to a page, which the address itself refuses in the framework's
+/// own words and naming no argument - the very sentence it says when its <see cref="Uri.AbsoluteUri"/> is read.
+/// </para>
+/// </summary>
+public static class UriExtensions
+{
+    /// <summary>
+    /// The address a path comes after: <paramref name="baseAddress"/> as it stands and <paramref name="path"/>,
+    /// joined with exactly one slash, as the absolute address the link leads to.
+    /// </summary>
+    /// <param name="baseAddress">The base address. It must be absolute.</param>
+    /// <param name="path">The path that comes after it, with or without its front slash; its escaping is the
+    /// caller's, and the join edits it not at all.</param>
+    /// <returns>The joined address, absolute as the base is.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="baseAddress"/> is null, or else <paramref name="path"/> is.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="baseAddress"/> is relative, and neither argument is null.</exception>
+    public static Uri AppendPath(this Uri baseAddress, string path)
+    {
+        ArgumentNullException.ThrowIfNull(baseAddress);
+        ArgumentNullException.ThrowIfNull(path);
+        return Join(baseAddress.AbsoluteUri, path);
+    }
+
+    /// <summary>
+    /// The one join the readings of a base share: <paramref name="root"/>, without its trailing slash, one slash,
+    /// and <paramref name="path"/>, without its leading one, parsed back into the absolute address it spells.
+    /// Neither argument is null here: the readings that call this refuse a missing argument by name before they
+    /// reach the join.
+    /// </summary>
+    /// <param name="root">The base, as its reading says it: up to its path, or as it stands.</param>
+    /// <param name="path">The path that comes after it, with or without its front slash.</param>
+    internal static Uri Join(string root, string path) =>
+        new($"{root.TrimEnd('/')}/{path.TrimStart('/')}", UriKind.Absolute);
 }

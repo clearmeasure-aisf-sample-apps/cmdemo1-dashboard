@@ -71,12 +71,12 @@ public class BuildInfoParseBoundaryEdgeCaseTests
         Assert.Null(BuildInfo.Parse("""{ "analysis": { "qodanaProblems": 1e300 } }"""));
     }
 
-    /// <summary>A fractional count is rounded to the nearest whole, a half to the even neighbour.</summary>
+    /// <summary>A fractional count is rounded to the nearest whole, a half away from zero.</summary>
     [Theory]
     [InlineData("0.4", 0)]
-    [InlineData("0.5", 0)]
+    [InlineData("0.5", 1)]
     [InlineData("1.5", 2)]
-    [InlineData("2.5", 2)]
+    [InlineData("2.5", 3)]
     [InlineData("2.6", 3)]
     [InlineData("3e1", 30)]
     public void AFractionalCountOfProblemsIsRounded(string said, int expected) =>

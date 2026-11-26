@@ -329,13 +329,13 @@ public class ComplexityFactsEdgeCaseTests
 
     /// <summary>The count the file says as a number that is not a whole count is counted whole, the way the
     /// number is counted whole: the count above the half between two whole counts counted to the next whole
-    /// above, and the count at the half between two whole counts counted to the even whole between them.</summary>
+    /// above, and the count at the half between two whole counts counted to the whole above it, away from zero.</summary>
     [Fact]
     public void ACountSaidAsANumberThatIsNotWholeIsCountedWhole()
     {
         var build = BuildInfo.Parse("""{ "complexity": { "average": 1, "max": 3.6, "methods": 2.5 } }""");
 
-        Assert.Equal(new ComplexityFacts(1.0, 4, 2), build!.Complexity);
+        Assert.Equal(new ComplexityFacts(1.0, 4, 3), build!.Complexity);
     }
 
     /// <summary>The part the file does not say as a number is no part: the number that is negative, the number

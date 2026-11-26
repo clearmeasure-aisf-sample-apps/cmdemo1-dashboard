@@ -3,7 +3,7 @@ namespace Dashboard.Tests;
 /// <summary>
 /// The read-path boundaries of <see cref="ComplexityFacts" /> left open by <see cref="ComplexityFactsEdgeCaseTests" />:
 /// the average past the end of the number, the counts that round across the top of the count, the counts that round
-/// to the even whole, the exponent and the negative zero a build file may write, the section that is a list, the part
+/// up from the half, the exponent and the negative zero a build file may write, the section that is a list, the part
 /// that is true or false, and the part named in another case. Every answer is a fixed text the test brings; nothing
 /// here reaches the network or the clock.
 /// </summary>
@@ -38,15 +38,15 @@ public class ComplexityFactsReadEdgeCaseTests
         Assert.Equal(new ComplexityFacts(1.9, expected, expected), facts);
     }
 
-    /// <summary>A count said at the half rounds to the even whole on both sides of it, and below the half rounds to
+    /// <summary>A count said at the half rounds away from zero, up to the next whole on both sides of it (#1328), and below the half rounds to
     /// the zero that is a count.</summary>
     [Theory]
     [InlineData("0.4", 0)]
-    [InlineData("0.5", 0)]
+    [InlineData("0.5", 1)]
     [InlineData("1.5", 2)]
     [InlineData("33.5", 34)]
-    [InlineData("34.5", 34)]
-    public void ACountAtTheHalfRoundsToTheEvenWhole(string count, int expected)
+    [InlineData("34.5", 35)]
+    public void ACountAtTheHalfRoundsUpToTheNextWhole(string count, int expected)
     {
         Assert.Equal(new ComplexityFacts(null, expected, expected), ComplexityOf($$"""{ "max": {{count}}, "methods": {{count}} }"""));
     }

@@ -4,7 +4,7 @@ namespace Dashboard.Tests;
 /// The edges of <see cref="BuildInfo.Parse" /> that <see cref="BuildInfoTests" />, <see cref="BuildInfoEdgeCaseTests" />,
 /// <see cref="BuildInfoParseBoundaryEdgeCaseTests" /> and <see cref="BuildInfoParseWordsEdgeCaseTests" /> leave open:
 /// the rounding of the <c>code</c> section's numbers (a language whose lines round to zero is no language, a half
-/// goes to the even neighbour), the files of the size at the very end of their range, a language past the reader's
+/// goes away from zero), the files of the size at the very end of their range, a language past the reader's
 /// end beside one within it, a language's name trimmed or said as another kind, and the moment at the first and the
 /// last a <see cref="DateTimeOffset" /> holds. Every input is a fixed string; nothing reaches the network or reads
 /// the clock.
@@ -13,14 +13,15 @@ public class BuildInfoCodeRoundingEdgeCaseTests
 {
     private static CodeSize Code(string section) => BuildInfo.Parse($$"""{ "code": {{section}} }""")!.Code!;
 
-    /// <summary>A language's lines are rounded before the reader asks whether there are any: below a half, and the
-    /// half itself, round to zero and the language is dropped; above it the language is kept with one line.</summary>
+    /// <summary>A language's lines are rounded before the reader asks whether there are any: below a half they round
+    /// to zero and the language is dropped; the half itself, and above it, the language is kept with one line - a half
+    /// rounds away from zero (#1328).</summary>
     [Theory]
     [InlineData("0.4", null)]
-    [InlineData("0.5", null)]
+    [InlineData("0.5", 1L)]
     [InlineData("0.6", 1L)]
     [InlineData("1.5", 2L)]
-    [InlineData("2.5", 2L)]
+    [InlineData("2.5", 3L)]
     public void ALanguagesLinesAreRoundedBeforeTheyAreCounted(string lines, long? expected)
     {
         var code = Code($$"""{ "files": 1, "languages": [ { "name": "YAML", "lines": {{lines}} } ] }""");
@@ -37,22 +38,22 @@ public class BuildInfoCodeRoundingEdgeCaseTests
         }
     }
 
-    /// <summary>The lines the file says are rounded too, a half to the even neighbour.</summary>
+    /// <summary>The lines the file says are rounded too, a half away from zero.</summary>
     [Theory]
     [InlineData("84210.4", 84_210L)]
-    [InlineData("84210.5", 84_210L)]
+    [InlineData("84210.5", 84_211L)]
     [InlineData("84211.5", 84_212L)]
-    [InlineData("0.5", 0L)]
+    [InlineData("0.5", 1L)]
     public void TheLinesOfCodeAreRounded(string said, long expected) =>
         Assert.Equal(expected, Code($$"""{ "linesOfCode": {{said}} }""").LinesOfCode);
 
-    /// <summary>A language's files are a count: rounded, a half to the even neighbour.</summary>
+    /// <summary>A language's files are a count: rounded, a half away from zero.</summary>
     [Fact]
     public void ALanguagesFilesAreRounded()
     {
         var code = Code("""{ "languages": [ { "name": "C#", "lines": 10, "files": 2.5 }, { "name": "SQL", "lines": 5, "files": 3.5 } ] }""");
 
-        Assert.Equal([new LanguageSize("C#", 10, 2), new LanguageSize("SQL", 5, 4)], code.Languages);
+        Assert.Equal([new LanguageSize("C#", 10, 3), new LanguageSize("SQL", 5, 4)], code.Languages);
     }
 
     /// <summary>The size's files run to the largest <see cref="int" />: one past it is no count, and a section of

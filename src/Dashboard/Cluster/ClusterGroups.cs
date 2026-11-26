@@ -143,7 +143,7 @@ public sealed record ClusterGroups(IReadOnlyList<NamespaceGroup> Environments, I
         var index = EnvironmentIndex.Of(environments);
         return new ClusterGroups(
             [.. index.Named.Select(environment =>
-                status.Namespaces.FirstOrDefault(space => string.Equals(space.Name, environment.Namespace, StringComparison.Ordinal)) is { } space
+                status.Namespaces.FirstOrDefault(space => new KubernetesNamespace(environment.Namespace).Is(space.Name)) is { } space
                     ? NamespaceGroup.Of(space, environment, asOf)
                     : new NamespaceGroup(environment.Namespace!, environment, false, [], []))],
             [.. status.Namespaces

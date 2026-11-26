@@ -16,10 +16,10 @@ public class ServingStateRecordEdgeCaseTests
     private static readonly NodeHealth North = new("app-north", "northeurope", true, HealthState.Healthy);
 
     private static ServingAssessment Plain(ServingState state, NodeHealth? expected, NodeHealth? failedPrimary = null) =>
-        new(state, expected, failedPrimary, FrontDoorAgreement.NotPresent, null);
+        new(state, expected, failedPrimary, null);
 
     private static ServingAssessment Rotation(ServingState state, NodeHealth? expected) =>
-        new(state, expected, null, FrontDoorAgreement.Agrees, HealthState.Healthy, null, [West, East, North]);
+        new(state, expected, null, HealthState.Healthy, null, [West, East, North]);
 
     /// <summary>The two serving states read the expected node's label for their headline, so a plain assessment that
     /// names no expected node cannot say its headline at all.</summary>

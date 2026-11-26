@@ -18,11 +18,11 @@ public class ServingAssessmentTests
                 State: ServingState.Primary,
                 Expected: east,
                 FailedPrimary: null,
-                FrontDoor: FrontDoorAgreement.Disagrees,
                 FrontDoorState: Unreachable,
                 OnlyNode: null,
                 Rotation: assessment.Rotation),
             assessment);
+        Assert.Equal(FrontDoorAgreement.Disagrees, assessment.FrontDoor);
         Assert.Equal(new[] { west, east }, assessment.Rotation);
     }
 
@@ -39,11 +39,11 @@ public class ServingAssessmentTests
                 State: ServingState.FailedOver,
                 Expected: east,
                 FailedPrimary: west,
-                FrontDoor: FrontDoorAgreement.Agrees,
                 FrontDoorState: Healthy,
                 OnlyNode: null,
                 Rotation: null),
             assessment);
+        Assert.Equal(FrontDoorAgreement.Agrees, assessment.FrontDoor);
     }
 
     [Fact]
@@ -58,11 +58,11 @@ public class ServingAssessmentTests
                 State: ServingState.Primary,
                 Expected: only,
                 FailedPrimary: null,
-                FrontDoor: FrontDoorAgreement.NotPresent,
                 FrontDoorState: null,
                 OnlyNode: only,
                 Rotation: null),
             assessment);
+        Assert.Equal(FrontDoorAgreement.NotPresent, assessment.FrontDoor);
     }
 
     [Fact]

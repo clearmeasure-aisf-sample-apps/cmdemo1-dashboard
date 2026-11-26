@@ -15,17 +15,26 @@ namespace Dashboard.Health;
 /// The primary nodes the Front Door rotates over, in the order of the topology; null for a deployable that is not a
 /// rotation. <see cref="Expected"/> is then the first of them that is healthy.
 /// </param>
+/// <param name="FrontDoorState">
+/// The state of the deployable's Front Door endpoint; null when it has none. The one part that says the endpoint:
+/// <see cref="FrontDoor"/> is read from it, so an absent endpoint and an agreement about one cannot be said apart.
+/// </param>
 public sealed record ServingAssessment(
     ServingState State,
     NodeHealth? Expected,
     NodeHealth? FailedPrimary,
-    FrontDoorAgreement FrontDoor,
     HealthState? FrontDoorState,
     NodeHealth? OnlyNode = null,
     IReadOnlyList<NodeHealth>? Rotation = null)
 {
     /// <summary>How many nodes that left a rotation the headline names before it counts the rest.</summary>
     public const int MostNamed = 3;
+
+    /// <summary>
+    /// Whether the Front Door endpoint shows what the nodes predict, read from <see cref="FrontDoorState"/> and
+    /// <see cref="State"/>: <see cref="FrontDoorAgreement.NotPresent"/> exactly when there is no endpoint.
+    /// </summary>
+    public FrontDoorAgreement FrontDoor => Compare(State, FrontDoorState);
 
     public bool IsFailedOver => State == ServingState.FailedOver;
 
@@ -133,9 +142,9 @@ public sealed record ServingAssessment(
     }
 
     /// <summary>
-    /// The one way a decision becomes an assessment: the Front Door parts are compared and handed over the same for
-    /// every shape, and the shape is the one of <paramref name="onlyNode"/> and <paramref name="rotation"/> that is set
-    /// (<paramref name="onlyNode"/> for a lone node without a Front Door endpoint, <paramref name="rotation"/> for the
+    /// The one way a decision becomes an assessment: the Front Door endpoint is handed over the same for every shape
+    /// (the agreement is read from it), and the shape is the one of <paramref name="onlyNode"/> and
+    /// <paramref name="rotation"/> that is set (<paramref name="onlyNode"/> for a lone node without a Front Door endpoint, <paramref name="rotation"/> for the
     /// primary nodes a Front Door rotates over, neither for a plain deployable).
     /// </summary>
     private static ServingAssessment Decided(
@@ -149,7 +158,6 @@ public sealed record ServingAssessment(
             State: state,
             Expected: expected,
             FailedPrimary: failedPrimary,
-            FrontDoor: Compare(state, frontDoor),
             FrontDoorState: frontDoor,
             OnlyNode: onlyNode,
             Rotation: rotation);

@@ -28,14 +28,14 @@ namespace Dashboard.Tests;
 /// nodes at all against every answer an endpoint may give, a wait against an endpoint unhealthy, unreachable or
 /// absent, a failover against an endpoint unreachable or unchecked, a deployable down against an endpoint unchecked or
 /// absent, and a rotation whose primaries are not all in yet; the two invariants that tie a member to the endpoint it
-/// speaks of, that <c>NotPresent</c> is the absent endpoint and nothing else and that a word is said exactly then; and
-/// the words of the two members when the endpoint has a state nobody settled on - <c>not checked</c>, and the node a
-/// disagreement names when the assessment names none.
+/// speaks of, that <c>NotPresent</c> is the absent endpoint and nothing else and that a word is said exactly then; that
+/// an endpoint nobody settled on is never said to agree or disagree (<c>not checked</c> is no longer reachable); and
+/// the node a disagreement names when the assessment names none.
 /// </para>
 /// <para>
 /// Nothing here reaches the network and nothing asks a clock what time is: every input is a node, an endpoint state or
-/// a member the test brings, and the few assessments that stand on a combination the decision itself never produces
-/// are built by hand, which is the only way the fallbacks of those words can be stood on at all.
+/// a member the test brings. The agreement is read from the endpoint's state, so an assessment built by hand can no
+/// longer hold an agreement that contradicts the endpoint beside it.
 /// </para>
 /// </summary>
 public class FrontDoorAgreementEdgeCaseTests
@@ -85,13 +85,23 @@ public class FrontDoorAgreementEdgeCaseTests
     /// that stands by until none of the primaries is healthy.</summary>
     private static NodeHealth[] RotationFor(ServingState state) => ShapesFor(state).Rotation;
 
-    /// <summary>An assessment holding the agreement and the endpoint's state exactly as they are given - the shapes the
-    /// decision never produces, which are the only way the words of an unsettled endpoint can be read at all.</summary>
+    /// <summary>An assessment holding the serving state and the endpoint's state exactly as they are given, built by
+    /// hand: the agreement is read from the two, so no pairing of an agreement with an endpoint it contradicts can be
+    /// built.</summary>
     private static ServingAssessment Shaped(
         ServingState state,
-        FrontDoorAgreement agreement,
         HealthState? frontDoor,
-        NodeHealth? expected = null) => new(state, expected, null, agreement, frontDoor);
+        NodeHealth? expected = null) => new(state, expected, null, frontDoor);
+
+    /// <summary>The endpoint state that makes each agreement for a node serving as primary: none, unchecked, healthy as
+    /// the node is, and unreachable while the node is healthy.</summary>
+    private static HealthState? EndpointFor(FrontDoorAgreement agreement) => agreement switch
+    {
+        FrontDoorAgreement.NotPresent => null,
+        FrontDoorAgreement.Pending => Pending,
+        FrontDoorAgreement.Agrees => Healthy,
+        _ => Unreachable,
+    };
 
     // --------------------------------------------- the four agreements, as the numbers and words they are
 
@@ -166,8 +176,8 @@ public class FrontDoorAgreementEdgeCaseTests
         Assert.Equal(FrontDoorAgreement.NotPresent, default);
         Assert.Equal(FrontDoorAgreement.NotPresent, (FrontDoorAgreement)0);
 
-        // The nothing of an agreement no one reached says the same words as the nothing of an endpoint there is not.
-        var unsettled = Shaped(ServingState.Primary, default, Healthy, Primary(Healthy));
+        // The nothing of an agreement is the nothing of an endpoint there is not, and says no words.
+        var unsettled = Shaped(ServingState.Primary, null, Primary(Healthy));
 
         Assert.Null(unsettled.FrontDoorText);
         Assert.Equal(FrontDoorAgreement.NotPresent, unsettled.FrontDoor);
@@ -486,83 +496,91 @@ public class FrontDoorAgreementEdgeCaseTests
 
     // ---------------------------------------------------- the words each agreement is said in, at the edges
 
-    /// <summary><see cref="FrontDoorAgreement.NotPresent" /> says nothing at all, whatever state the assessment holds
-    /// for the endpoint beside it: the arm of the agreement is read before the state, so an absent endpoint cannot be
-    /// described as healthy by a record that was handed one - the decision never pairs the two, and a record built by
-    /// hand can.</summary>
+    /// <summary><see cref="FrontDoorAgreement.NotPresent" /> is said of no endpoint and of nothing else, and then says
+    /// nothing at all: an assessment handed an endpoint in any state is about that endpoint, so an absent endpoint
+    /// can no longer be paired with a healthy one, by the decision or by hand.</summary>
     [Theory]
     [InlineData(null)]
     [InlineData(Pending)]
     [InlineData(Healthy)]
     [InlineData(Unhealthy)]
     [InlineData(Unreachable)]
-    public void ANotPresentAgreementSaysNothingWhicheverStateItHolds(HealthState? frontDoor) =>
-        Assert.Null(Shaped(ServingState.Primary, FrontDoorAgreement.NotPresent, frontDoor, Primary(Healthy)).FrontDoorText);
-
-    /// <summary><see cref="FrontDoorAgreement.Pending" /> says the one sentence of the wait whatever the endpoint's own
-    /// state was: an endpoint checked and found unhealthy is still no comparison, while the nodes it would be compared
-    /// with are undecided - and the sentence does not read the state at all.</summary>
-    [Theory]
-    [InlineData(null)]
-    [InlineData(Pending)]
-    [InlineData(Healthy)]
-    [InlineData(Unhealthy)]
-    [InlineData(Unreachable)]
-    public void APendingAgreementSaysTheWaitWhicheverStateItHolds(HealthState? frontDoor) =>
-        Assert.Equal("Front Door is being checked.", Shaped(ServingState.Pending, FrontDoorAgreement.Pending, frontDoor, Primary(Pending)).FrontDoorText);
-
-    /// <summary>The two agreements that read the endpoint's state say <c>not checked</c> of a state that is
-    /// <see cref="HealthState.Pending" /> just as they say it of no state at all: the decision lands on neither pairing
-    /// - an endpoint unchecked makes the agreement <c>Pending</c> - so the words of the unsettled state are pinned on
-    /// the records the page builds its own comparisons into, one letter for one agreement.</summary>
-    [Theory]
-    [InlineData(Pending)]
-    [InlineData(null)]
-    public void AnAgreementAboutAnUnsettledEndpointSaysItIsNotChecked(HealthState? frontDoor)
+    public void ANotPresentAgreementIsSaidOfNoEndpointAndSaysNothing(HealthState? frontDoor)
     {
-        var expected = Primary(Healthy);
+        var assessment = Shaped(ServingState.Primary, frontDoor, Primary(Healthy));
 
-        Assert.Equal("Front Door agrees: it is not checked too.", Shaped(ServingState.Primary, FrontDoorAgreement.Agrees, frontDoor, expected).FrontDoorText);
-        Assert.Equal("Front Door disagrees: it is not checked although westus3 is healthy.", Shaped(ServingState.Primary, FrontDoorAgreement.Disagrees, frontDoor, expected).FrontDoorText);
+        Assert.Equal(frontDoor is null, assessment.FrontDoor == FrontDoorAgreement.NotPresent);
+        Assert.Equal(frontDoor is null, assessment.FrontDoorText is null);
+    }
+
+    /// <summary><see cref="FrontDoorAgreement.Pending" /> says the one sentence of the wait whatever state an endpoint
+    /// that is there was in: an endpoint checked and found unhealthy is still no comparison, while the nodes it would be
+    /// compared with are undecided - and the sentence does not read the state at all. No endpoint is no wait.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData(Pending)]
+    [InlineData(Healthy)]
+    [InlineData(Unhealthy)]
+    [InlineData(Unreachable)]
+    public void APendingAgreementSaysTheWaitWhicheverStateTheEndpointHolds(HealthState? frontDoor) =>
+        Assert.Equal(frontDoor is null ? null : "Front Door is being checked.", Shaped(ServingState.Pending, frontDoor, Primary(Pending)).FrontDoorText);
+
+    /// <summary>The two agreements that read the endpoint's state are never said of an endpoint that is
+    /// <see cref="HealthState.Pending" /> or of no endpoint at all, not even by a record built by hand: an endpoint
+    /// unchecked makes the agreement <c>Pending</c> and no endpoint makes it <c>NotPresent</c>, whether the nodes serve
+    /// (where it would agree) or not (where it would disagree) - so <c>not checked</c> is said of no endpoint.</summary>
+    [Theory]
+    [InlineData(Pending)]
+    [InlineData(null)]
+    public void AnAgreementIsNeverAboutAnUnsettledEndpoint(HealthState? frontDoor)
+    {
+        var unsettled = frontDoor is null ? FrontDoorAgreement.NotPresent : FrontDoorAgreement.Pending;
+        var serving = Shaped(ServingState.Primary, frontDoor, Primary(Healthy));
+        var down = Shaped(ServingState.Down, frontDoor);
+
+        Assert.Equal(unsettled, serving.FrontDoor);
+        Assert.Equal(unsettled, down.FrontDoor);
+        Assert.Equal(frontDoor is null ? null : "Front Door is being checked.", serving.FrontDoorText);
+        Assert.Equal(frontDoor is null ? null : "Front Door is being checked.", down.FrontDoorText);
     }
 
     /// <summary>A disagreement names the node that serves, and where an assessment names none it names <c>a node</c>:
     /// the fallback of the words, read here beside each state the endpoint holds - unhealthy, unreachable and the two
     /// that say <c>not checked</c>. The sentence of a healthy endpoint that has no node to disagree with is the decision
-    /// own and is pinned in <see cref="ServingAssessmentTests" />; the rest of these pairings the decision never
-    /// produces, since an assessment with no node named is undecided and an undecided agreement is
-    /// <see cref="FrontDoorAgreement.Pending" />.</summary>
+    /// own and is pinned in <see cref="ServingAssessmentTests" />; the rest of these the decision never produces, since
+    /// a serving state always names its node. An endpoint unchecked or absent is no disagreement at all: it is the wait,
+    /// or no words.</summary>
     [Theory]
     [InlineData(Unhealthy, "Front Door disagrees: it is unhealthy although a node is healthy.")]
     [InlineData(Unreachable, "Front Door disagrees: it is unreachable although a node is healthy.")]
-    [InlineData(Pending, "Front Door disagrees: it is not checked although a node is healthy.")]
-    [InlineData(null, "Front Door disagrees: it is not checked although a node is healthy.")]
-    public void ADisagreementNamesTheNodeItHasOrANodeAtAll(HealthState? frontDoor, string words) =>
-        Assert.Equal(words, Shaped(ServingState.Down, FrontDoorAgreement.Disagrees, frontDoor).FrontDoorText);
+    [InlineData(Pending, "Front Door is being checked.")]
+    [InlineData(null, null)]
+    public void ADisagreementNamesTheNodeItHasOrANodeAtAll(HealthState? frontDoor, string? words) =>
+        Assert.Equal(words, Shaped(ServingState.Primary, frontDoor).FrontDoorText);
 
     // ------------------------------------------------------------------- the agreement as a part of the record
 
-    /// <summary>The agreement is a part of the assessment like any other: it stands where it is given, <c>with</c>
-    /// changes it and nothing else of the record - the state, the nodes, the rotation, the headline, the failover and
-    /// the endpoint's own state all read the same with any of the four worn - and the words about the endpoint are the
-    /// one thing it moves, said exactly for the three agreements that are about an endpoint and not for
+    /// <summary>The endpoint is a part of the assessment like any other: it stands where it is given, <c>with</c>
+    /// changes it and nothing else of the record - the state, the nodes, the rotation, the headline and the failover all
+    /// read the same whatever the endpoint answered - and the agreement and the words about the endpoint are the one
+    /// thing it moves, said exactly when there is an endpoint and not for
     /// <see cref="FrontDoorAgreement.NotPresent" />.</summary>
     [Fact]
-    public void TheAgreementIsOnePartOfTheAssessmentAndMovesNoOther()
+    public void TheEndpointIsOnePartOfTheAssessmentAndMovesOnlyItsAgreement()
     {
         var node = Primary(Healthy);
-        var one = Shaped(ServingState.Primary, FrontDoorAgreement.Agrees, Healthy, node);
+        var one = Shaped(ServingState.Primary, Healthy, node);
 
         foreach (var agreement in Enum.GetValues<FrontDoorAgreement>())
         {
-            var moved = one with { FrontDoor = agreement };
+            var moved = one with { FrontDoorState = EndpointFor(agreement) };
 
             Assert.Equal(agreement, moved.FrontDoor);
             Assert.Equal(agreement == FrontDoorAgreement.NotPresent, moved.FrontDoorText is null);
             Assert.Equal(one.State, moved.State);
             Assert.Equal(one.Expected, moved.Expected);
             Assert.Equal(one.FailedPrimary, moved.FailedPrimary);
-            Assert.Equal(one.FrontDoorState, moved.FrontDoorState);
+            Assert.Equal(EndpointFor(agreement), moved.FrontDoorState);
             Assert.Equal(one.OnlyNode, moved.OnlyNode);
             Assert.Equal(one.Rotation, moved.Rotation);
             Assert.Equal(one.IsFailedOver, moved.IsFailedOver);
@@ -579,19 +597,19 @@ public class FrontDoorAgreementEdgeCaseTests
         Assert.Equal(one, one with { });
         Assert.NotSame(one, one with { });
 
-        Assert.Equal(one, one with { FrontDoor = FrontDoorAgreement.Agrees });
-        Assert.NotEqual(one, one with { FrontDoor = FrontDoorAgreement.Disagrees });
-        Assert.NotEqual(one.GetHashCode(), (one with { FrontDoor = FrontDoorAgreement.Disagrees }).GetHashCode());
-        Assert.True(one != Shaped(ServingState.Primary, FrontDoorAgreement.Pending, Healthy, node));
+        Assert.Equal(one, one with { FrontDoorState = EndpointFor(FrontDoorAgreement.Agrees) });
+        Assert.NotEqual(one, one with { FrontDoorState = EndpointFor(FrontDoorAgreement.Disagrees) });
+        Assert.NotEqual(one.GetHashCode(), (one with { FrontDoorState = EndpointFor(FrontDoorAgreement.Disagrees) }).GetHashCode());
+        Assert.True(one != Shaped(ServingState.Primary, EndpointFor(FrontDoorAgreement.Pending), node));
 
         // The one part it does move: the words about the endpoint, said for three of the four and not for the fourth.
-        Assert.NotEqual(one.FrontDoorText, (one with { FrontDoor = FrontDoorAgreement.Disagrees }).FrontDoorText);
-        Assert.NotEqual(one.FrontDoorText, (one with { FrontDoor = FrontDoorAgreement.NotPresent }).FrontDoorText);
+        Assert.NotEqual(one.FrontDoorText, (one with { FrontDoorState = EndpointFor(FrontDoorAgreement.Disagrees) }).FrontDoorText);
+        Assert.NotEqual(one.FrontDoorText, (one with { FrontDoorState = EndpointFor(FrontDoorAgreement.NotPresent) }).FrontDoorText);
     }
 
-    /// <summary>Every one of the four worn by an assessment of the same nodes and the same endpoint state is another
-    /// assessment, and none of them is one with the nothing of an assessment: the agreement is compared with the other
-    /// parts and not read out of them, so two records that differ only in it are two records.</summary>
+    /// <summary>Every one of the four, reached by an assessment of the same nodes and the endpoint state that makes it,
+    /// is another assessment, and none of them is one with the nothing of an assessment: the agreement is read out of
+    /// the endpoint's state, so two records that differ in it differ in the endpoint and are two records.</summary>
     [Theory]
     [InlineData(FrontDoorAgreement.NotPresent)]
     [InlineData(FrontDoorAgreement.Pending)]
@@ -600,11 +618,11 @@ public class FrontDoorAgreementEdgeCaseTests
     public void EachAgreementMakesAnAssessmentOfItsOwn(FrontDoorAgreement agreement)
     {
         var node = Primary(Healthy);
-        var one = Shaped(ServingState.Primary, agreement, Healthy, node);
+        var one = Shaped(ServingState.Primary, EndpointFor(agreement), node);
 
         Assert.Equal(agreement, one.FrontDoor);
-        Assert.Equal(one, Shaped(ServingState.Primary, agreement, Healthy, node));
-        Assert.Equal(one.GetHashCode(), Shaped(ServingState.Primary, agreement, Healthy, node).GetHashCode());
+        Assert.Equal(one, Shaped(ServingState.Primary, EndpointFor(agreement), node));
+        Assert.Equal(one.GetHashCode(), Shaped(ServingState.Primary, EndpointFor(agreement), node).GetHashCode());
         Assert.False(one.Equals(null));
         Assert.False(one.Equals(agreement));
 
@@ -616,7 +634,7 @@ public class FrontDoorAgreementEdgeCaseTests
 
         foreach (var other in Enum.GetValues<FrontDoorAgreement>())
         {
-            Assert.Equal(other == agreement, one.Equals(Shaped(ServingState.Primary, other, Healthy, node)));
+            Assert.Equal(other == agreement, one.Equals(Shaped(ServingState.Primary, EndpointFor(other), node)));
         }
     }
 

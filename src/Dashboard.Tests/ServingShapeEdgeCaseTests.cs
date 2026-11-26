@@ -79,7 +79,7 @@ public class ServingShapeEdgeCaseTests
     {
         var only = onlyNode ? One : null;
         IReadOnlyList<NodeHealth>? primaries = rotation ? [West, East] : null;
-        var assessment = new ServingAssessment(ServingState.Primary, West, null, FrontDoorAgreement.NotPresent, null, only, primaries);
+        var assessment = new ServingAssessment(ServingState.Primary, West, null, null, only, primaries);
 
         Assert.Equal(isRotation, ServingShape.Of(only, primaries) is ServingShape.Rotation);
         Assert.Equal(isRotation, assessment.IsRotation);

@@ -9,9 +9,9 @@ namespace Dashboard.Tests;
 /// <summary>
 /// The boundary, null/empty and fixed-value tests of <see cref="ServingAssessment" /> - the record
 /// <c>src/Dashboard/Health/ServingAssessment.cs</c> declares for which node of a deployable is expected to serve its
-/// traffic, and whether the Front Door endpoint agrees: the seven parts the record keeps, the seven words and lists it
+/// traffic, and whether the Front Door endpoint agrees: the six parts the record keeps, the eight words and lists it
 /// works out of them, the one decision <see cref="ServingAssessment.Assess" /> makes, and the record the compiler
-/// builds around the seven parts.
+/// builds around the six parts.
 /// <para>
 /// What is pinned where it belongs, and is not repeated here: <see cref="ServingAssessmentTests" /> pins the decision
 /// for a primary and a standby - which state a set of nodes lands in, the headline and the failover detail of each,
@@ -33,12 +33,12 @@ namespace Dashboard.Tests;
 /// in it at all, and the naming stopping at <see cref="ServingAssessment.MostNamed" /> - that constant itself, three,
 /// and a constant; the failover reason refusing to say anything for a single node that failed over, and saying the
 /// state it blames in the words of that state, the unchecked one and the state the enum does not name included; the
-/// Front Door sentence reading the agreement first and the state second, and falling back to its own words for a
-/// state it was never told and a node it was never given; the seven parts standing where they are handed, the last
+/// Front Door sentence reading the agreement out of the endpoint, and falling back to its own words for a
+/// state it was never told and a node it was never given; the six parts standing where they are handed, the last
 /// two of them absent when they are not handed at all; and the record around them - two assessments being one while
-/// their parts are, a rotation being one with the list it holds and with no copy of it, the seven parts falling apart,
-/// the copy that moves one part and carries six, the words the assessment says of itself, and its surface, so that the
-/// day an eighth part is added the list below says so.
+/// their parts are, a rotation being one with the list it holds and with no copy of it, the six parts falling apart,
+/// the copy that moves one part and carries five, the words the assessment says of itself, and its surface, so that the
+/// day a seventh part is added the list below says so.
 /// </para>
 /// <para>
 /// Nothing here reaches the network and nothing asks a clock what time it is: an assessment is worked out of the
@@ -54,7 +54,7 @@ public class ServingAssessmentEdgeCaseTests
     /// <summary>The fourteen members an assessment says of itself, in the order the record declares them.</summary>
     private static readonly string[] Spoken =
     [
-        "State = ", "Expected = ", "FailedPrimary = ", "FrontDoor = ", "FrontDoorState = ", "OnlyNode = ", "Rotation = ",
+        "State = ", "Expected = ", "FailedPrimary = ", "FrontDoorState = ", "OnlyNode = ", "Rotation = ", "FrontDoor = ",
         "IsFailedOver = ", "IsRotation = ", "Serving = ", "OutOfRotation = ", "Headline = ", "FailoverDetail = ", "FrontDoorText = ",
     ];
 
@@ -236,7 +236,7 @@ public class ServingAssessmentEdgeCaseTests
     [Fact]
     public void ARotationOfNoNodesIsStillARotation()
     {
-        var empty = new ServingAssessment(ServingState.Primary, null, null, FrontDoorAgreement.Agrees, Healthy, null, []);
+        var empty = new ServingAssessment(ServingState.Primary, null, null, Healthy, null, []);
 
         Assert.NotNull(empty.Rotation);
         Assert.Empty(empty.Rotation!);
@@ -290,7 +290,7 @@ public class ServingAssessmentEdgeCaseTests
         var stranger = Standby(Healthy, "elsewhere");
         var rotation = new List<NodeHealth> { Primary(Healthy, "a"), Primary(Unhealthy, "b") };
 
-        var assessment = new ServingAssessment(ServingState.Primary, stranger, null, FrontDoorAgreement.Agrees, Healthy, null, rotation);
+        var assessment = new ServingAssessment(ServingState.Primary, stranger, null, Healthy, null, rotation);
 
         Assert.Equal(["a"], Labels(assessment.Serving));
         Assert.DoesNotContain(stranger, assessment.Serving);
@@ -300,7 +300,6 @@ public class ServingAssessmentEdgeCaseTests
             ServingState.Primary,
             stranger,
             null,
-            FrontDoorAgreement.Agrees,
             Healthy,
             null,
             [Primary(Unhealthy, "a"), Primary(Unreachable, "b")]);
@@ -310,7 +309,7 @@ public class ServingAssessmentEdgeCaseTests
         Assert.Equal(["a", "b"], Labels(noneHealthy.OutOfRotation));
         Assert.Equal("Front Door rotates over 0 of 2 regions: a and b are not healthy", noneHealthy.Headline);
 
-        var undecided = new ServingAssessment(ServingState.Pending, null, null, FrontDoorAgreement.Pending, Pending);
+        var undecided = new ServingAssessment(ServingState.Pending, null, null, Pending);
 
         Assert.Null(undecided.Expected);
         Assert.Empty(undecided.Serving);
@@ -367,7 +366,7 @@ public class ServingAssessmentEdgeCaseTests
     public void TheWordsOfARotationOutrankTheWordsOfASingleNode()
     {
         var rotation = new List<NodeHealth> { Primary(Healthy, "a"), Primary(Unhealthy, "b") };
-        var both = new ServingAssessment(ServingState.Primary, rotation[0], null, FrontDoorAgreement.NotPresent, null, rotation[1], rotation);
+        var both = new ServingAssessment(ServingState.Primary, rotation[0], null, null, rotation[1], rotation);
 
         Assert.NotNull(both.OnlyNode);
         Assert.True(both.IsRotation);
@@ -452,7 +451,6 @@ public class ServingAssessmentEdgeCaseTests
             ServingState.FailedOver,
             node,
             failedPrimary ? blame : null,
-            FrontDoorAgreement.NotPresent,
             null,
             onlyNode ? node : null);
 
@@ -468,7 +466,7 @@ public class ServingAssessmentEdgeCaseTests
     public void ASingleNodeSaysNoReasonWhateverElseIsMissing()
     {
         var node = Primary(Healthy, "a");
-        var assessment = new ServingAssessment(ServingState.FailedOver, null, null, FrontDoorAgreement.NotPresent, null, node);
+        var assessment = new ServingAssessment(ServingState.FailedOver, null, null, null, node);
 
         Assert.True(assessment.IsFailedOver);
         Assert.Null(assessment.Expected);
@@ -493,7 +491,6 @@ public class ServingAssessmentEdgeCaseTests
             ServingState.FailedOver,
             Standby(Healthy, "eastus2"),
             Primary(state, "westus3"),
-            FrontDoorAgreement.Agrees,
             Healthy);
 
         Assert.Equal($"Primary westus3 is {word}; eastus2 is expected to serve traffic.", assessment.FailoverDetail);
@@ -540,90 +537,100 @@ public class ServingAssessmentEdgeCaseTests
 
     // ----- FrontDoorText
 
-    /// <summary>The agreement is read first and the state of the endpoint second, never the other way round: an
-    /// assessment that says there is no endpoint says nothing even with a healthy state standing behind it, and an
-    /// assessment that says the check has not run names the check and not the state - the absent one, the unchecked
-    /// one or the one a check left behind.</summary>
+    /// <summary>The agreement is read out of the endpoint and the serving state, never handed beside them: no endpoint
+    /// is no agreement and says nothing whatever the nodes decided, and an endpoint unchecked, or one beside nodes
+    /// still undecided, names the check and not the state - the unchecked one or the one a check left behind.</summary>
     [Theory]
-    [InlineData(FrontDoorAgreement.NotPresent, Healthy, null)]
-    [InlineData(FrontDoorAgreement.NotPresent, Pending, null)]
-    [InlineData(FrontDoorAgreement.NotPresent, null, null)]
-    [InlineData(FrontDoorAgreement.Pending, Pending, "Front Door is being checked.")]
-    [InlineData(FrontDoorAgreement.Pending, null, "Front Door is being checked.")]
-    [InlineData(FrontDoorAgreement.Pending, Unhealthy, "Front Door is being checked.")]
-    public void TheAgreementIsReadBeforeTheStateItGoesWith(FrontDoorAgreement agreement, HealthState? frontDoor, string? text)
+    [InlineData(ServingState.Primary, null, FrontDoorAgreement.NotPresent, null)]
+    [InlineData(ServingState.Down, null, FrontDoorAgreement.NotPresent, null)]
+    [InlineData(ServingState.Pending, null, FrontDoorAgreement.NotPresent, null)]
+    [InlineData(ServingState.Primary, Pending, FrontDoorAgreement.Pending, "Front Door is being checked.")]
+    [InlineData(ServingState.Pending, Healthy, FrontDoorAgreement.Pending, "Front Door is being checked.")]
+    [InlineData(ServingState.Pending, Unhealthy, FrontDoorAgreement.Pending, "Front Door is being checked.")]
+    public void TheAgreementIsReadOutOfTheEndpointAndTheState(ServingState state, HealthState? frontDoor, FrontDoorAgreement agreement, string? text)
     {
-        var assessment = new ServingAssessment(ServingState.Primary, Primary(Healthy, "a"), null, agreement, frontDoor);
+        var assessment = new ServingAssessment(state, Primary(Healthy, "a"), null, frontDoor);
 
         Assert.Equal(agreement, assessment.FrontDoor);
         Assert.Equal(frontDoor, assessment.FrontDoorState);
         Assert.Equal(text, assessment.FrontDoorText);
     }
 
-    /// <summary>A state the endpoint was never checked to is said as the file's own words for it - "not checked" -
-    /// whether the agreement is an accord or a contradiction, and whether the state is the absent one, the unchecked
-    /// one or a number the enum does not name. And a contradiction with no node named as the expected one says "a
-    /// node", which is the sentence's own fallback for the nothing a Pending decision leaves in that part.</summary>
+    /// <summary>An endpoint that is absent or unchecked is never an accord or a contradiction - it is no words, or the
+    /// wait - so "not checked" is said of neither. Only a number the enum does not name is compared, and said as the
+    /// file's own words for it, "not checked", whether the agreement is an accord (nodes down) or a contradiction
+    /// (nodes serving). And a contradiction with no node named as the expected one says "a node", which is the
+    /// sentence's own fallback for the nothing a hand-made assessment leaves in that part.</summary>
     [Theory]
-    [InlineData(null)]
-    [InlineData(Pending)]
-    [InlineData(Unknown)]
-    public void AFrontDoorStateThatIsNoStateIsSaidAsNotChecked(HealthState? frontDoor)
+    [InlineData(null, null, null, null, null)]
+    [InlineData(
+        Pending,
+        "Front Door is being checked.",
+        "Front Door is being checked.",
+        "Front Door is being checked.",
+        "Front Door is being checked.")]
+    [InlineData(
+        Unknown,
+        "Front Door agrees: it is not checked too.",
+        "Front Door disagrees: it is not checked although westus3 is healthy.",
+        "Front Door disagrees: it is not checked although a node is healthy.",
+        "Front Door disagrees: it is not checked although app-west is healthy.")]
+    public void AFrontDoorStateThatIsNoStateIsSaidAsNotCheckedOnlyWhenItIsANumber(
+        HealthState? frontDoor, string? agreeing, string? disagreeing, string? unnamed, string? named)
     {
         var west = Primary(Healthy, "westus3");
-        var agrees = new ServingAssessment(ServingState.Primary, west, null, FrontDoorAgreement.Agrees, frontDoor);
-        var disagrees = agrees with { FrontDoor = FrontDoorAgreement.Disagrees };
+        var agrees = new ServingAssessment(ServingState.Down, null, null, frontDoor);
+        var disagrees = new ServingAssessment(ServingState.Primary, west, null, frontDoor);
         var nameless = disagrees with { Expected = null };
 
         Assert.Equal(frontDoor, agrees.FrontDoorState);
-        Assert.Equal("Front Door agrees: it is not checked too.", agrees.FrontDoorText);
-        Assert.Equal("Front Door disagrees: it is not checked although westus3 is healthy.", disagrees.FrontDoorText);
-        Assert.Equal("Front Door disagrees: it is not checked although a node is healthy.", nameless.FrontDoorText);
+        Assert.Equal(agreeing, agrees.FrontDoorText);
+        Assert.Equal(disagreeing, disagrees.FrontDoorText);
+        Assert.Equal(unnamed, nameless.FrontDoorText);
 
         // The node is named by its label, and a node of no region by the name the topology gave it.
         Assert.Equal(
-            "Front Door disagrees: it is not checked although app-west is healthy.",
+            named,
             (nameless with { Expected = new NodeHealth("app-west", null, true, Unhealthy) }).FrontDoorText);
     }
 
-    /// <summary>What is none of the four agreements is a contradiction as far as the words go - the last arm of the
-    /// member answers for everything the file does not name - and it still reads the state of the endpoint before it
-    /// reads the node: a healthy endpoint contradicts a page that names no node, anything else contradicts the node it
-    /// was given.</summary>
+    /// <summary>The agreement is always one of the four, even beside a serving state the enum does not name - which
+    /// serves nothing, so a healthy endpoint contradicts it - and a contradiction reads the state of the endpoint
+    /// before it reads the node: a healthy endpoint contradicts a page that names no serving node, anything else
+    /// contradicts the node it was given.</summary>
     [Theory]
-    [InlineData((FrontDoorAgreement)5, Healthy, "Front Door disagrees: it is healthy although no node is.")]
-    [InlineData((FrontDoorAgreement)(-1), Unhealthy, "Front Door disagrees: it is unhealthy although westus3 is healthy.")]
-    [InlineData((FrontDoorAgreement)(-1), Unknown, "Front Door disagrees: it is not checked although westus3 is healthy.")]
-    public void AnAgreementTheFileDoesNotNameIsSaidAsADisagreement(FrontDoorAgreement agreement, HealthState frontDoor, string text)
+    [InlineData((ServingState)5, Healthy, "Front Door disagrees: it is healthy although no node is.")]
+    [InlineData(ServingState.Primary, Unhealthy, "Front Door disagrees: it is unhealthy although westus3 is healthy.")]
+    [InlineData(ServingState.Primary, Unknown, "Front Door disagrees: it is not checked although westus3 is healthy.")]
+    public void EveryStateIsComparedIntoOneOfTheFourAndADisagreementReadsTheEndpointFirst(ServingState state, HealthState frontDoor, string text)
     {
-        var assessment = new ServingAssessment(ServingState.Primary, Primary(Healthy, "westus3"), null, agreement, frontDoor);
+        var assessment = new ServingAssessment(state, Primary(Healthy, "westus3"), null, frontDoor);
 
-        Assert.False(Enum.IsDefined(agreement));
-        Assert.Equal(agreement, assessment.FrontDoor);
+        Assert.True(Enum.IsDefined(assessment.FrontDoor));
+        Assert.Equal(FrontDoorAgreement.Disagrees, assessment.FrontDoor);
         Assert.Equal(text, assessment.FrontDoorText);
     }
 
-    // ----- the seven parts as they are handed over
+    // ----- the six parts as they are handed over
 
-    /// <summary>The record keeps the seven parts where they are handed and reads nothing out of anything else: the
-    /// nodes stand as the very instances, the agreement stands beside the state it was decided from even when the two
-    /// contradict each other, a state and an agreement the enums do not name stand as they were given, and the last
-    /// two parts are the absence of a part rather than a placeholder for one when the making says no more than the
-    /// first five.</summary>
+    /// <summary>The record keeps the six parts where they are handed: the nodes stand as the very instances, a state
+    /// the enum does not name stands as it was given, the agreement is read out of the endpoint and that state (one of
+    /// the four, never handed apart from them), and the last two parts are the absence of a part rather than a
+    /// placeholder for one when the making says no more than the first four.</summary>
     [Fact]
-    public void TheSevenPartsStandWhereTheyAreHanded()
+    public void TheSixPartsStandWhereTheyAreHanded()
     {
         var expected = Primary(Healthy, "westus3");
         var blame = Standby(Unhealthy, "eastus2");
         var only = Primary(Pending, "northeurope");
         var rotation = new List<NodeHealth> { expected, Primary(Unreachable, "uksouth") };
 
-        var assessment = new ServingAssessment((ServingState)5, expected, blame, (FrontDoorAgreement)7, Unreachable, only, rotation);
+        var assessment = new ServingAssessment((ServingState)5, expected, blame, Unreachable, only, rotation);
 
         Assert.Equal((ServingState)5, assessment.State);
         Assert.Same(expected, assessment.Expected);
         Assert.Same(blame, assessment.FailedPrimary);
-        Assert.Equal((FrontDoorAgreement)7, assessment.FrontDoor);
+        Assert.Equal(FrontDoorAgreement.Agrees, assessment.FrontDoor);
         Assert.Equal(Unreachable, assessment.FrontDoorState);
         Assert.Same(only, assessment.OnlyNode);
         Assert.Same(rotation, assessment.Rotation);
@@ -631,8 +638,8 @@ public class ServingAssessmentEdgeCaseTests
         Assert.False(assessment.IsFailedOver);
         Assert.Equal(["westus3"], Labels(assessment.Serving));
 
-        // Five parts handed, two absent: the failover is told in full, with no rotation and no single node in it.
-        var five = new ServingAssessment(ServingState.FailedOver, expected, blame, FrontDoorAgreement.Agrees, Healthy);
+        // Four parts handed, two absent: the failover is told in full, with no rotation and no single node in it.
+        var five = new ServingAssessment(ServingState.FailedOver, expected, blame, Healthy);
 
         Assert.Null(five.OnlyNode);
         Assert.Null(five.Rotation);
@@ -660,9 +667,9 @@ public class ServingAssessmentEdgeCaseTests
         Assert.Equal(frontDoor, assessment.FrontDoorState);
     }
 
-    // ----- the record the compiler builds around the seven parts
+    // ----- the record the compiler builds around the six parts
 
-    /// <summary>Two assessments are one while their seven parts are - and a rotation is one with the list it holds and
+    /// <summary>Two assessments are one while their six parts are - and a rotation is one with the list it holds and
     /// with no copy of it, because a list is compared as the list it is and not node by node. Two decisions of the
     /// very same topology are therefore one assessment when it names no rotation and two when it names one, which is
     /// why the page compares the nodes serving and the headline of a round with the last round's, and never the
@@ -673,7 +680,7 @@ public class ServingAssessmentEdgeCaseTests
         var west = Primary(Healthy, "westus3");
         var east = Primary(Unhealthy, "eastus2");
         var rotation = new List<NodeHealth> { west, east };
-        var one = new ServingAssessment(ServingState.Primary, west, null, FrontDoorAgreement.Agrees, Healthy, null, rotation);
+        var one = new ServingAssessment(ServingState.Primary, west, null, Healthy, null, rotation);
 
         var copy = one with { };
 
@@ -704,7 +711,7 @@ public class ServingAssessmentEdgeCaseTests
         Assert.False(one == one with { State = ServingState.Down });
         Assert.False(one == one with { Expected = null });
         Assert.False(one == one with { FailedPrimary = east });
-        Assert.False(one == one with { FrontDoor = FrontDoorAgreement.Disagrees });
+        Assert.False(one == one with { FrontDoorState = Pending });
         Assert.False(one == one with { FrontDoorState = Unhealthy });
         Assert.False(one == one with { OnlyNode = west });
         Assert.False(one == one with { Rotation = null });
@@ -727,43 +734,44 @@ public class ServingAssessmentEdgeCaseTests
         Assert.NotEqual(ServingAssessment.Assess(rotation, Healthy), ServingAssessment.Assess([west, east], Healthy));
     }
 
-    /// <summary>The seven parts fall apart in the order the record declares them, the last two of them the nothing
+    /// <summary>The six parts fall apart in the order the record declares them, the last two of them the nothing
     /// they were left as: what comes out is what went in, node for node and list for list, and the same for an
-    /// assessment a decision made.</summary>
+    /// assessment a decision made. The agreement is no part: it is read again out of the endpoint the parts hold.</summary>
     [Fact]
-    public void TheSevenPartsFallApartInTheOrderTheyWentIn()
+    public void TheSixPartsFallApartInTheOrderTheyWentIn()
     {
         var expected = Primary(Healthy, "westus3");
         var blame = Standby(Unhealthy, "eastus2");
         var only = Primary(Pending, "northeurope");
         var rotation = new List<NodeHealth> { expected, Primary(Unreachable, "uksouth") };
 
-        var (state, node, failed, agreement, frontDoor, single, primaries) =
-            new ServingAssessment(ServingState.FailedOver, expected, blame, FrontDoorAgreement.Disagrees, Unreachable, only, rotation);
+        var made = new ServingAssessment(ServingState.FailedOver, expected, blame, Unreachable, only, rotation);
+        var (state, node, failed, frontDoor, single, primaries) = made;
 
         Assert.Equal(ServingState.FailedOver, state);
         Assert.Same(expected, node);
         Assert.Same(blame, failed);
-        Assert.Equal(FrontDoorAgreement.Disagrees, agreement);
+        Assert.Equal(FrontDoorAgreement.Disagrees, made.FrontDoor);
         Assert.Equal(Unreachable, frontDoor);
         Assert.Same(only, single);
         Assert.Same(rotation, primaries);
 
-        var (nothing, nowhere, nobody, unchanged, unseen, alone, none) = ServingAssessment.Assess([], null);
+        var decided = ServingAssessment.Assess([], null);
+        var (nothing, nowhere, nobody, unseen, alone, none) = decided;
 
         Assert.Equal(ServingState.NoNodes, nothing);
         Assert.Null(nowhere);
         Assert.Null(nobody);
-        Assert.Equal(FrontDoorAgreement.NotPresent, unchanged);
+        Assert.Equal(FrontDoorAgreement.NotPresent, decided.FrontDoor);
         Assert.Null(unseen);
         Assert.Null(alone);
         Assert.Null(none);
 
-        // What the assessment falls apart into is what it was made of: put back in the order they came out, the seven
+        // What the assessment falls apart into is what it was made of: put back in the order they came out, the six
         // parts are the very assessment again.
         Assert.Equal(
-            new ServingAssessment(ServingState.FailedOver, expected, blame, FrontDoorAgreement.Disagrees, Unreachable, only, rotation),
-            new ServingAssessment(state, node, failed, agreement, frontDoor, single, primaries));
+            new ServingAssessment(ServingState.FailedOver, expected, blame, Unreachable, only, rotation),
+            new ServingAssessment(state, node, failed, frontDoor, single, primaries));
     }
 
     /// <summary>A copy names the parts it moves and carries the rest along: the copy that names nothing is the same
@@ -774,7 +782,7 @@ public class ServingAssessmentEdgeCaseTests
     {
         var west = Primary(Healthy, "westus3");
         var rotation = new List<NodeHealth> { west, Primary(Unhealthy, "eastus2") };
-        var one = new ServingAssessment(ServingState.Primary, west, null, FrontDoorAgreement.Agrees, Healthy, null, rotation);
+        var one = new ServingAssessment(ServingState.Primary, west, null, Healthy, null, rotation);
 
         var copy = one with { };
 
@@ -830,19 +838,19 @@ public class ServingAssessmentEdgeCaseTests
     }
 
     /// <summary>The words an assessment says of itself are its fourteen public members in the order the record
-    /// declares them - the seven parts first, then the seven worked out of them - each said in its own words: a node
+    /// declares them - the six parts first, then the eight worked out of them - each said in its own words: a node
     /// as the node says itself, an absent part as nothing at all between two commas, and a list as a list says
     /// itself, which is its type and not one word of the nodes inside it.</summary>
     [Fact]
     public void TheAssessmentSaysItsMembersInTheirOrderAndItsListsAsLists()
     {
         Assert.Equal(
-            "ServingAssessment { State = NoNodes, Expected = , FailedPrimary = , FrontDoor = NotPresent, FrontDoorState = , OnlyNode = , Rotation = , IsFailedOver = False, IsRotation = False, Serving = Dashboard.Health.NodeHealth[], OutOfRotation = Dashboard.Health.NodeHealth[], Headline = No nodes in the topology, FailoverDetail = , FrontDoorText =  }",
-            new ServingAssessment(ServingState.NoNodes, null, null, FrontDoorAgreement.NotPresent, null).ToString());
+            "ServingAssessment { State = NoNodes, Expected = , FailedPrimary = , FrontDoorState = , OnlyNode = , Rotation = , FrontDoor = NotPresent, IsFailedOver = False, IsRotation = False, Serving = Dashboard.Health.NodeHealth[], OutOfRotation = Dashboard.Health.NodeHealth[], Headline = No nodes in the topology, FailoverDetail = , FrontDoorText =  }",
+            new ServingAssessment(ServingState.NoNodes, null, null, null).ToString());
 
         var west = Primary(Healthy, "westus3");
         var rotation = new List<NodeHealth> { west, Primary(Unhealthy, "eastus2") };
-        var words = new ServingAssessment(ServingState.Primary, west, null, FrontDoorAgreement.Agrees, Healthy, null, rotation).ToString();
+        var words = new ServingAssessment(ServingState.Primary, west, null, Healthy, null, rotation).ToString();
 
         var at = -1;
 
@@ -854,14 +862,14 @@ public class ServingAssessmentEdgeCaseTests
             at = found;
         }
 
-        Assert.StartsWith($"ServingAssessment {{ State = Primary, Expected = {west}, FailedPrimary = , FrontDoor = Agrees, ", words, StringComparison.Ordinal);
+        Assert.StartsWith($"ServingAssessment {{ State = Primary, Expected = {west}, FailedPrimary = , FrontDoorState = Healthy, ", words, StringComparison.Ordinal);
         Assert.Contains("Headline = Front Door rotates over 1 of 2 regions: eastus2 is not healthy", words, StringComparison.Ordinal);
         Assert.EndsWith(" }", words, StringComparison.Ordinal);
 
         // The rotation is said as the list it is: no node of it stands between its own part and the next.
         Assert.Equal(
             "Rotation = System.Collections.Generic.List`1[Dashboard.Health.NodeHealth]",
-            words[words.IndexOf("Rotation = ", StringComparison.Ordinal)..words.IndexOf(", IsFailedOver", StringComparison.Ordinal)]);
+            words[words.IndexOf("Rotation = ", StringComparison.Ordinal)..words.IndexOf(", FrontDoor = Agrees", StringComparison.Ordinal)]);
 
         // The nodes are said once each, in the one part that names them; the single node of a deployable of one is
         // said twice, once for the part it serves as and once for the part it is on its own as.
@@ -869,12 +877,12 @@ public class ServingAssessmentEdgeCaseTests
         Assert.Equal(2, Times(ServingAssessment.Assess([west], null).ToString(), "NodeHealth {"));
     }
 
-    /// <summary>The whole public surface the record declares, as the running assembly holds it: the seven parts, the
-    /// seven it works out, the constant, the one decision, the making of an assessment by hand and everything the
+    /// <summary>The whole public surface the record declares, as the running assembly holds it: the six parts, the
+    /// eight it works out, the constant, the one decision, the making of an assessment by hand and everything the
     /// compiler adds to a positional record - and nothing else to call. A member added has to be written here as
     /// well, which is the point.</summary>
     [Fact]
-    public void TheSurfaceIsTheSevenPartsTheSevenWordsTheConstantTheDecisionAndTheRecord()
+    public void TheSurfaceIsTheSixPartsTheEightWordsTheConstantTheDecisionAndTheRecord()
     {
         Assert.Equal(
             [
@@ -882,7 +890,7 @@ public class ServingAssessmentEdgeCaseTests
                 "FrontDoorText", "GetHashCode", "Headline", "IsFailedOver", "IsRotation", "MostNamed", "OnlyNode", "OutOfRotation", "Rotation", "Serving",
                 "State", "ToString", "get_Expected", "get_FailedPrimary", "get_FailoverDetail", "get_FrontDoor", "get_FrontDoorState", "get_FrontDoorText",
                 "get_Headline", "get_IsFailedOver", "get_IsRotation", "get_OnlyNode", "get_OutOfRotation", "get_Rotation", "get_Serving", "get_State",
-                "op_Equality", "op_Inequality", "set_Expected", "set_FailedPrimary", "set_FrontDoor", "set_FrontDoorState", "set_OnlyNode", "set_Rotation",
+                "op_Equality", "op_Inequality", "set_Expected", "set_FailedPrimary", "set_FrontDoorState", "set_OnlyNode", "set_Rotation",
                 "set_State",
             ],
             [.. typeof(ServingAssessment)
@@ -892,7 +900,7 @@ public class ServingAssessmentEdgeCaseTests
                 .Order(StringComparer.Ordinal)]);
 
         Assert.Equal(
-            ["State", "Expected", "FailedPrimary", "FrontDoor", "FrontDoorState", "OnlyNode", "Rotation", "IsFailedOver", "IsRotation", "Serving", "OutOfRotation", "Headline", "FailoverDetail", "FrontDoorText"],
+            ["State", "Expected", "FailedPrimary", "FrontDoorState", "OnlyNode", "Rotation", "FrontDoor", "IsFailedOver", "IsRotation", "Serving", "OutOfRotation", "Headline", "FailoverDetail", "FrontDoorText"],
             [.. typeof(ServingAssessment).GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly).Select(property => property.Name)]);
 
         Assert.Equal(
@@ -904,17 +912,18 @@ public class ServingAssessmentEdgeCaseTests
         Assert.DoesNotContain(typeof(ServingAssessment).GetFields(BindingFlags.Instance | BindingFlags.DeclaredOnly), field => !field.IsPrivate);
     }
 
-    /// <summary>The seven parts are written at the making and read ever after, and the seven sentences are read only:
+    /// <summary>The six parts are written at the making and read ever after, and the eight sentences are read only - the
+    /// agreement among them, read out of the endpoint so it can never be written apart from it:
     /// each part a public property with a public reader no one may extend and a writer only the making and a
     /// <c>with</c> reach, the last two of them defaulted to the absence of a node and of a rotation rather than to an
     /// empty one, and each sentence without a writer at all - the two lists and the two questions never saying
     /// nothing.</summary>
     [Fact]
-    public void TheSevenPartsAreWrittenAtTheMakingAndTheSevenWordsAreReadOnly()
+    public void TheSixPartsAreWrittenAtTheMakingAndTheEightWordsAreReadOnly()
     {
         var type = typeof(ServingAssessment);
         var nullability = new NullabilityInfoContext();
-        string[] positional = ["State", "Expected", "FailedPrimary", "FrontDoor", "FrontDoorState", "OnlyNode", "Rotation"];
+        string[] positional = ["State", "Expected", "FailedPrimary", "FrontDoorState", "OnlyNode", "Rotation"];
 
         foreach (var name in positional)
         {
@@ -933,7 +942,7 @@ public class ServingAssessmentEdgeCaseTests
             Assert.Equal(NullabilityState.Nullable, nullability.Create(type.GetProperty(name)!).WriteState);
         }
 
-        foreach (var name in new[] { "State", "FrontDoor" })
+        foreach (var name in new[] { "State" })
         {
             Assert.Equal(NullabilityState.NotNull, nullability.Create(type.GetProperty(name)!).WriteState);
         }
@@ -946,7 +955,7 @@ public class ServingAssessmentEdgeCaseTests
         Assert.Equal(typeof(NodeHealth), type.GetProperty("OnlyNode")!.PropertyType);
         Assert.Equal(typeof(IReadOnlyList<NodeHealth>), type.GetProperty("Rotation")!.PropertyType);
 
-        foreach (var name in new[] { "IsFailedOver", "IsRotation", "Serving", "OutOfRotation", "Headline", "FailoverDetail", "FrontDoorText" })
+        foreach (var name in new[] { "FrontDoor", "IsFailedOver", "IsRotation", "Serving", "OutOfRotation", "Headline", "FailoverDetail", "FrontDoorText" })
         {
             var said = type.GetProperty(name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)!;
 
@@ -956,7 +965,7 @@ public class ServingAssessmentEdgeCaseTests
             Assert.False(said.GetMethod.IsVirtual);
         }
 
-        foreach (var name in new[] { "IsFailedOver", "IsRotation", "Serving", "OutOfRotation", "Headline" })
+        foreach (var name in new[] { "FrontDoor", "IsFailedOver", "IsRotation", "Serving", "OutOfRotation", "Headline" })
         {
             Assert.Equal(NullabilityState.NotNull, nullability.Create(type.GetProperty(name)!).ReadState);
         }
@@ -975,11 +984,11 @@ public class ServingAssessmentEdgeCaseTests
         var arguments = made.GetParameters();
 
         Assert.Equal(
-            ["State", "Expected", "FailedPrimary", "FrontDoor", "FrontDoorState", "OnlyNode", "Rotation"],
+            ["State", "Expected", "FailedPrimary", "FrontDoorState", "OnlyNode", "Rotation"],
             [.. arguments.Select(argument => argument.Name!)]);
-        Assert.All(arguments.Take(5), argument => Assert.False(argument.HasDefaultValue));
+        Assert.All(arguments.Take(4), argument => Assert.False(argument.HasDefaultValue));
 
-        foreach (var argument in arguments.Skip(5))
+        foreach (var argument in arguments.Skip(4))
         {
             Assert.True(argument.HasDefaultValue);
             Assert.Null(argument.DefaultValue);
@@ -1031,7 +1040,7 @@ public class ServingAssessmentEdgeCaseTests
         Assert.Equal(type, clone.ReturnType);
         Assert.Empty(clone.GetParameters());
 
-        Assert.Equal(7, type.GetMethod("Deconstruct", BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)!.GetParameters().Length);
+        Assert.Equal(6, type.GetMethod("Deconstruct", BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)!.GetParameters().Length);
 
         Assert.Equal(
             ["Equals", "GetHashCode", "ToString"],

@@ -70,7 +70,7 @@ public class FrontDoorAgreementReaderTests
         FrontDoorAgreement.Agrees => ServingAssessment.Assess(Nodes, Healthy),
         FrontDoorAgreement.Disagrees => ServingAssessment.Assess(Nodes, Unreachable),
         FrontDoorAgreement.Pending => ServingAssessment.Assess(Nodes, Pending),
-        _ => new ServingAssessment(ServingState.Primary, NodeHealths.Primary(Healthy, "westus3"), null, FrontDoorAgreement.NotPresent, null),
+        _ => new ServingAssessment(ServingState.Primary, NodeHealths.Primary(Healthy, "westus3"), null, null),
     };
 
     // The builder's Front Door tile is private, and its entry with it: the only road to the arm the public build

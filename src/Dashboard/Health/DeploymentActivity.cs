@@ -466,6 +466,6 @@ public static class DeploymentActivity
     {
         ArgumentNullException.ThrowIfNull(text);
         ArgumentOutOfRangeException.ThrowIfLessThan(length, 1);
-        return text.Length <= length ? text : $"{text[..(length - 1)].TrimEnd()}…";
+        return text.Length <= length ? text : Ellipsis.Cut(text, length);
     }
 }

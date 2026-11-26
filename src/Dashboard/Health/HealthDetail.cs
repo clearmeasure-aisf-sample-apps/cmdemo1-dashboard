@@ -180,7 +180,7 @@ public static class HealthDetailText
     {
         ArgumentNullException.ThrowIfNull(text);
         var sentence = text.IndexOf(". ", StringComparison.Ordinal) is var end and >= 0 ? text[..end] : text.TrimEnd('.');
-        return sentence.Length <= length ? sentence : $"{text[..(length - 1)].TrimEnd()}…";
+        return sentence.Length <= length ? sentence : Ellipsis.Cut(text, length);
     }
 
     /// <summary>

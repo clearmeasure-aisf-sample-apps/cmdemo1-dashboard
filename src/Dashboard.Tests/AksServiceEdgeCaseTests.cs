@@ -591,6 +591,49 @@ public class AksServiceEdgeCaseTests
             Pools: pools,
             Metrics: new AksMetrics(15, 21.4, 63, 18.2));
 
+    // ------------------------------------------------------------------ the record's own shape
+
+    /// <summary>
+    /// The whole public surface of <see cref="AksService" /> as it stands: its eleven parts in the order the
+    /// constructor names them, the three state words the constants own, the one length the facts go old on
+    /// (<see cref="AksService.OldAfter" />), the three decisions the record makes of its own words
+    /// (<see cref="AksService.IsStopped" />, <see cref="AksService.IsRunning" />, <see cref="AksService.IsProvisioned" />),
+    /// the one question the page asks of a moment (<see cref="AksService.IsOld" />), the one way the file is read
+    /// (<see cref="AksService.Parse" />), and the members every record is asked - falling apart, comparing, hashing
+    /// and saying itself - and nothing else. A twelfth part, a sixth state word, a second verdict besides
+    /// <see cref="AksService.IsStopped" /> and <see cref="AksService.IsOld" />, or a static helper added to the
+    /// record without a test is refused here by name.
+    /// </summary>
+    [Fact]
+    public void TheServiceHasElevenPartsAndTheMembersEveryRecordIsAsked()
+    {
+        Assert.Equal(
+            [
+                "Generated", "Name", "ResourceGroup", "Location", "Availability", "PowerState",
+                "ProvisioningState", "KubernetesVersion", "Tier", "Pools", "Metrics",
+                "IsStopped", "IsRunning", "IsProvisioned",
+            ],
+            RecordSurface.PropertyNamesOf<AksService>());
+
+        Assert.Equal(
+            [
+                "Availability", "Deconstruct", "Equals", "Generated", "GetHashCode", "IsOld", "IsProvisioned",
+                "IsRunning", "IsStopped", "KubernetesVersion", "Location", "Metrics", "Name", "OldAfter",
+                "Parse", "Pools", "PowerState", "ProvisioningState", "ResourceGroup", "Running", "Stopped",
+                "Succeeded", "Tier", "ToString", "op_Equality", "op_Inequality",
+            ],
+            RecordSurface.WithFieldsOf(typeof(AksService)));
+
+        // The three state words and the one length: the only fields the record carries.
+        Assert.Equal(["OldAfter", "Running", "Stopped", "Succeeded"], RecordSurface.FieldNamesOf<AksService>());
+
+        var parameters = RecordSurface.ParametersOf<AksService>();
+        Assert.Equal(
+            ["Generated", "Name", "ResourceGroup", "Location", "Availability", "PowerState", "ProvisioningState", "KubernetesVersion", "Tier", "Pools", "Metrics"],
+            [.. parameters.Select(p => p.Name!)]);
+        Assert.Equal([true, true, true, true, true, true, true, true, true, false, true], RecordSurface.NullableParts<AksService>());
+    }
+
     /// <summary>The service a file holds. A file the reader answers with a problem fails here with that problem to
     /// read, so the tests below say what the service is rather than that there is one.</summary>
     private static AksService Read(string json)

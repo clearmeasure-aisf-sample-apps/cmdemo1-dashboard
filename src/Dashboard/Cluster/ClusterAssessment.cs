@@ -60,7 +60,7 @@ public enum ClusterLiveness
     Unreadable,
 }
 
-/// <summary>The rules that turn a pod's phase, readiness and age into its state.</summary>
+/// <summary>The rules that turn a pod's phase, readiness and age into its state, and the one its container counts must keep.</summary>
 public static class PodRules
 {
     /// <summary>A pod may be Pending this long before it counts as unhealthy.</summary>
@@ -90,6 +90,18 @@ public static class PodRules
             PodPhaseKind.Running => age < StartingGrace ? PodState.Starting : PodState.Unhealthy,
             _ => PodState.Unhealthy,
         };
+    }
+
+    /// <summary>
+    /// True when the file says something impossible of the pod's containers: more of them ready
+    /// (<see cref="ClusterPod.ContainersReady"/>) than the pod has (<see cref="ClusterPod.Containers"/>). A pod that
+    /// does not say either number says nothing impossible. The pod still holds the numbers as the file gave them;
+    /// this is the one place that names the rule they break.
+    /// </summary>
+    public static bool ReadyOutnumbersContainers(ClusterPod pod)
+    {
+        ArgumentNullException.ThrowIfNull(pod);
+        return pod.ContainersReady is { } ready && pod.Containers is { } all && ready > all;
     }
 }
 

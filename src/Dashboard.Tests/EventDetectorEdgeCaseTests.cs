@@ -35,8 +35,6 @@ public class EventDetectorEdgeCaseTests
     private static readonly DateTimeOffset Started = Now.AddHours(-1);
     private static readonly string[] Regions = ["westus3", "eastus2", "centralus"];
 
-    private static IReadOnlyList<DashboardEvent> Node(NodeObservation before, NodeObservation after, bool isNode = true) =>
-        EventDetector.Node(before, after, "uat", "ui", isNode ? "westus3" : "Front Door", isNode, Now);
 
     /// <summary>The serving decision of two nodes: the primary standing in westus3, the standby in eastus2.</summary>
     private static ServingAssessment Serving(HealthState primary, HealthState standby) =>
@@ -73,8 +71,8 @@ public class EventDetectorEdgeCaseTests
     [Fact]
     public void AStateThatTurnsPendingAgainIsNoEvent()
     {
-        Assert.Empty(Node(Seen(HealthState.Healthy, uptime: 100), Seen(HealthState.Pending)));
-        Assert.Empty(Node(Seen(HealthState.Pending), Seen(HealthState.Pending)));
+        Assert.Empty(EventCalls.Node(Seen(HealthState.Healthy, uptime: 100), Seen(HealthState.Pending), at: Now));
+        Assert.Empty(EventCalls.Node(Seen(HealthState.Pending), Seen(HealthState.Pending), at: Now));
     }
 
     /// <summary>
@@ -84,7 +82,7 @@ public class EventDetectorEdgeCaseTests
     [Fact]
     public void AStateChangeWithNoAnswerIsSaidWithoutTheAnswer()
     {
-        var event_ = Assert.Single(Node(Seen(HealthState.Healthy), Seen(HealthState.Unreachable)));
+        var event_ = Assert.Single(EventCalls.Node(Seen(HealthState.Healthy), Seen(HealthState.Unreachable), at: Now));
 
         Assert.Equal(new DashboardEvent(Now, EventKind.Health, EventLevel.Problem, "uat", "westus3", "ui: Healthy → Unreachable"), event_);
     }
@@ -96,8 +94,8 @@ public class EventDetectorEdgeCaseTests
     [Fact]
     public void TheSameVersionInOtherLettersAndAVersionThatIsGoneAreNoEvent()
     {
-        Assert.Empty(Node(Seen(HealthState.Healthy, "1.0.0-rc1"), Seen(HealthState.Healthy, "1.0.0-RC1")));
-        Assert.Empty(Node(Seen(HealthState.Healthy, "2.4.14"), Seen(HealthState.Healthy, null)));
+        Assert.Empty(EventCalls.Node(Seen(HealthState.Healthy, "1.0.0-rc1"), Seen(HealthState.Healthy, "1.0.0-RC1"), at: Now));
+        Assert.Empty(EventCalls.Node(Seen(HealthState.Healthy, "2.4.14"), Seen(HealthState.Healthy, null), at: Now));
     }
 
     /// <summary>
@@ -107,7 +105,7 @@ public class EventDetectorEdgeCaseTests
     [Fact]
     public void AnUptimeThatGoesToZeroIsARestartOfAProcessThatJustStarted()
     {
-        var restart = Assert.Single(Node(Seen(HealthState.Healthy, uptime: 100), Seen(HealthState.Healthy, uptime: 0)));
+        var restart = Assert.Single(EventCalls.Node(Seen(HealthState.Healthy, uptime: 100), Seen(HealthState.Healthy, uptime: 0), at: Now));
 
         Assert.Equal(new DashboardEvent(Now, EventKind.Restart, EventLevel.Warning, "uat", "westus3", "ui restarted, up 0 s"), restart);
     }
@@ -229,7 +227,7 @@ public class EventDetectorEdgeCaseTests
     [InlineData("  ", "ui: Healthy → Unreachable")]
     public void AProbeDetailIsJoinedByTheSameTrimming(string detail, string expected)
     {
-        var event_ = Assert.Single(Node(Seen(HealthState.Healthy), Seen(HealthState.Unreachable, detail: detail)));
+        var event_ = Assert.Single(EventCalls.Node(Seen(HealthState.Healthy), Seen(HealthState.Unreachable, detail: detail), at: Now));
         Assert.Equal((EventLevel.Problem, expected), (event_.Level, event_.Text));
     }
 

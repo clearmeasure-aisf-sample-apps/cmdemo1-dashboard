@@ -8,8 +8,6 @@ public class EventDetectorTests
     private static readonly DateTimeOffset Now = new(2026, 10, 4, 22, 0, 0, TimeSpan.Zero);
     private readonly SignallingTimeProvider _time = new();
 
-    private static IReadOnlyList<DashboardEvent> Node(NodeObservation before, NodeObservation after, bool isNode = true) =>
-        EventDetector.Node(before, after, "uat", "ui", isNode ? "westus3" : "Front Door", isNode, Now);
 
     /// <summary>The serving decision of two nodes: the primary standing in westus3, the standby in eastus2.</summary>
     private static ServingAssessment Serving(HealthState primary, HealthState standby) =>
@@ -18,16 +16,16 @@ public class EventDetectorTests
     [Fact]
     public void NothingChangedIsNoEvent()
     {
-        Assert.Empty(Node(Seen(HealthState.Healthy, uptime: 600), Seen(HealthState.Healthy, uptime: 630)));
-        Assert.Empty(Node(Seen(HealthState.Pending, null), Seen(HealthState.Healthy)));
+        Assert.Empty(EventCalls.Node(Seen(HealthState.Healthy, uptime: 600), Seen(HealthState.Healthy, uptime: 630), at: Now));
+        Assert.Empty(EventCalls.Node(Seen(HealthState.Pending, null), Seen(HealthState.Healthy), at: Now));
     }
 
     [Fact]
     public void AHealthStateChangeIsAnEventWithBothStatesAndTheFacts()
     {
-        var down = Assert.Single(Node(Seen(HealthState.Healthy), Seen(HealthState.Unreachable, detail: "No answer within 10 s.")));
-        var failing = Assert.Single(Node(Seen(HealthState.Healthy), Seen(HealthState.Unhealthy, status: 503)));
-        var back = Assert.Single(Node(Seen(HealthState.Unreachable), Seen(HealthState.Healthy, status: 200)));
+        var down = Assert.Single(EventCalls.Node(Seen(HealthState.Healthy), Seen(HealthState.Unreachable, detail: "No answer within 10 s."), at: Now));
+        var failing = Assert.Single(EventCalls.Node(Seen(HealthState.Healthy), Seen(HealthState.Unhealthy, status: 503), at: Now));
+        var back = Assert.Single(EventCalls.Node(Seen(HealthState.Unreachable), Seen(HealthState.Healthy, status: 200), at: Now));
 
         Assert.Equal(new DashboardEvent(Now, EventKind.Health, EventLevel.Problem, "uat", "westus3", "ui: Healthy → Unreachable: No answer within 10 s"), down);
         Assert.Equal((EventLevel.Warning, "ui: Healthy → Unhealthy (HTTP 503)"), (failing.Level, failing.Text));
@@ -37,7 +35,7 @@ public class EventDetectorTests
     [Fact]
     public void AnEndpointThatIsNotHealthyAtTheFirstCheckIsAnEvent()
     {
-        var first = Assert.Single(Node(Seen(HealthState.Pending, null), Seen(HealthState.Unhealthy, status: 500), isNode: false));
+        var first = Assert.Single(EventCalls.Node(Seen(HealthState.Pending, null), Seen(HealthState.Unhealthy, status: 500), isNode: false, at: Now));
 
         Assert.Equal(new DashboardEvent(Now, EventKind.Health, EventLevel.Warning, "uat", "Front Door", "ui: Unhealthy at the first check (HTTP 500)"), first);
     }
@@ -45,7 +43,7 @@ public class EventDetectorTests
     [Fact]
     public void AnUptimeThatWentDownIsARestart()
     {
-        var restart = Assert.Single(Node(Seen(HealthState.Healthy, uptime: 86400), Seen(HealthState.Healthy, uptime: 12)));
+        var restart = Assert.Single(EventCalls.Node(Seen(HealthState.Healthy, uptime: 86400), Seen(HealthState.Healthy, uptime: 12), at: Now));
 
         Assert.Equal(new DashboardEvent(Now, EventKind.Restart, EventLevel.Warning, "uat", "westus3", "ui restarted, up 12 s"), restart);
     }
@@ -53,12 +51,13 @@ public class EventDetectorTests
     [Fact]
     public void ALaterStartIsARestartOfAnAppThatReportsNoUptime()
     {
-        var restart = Assert.Single(Node(
+        var restart = Assert.Single(EventCalls.Node(
             Seen(HealthState.Healthy, startedAt: Now.AddHours(-2)),
-            Seen(HealthState.Healthy, startedAt: Now.AddSeconds(-30))));
+            Seen(HealthState.Healthy, startedAt: Now.AddSeconds(-30)),
+            at: Now));
 
         Assert.Equal((EventKind.Restart, "ui restarted"), (restart.Kind, restart.Text));
-        Assert.Empty(Node(Seen(HealthState.Healthy, startedAt: Now.AddHours(-2)), Seen(HealthState.Healthy, startedAt: Now.AddHours(-2))));
+        Assert.Empty(EventCalls.Node(Seen(HealthState.Healthy, startedAt: Now.AddHours(-2)), Seen(HealthState.Healthy, startedAt: Now.AddHours(-2)), at: Now));
     }
 
     [Fact]
@@ -66,26 +65,26 @@ public class EventDetectorTests
     {
         Assert.False(EventDetector.Restarted(null, Seen(HealthState.Healthy, uptime: 5).Telemetry));
         Assert.False(EventDetector.Restarted(Seen(HealthState.Healthy, uptime: 5000).Telemetry, null));
-        Assert.Empty(Node(Seen(HealthState.Healthy), Seen(HealthState.Healthy, uptime: 5)));
+        Assert.Empty(EventCalls.Node(Seen(HealthState.Healthy), Seen(HealthState.Healthy, uptime: 5), at: Now));
     }
 
     [Fact]
     public void AnotherVersionIsADeployment()
     {
-        var events = Node(Seen(HealthState.Healthy, "2.4.14", uptime: 9000), Seen(HealthState.Healthy, "2.4.15", uptime: 20));
+        var events = EventCalls.Node(Seen(HealthState.Healthy, "2.4.14", uptime: 9000), Seen(HealthState.Healthy, "2.4.15", uptime: 20), at: Now);
 
         Assert.Equal(
             [(EventKind.Restart, "ui restarted, up 20 s"), (EventKind.Version, "ui: 2.4.14 → 2.4.15, deployed")],
             events.Select(entry => (entry.Kind, entry.Text)));
-        Assert.Empty(Node(Seen(HealthState.Healthy, null), Seen(HealthState.Healthy, "2.4.15")));
-        Assert.Empty(Node(Seen(HealthState.Healthy, "2.4.15"), Seen(HealthState.Healthy, "2.4.15")));
+        Assert.Empty(EventCalls.Node(Seen(HealthState.Healthy, null), Seen(HealthState.Healthy, "2.4.15"), at: Now));
+        Assert.Empty(EventCalls.Node(Seen(HealthState.Healthy, "2.4.15"), Seen(HealthState.Healthy, "2.4.15"), at: Now));
     }
 
     [Fact]
     public void AFrontDoorEndpointReportsItsStateOnly()
     {
         // It answers with the version of whichever node served, and it has no process.
-        Assert.Empty(Node(Seen(HealthState.Healthy, "2.4.14", uptime: 9000), Seen(HealthState.Healthy, "2.4.15", uptime: 20), isNode: false));
+        Assert.Empty(EventCalls.Node(Seen(HealthState.Healthy, "2.4.14", uptime: 9000), Seen(HealthState.Healthy, "2.4.15", uptime: 20), isNode: false, at: Now));
     }
 
     private static NodeObservation Checked(params (string Name, string Status)[] entries) =>
@@ -98,9 +97,9 @@ public class EventDetectorTests
         var degraded = Checked(("API", "Healthy"), ("LlmGateway", "Degraded"));
         var failed = Checked(("API", "Healthy"), ("LlmGateway", "Unhealthy"));
 
-        var slower = Assert.Single(Node(healthy, degraded));
-        var down = Assert.Single(Node(degraded, failed));
-        var back = Assert.Single(Node(failed, healthy));
+        var slower = Assert.Single(EventCalls.Node(healthy, degraded, at: Now));
+        var down = Assert.Single(EventCalls.Node(degraded, failed, at: Now));
+        var back = Assert.Single(EventCalls.Node(failed, healthy, at: Now));
 
         Assert.Equal(new DashboardEvent(Now, EventKind.HealthCheck, EventLevel.Warning, "uat", "westus3", "ui: LlmGateway Healthy → Degraded: LlmGateway says degraded"), slower);
         Assert.Equal((EventLevel.Problem, "ui: LlmGateway Degraded → Unhealthy: LlmGateway says unhealthy"), (down.Level, down.Text));
@@ -110,9 +109,9 @@ public class EventDetectorTests
     [Fact]
     public void TheFirstAnswerOfTheHealthCheckIsAnEventOnlyForAnEntryThatIsNotHealthy()
     {
-        Assert.Empty(Node(Checked(), Checked(("API", "Healthy"), ("DataAccess", "Healthy"))));
+        Assert.Empty(EventCalls.Node(Checked(), Checked(("API", "Healthy"), ("DataAccess", "Healthy")), at: Now));
 
-        var first = Node(Checked(), Checked(("API", "Healthy"), ("DataAccess", "Unhealthy"), ("LlmGateway", "Degraded")));
+        var first = EventCalls.Node(Checked(), Checked(("API", "Healthy"), ("DataAccess", "Unhealthy"), ("LlmGateway", "Degraded")), at: Now);
 
         Assert.Equal(
             [(EventLevel.Problem, "ui: DataAccess Unhealthy at the first check: DataAccess says unhealthy"), (EventLevel.Warning, "ui: LlmGateway Degraded at the first check: LlmGateway says degraded")],
@@ -124,8 +123,8 @@ public class EventDetectorTests
     {
         var before = Checked(("API", "Healthy"), ("Queue", "Degraded"));
 
-        Assert.Empty(Node(before, Checked(("API", "Healthy"), ("Mail", "Healthy"))));
-        var added = Assert.Single(Node(before, Checked(("API", "Healthy"), ("Queue", "Degraded"), ("Mail", "Unhealthy"))));
+        Assert.Empty(EventCalls.Node(before, Checked(("API", "Healthy"), ("Mail", "Healthy")), at: Now));
+        var added = Assert.Single(EventCalls.Node(before, Checked(("API", "Healthy"), ("Queue", "Degraded"), ("Mail", "Unhealthy")), at: Now));
 
         Assert.Equal((EventKind.HealthCheck, EventLevel.Problem, "ui: Mail Unhealthy, new in the health check: Mail says unhealthy"), (added.Kind, added.Level, added.Text));
     }
@@ -139,8 +138,8 @@ public class EventDetectorTests
             Checks = HealthDetail.Parse("""{ "entries": [ { "name": "api", "status": "healthy" }, { "name": "LlmGateway", "status": "Degraded", "description": "Slower still: 9 s" } ] }""", Now),
         };
 
-        Assert.Empty(Node(before, reworded));
-        Assert.Empty(Node(before, Checked()));
+        Assert.Empty(EventCalls.Node(before, reworded, at: Now));
+        Assert.Empty(EventCalls.Node(before, Checked(), at: Now));
         Assert.Empty(EventDetector.HealthChecks(before.Checks, null, "uat", "ui", "westus3", Now));
     }
 
@@ -149,7 +148,7 @@ public class EventDetectorTests
     {
         var after = Seen(HealthState.Healthy) with { Checks = HealthDetail.Parse("""{ "entries": [ { "name": "Queue", "status": "Paused" } ] }""", Now) };
 
-        var unknown = Assert.Single(Node(Checked(("Queue", "Healthy")), after));
+        var unknown = Assert.Single(EventCalls.Node(Checked(("Queue", "Healthy")), after, at: Now));
 
         Assert.Equal((EventLevel.Info, "ui: Queue Healthy → Not known"), (unknown.Level, unknown.Text));
     }
@@ -160,8 +159,8 @@ public class EventDetectorTests
         var before = Checked(("DataAccess", "Healthy"));
         var after = Seen(HealthState.Unhealthy, status: 503) with { Checks = HealthDetailTests.Detail(("DataAccess", "Unhealthy")) };
 
-        Assert.Equal([EventKind.Health, EventKind.HealthCheck], Node(before, after).Select(entry => entry.Kind));
-        Assert.Equal([EventKind.Health], Node(before, after, isNode: false).Select(entry => entry.Kind));
+        Assert.Equal([EventKind.Health, EventKind.HealthCheck], EventCalls.Node(before, after, at: Now).Select(entry => entry.Kind));
+        Assert.Equal([EventKind.Health], EventCalls.Node(before, after, isNode: false, at: Now).Select(entry => entry.Kind));
     }
 
     [Fact]

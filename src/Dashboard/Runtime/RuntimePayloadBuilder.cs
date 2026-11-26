@@ -68,13 +68,24 @@ public static class RuntimePayloadBuilder
     private const string Reachable = "Reachable";
 
     // The nouns naming which apps a tile waits for or was reached through (#1708): WaitingTile and PassedLine say the
-    // same pair in two sentences, so each noun has one name here and a typo cannot split them.
+    // same pair in two sentences, so each noun has one name here and a typo cannot split them. The database's
+    // unconfirmed sentence names the same two sources in singular (#1790); its words keep their names here with the
+    // sources too, and its call sites pass the names, never the words.
 
     /// <summary>The apps a web app's health check speaks for, as a tile's words name them.</summary>
     private const string WebApps = "web apps";
 
     /// <summary>The apps a container app's probe speaks for, as a tile's words name them.</summary>
     private const string ContainerApps = "container apps";
+
+    /// <summary>The app a web app's health check speaks for, singular: the unconfirmed sentence's word, both for the app that uses the database and for the other possible cause of its failed check.</summary>
+    private const string WebApp = "web app";
+
+    /// <summary>The app a container app's probe speaks for, singular: the unconfirmed sentence's word for the app that uses the database.</summary>
+    private const string ContainerApp = "container app";
+
+    /// <summary>The app itself: the unconfirmed sentence's word for the other possible cause of a container app's failed check.</summary>
+    private const string App = "app";
 
     /// <summary>How many marks of a detailed health check a tile's line holds; the entries that are not healthy come first.</summary>
     public const int MostMarks = 8;
@@ -657,7 +668,7 @@ public static class RuntimePayloadBuilder
             return WaitingTile(node, WebApps);
         }
 
-        return DatabaseUnconfirmed(node, "web app", "web app");
+        return DatabaseUnconfirmed(node, WebApp, WebApp);
     }
 
     private static RuntimeTile NeutralTile(RuntimeNode node, string label, string line, string title) =>
@@ -699,8 +710,8 @@ public static class RuntimePayloadBuilder
 
     /// <summary>
     /// The database no passing health check confirms: a failed check may be the app, not the database, so it is not
-    /// called down. <paramref name="user"/> names the apps that use it ("web app", "container app");
-    /// <paramref name="cause"/> names the other possible cause of a failed check ("web app", "app").
+    /// called down. <paramref name="user"/> names the apps that use it (<see cref="WebApp"/>, <see cref="ContainerApp"/>);
+    /// <paramref name="cause"/> names the other possible cause of a failed check (<see cref="WebApp"/>, <see cref="App"/>).
     /// </summary>
     private static RuntimeTile DatabaseUnconfirmed(RuntimeNode node, string user, string cause) =>
         NeutralTile(
@@ -776,7 +787,7 @@ public static class RuntimePayloadBuilder
             return UnprobedUnder(node, health, why, "health check not read");
         }
 
-        return DatabaseUnconfirmed(node, "container app", "app");
+        return DatabaseUnconfirmed(node, ContainerApp, App);
     }
 
     /// <summary>

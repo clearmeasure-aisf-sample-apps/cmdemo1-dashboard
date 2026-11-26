@@ -352,6 +352,18 @@ public class DependencyTests
         Assert.Equal("Reachable", Tile(payload, Gateway).Label);
     }
 
+    [Theory]
+    [InlineData("Healthy", "Healthy", "LLM gateway: reachable, by the health check of app-cmdemo2-uat-ui, app-cmdemo2-uat-ui-eastus2 (last 22:00:00). The browser does not call it. LlmGateway: ")]
+    [InlineData("Degraded", "Healthy", "LLM gateway: reachable, by the health check of app-cmdemo2-uat-ui-eastus2 (last 22:00:00). The browser does not call it. LlmGateway: ")]
+    [InlineData("Unhealthy", "Unhealthy", "LLM gateway: by the health check of app-cmdemo2-uat-ui (last 22:00:00). The browser does not call it. LlmGateway: ")]
+    public void EveryReadingOfADependencySaysTheBrowserDoesNotCallItInOneSentenceTheDatabaseDoesNotShare(string primary, string standby, string lead)
+    {
+        var payload = Build(Uat(primary: primary, standby: standby));
+
+        Assert.StartsWith(lead, Tile(payload, Gateway).Title, StringComparison.Ordinal);
+        Assert.DoesNotContain("The browser does not call it.", Tile(payload, "sqldb").Title, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void TheShippedDiagramHasNoWebAppAndNoDependency()
     {

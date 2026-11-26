@@ -552,17 +552,14 @@ public static class RuntimePayloadBuilder
         {
             var (target, entry) = passed[0];
             var names = string.Join(", ", passed.Select(reading => reading.Target.Name));
-            var reachable = $"{node.Name}: reachable, by the health check of {names} (last {TimeText.Clock(target.Last!.CheckedAt, zone)}). The browser does not call it. {HealthDetailText.Title(entry)}";
+            var reachable = DependencyReadTitle(node, "reachable, ", names, target.Last!.CheckedAt, zone, entry);
 
             // One web app reaches it and another says otherwise: reachable, and the line names the one that differs.
             if (!worst.Check.IsHealthy)
             {
-                return new RuntimeTile(
-                    node.Alias,
-                    TileState.Healthy.Word(),
-                    Reachable,
-                    null,
-                    [new RuntimeTileLine($"{worst.Target.Label} reports it {HealthDetailText.Label(worst.Check.State).ToLowerInvariant()}", RuntimeLineTone.Warn)],
+                return ReachableTile(
+                    node,
+                    new RuntimeTileLine($"{worst.Target.Label} reports it {HealthDetailText.Label(worst.Check.State).ToLowerInvariant()}", RuntimeLineTone.Warn),
                     null,
                     $"{reachable} Not so for {worst.Target.Name}: {HealthDetailText.Title(worst.Check)}");
             }
@@ -570,13 +567,13 @@ public static class RuntimePayloadBuilder
             var line = entry.Description is { } description
                 ? HealthDetailText.Brief(description, DescriptionLength)
                 : $"health check {HealthDetailText.Brief(check, CheckNameLength)} passed";
-            return new RuntimeTile(node.Alias, TileState.Healthy.Word(), Reachable, null, [new RuntimeTileLine(line, RuntimeLineTone.Ok)], null, reachable);
+            return ReachableTile(node, new RuntimeTileLine(line, RuntimeLineTone.Ok), null, reachable);
         }
 
         // The label is the health check's own word ("Degraded", "Unhealthy", ...), owned by HealthDetailText.Label.
         var label = HealthDetailText.Label(worst.Check.State);
         var words = worst.Check.Description is { } said ? HealthDetailText.Brief(said, DescriptionLength) : $"health check {HealthDetailText.Brief(check, CheckNameLength)}: {label.ToLowerInvariant()}";
-        var title = $"{node.Name}: by the health check of {worst.Target.Name} (last {TimeText.Clock(worst.Target.Last?.CheckedAt ?? worst.Target.HealthDetail!.ReadAt, zone)}). The browser does not call it. {HealthDetailText.Title(worst.Check)}";
+        var title = DependencyReadTitle(node, string.Empty, worst.Target.Name, worst.Target.Last?.CheckedAt ?? worst.Target.HealthDetail!.ReadAt, zone, worst.Check);
         return worst.Check.State switch
         {
             CheckState.Unhealthy or CheckState.Degraded => new RuntimeTile(node.Alias, TileState.Unhealthy.Word(), label, null, [new RuntimeTileLine(words, RuntimeLineTone.Warn)], null, title),
@@ -588,6 +585,27 @@ public static class RuntimePayloadBuilder
                 $"{node.Name}: the entry {check} is healthy, but no web app that reports it passes its own health check, so this page does not call it reachable."),
         };
     }
+
+    /// <summary>
+    /// The title of a dependency read from the detailed health check of the web apps that use it, written once for its
+    /// reachable exit (<paramref name="verdict"/> "reachable, ") and its other readings (no verdict): who read it, when,
+    /// that the browser does not call it, and the entry's own words (#1753).
+    /// <para>
+    /// Its words differ from the database's (<see cref="DatabaseReachedTitle"/>) on purpose, so do not merge the two:
+    /// the database's says its health checks <em>connected to it</em> and names its kind ("The database takes no call
+    /// from a browser"), because a passing check is the database answering a connection; a dependency's is only what
+    /// one entry of a web app's detailed health check reports, so it says whose check told it and quotes that entry.
+    /// </para>
+    /// </summary>
+    private static string DependencyReadTitle(RuntimeNode node, string verdict, string names, DateTimeOffset at, TimeZoneInfo zone, HealthCheckEntry entry) =>
+        $"{node.Name}: {verdict}by the health check of {names} (last {TimeText.Clock(at, zone)}). The browser does not call it. {HealthDetailText.Title(entry)}";
+
+    /// <summary>
+    /// A node reached through the health checks of the apps that use it: healthy, labelled <see cref="Reachable"/>,
+    /// with one line. The database's exits and the dependency's reachable exits all build it (#1749, #1753).
+    /// </summary>
+    private static RuntimeTile ReachableTile(RuntimeNode node, RuntimeTileLine line, string? facts, string title) =>
+        new(node.Alias, TileState.Healthy.Word(), Reachable, facts, [line], null, title);
 
     /// <summary>
     /// One reading of an app that uses the database, as either client source projects it (#1752): what the title
@@ -685,6 +703,8 @@ public static class RuntimePayloadBuilder
     /// so it is written once here. <paramref name="queries"/> holds the web apps' telemetry snapshots (none on the
     /// container apps' exit); when an app tells its requests' queries from its background ones, the optional
     /// sentence of the web apps' queries per minute is appended after the first sentence's period (#1733).
+    /// Its words differ from a dependency's (<see cref="DependencyReadTitle"/>) on purpose, so do not merge the two:
+    /// a passing check here is the database answering a connection, so it says "connected to it" (#1753).
     /// </summary>
     private static string DatabaseReachedTitle(RuntimeNode node, string names, DateTimeOffset latest, TimeZoneInfo zone, IReadOnlyList<TelemetrySnapshot> queries) =>
         $"{node.Name}: reachable. The database takes no call from a browser; the health check of {names} connected to it (last {TimeText.Clock(latest, zone)})."
@@ -712,7 +732,7 @@ public static class RuntimePayloadBuilder
     {
         var names = string.Join(", ", reached.Select(app => app.Name));
         var latest = reached.Max(app => app.CheckedAt);
-        return new RuntimeTile(node.Alias, TileState.Healthy.Word(), Reachable, facts, [new RuntimeTileLine(line, RuntimeLineTone.Ok)], null, DatabaseReachedTitle(node, names, latest, zone, queries));
+        return ReachableTile(node, new RuntimeTileLine(line, RuntimeLineTone.Ok), facts, DatabaseReachedTitle(node, names, latest, zone, queries));
     }
 
     /// <summary>

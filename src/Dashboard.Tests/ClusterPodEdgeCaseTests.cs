@@ -172,9 +172,7 @@ public class ClusterPodEdgeCaseTests
     [Fact]
     public void APodKeepsTheNothingItIsGiven()
     {
-        var pod = new ClusterPod(
-            "web-1", null, null, null, ClusterPod.Unknown, false, null, null, 0, null, null,
-            ResourceUse.None, ResourceUse.None);
+        var pod = ClusterFixture.SilentPod("web-1", ClusterPod.Unknown);
 
         Assert.Equal("web-1", pod.Name);
         Assert.Null(pod.Workload);

@@ -109,10 +109,7 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
     public void RecordTelemetry(TelemetrySnapshot? telemetry)
     {
         Telemetry = telemetry;
-        if (telemetry is not null || Samples.Count > 0)
-        {
-            Samples.Add(telemetry);
-        }
+        Samples.Record(telemetry);
     }
 
     /// <summary>The trend of one number of the telemetry over the readings kept; null with fewer than two.</summary>

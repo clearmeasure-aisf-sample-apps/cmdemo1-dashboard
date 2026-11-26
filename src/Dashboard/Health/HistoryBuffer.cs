@@ -52,6 +52,19 @@ public sealed class HistoryBuffer<T> : IReadOnlyList<T>
         }
     }
 
+    /// <summary>
+    /// Records the reading of one check in a trend, where null is a gap: a reading is always added, a gap only once
+    /// the buffer holds something for it to be a gap in - so a trend never starts with a gap, and the checks that
+    /// read nothing before the first reading store nothing. The buffer still keeps at most <see cref="Capacity"/>.
+    /// </summary>
+    public void Record(T reading)
+    {
+        if (reading is not null || Count > 0)
+        {
+            Add(reading);
+        }
+    }
+
     public IEnumerator<T> GetEnumerator()
     {
         for (var index = 0; index < Count; index++)

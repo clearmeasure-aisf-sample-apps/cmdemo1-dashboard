@@ -28,7 +28,8 @@ public class ClusterMonitorTests
             new NodeProber(http, _time),
             new PinnedVersionsReader(http, _time),
             _time,
-            cluster: withReader ? new ClusterReader(http, _time) : null);
+            cluster: withReader ? new ClusterReader(http, _time) : null,
+            pageAddress: new Uri(Optics.Page));
     }
 
     /// <summary>A status the collector wrote at the test's clock: the sample, or one of the test's own.</summary>

@@ -210,15 +210,18 @@ public sealed class NodeProber(HttpClient http, TimeProvider time)
         ReadAsync(ProbeUrl.Combine(baseAddress, buildPath), BuildInfo.Parse, cancellationToken);
 
     /// <summary>
-    /// The build of the dashboard itself (<see cref="BuildInfo"/>): a file of its own site, read from the page's own
-    /// address through <see cref="ProbeUrl.ResolveRelative"/> (the path is taken from the site's root, as
-    /// <c>topology.json</c> is, whatever it starts with; a path that names another site is no address, and nothing
-    /// is read). A courtesy like a node's build: no file, or anything but the expected JSON, is no build facts.
+    /// The build of the dashboard itself (<see cref="BuildInfo"/>): a file of the site the page is served from,
+    /// resolved from <paramref name="pageAddress"/> through <see cref="ProbeUrl.ResolveRelative"/> (the path is
+    /// taken from the site's root, as <c>topology.json</c> is, whatever it starts with; a path that names another
+    /// site is no address, and nothing is read). The page's address is written here, not read from the client, so
+    /// the client answers the resolved address like any other. A courtesy like a node's build: no file, or anything
+    /// but the expected JSON, is no build facts.
     /// </summary>
-    public Task<BuildInfo?> ReadOwnBuildAsync(string buildPath, CancellationToken cancellationToken)
+    public Task<BuildInfo?> ReadOwnBuildAsync(Uri pageAddress, string buildPath, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(pageAddress);
         ArgumentNullException.ThrowIfNull(buildPath);
-        var own = ProbeUrl.ResolveRelative(http.BaseAddress, buildPath);
+        var own = ProbeUrl.ResolveRelative(pageAddress, buildPath);
         return own is null ? Task.FromResult<BuildInfo?>(null) : ReadAsync(own, BuildInfo.Parse, cancellationToken);
     }
 

@@ -5,7 +5,6 @@ namespace Dashboard.Tests;
 /// <summary>The dashboard's own build facts: <c>system.dashboard</c> of the topology, read from the page's own address.</summary>
 public class DashboardBuildTests
 {
-    private const string Page = "https://dashboard.example.net/";
     private const string FactsPath = "/build-facts.json";
 
     /// <summary>What the dashboard's Build writes next to <c>index.html</c>: the sections it does not measure are null.</summary>
@@ -24,14 +23,13 @@ public class DashboardBuildTests
 
     private readonly SignallingTimeProvider _time = new();
 
-    /// <summary>A monitor whose page is served from <see cref="Page"/>, as the browser's HttpClient is set up.</summary>
+    /// <summary>A monitor whose page is served from <see cref="Optics.Page"/>: the address is written to the
+    /// monitor, and the client is set up without one, as the prober's clients now are.</summary>
     private DashboardMonitor Monitor(StubHandler handler, string? topology = null)
     {
-        var http = new HttpClient(handler) { BaseAddress = new Uri(Page) };
-        return new DashboardMonitor(TopologyParser.Parse(topology ?? TopologyWithDashboard).Topology!, new NodeProber(http, _time), new PinnedVersionsReader(http, _time), _time);
+        var http = new HttpClient(handler);
+        return new DashboardMonitor(TopologyParser.Parse(topology ?? TopologyWithDashboard).Topology!, new NodeProber(http, _time), new PinnedVersionsReader(http, _time), _time, pageAddress: new Uri(Optics.Page));
     }
-
-    private static bool IsFacts(HttpRequestMessage request) => request.RequestUri!.Host == "dashboard.example.net";
 
     [Fact]
     public void TheTopologyNamesTheDashboardAndWhereItServesItsBuildFacts()
@@ -71,7 +69,7 @@ public class DashboardBuildTests
     [Fact]
     public async Task ThePageReadsItsOwnBuildFactsFromItsOwnAddressOnce()
     {
-        var handler = new StubHandler(request => IsFacts(request) ? StubHandler.Answer(HttpStatusCode.OK, Facts) : Optics.Answer(request));
+        var handler = new StubHandler(request => Optics.OwnSite(request) ? StubHandler.Answer(HttpStatusCode.OK, Facts) : Optics.Answer(request));
         var monitor = Monitor(handler);
         Assert.Null(monitor.DashboardBuild);
 
@@ -79,7 +77,7 @@ public class DashboardBuildTests
         _time.Advance(TimeSpan.FromHours(1));
         await monitor.CheckAllAsync(ProbeKind.Liveness, CancellationToken.None);
 
-        Assert.Equal([$"{Page}build-facts.json"], handler.RequestedUrls.Where(url => url.StartsWith(Page, StringComparison.Ordinal)));
+        Assert.Equal([$"{Optics.Page}build-facts.json"], handler.RequestedUrls.Where(url => url.StartsWith(Optics.Page, StringComparison.Ordinal)));
         var build = monitor.DashboardBuild!;
         Assert.Equal(("1.0.57", "5c0ffee"), (build.Version, BuildText.ShortCommit(build.Commit!)));
         Assert.Equal("20,100 lines in 160 files", BuildText.Size(build.Code!));
@@ -95,10 +93,10 @@ public class DashboardBuildTests
     public async Task AFileThatDoesNotAnswerIsAskedAgainEveryFiveMinutesUntilItDoes()
     {
         var published = false;
-        var handler = new StubHandler(request => !IsFacts(request) ? Optics.Answer(request)
+        var handler = new StubHandler(request => !Optics.OwnSite(request) ? Optics.Answer(request)
             : published ? StubHandler.Answer(HttpStatusCode.OK, Facts) : StubHandler.Answer(HttpStatusCode.NotFound, "<html>404</html>"));
         var monitor = Monitor(handler);
-        int Asked() => handler.Requests.Count(IsFacts);
+        int Asked() => handler.Requests.Count(Optics.OwnSite);
 
         await monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
         _time.Advance(TimeSpan.FromSeconds(30));
@@ -121,7 +119,7 @@ public class DashboardBuildTests
     public async Task AnAnswerThatIsNotTheFileIsNoBuild()
     {
         // A static-site host may answer a missing file with index.html and HTTP 200.
-        var handler = new StubHandler(request => IsFacts(request) ? StubHandler.Answer(HttpStatusCode.OK, "<!DOCTYPE html><html></html>") : Optics.Answer(request));
+        var handler = new StubHandler(request => Optics.OwnSite(request) ? StubHandler.Answer(HttpStatusCode.OK, "<!DOCTYPE html><html></html>") : Optics.Answer(request));
         var monitor = Monitor(handler);
 
         await monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
@@ -138,7 +136,7 @@ public class DashboardBuildTests
         await monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
 
         Assert.Null(monitor.DashboardBuild);
-        Assert.DoesNotContain(handler.Requests, IsFacts);
+        Assert.DoesNotContain(handler.Requests, Optics.OwnSite);
     }
 
     [Theory]
@@ -155,7 +153,7 @@ public class DashboardBuildTests
         await monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
 
         Assert.DoesNotContain(handler.RequestedUrls, url => url.StartsWith("https://other.example.net", StringComparison.Ordinal));
-        Assert.Equal(asked is null ? [] : [asked], handler.RequestedUrls.Where(url => url.StartsWith(Page, StringComparison.Ordinal)));
+        Assert.Equal(asked is null ? [] : [asked], handler.RequestedUrls.Where(url => url.StartsWith(Optics.Page, StringComparison.Ordinal)));
         Assert.Equal(asked is not null, monitor.DashboardBuild is not null);
     }
 

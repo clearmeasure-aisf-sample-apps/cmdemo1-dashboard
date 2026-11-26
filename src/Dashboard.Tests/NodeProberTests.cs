@@ -194,15 +194,8 @@ public class NodeProberTests
 
     // ---------------------------------------------------------------- #1142: the dashboard's own build file, read from its own address
 
-    /// <summary>The page's own address, as <c>Program.cs</c> gives the browser's client.</summary>
-    private const string Page = "https://dashboard.example.net/";
-
     /// <summary>What the page's Build writes beside <c>index.html</c>.</summary>
     private const string OwnFacts = """{ "version": "1.0.57", "commit": "5c0ffee5c0ffee5c0ffee", "builtAt": "2026-10-04T20:00:00Z" }""";
-
-    /// <summary>A prober whose page is served from <paramref name="page"/>, as the browser's client is set up.</summary>
-    private NodeProber PageProber(StubHandler handler, string page = Page) =>
-        new(new HttpClient(handler) { BaseAddress = new Uri(page) }, _time);
 
     /// <summary>The path the page's own build file was asked for, or nothing when nothing was asked.</summary>
     private static string? Asked(StubHandler handler) => handler.RequestedUrls.SingleOrDefault();
@@ -215,7 +208,7 @@ public class NodeProberTests
     {
         var handler = new StubHandler(_ => StubHandler.Answer(HttpStatusCode.OK, OwnFacts));
 
-        var build = await PageProber(handler).ReadOwnBuildAsync(buildPath, CancellationToken.None);
+        var build = await Prober(handler).ReadOwnBuildAsync(new Uri(Optics.Page), buildPath, CancellationToken.None);
 
         Assert.Equal("https://dashboard.example.net/build-facts.json", Asked(handler));
         Assert.NotNull(build);
@@ -230,7 +223,7 @@ public class NodeProberTests
     {
         var handler = new StubHandler(_ => StubHandler.Answer(HttpStatusCode.OK, OwnFacts));
 
-        var build = await PageProber(handler, "https://dashboard.example.net/dash/").ReadOwnBuildAsync(buildPath, CancellationToken.None);
+        var build = await Prober(handler).ReadOwnBuildAsync(new Uri("https://dashboard.example.net/dash/"), buildPath, CancellationToken.None);
 
         Assert.Equal("https://dashboard.example.net/dash/build-facts.json", Asked(handler));
         Assert.NotNull(build);
@@ -245,7 +238,7 @@ public class NodeProberTests
     {
         var handler = new StubHandler(_ => StubHandler.Answer(HttpStatusCode.OK, OwnFacts));
 
-        var build = await PageProber(handler).ReadOwnBuildAsync(buildPath, CancellationToken.None);
+        var build = await Prober(handler).ReadOwnBuildAsync(new Uri(Optics.Page), buildPath, CancellationToken.None);
 
         Assert.Null(build);
         Assert.Empty(handler.Requests);
@@ -257,9 +250,21 @@ public class NodeProberTests
         var handler = new StubHandler(_ => StubHandler.Answer(HttpStatusCode.OK, OwnFacts));
 
         var refused = await Assert.ThrowsAsync<ArgumentNullException>(
-            () => PageProber(handler).ReadOwnBuildAsync(null!, CancellationToken.None));
+            () => Prober(handler).ReadOwnBuildAsync(new Uri(Optics.Page), null!, CancellationToken.None));
 
         Assert.Equal("buildPath", refused.ParamName);
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
+    public async Task TheOwnBuildPageAddressIsRefusedByTheNamePageAddress()
+    {
+        var handler = new StubHandler(_ => StubHandler.Answer(HttpStatusCode.OK, OwnFacts));
+
+        var refused = await Assert.ThrowsAsync<ArgumentNullException>(
+            () => Prober(handler).ReadOwnBuildAsync(null!, "/build-facts.json", CancellationToken.None));
+
+        Assert.Equal("pageAddress", refused.ParamName);
         Assert.Empty(handler.Requests);
     }
 
@@ -268,7 +273,7 @@ public class NodeProberTests
     {
         var handler = new StubHandler(_ => StubHandler.Answer(HttpStatusCode.OK, OwnFacts));
 
-        await PageProber(handler).ReadOwnBuildAsync("/build-facts.json", CancellationToken.None);
+        await Prober(handler).ReadOwnBuildAsync(new Uri(Optics.Page), "/build-facts.json", CancellationToken.None);
 
         var request = Assert.Single(handler.Requests);
         Assert.Equal(HttpMethod.Get, request.Method);
@@ -283,18 +288,21 @@ public class NodeProberTests
     {
         var handler = new StubHandler(_ => StubHandler.Answer(status, body));
 
-        Assert.Null(await PageProber(handler).ReadOwnBuildAsync("/build-facts.json", CancellationToken.None));
+        Assert.Null(await Prober(handler).ReadOwnBuildAsync(new Uri(Optics.Page), "/build-facts.json", CancellationToken.None));
     }
 
     [Fact]
-    public async Task AnOwnBuildPathOfAPageWithNoAddressOfItsOwnIsLeftToTheClient()
+    public async Task AnOwnBuildPathOfAPageWithNoAddressOfItsOwnIsRefusedByTheAddress()
     {
-        // The app always gives its client the page's address; without one the path stands as the relative
-        // address it is, and the client answers for it as it answers for any relative request (#1142).
+        // The app always gives the monitor the page's own address, absolute; a page with no address of its own (a
+        // relative one, without a scheme) cannot resolve the path, and the address refuses it in the framework's
+        // own words, before anything is asked of the client (#1142).
         var handler = new StubHandler(_ => StubHandler.Answer(HttpStatusCode.OK, OwnFacts));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => Prober(handler).ReadOwnBuildAsync("/build-facts.json", CancellationToken.None));
+        var refused = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+            () => Prober(handler).ReadOwnBuildAsync(new Uri("/dash/", UriKind.Relative), "/build-facts.json", CancellationToken.None));
 
+        Assert.Equal("baseUri", refused.ParamName);
         Assert.Empty(handler.Requests);
     }
 }

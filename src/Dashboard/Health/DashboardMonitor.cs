@@ -36,6 +36,7 @@ public sealed class DashboardMonitor
     private readonly NodeProber _prober;
     private readonly PinnedVersionsReader _versions;
     private readonly TimeProvider _time;
+    private readonly Uri _pageAddress;
     private readonly List<(EnvironmentStatus Environment, DeployableStatus Deployable, TargetStatus Target)> _targets;
     private readonly Dictionary<ContainerAppTarget, ContainerAppProbe> _containerApps = [];
     private readonly IntervalRead<DeliveryReport> _delivery = new(DeliveryInterval);
@@ -55,19 +56,26 @@ public sealed class DashboardMonitor
     /// What reads the cluster's files, for a topology with <c>cluster</c>; without it, or without a cluster in the
     /// topology, the monitor has no cluster and reads nothing for one.
     /// </param>
+    /// <param name="pageAddress">
+    /// The address the page is served from: the dashboard's own build file is read from its site
+    /// (<see cref="NodeProber.ReadOwnBuildAsync"/>), whatever the prober's client is set up to.
+    /// </param>
     public DashboardMonitor(
         Topology topology,
         NodeProber prober,
         PinnedVersionsReader versions,
         TimeProvider time,
+        Uri pageAddress,
         EventLog? events = null,
         ClusterReader? cluster = null)
     {
         ArgumentNullException.ThrowIfNull(topology);
+        ArgumentNullException.ThrowIfNull(pageAddress);
         Topology = topology;
         _prober = prober;
         _versions = versions;
         _time = time;
+        _pageAddress = pageAddress;
         Events = events ?? new EventLog();
         Environments = [.. topology.Environments.Select(environment => new EnvironmentStatus(environment))];
         _targets =
@@ -417,7 +425,7 @@ public sealed class DashboardMonitor
             return;
         }
 
-        if (await _dashboardBuild.ReadIfDueAsync(_time.GetUtcNow(), token => _prober.ReadOwnBuildAsync(dashboard.BuildPath, token), cancellationToken) is not null)
+        if (await _dashboardBuild.ReadIfDueAsync(_time.GetUtcNow(), token => _prober.ReadOwnBuildAsync(_pageAddress, dashboard.BuildPath, token), cancellationToken) is not null)
         {
             Changed?.Invoke();
         }

@@ -262,7 +262,7 @@ public class ContainerAppProbeTests
         """;
 
     private DashboardMonitor Monitor(StubHandler handler) =>
-        new(TopologyParser.Parse(WithDelivery).Topology!, new NodeProber(new HttpClient(handler), _time), new PinnedVersionsReader(new HttpClient(handler), _time), _time);
+        new(TopologyParser.Parse(WithDelivery).Topology!, new NodeProber(new HttpClient(handler), _time), new PinnedVersionsReader(new HttpClient(handler), _time), _time, new Uri(Optics.Page));
 
     private static bool IsApp(HttpRequestMessage request) => request.RequestUri!.Host == App.Host;
 

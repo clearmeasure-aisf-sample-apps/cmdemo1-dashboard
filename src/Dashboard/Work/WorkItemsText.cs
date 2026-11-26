@@ -67,6 +67,13 @@ public static class WorkItemsText
         : !asked ? WorkItemsAvailability.Loading
         : WorkItemsAvailability.NotPublished;
 
+    /// <summary>The state the three named facts of a read settle on: a report beats both, the address beats the ask.</summary>
+    public static WorkItemsAvailability Availability(WorkItemsRead read)
+    {
+        ArgumentNullException.ThrowIfNull(read);
+        return Availability(hasAddress: read.HasAddress, asked: read.Asked, report: read.Report);
+    }
+
     /// <summary>
     /// The sentence a state stands for. A value the enum does not name is refused by name first, so the switch
     /// underneath says the four states and nothing else: a fifth state of the enum is a build error (CS8509, and

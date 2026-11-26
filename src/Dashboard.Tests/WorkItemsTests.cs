@@ -307,6 +307,8 @@ public class WorkItemsTests
         Assert.Null(monitor.WorkItems);
         Assert.Equal("All 4 nodes healthy", monitor.Summary.Text);
         Assert.Equal(WorkItemsText.NotPublished, WorkItemsText.Unavailable(WorkItemsText.Availability(true, monitor.WorkItemsAsked, monitor.WorkItems)));
+        Assert.Equal(new WorkItemsRead(HasAddress: true, Asked: true, Report: null), monitor.WorkItemsRead);
+        Assert.Equal(WorkItemsText.NotPublished, WorkItemsText.Unavailable(WorkItemsText.Availability(monitor.WorkItemsRead)));
     }
 
     [Fact]
@@ -353,6 +355,8 @@ public class WorkItemsTests
         Assert.Null(monitor.WorkItems);
         Assert.DoesNotContain(handler.Requests, request => request.RequestUri!.AbsolutePath.EndsWith(WorkItemsReport.FileName, StringComparison.Ordinal));
         Assert.Equal(WorkItemsAvailability.NoAddress, WorkItemsText.Availability(monitor.Topology.System.WorkItemsUrl is not null, monitor.WorkItemsAsked, monitor.WorkItems));
+        Assert.Equal(new WorkItemsRead(HasAddress: false, Asked: false, Report: null), monitor.WorkItemsRead);
+        Assert.Equal(WorkItemsAvailability.NoAddress, WorkItemsText.Availability(monitor.WorkItemsRead));
     }
 
     [Fact]

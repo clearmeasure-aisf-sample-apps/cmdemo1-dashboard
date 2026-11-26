@@ -226,4 +226,54 @@ public class ContainerAppTargetEdgeCaseTests
             "ContainerAppTarget { Url = https://ca-demo-tdd-ui.graybush-1.southcentralus.azurecontainerapps.io/, HealthPath = , EffectiveHealthPath = /_healthcheck }",
             new ContainerAppTarget(App).ToString());
     }
+
+    // ----- the ownership this file keeps for the target's members (#586)
+
+    /// <summary>
+    /// The unnamed target asks the default path, for every kind of probe, and reads its health: the path and the
+    /// reading the other files pin of the target they probe stand here where the target's own parts belong, so the
+    /// probe's walk of its answers and the watch's walk of its apps pin only what is theirs - the probe asking,
+    /// the watch keeping - not the target answering again.
+    /// </summary>
+    [Theory]
+    [InlineData(ProbeKind.Health)]
+    [InlineData(ProbeKind.Liveness)]
+    public void TheUnnamedTargetAsksTheDefaultPathAndReadsItsHealth(ProbeKind kind)
+    {
+        var unnamed = new ContainerAppTarget(App);
+
+        Assert.Equal(ContainerAppTarget.DefaultHealthPath, unnamed.EffectiveHealthPath);
+        Assert.Equal(ContainerAppTarget.DefaultHealthPath, unnamed.PathFor(kind));
+        Assert.True(unnamed.ReadsHealth(kind));
+    }
+
+    /// <summary>
+    /// The target's parts stand on any address it is given, not only the one its own sample shows: on another host
+    /// the declared path is the effective path, the probe asks it, the answer reads as health, and the unnamed
+    /// target on the other host says the default - the spellings the watch's edge cases pin of its targets stand
+    /// here, on the target's own address, so a rewording of the record is a change this file alone sees.
+    /// </summary>
+    [Fact]
+    public void TheTargetsPartsStandOnAnyAddressTheyAreGiven()
+    {
+        var demo = new Uri("https://ca-demo.example.io");
+        var named = new ContainerAppTarget(demo, "/health");
+        var unnamed = new ContainerAppTarget(demo);
+
+        Assert.Equal("/health", named.EffectiveHealthPath);
+        Assert.Equal("/health", named.PathFor(ProbeKind.Health));
+        Assert.Equal("/health", named.PathFor(ProbeKind.Liveness));
+        Assert.True(named.ReadsHealth(ProbeKind.Health));
+        Assert.True(named.ReadsHealth(ProbeKind.Liveness));
+        Assert.Equal(ContainerAppTarget.DefaultHealthPath, unnamed.EffectiveHealthPath);
+        Assert.Equal(ContainerAppTarget.DefaultHealthPath, unnamed.PathFor(ProbeKind.Health));
+        Assert.True(unnamed.ReadsHealth(ProbeKind.Liveness));
+
+        Assert.Equal(
+            "ContainerAppTarget { Url = https://ca-demo.example.io/, HealthPath = /health, EffectiveHealthPath = /health }",
+            named.ToString());
+        Assert.Equal(
+            "ContainerAppTarget { Url = https://ca-demo.example.io/, HealthPath = , EffectiveHealthPath = /_healthcheck }",
+            unnamed.ToString());
+    }
 }

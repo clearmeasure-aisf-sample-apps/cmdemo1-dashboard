@@ -75,7 +75,8 @@ public class DeploymentFreezeFromInvariantTests
     [Fact]
     public void TheRecordSaysTheInvariantAndTheWordsAssertItInOnePlace()
     {
-        var source = File.ReadAllText(Path.Combine(SourceRoot(), "Dashboard", "Health", "DeploymentActivity.cs"));
+        var root = SourceRoot();
+        var source = File.ReadAllText(Path.Combine(root, "Dashboard", "Health", "DeploymentActivity.cs"));
         var record = source[..source.IndexOf("public sealed record DeploymentFreeze(", StringComparison.Ordinal)];
         var docs = record[record.LastIndexOf("/// <summary>A deployment freeze", StringComparison.Ordinal)..];
 
@@ -83,7 +84,8 @@ public class DeploymentFreezeFromInvariantTests
         Assert.Contains("record itself never refuses a null.", docs, StringComparison.Ordinal);
         Assert.Contains("True only where <see cref=\"From\"/> is known.", source, StringComparison.Ordinal);
 
-        var words = source[source.IndexOf("public static class DeploymentActivity", StringComparison.Ordinal)..];
+        // The words that say a freeze from its start moved to FreezeText, the one place a freeze is put in words.
+        var words = File.ReadAllText(Path.Combine(root, "Dashboard", "Health", "FreezeText.cs"));
         Assert.Single(words.Split("From!.Value")[1..]);
         Assert.Contains("private static DateTimeOffset Begins(DeploymentFreeze freeze) => freeze.From!.Value;", words, StringComparison.Ordinal);
     }

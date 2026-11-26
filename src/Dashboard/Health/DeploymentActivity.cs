@@ -276,7 +276,7 @@ public static class DeploymentActivity
 
     /// <summary>The freezes that cover the project in the environment, briefly: in force first, then by their start.</summary>
     private static IEnumerable<ActivityLine> FreezeLines(DeploymentsReport report, string environment, string project, DateTimeOffset now, TimeZoneInfo zone) =>
-        Freezes(report, environment, project, now).Select(freeze => OfFreeze(freeze, now, zone, Brief(freeze, now, zone)));
+        Freezes(report, environment, project, now).Select(freeze => OfFreeze(freeze, now, zone, FreezeText.Brief(freeze, now, zone)));
 
     /// <summary>The last deployment of the project to the environment that ended, briefly; none when the file names none.</summary>
     private static IEnumerable<ActivityLine> LastLines(DeploymentsReport report, string environment, string project, DateTimeOffset now, TimeZoneInfo zone) =>
@@ -301,11 +301,7 @@ public static class DeploymentActivity
         if (freezes.Count > 0)
         {
             var first = freezes[0];
-            var more = freezes.Count > 1 ? string.Create(CultureInfo.InvariantCulture, $", and {freezes.Count - 1} more") : string.Empty;
-            var words = first.InForceAt(now)
-                ? $"deployment freeze {first.Name}: {Words(first.Projects)} frozen until {When(first.To, now, zone)}{more}"
-                : $"deployment freeze {first.Name}: {Words(first.Projects)} frozen from {When(Begins(first), now, zone)} until {When(first.To, now, zone)}{more}";
-            lines.Add(OfFreeze(first, now, zone, words) with { Title = string.Join('\n', freezes.Select(freeze => FreezeTitle(freeze, now, zone))) });
+            lines.Add(OfFreeze(first, now, zone, FreezeText.Sentence(first, freezes.Count, now, zone)) with { Title = string.Join('\n', freezes.Select(freeze => FreezeText.Title(freeze, now, zone))) });
         }
 
         var last = report.Recent.FirstOrDefault(recent => string.Equals(recent.Environment, environment, StringComparison.OrdinalIgnoreCase));
@@ -357,30 +353,7 @@ public static class DeploymentActivity
     }
 
     private static ActivityLine OfFreeze(DeploymentFreeze freeze, DateTimeOffset now, TimeZoneInfo zone, string words) =>
-        new(freeze.InForceAt(now) ? ActivityKind.Frozen : ActivityKind.Freeze, words, FreezeTitle(freeze, now, zone));
-
-    /// <summary><c>frozen until Sun 19:00: prod weekend</c>, <c>freeze from Sat 19:00: prod weekend</c>.</summary>
-    private static string Brief(DeploymentFreeze freeze, DateTimeOffset now, TimeZoneInfo zone) =>
-        freeze.InForceAt(now)
-            ? $"frozen until {When(freeze.To, now, zone)}: {freeze.Name}"
-            : $"freeze from {When(Begins(freeze), now, zone)}: {freeze.Name}";
-
-    private static string FreezeTitle(DeploymentFreeze freeze, DateTimeOffset now, TimeZoneInfo zone)
-    {
-        var from = freeze.From is { } begins ? $" from {TimeText.DateAndTime(begins, zone)}" : string.Empty;
-        var state = freeze.InForceAt(now)
-            ? "In force now"
-            : $"Begins in {TimeText.Span(Begins(freeze) - now)}";
-        return $"Deployment freeze {freeze.Name}: no deployment of {Words(freeze.Projects)} to {Words(freeze.Environments)}{from} until {TimeText.DateAndTime(freeze.To, zone)}. {state}. "
-            + "A freeze belongs to the Octopus Deploy instance; a person with the right may override it for one deployment.";
-    }
-
-    /// <summary>
-    /// The start of a freeze the page says of that is not in force: one of <see cref="Freezes"/>, so one that
-    /// <see cref="DeploymentFreeze.ComesAt"/> the moment, which only a freeze with a known
-    /// <see cref="DeploymentFreeze.From"/> does. The caller holds that; the record does not.
-    /// </summary>
-    private static DateTimeOffset Begins(DeploymentFreeze freeze) => freeze.From!.Value;
+        new(freeze.InForceAt(now) ? ActivityKind.Frozen : ActivityKind.Freeze, words, FreezeText.Title(freeze, now, zone));
 
     private static ActivityLine Last(RecentDeployment last, DateTimeOffset now, TimeZoneInfo zone, string words) =>
         new(
@@ -459,12 +432,6 @@ public static class DeploymentActivity
 
     /// <summary>The date and the time: <c>12 Oct 19:00</c>.</summary>
     private const string DateFormat = "d MMM HH:mm";
-
-    /// <summary>
-    /// The words of a list of names: the names joined, or <c>the system</c> when the list names nothing - a freeze
-    /// that names no projects covers the system as a whole.
-    /// </summary>
-    private static string Words(IReadOnlyList<string> names) => names.Count == 0 ? "the system" : string.Join(", ", names);
 
     /// <summary>
     /// The words cut to what a line of a node holds, with an ellipsis; the tooltip has them in full. A

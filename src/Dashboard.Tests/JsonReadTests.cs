@@ -99,6 +99,9 @@ public class JsonReadTests
     [Theory]
     [InlineData("""{ "n": 2.6 }""", 3)] // rounded
     [InlineData("""{ "n": 2.4 }""", 2)]
+    [InlineData("""{ "n": 2.5 }""", 3)] // a half away from zero, not to the even neighbour (#1328)
+    [InlineData("""{ "n": 3.5 }""", 4)]
+    [InlineData("""{ "n": 0.5 }""", 1)]
     [InlineData("""{ "n": 0 }""", 0)]
     [InlineData("""{ "n": -1 }""", null)]
     [InlineData("""{ "n": 1e12 }""", null)] // above int.MaxValue
@@ -110,6 +113,8 @@ public class JsonReadTests
     [Theory]
     [InlineData("""{ "n": 1e12 }""", 1_000_000_000_000L)] // lines of code, seconds
     [InlineData("""{ "n": 2.4 }""", 2L)]
+    [InlineData("""{ "n": 2.5 }""", 3L)] // a half away from zero, as a count rounds
+    [InlineData("""{ "n": 4.5 }""", 5L)]
     [InlineData("""{ "n": 0 }""", 0L)]
     [InlineData("""{ "n": -1 }""", null)]
     [InlineData("""{ "n": "1000000000000" }""", null)]

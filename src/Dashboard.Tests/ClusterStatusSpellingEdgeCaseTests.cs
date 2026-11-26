@@ -277,26 +277,26 @@ public class ClusterStatusSpellingEdgeCaseTests
 
     // ---------------------------------------------------- the interval a file gives in halves of a second
 
-    /// <summary>The interval a file gives in exact halves of a second is rounded to the even second, which is what
-    /// <see cref="Math.Round(double)" /> does and not what a reader who assumed the common rounding would say: the
-    /// half under the first interval whose four are more than the minute is rounded down to it and stands at the
-    /// minute, the half over it is rounded up, and <see cref="ClusterStatus.StaleAfter" /> follows the second kept
-    /// rather than the number written. A half that is negative is no interval at all, being below nothing, and leaves
-    /// the file at the minute.</summary>
+    /// <summary>The interval a file gives in exact halves of a second is rounded up to the next whole second - a half
+    /// away from zero, the rounding <see cref="Dashboard.Health.JsonRead" /> names for every count, rather than the
+    /// half to the even second of <see cref="Math.Round(double)" /> (#1328), so neighbours of the same size round the
+    /// same way: 14.5 is 15 and stands at the minute, 15.5 and 16.5 are 16 and 17, and
+    /// <see cref="ClusterStatus.StaleAfter" /> follows the second kept rather than the number written. A half that is
+    /// negative is no interval at all, being below nothing, and leaves the file at the minute.</summary>
     [Theory]
-    [InlineData("0.5", 0, 60)]
+    [InlineData("0.5", 1, 60)]
     [InlineData("1.5", 2, 60)]
-    [InlineData("2.5", 2, 60)]
-    [InlineData("14.5", 14, 60)]
+    [InlineData("2.5", 3, 60)]
+    [InlineData("14.5", 15, 60)]
     [InlineData("15.5", 16, 64)]
-    [InlineData("16.5", 16, 64)]
+    [InlineData("16.5", 17, 68)]
     [InlineData("17.5", 18, 72)]
-    [InlineData("20.5", 20, 80)]
+    [InlineData("20.5", 21, 84)]
     [InlineData("21.5", 22, 88)]
     [InlineData("899.5", 900, 3600)]
-    [InlineData("900.5", 900, 3600)]
+    [InlineData("900.5", 901, 3604)]
     [InlineData("-0.5", null, 60)]
-    public void AHalfSecondOfAnIntervalIsRoundedToTheEvenSecond(string written, int? expected, int staleAfterSeconds)
+    public void AHalfSecondOfAnIntervalIsRoundedUpToTheNextSecond(string written, int? expected, int staleAfterSeconds)
     {
         var status = Read($$"""{ "generated": "2026-10-06T20:15:30Z", "intervalSeconds": {{written}}, "nodes": [] }""");
         var age = TimeSpan.FromSeconds(staleAfterSeconds);

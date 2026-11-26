@@ -80,21 +80,31 @@ internal static class JsonRead
             }
             : null;
 
-    /// <summary>A count: a number that is not negative, rounded.</summary>
+    /// <summary>
+    /// A count: a number that is not negative, rounded to the whole number nearest it - an exact half away from zero,
+    /// so 2.5 is 3 and 14.5 is 15, as <see cref="Whole" /> says.
+    /// </summary>
     public static int? Count(JsonElement? parent, string name) =>
-        Number(parent, name) is { } number && number <= int.MaxValue ? (int)Math.Round(number) : null;
+        Number(parent, name) is { } number && number <= int.MaxValue ? (int)Whole(number) : null;
 
     /// <summary>
-    /// A count as a node's telemetry says it: a number that is not negative, rounded, and one past the reach of an
+    /// A count as a node's telemetry says it: a number that is not negative, rounded (a half to the even number), and one past the reach of an
     /// <see cref="int" /> - even one too large for a <see cref="double" /> - held at <see cref="int.MaxValue" />
     /// rather than refused as <see cref="Count" /> refuses it.
     /// </summary>
     public static int? SaturatedCount(JsonElement? parent, string name) =>
         Real(parent, name) is { } real and >= 0 ? (int)Math.Min(Math.Round(real), int.MaxValue) : null;
 
-    /// <summary>A large count, such as seconds or lines of code.</summary>
+    /// <summary>A large count, such as seconds or lines of code, rounded as <see cref="Count" /> rounds (a half away from zero).</summary>
     public static long? Long(JsonElement? parent, string name) =>
-        Number(parent, name) is { } number && number <= long.MaxValue / 2 ? (long)Math.Round(number) : null;
+        Number(parent, name) is { } number && number <= long.MaxValue / 2 ? (long)Whole(number) : null;
+
+    /// <summary>
+    /// The one rounding rule of <see cref="Count" /> and <see cref="Long" />: the whole number nearest, and an exact half
+    /// away from zero - the rounding a reader assumes, not <see cref="Math.Round(double)" />'s half to the even number.
+    /// (<see cref="SaturatedCount" />, a node's telemetry, still rounds a half to the even number.)
+    /// </summary>
+    private static double Whole(double number) => Math.Round(number, MidpointRounding.AwayFromZero);
 
     /// <summary>Text that is not empty, trimmed.</summary>
     public static string? Text(JsonElement? parent, string name)

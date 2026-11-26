@@ -1470,10 +1470,10 @@ public class WorkItemEdgeCaseTests
         Assert.Equal("Keep it", parsed.Title);
     }
 
-    /// <summary>A number the file says as a float is the integer it rounds to - the even one when it lands midway -
+    /// <summary>A number the file says as a float is the integer it rounds to - the one away from zero when it lands midway -
     /// and the item keeps it with the other parts the file says; a float no int runs to is no number at all.</summary>
     [Theory]
-    [InlineData("4.5", 4)]
+    [InlineData("4.5", 5)]
     [InlineData("4.6", 5)]
     [InlineData("0.4", 0)]
     public void AFloatNumberIsTheIntegerItRoundsTo(string number, int expected)

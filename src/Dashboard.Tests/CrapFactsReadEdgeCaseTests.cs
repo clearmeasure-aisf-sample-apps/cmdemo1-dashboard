@@ -60,13 +60,13 @@ public class CrapFactsReadEdgeCaseTests
         Assert.Equal(new CrapFacts(41, 30, expected), CrapOf($$"""{ "max": 41, "threshold": 30, "overThreshold": {{count}} }"""));
     }
 
-    /// <summary>A count said at the half rounds to the even whole, so a half of a method over is none over.</summary>
+    /// <summary>A count said at the half rounds away from zero (#1328), so a half of a method over is one over.</summary>
     [Theory]
     [InlineData("0.4", 0)]
-    [InlineData("0.5", 0)]
+    [InlineData("0.5", 1)]
     [InlineData("1.5", 2)]
-    [InlineData("2.5", 2)]
-    public void ACountAtTheHalfRoundsToTheEvenWhole(string count, int expected)
+    [InlineData("2.5", 3)]
+    public void ACountAtTheHalfRoundsUpToTheNextWhole(string count, int expected)
     {
         Assert.Equal(new CrapFacts(null, null, expected), CrapOf($$"""{ "overThreshold": {{count}} }"""));
     }

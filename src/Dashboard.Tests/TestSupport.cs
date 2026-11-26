@@ -159,6 +159,35 @@ public static class NodeHealths
 }
 
 /// <summary>
+/// The one way a test builds what the event detector sees of one endpoint at one check: the state, the version, the
+/// telemetry reading (the uptime, the start, or neither) and the answer (the status and the word for why) - each
+/// one call away from its default. A Pending state has no answer yet, which is the part the detector reads. The
+/// event tests used to declare their own copies of this builder, and the copies drifted: one parsed the start
+/// from text, the other had no start at all and kept a reading builder of its own beside it.
+/// </summary>
+public static class NodeObservations
+{
+    private static readonly DateTimeOffset DefaultNow = new(2026, 10, 4, 22, 0, 0, TimeSpan.Zero);
+
+    /// <summary>One endpoint at one check: the state and version named; telemetry only when the uptime or the
+    /// start is named; and, unless the state is Pending, the answer with the status and the words named.</summary>
+    public static NodeObservation Seen(HealthState state, string? version = "2.4.14", long? uptime = null, DateTimeOffset? startedAt = null, int? status = null, string? detail = null, DateTimeOffset? at = null)
+    {
+        var moment = at ?? DefaultNow;
+        var telemetry = uptime is null && startedAt is null ? null : Reading(uptime, startedAt, moment);
+        return new NodeObservation(state, version, telemetry, state == HealthState.Pending ? null : ProbeResults.Detected(state, status, detail, version, moment));
+    }
+
+    /// <summary>One telemetry reading: the uptime, the moment the process started, or neither.</summary>
+    public static TelemetrySnapshot Reading(long? uptime = null, DateTimeOffset? startedAt = null, DateTimeOffset? at = null) =>
+        TelemetrySnapshots.Quiet(at ?? DefaultNow) with
+        {
+            Process = uptime is null ? null : new ProcessVitals(null, null, null, null, null, null, uptime),
+            StartedAt = startedAt,
+        };
+}
+
+/// <summary>
 /// The one way a test asks a question as a reader of another culture: the thread's culture is set for the
 /// lifetime of the scope and put back as it was found when the scope ends, whatever the question did.
 /// </summary>

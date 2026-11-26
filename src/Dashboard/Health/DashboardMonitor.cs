@@ -302,7 +302,7 @@ public sealed class DashboardMonitor
                 .Where(deployable => deployable.Info.PinUrl is null)
                 .Select(deployable => EventDetector.Pinned(known, after, environment.Name, deployable.Info.Name, now))
                 .OfType<DashboardEvent>());
-            environment.RememberPinned(after);
+            environment.RecordGoodPinned(after);
         }
 
         Changed?.Invoke();
@@ -328,7 +328,7 @@ public sealed class DashboardMonitor
                 Events.Add(change);
             }
 
-            deployable.RememberPin(after);
+            deployable.RecordGoodPin(after);
         }
 
         Changed?.Invoke();

@@ -77,20 +77,22 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
     public TelemetrySnapshot? Telemetry { get; private set; }
 
     /// <summary>
-    /// The reading of the node's detailed health check: what the tile shows of it, and the last answer that had
-    /// entries, owned by one <see cref="Reading{T}" /> so that the rule a new answer is kept by is written once.
+    /// The reading of the node's detailed health check: what the page shows of it, and the last reading that
+    /// succeeded, owned by one <see cref="Reading{T}" /> so that the rule a new reading is kept by is written once.
     /// </summary>
     private readonly Reading<HealthDetail> _healthDetail = new();
 
     /// <summary>
-    /// The entries of the node's detailed health check at the last check; null when it was not read (the deployable
-    /// has no <c>healthDetailPath</c>, the probe is Liveness) or gave no entries. Never the answer of an earlier check.
+    /// The entries of the node's detailed health check at the last check: this round's reading, null when it was not
+    /// read (the deployable has no <c>healthDetailPath</c>, the probe is Liveness) or gave no entries. A reading that
+    /// failed replaces what the page shows but not what the next reading is compared with - never the answer of an
+    /// earlier check.
     /// </summary>
     public HealthDetail? HealthDetail => _healthDetail.Current;
 
     /// <summary>
-    /// The last answer of the detailed health check that had entries: what a new answer is compared with to find an
-    /// entry that changed its state. Null until the node answered one.
+    /// The last reading of the detailed health check that succeeded: what a new reading is compared with to find an
+    /// entry that changed its state. Null until a reading that succeeded comes.
     /// </summary>
     public HealthDetail? LastReadHealthDetail => _healthDetail.LastGood;
 

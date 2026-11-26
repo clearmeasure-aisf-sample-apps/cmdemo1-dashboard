@@ -12,8 +12,9 @@ public sealed class EnvironmentStatus
     }
 
     /// <summary>
-    /// The reading of the environment's <c>versions.json</c> pin: what it shows, and the last reading that
-    /// succeeded, owned by one <see cref="Reading{T}" />.
+    /// The reading of the environment's <c>versions.json</c> pin: what the page shows of it, and the last reading
+    /// that succeeded, owned by one <see cref="Reading{T}" /> so that the rule a new reading is kept by is written
+    /// once.
     /// </summary>
     private readonly Reading<PinnedVersions> _pin = new();
 
@@ -25,13 +26,19 @@ public sealed class EnvironmentStatus
 
     public IReadOnlyList<DeployableStatus> Deployables { get; }
 
-    /// <summary>The last reading of the environment's <c>versions.json</c>; a failed reading replaces a good one.</summary>
+    /// <summary>
+    /// The reading of the environment's <c>versions.json</c> of this round: what the page shows of it. A reading
+    /// that failed replaces what the page shows but not what the next reading is compared with.
+    /// </summary>
     public PinnedVersions Pinned => _pin.Current!;
 
     /// <summary>True when a deployable of this environment has a node that runs another version than the pinned one.</summary>
     public bool VersionsDiffer => Deployables.Any(deployable => AssessVersions(deployable) is { Differs: true });
 
-    /// <summary>The last reading that succeeded: what a new reading is compared with to find a new pin.</summary>
+    /// <summary>
+    /// The last reading of the environment's <c>versions.json</c> that succeeded: what a new reading is compared
+    /// with to find a new pin. Null until a reading that succeeded comes.
+    /// </summary>
     public PinnedVersions? LastReadPinned => _pin.LastGood;
 
     public void Record(PinnedVersions pinned)
@@ -40,7 +47,7 @@ public sealed class EnvironmentStatus
         _pin.Show(pinned);
     }
 
-    public void RememberPinned(PinnedVersions pinned) => _pin.Remember(pinned);
+    public void RecordGoodPinned(PinnedVersions pinned) => _pin.Remember(pinned);
 
     /// <summary>
     /// The pinned version of a deployable next to the versions its nodes run: from the deployable's own pin where the

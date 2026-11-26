@@ -251,18 +251,18 @@ public class EnvironmentStatusEdgeCaseTests
         Assert.Same(read, status.Pinned);
         Assert.Null(status.LastReadPinned);
 
-        status.RememberPinned(PinnedVersions.Missing);
+        status.RecordGoodPinned(PinnedVersions.Missing);
 
         Assert.Same(read, status.Pinned);
         Assert.Same(PinnedVersions.Missing, status.LastReadPinned);
 
-        status.RememberPinned(read);
+        status.RecordGoodPinned(read);
 
         Assert.Same(read, status.LastReadPinned);
         Assert.Same(read, status.Pinned);
 
         // Nothing is refused here, and nothing is what the memory is then left holding.
-        status.RememberPinned(null!);
+        status.RecordGoodPinned(null!);
 
         Assert.Null(status.LastReadPinned);
         Assert.Same(read, status.Pinned);

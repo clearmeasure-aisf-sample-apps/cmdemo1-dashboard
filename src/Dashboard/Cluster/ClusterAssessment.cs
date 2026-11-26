@@ -131,37 +131,67 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
             case ClusterLiveness.Pending:
                 return new ClusterAssessment(ClusterState.Checking, "Checking", "Reading the cluster's status file");
             case ClusterLiveness.Unreadable:
-                return new ClusterAssessment(
-                    ClusterState.Unhealthy,
-                    "Unreadable",
-                    "The cluster's status file could not be read",
-                    Join(Sentence(reading.Detail), AzureReports(service, now, zone)));
+                return Unreadable(reading, service, now, zone);
             case ClusterLiveness.Silent when service is { State: SourceState.Read, Value: { IsStopped: true } stopped }:
-                return new ClusterAssessment(
-                    ClusterState.Neutral,
-                    "Stopped",
-                    "The cluster is stopped",
-                    Join(
-                        "The pods and the pages served from inside the cluster do not run while it is stopped.",
-                        stopped.Generated is { } read ? $"Azure reports the power state Stopped, {ClusterText.AsOf(read, now, zone)}." : null));
+                return Stopped(stopped, now, zone);
             case ClusterLiveness.Silent:
-                return new ClusterAssessment(
-                    ClusterState.Unreachable,
-                    "Unreachable",
-                    "The cluster's status file does not answer",
-                    Join(Sentence(reading.Detail), AzureReports(service, now, zone)));
+                return Unreachable(reading, service, now, zone);
         }
 
         var status = reading.Value!;
         if (status.IsStale(now) && status.Generated is { } generated)
         {
-            return new ClusterAssessment(
-                ClusterState.Unreachable,
-                "Stale",
-                $"The collector in the cluster last wrote {TimeText.Clock(generated, zone)} ({TimeText.Ago(generated, now)})",
-                Join("What is shown below is as of then.", AzureReports(service, now, zone)));
+            return Stale(generated, service, now, zone);
         }
 
+        return FromStatus(status, now, zone);
+    }
+
+    /// <summary>The file answers but not with the status: what is wrong, next to what Azure says.</summary>
+    private static ClusterAssessment Unreadable(SourceReading<ClusterStatus> reading, SourceReading<AksService>? service, DateTimeOffset now, TimeZoneInfo zone)
+    {
+        return new ClusterAssessment(
+            ClusterState.Unhealthy,
+            "Unreadable",
+            "The cluster's status file could not be read",
+            AzureAndUs(Sentence(reading.Detail), service, now, zone));
+    }
+
+    /// <summary>The file does not answer and Azure says the cluster is stopped: the cluster is stopped.</summary>
+    private static ClusterAssessment Stopped(AksService stopped, DateTimeOffset now, TimeZoneInfo zone)
+    {
+        return new ClusterAssessment(
+            ClusterState.Neutral,
+            "Stopped",
+            "The cluster is stopped",
+            Join(
+                "The pods and the pages served from inside the cluster do not run while it is stopped.",
+                stopped.Generated is { } read ? $"Azure reports the power state Stopped, {ClusterText.AsOf(read, now, zone)}." : null));
+    }
+
+    /// <summary>The file does not answer and Azure does not say stopped: the cluster is unreachable.</summary>
+    private static ClusterAssessment Unreachable(SourceReading<ClusterStatus> reading, SourceReading<AksService>? service, DateTimeOffset now, TimeZoneInfo zone)
+    {
+        return new ClusterAssessment(
+            ClusterState.Unreachable,
+            "Unreachable",
+            "The cluster's status file does not answer",
+            AzureAndUs(Sentence(reading.Detail), service, now, zone));
+    }
+
+    /// <summary>The file answers but the collector wrote it too long ago: stale, with what Azure says.</summary>
+    private static ClusterAssessment Stale(DateTimeOffset generated, SourceReading<AksService>? service, DateTimeOffset now, TimeZoneInfo zone)
+    {
+        return new ClusterAssessment(
+            ClusterState.Unreachable,
+            "Stale",
+            $"The collector in the cluster last wrote {TimeText.Clock(generated, zone)} ({TimeText.Ago(generated, now)})",
+            AzureAndUs("What is shown below is as of then.", service, now, zone));
+    }
+
+    /// <summary>What the status itself reports: problems, starting pods, or healthy.</summary>
+    private static ClusterAssessment FromStatus(ClusterStatus status, DateTimeOffset now, TimeZoneInfo zone)
+    {
         var asOf = status.AsOf(now);
         var problems = Problems(status, asOf);
         if (problems.Count > 0)
@@ -182,6 +212,12 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
                 "Starting",
                 string.Create(CultureInfo.InvariantCulture, $"{count} pods are starting: {Named(starting)}")),
         };
+    }
+
+    /// <summary>What the file says, then what Azure says: the join every silent branch needs.</summary>
+    private static string? AzureAndUs(string? us, SourceReading<AksService>? service, DateTimeOffset now, TimeZoneInfo zone)
+    {
+        return Join(us, AzureReports(service, now, zone));
     }
 
     /// <summary>

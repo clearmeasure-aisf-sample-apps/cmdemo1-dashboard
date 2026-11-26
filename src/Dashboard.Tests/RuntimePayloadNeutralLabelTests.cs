@@ -45,7 +45,7 @@ public class RuntimePayloadNeutralLabelTests
 
         Assert.Equal(("neutral", "Not probed"), (tile.State, tile.Label));
         Assert.Equal(new RuntimeTileLine("dashboard.uat.example.net", "muted"), Assert.Single(tile.Lines));
-        Assert.Equal("dashboard-uat: the dashboard of this environment. It does not check itself.", tile.Title);
+        Assert.Equal("dashboard-uat: the dashboard of this environment (dashboard.uat.example.net). This page does not check it.", tile.Title);
     }
 
     /// <summary>The tile of one node of the payload.</summary>

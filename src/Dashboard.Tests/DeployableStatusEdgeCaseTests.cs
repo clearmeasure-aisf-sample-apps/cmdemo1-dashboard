@@ -679,6 +679,60 @@ public class DeployableStatusEdgeCaseTests
         Assert.Null(nobody);
     }
 
+    /// <summary>The match back from a decision's healths to the deployable's tiles is by the health a tile reads,
+    /// not by which instance the decision holds: a decision that answers with a restated copy of a node's health -
+    /// another object, the same four parts - still finds the tile the node is, alone and in a rotation, and a copy
+    /// of a health nobody's tile reads names no tile.</summary>
+    [Fact]
+    public void AWithCopyOfANodesHealthStillFindsTheTileItIs()
+    {
+        var deployable = Deployable(
+            frontDoor: Door,
+            nodes: [Node("app-west"), Node("app-east", "eastus2"), Node("app-south", "us-southeast", NodeInfo.StandbyRole)]);
+        deployable.Nodes[0].Record(Answer(HealthState.Healthy));
+        deployable.Nodes[1].Record(Answer(HealthState.Healthy));
+        deployable.Nodes[2].Record(Answer(HealthState.Unhealthy));
+
+        var assessment = deployable.AssessServing(out var serving);
+
+        Assert.Equal(ServingState.Primary, assessment.State);
+        Assert.Equal([deployable.Nodes[0], deployable.Nodes[1]], serving);
+
+        // The decision restates every node it names, as a failover would: another instance of every health, the same
+        // four parts. The tiles it finds are the very tiles the deployable holds.
+        var restated = assessment with
+        {
+            Expected = assessment.Expected! with { },
+            Rotation = [.. assessment.Rotation!.Select(node => node with { })],
+        };
+
+        // Every health the restated decision holds is another instance that says the same four parts.
+        Assert.NotSame(assessment.Expected, restated.Expected);
+        Assert.Equal(assessment.Expected, restated.Expected);
+        Assert.All(restated.Rotation!.Select((copy, index) => (copy, original: assessment.Rotation![index])), pair =>
+        {
+            Assert.NotSame(pair.original, pair.copy);
+            Assert.Equal(pair.original, pair.copy);
+        });
+
+        var tiles = deployable.ServingTiles(restated.Serving);
+
+        Assert.Same(deployable.Nodes[0], tiles[0]);
+        Assert.Same(deployable.Nodes[1], tiles[1]);
+        Assert.Equal(2, tiles.Count);
+        Assert.DoesNotContain(deployable.Nodes[2], tiles);
+
+        // A copy of a health no tile reads is no tile: the standby's health restated with another state names nothing.
+        Assert.Empty(deployable.ServingTiles([deployable.Nodes[2].ToNodeHealth() with { State = HealthState.Healthy }]));
+
+        // And the one-node deployable the decision names by a copy of its only health: that tile, and only it.
+        var alone = Deployable(nodes: [Node("app-west")]);
+        alone.Nodes[0].Record(Answer(HealthState.Healthy));
+        var lone = alone.AssessServing(out var loneServing);
+        Assert.Same(alone.Nodes[0], Assert.Single(loneServing));
+        Assert.Same(alone.Nodes[0], Assert.Single(alone.ServingTiles([lone.OnlyNode! with { }])));
+    }
+
     // ----- the four recordings, each in its own part
 
     /// <summary>The deployable keeps four memories and writes them separately: a pin read records no build and decides
@@ -725,7 +779,7 @@ public class DeployableStatusEdgeCaseTests
     // ----- the surface
 
     /// <summary>The whole public surface the class declares for itself: its twelve parts named in the order they
-    /// stand, the seven members that decide or record something, the one argument of its constructor, no field, no
+    /// stand, the eight members that decide or record something, the one argument of its constructor, no field, no
     /// event, no nested type and no interface - and the six parts a round writes kept to the class alone. A member
     /// added here has to be written down here too, which is the point: a part of a deployable nobody decided the
     /// meaning of cannot be shown on a page.</summary>
@@ -744,7 +798,7 @@ public class DeployableStatusEdgeCaseTests
             [.. properties.Keys]);
 
         Assert.Equal(
-            ["Assess", "AssessServing", "BuildIsDue", "RecordBuild", "RecordPin", "RecordServing", "RememberPin"],
+            ["Assess", "AssessServing", "BuildIsDue", "RecordBuild", "RecordPin", "RecordServing", "RememberPin", "ServingTiles"],
             PublicMembers());
 
         // The twelve parts, each of the type the class says it is.

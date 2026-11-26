@@ -43,7 +43,7 @@ public class ClusterNamespaceEdgeCaseTests
     public void ANamespaceKeepsTheVeryPartsItIsGiven()
     {
         IReadOnlyList<ClusterPod> pods = [ClusterFixture.Pod("ui"), ClusterFixture.Pod("db")];
-        IReadOnlyList<ClusterVolume> volumes = [new ClusterVolume("data", 8589934592d, "Bound"), new ClusterVolume("cache", null, "Pending")];
+        IReadOnlyList<ClusterVolume> volumes = [ClusterFixture.Volume(), new ClusterVolume("cache", null, "Pending")];
         var space = new ClusterNamespace("apps", pods, volumes);
 
         Assert.Equal("apps", space.Name);
@@ -98,7 +98,7 @@ public class ClusterNamespaceEdgeCaseTests
     public void ANamespaceFallsApartIntoItsThreeParts()
     {
         IReadOnlyList<ClusterPod> pods = [ClusterFixture.Pod("ui")];
-        IReadOnlyList<ClusterVolume> volumes = [new ClusterVolume("data", 8589934592d, "Bound")];
+        IReadOnlyList<ClusterVolume> volumes = [ClusterFixture.Volume()];
         var space = new ClusterNamespace("apps", pods, volumes);
 
         var (name, spacePods, spaceVolumes) = space;
@@ -126,7 +126,7 @@ public class ClusterNamespaceEdgeCaseTests
     public void ANamespaceSaysItsPartsInTheWordsTheRecordSaysThem()
     {
         ClusterPod[] pods = { ClusterFixture.Pod("ui"), ClusterFixture.Pod("db") };
-        ClusterVolume[] volumes = { new ClusterVolume("data", 8589934592d, "Bound") };
+        ClusterVolume[] volumes = { ClusterFixture.Volume() };
         var space = new ClusterNamespace("apps", pods, volumes);
 
         Assert.Equal(
@@ -184,7 +184,7 @@ public class ClusterNamespaceEdgeCaseTests
     public void TheNamespacesThatAreOneAreOneAndTheHashCodeFollows()
     {
         IReadOnlyList<ClusterPod> pods = [ClusterFixture.Pod("ui")];
-        IReadOnlyList<ClusterVolume> volumes = [new ClusterVolume("data", 8589934592d, "Bound")];
+        IReadOnlyList<ClusterVolume> volumes = [ClusterFixture.Volume()];
         var one = new ClusterNamespace("apps", pods, volumes);
         var two = new ClusterNamespace("apps", pods, volumes);
 
@@ -214,10 +214,10 @@ public class ClusterNamespaceEdgeCaseTests
         Assert.NotEqual(one, one with { Pods = [] });
         Assert.NotEqual(one, one with { Volumes = [new ClusterVolume("data", null, null)] });
 
-        var first = new ClusterVolume("data", 8589934592d, "Bound");
+        var first = ClusterFixture.Volume();
         Assert.NotEqual(
             new ClusterNamespace("apps", [ClusterFixture.Pod("ui")], [first]),
-            new ClusterNamespace("apps", [ClusterFixture.Pod("ui")], [new ClusterVolume("data", 8589934592d, "Bound")]));
+            new ClusterNamespace("apps", [ClusterFixture.Pod("ui")], [ClusterFixture.Volume()]));
 
         IReadOnlyList<ClusterPod> order = [ClusterFixture.Pod("ui"), ClusterFixture.Pod("db")];
         Assert.NotEqual(
@@ -234,8 +234,8 @@ public class ClusterNamespaceEdgeCaseTests
     public void ADifferentVolumeListIsAnotherNamespaceWhileItsPartsAreTheSame()
     {
         var pod = ClusterFixture.Pod("ui");
-        var firstVolume = new ClusterVolume("data", 8589934592d, "Bound");
-        var sameVolume = new ClusterVolume("data", 8589934592d, "Bound");
+        var firstVolume = ClusterFixture.Volume();
+        var sameVolume = ClusterFixture.Volume();
 
         var one = ClusterFixture.Space("apps", [firstVolume], pod);
         var two = ClusterFixture.Space("apps", [sameVolume], pod);

@@ -38,7 +38,7 @@ public class ClusterGroupsEdgeCaseTests
             ClusterFixture.Row("ui", PodState.Ready),
             new PodRow(ClusterFixture.Pod("job", ClusterPod.Succeeded, false, reason: "Completed"), PodState.Finished),
         ];
-        IReadOnlyList<ClusterVolume> volumes = [new ClusterVolume("data", 8589934592d, "Bound")];
+        IReadOnlyList<ClusterVolume> volumes = [ClusterFixture.Volume()];
 
         var group = new NamespaceGroup("apps", environment, true, rows, volumes);
 
@@ -128,7 +128,7 @@ public class ClusterGroupsEdgeCaseTests
     {
         var environment = ClusterFixture.Environment("tdd", "apps");
         IReadOnlyList<PodRow> rows = [ClusterFixture.Row("ui", PodState.Ready)];
-        IReadOnlyList<ClusterVolume> volumes = [new ClusterVolume("data", 8589934592d, "Bound")];
+        IReadOnlyList<ClusterVolume> volumes = [ClusterFixture.Volume()];
 
         var one = new NamespaceGroup("apps", environment, true, rows, volumes);
         var two = new NamespaceGroup("apps", environment, true, rows, volumes);

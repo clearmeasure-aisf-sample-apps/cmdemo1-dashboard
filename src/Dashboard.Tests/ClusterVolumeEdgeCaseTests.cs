@@ -4,9 +4,7 @@ namespace Dashboard.Tests;
 /// The boundary, null/empty and fixed-value tests of <see cref="ClusterVolume" />: the three parts the volume
 /// keeps of what it is given, the three parts it falls apart into, the words it says them in, the copies that
 /// turn one of them, and the volumes that are one and the volumes that are not.
-/// <see cref="ParsedEdgeCaseTests" /> pins the capacity at the nothing, the zero and the top of the number, the
-/// phase that is the empty word, two volumes whose parts stand the same way as one volume, and the copy that
-/// names no part; <see cref="ClusterParserTests" /> pins the sample file's volume at the values it stands on and
+/// <see cref="ClusterParserTests" /> pins the sample file's volume at the values it stands on and
 /// the volume the reader leaves out where the file names no name; and
 /// <see cref="ClusterTextTests" /> and <see cref="ClusterTextEdgeCaseTests" /> pin the line the page makes out of
 /// the three parts, not the parts themselves.
@@ -32,10 +30,37 @@ namespace Dashboard.Tests;
 /// </summary>
 public class ClusterVolumeEdgeCaseTests
 {
-    /// <summary>Eight GiB in the bytes the capacity stands in - the size the sample file's one volume claims.</summary>
-    private const double EightGiB = 8589934592d;
+    private const double EightGiB = ClusterFixture.EightGiB;
 
     // ----- The parts the volume keeps -----
+
+    /// <summary>The volume keeps the capacity it is given, at the zero that is a number and at the top of
+    /// the number, and says nothing where none is given: the phase the volume was not given stands the
+    /// nothing it is, and the phase that is the empty word stands the empty word it is, kept, not read as
+    /// absent.</summary>
+    [Fact]
+    public void AVolumeKeepsItsCapacityAtTheEndsAndSaysNothingWhereNoneIsGiven()
+    {
+        var noCapacity = new ClusterVolume("data", null, null);
+        Assert.Null(noCapacity.Capacity);
+        Assert.Null(noCapacity.Phase);
+
+        var zero = new ClusterVolume("data", 0, "Bound");
+        Assert.Equal(0d, zero.Capacity);
+        Assert.Equal("Bound", zero.Phase);
+
+        var top = new ClusterVolume("data", double.MaxValue, string.Empty);
+        Assert.Equal(double.MaxValue, top.Capacity);
+        Assert.Equal(string.Empty, top.Phase);
+
+        Assert.Equal(noCapacity, new ClusterVolume("data", null, null));
+        Assert.NotEqual(noCapacity, new ClusterVolume("data", 0, null));
+        Assert.NotEqual(zero, new ClusterVolume("data", 0, "Pending"));
+
+        var copy = noCapacity with { };
+        Assert.Equal(noCapacity, copy);
+        Assert.NotSame(noCapacity, copy);
+    }
 
     /// <summary>
     /// The volume keeps the very parts it is given: the name and the phase as the words they are and the

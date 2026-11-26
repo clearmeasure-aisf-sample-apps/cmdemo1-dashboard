@@ -94,6 +94,12 @@ internal static class ClusterFixture
             Cpu: ResourceUse.None,
             Memory: ResourceUse.None);
 
+    /// <summary>Eight GiB in the bytes the capacity stands in - the size the sample file's one volume claims.</summary>
+    public const double EightGiB = 8589934592d;
+
+    public static ClusterVolume Volume(string name = "data", double? capacity = EightGiB, string? phase = "Bound") =>
+        new(name, capacity, phase);
+
     public static ClusterNamespace Space(string name, params ClusterPod[] pods) => new(name, pods, []);
 
     public static ClusterNamespace Space(string name, IReadOnlyList<ClusterVolume> volumes, params ClusterPod[] pods) => new(name, pods, volumes);

@@ -26,7 +26,7 @@ public class ClusterParserTests
         Assert.Equal(6, status.Pods.Count());
         var prod = status.Namespaces[1];
         Assert.Equal(["ui", "db", "dashboard", "db-backup"], prod.Pods.Select(pod => pod.Workload));
-        Assert.Equal(new ClusterVolume("data-db-0", 8589934592, "Bound"), Assert.Single(prod.Volumes));
+        Assert.Equal(ClusterFixture.Volume(name: "data-db-0"), Assert.Single(prod.Volumes));
 
         var ui = status.Namespaces[2].Pods[0];
         Assert.Equal(("ui-7f6b5c4d3-m8n2p", "ui", "Deployment", "aks-system-12148983-vmss000000"), (ui.Name, ui.Workload, ui.Kind, ui.Node));

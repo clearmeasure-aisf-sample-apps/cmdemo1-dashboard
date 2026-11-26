@@ -39,8 +39,8 @@
 
     /// <summary>
     /// One press as one value (<see cref="TrafficRun"/>): the three numbers the browser call and the sentences below
-    /// take, so they cannot reach <c>js/traffic.js</c> as three ints in the wrong order (#1742). How often the page
-    /// checks while the run lasts is not one of them: it is the page's own rule, <see cref="TrafficPlan.CheckEvery"/>,
+    /// take, passed to <c>js/traffic.js</c> whole and read there by name, so there is no order to get wrong
+    /// (#1742, #1776). How often the page checks while the run lasts is not one of them: it is the page's own rule, <see cref="TrafficPlan.CheckEvery"/>,
     /// and the tick below is cut from it.
     /// </summary>
     private static TrafficRun Run { get; } = TrafficRun.Default;
@@ -137,7 +137,7 @@
 
         _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/traffic.js");
         string[] addresses = [.. plan.Addresses.Select(address => address.AbsoluteUri)];
-        await _module.InvokeVoidAsync("start", addresses, Run.PerSecond, Run.Seconds, Run.AnswerWithinSeconds);
+        await _module.InvokeVoidAsync("start", addresses, Run);
         _pressed = true;
         _started = Time.GetUtcNow();
         _count = TrafficCount.Started;

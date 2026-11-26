@@ -29,26 +29,50 @@ public sealed record ServingAssessment(
 
     public bool IsFailedOver => State == ServingState.FailedOver;
 
+    /// <summary>The shape of a deployable, which decides the words its assessment says.</summary>
+    private enum ServingShape
+    {
+        /// <summary>One node, or primaries with standbys behind them: one node is expected to serve.</summary>
+        Plain,
+
+        /// <summary>The only node of a deployable without a Front Door endpoint: it serves, or it does not.</summary>
+        OnlyNode,
+
+        /// <summary>A Front Door endpoint rotating over several primary nodes.</summary>
+        Rotation,
+    }
+
+    /// <summary>
+    /// The shape of the deployable, read once from the two optional parts: a rotation outranks an only node, and a
+    /// deployable with neither is plain. Private, so the public surface and the words of the record stay its own.
+    /// </summary>
+    private ServingShape Shape => Rotation is not null ? ServingShape.Rotation
+        : OnlyNode is not null ? ServingShape.OnlyNode
+        : ServingShape.Plain;
+
     /// <summary>True when the Front Door rotates over several primary nodes.</summary>
-    public bool IsRotation => Rotation is not null;
+    public bool IsRotation => Shape == ServingShape.Rotation;
 
     /// <summary>
     /// The nodes expected to serve the traffic: every healthy primary node of a rotation, and otherwise the one node
     /// <see cref="Expected"/> names (none when nothing serves or nothing is decided).
     /// </summary>
     public IReadOnlyList<NodeHealth> Serving =>
-        Rotation is not null && State == ServingState.Primary ? [.. Rotation.Where(node => node.State == HealthState.Healthy)]
+        IsRotation && State == ServingState.Primary ? [.. Rotation!.Where(node => node.State == HealthState.Healthy)]
         : Expected is null ? []
         : [Expected];
 
     /// <summary>The primary nodes of a rotation that are not healthy, in the order of the topology; none without a rotation.</summary>
     public IReadOnlyList<NodeHealth> OutOfRotation =>
-        Rotation is null ? [] : [.. Rotation.Where(node => node.State != HealthState.Healthy)];
+        IsRotation ? [.. Rotation!.Where(node => node.State != HealthState.Healthy)] : [];
 
     /// <summary>The headline in the words of the deployable's shape: a rotation, an only node, or a plain deployable.</summary>
-    public string Headline => Rotation is { } rotation ? RotationWords(rotation)
-        : OnlyNode is { } only ? OnlyNodeWords(only)
-        : PlainWords();
+    public string Headline => Shape switch
+    {
+        ServingShape.Rotation => RotationWords(Rotation!),
+        ServingShape.OnlyNode => OnlyNodeWords(OnlyNode!),
+        _ => PlainWords(),
+    };
 
     /// <summary>A rotation names regions in the plural: the Front Door rotates over several.</summary>
     private string RotationWords(IReadOnlyList<NodeHealth> rotation) => State switch
@@ -80,7 +104,11 @@ public sealed record ServingAssessment(
     /// <summary>A rotation and a plain deployable fail over in the same words.</summary>
     private string FailedOverWords() => $"Failed over to {Expected!.Label}";
 
-    /// <summary>Why the deployable failed over; null in every other state, and for a single node.</summary>
+    /// <summary>
+    /// Why the deployable failed over; null in every other state, and for a single node. It asks for the only node
+    /// itself rather than <see cref="Shape"/>: an assessment handed both a rotation and an only node (which
+    /// <see cref="Assess"/> never builds) has always told no detail.
+    /// </summary>
     public string? FailoverDetail => State != ServingState.FailedOver || OnlyNode is not null
         ? null
         : FailedPrimary is null
@@ -108,36 +136,29 @@ public sealed record ServingAssessment(
         if (frontDoor is not null && primaries.Count > 1)
         {
             var (rotating, first) = DecideRotation(primaries, byPriority);
-            return RotationOf(rotating, first, frontDoor.Value, primaries);
+            // No primary is named as the failed one: the detail says that none is healthy.
+            return Decided(rotating, first, frontDoor, rotation: primaries);
         }
 
         var (state, expected) = Decide(byPriority);
         var failedPrimary = state == ServingState.FailedOver ? byPriority.FirstOrDefault(node => node.IsPrimary) : null;
         var single = frontDoor is null && byPriority.Count == 1 ? byPriority[0] : null;
-        return OneNode(state, expected, failedPrimary, frontDoor, single);
+        return Decided(state, expected, frontDoor, failedPrimary, onlyNode: single);
     }
 
     /// <summary>
-    /// A rotation: the Front Door rotates over <paramref name="primaries"/>. No primary is named as the failed one:
-    /// the detail says that none is healthy.
+    /// The one way a decision becomes an assessment: the Front Door parts are compared and handed over the same for
+    /// every shape, and the shape is the one of <paramref name="onlyNode"/> and <paramref name="rotation"/> that is set
+    /// (<paramref name="onlyNode"/> for a lone node without a Front Door endpoint, <paramref name="rotation"/> for the
+    /// primary nodes a Front Door rotates over, neither for a plain deployable).
     /// </summary>
-    private static ServingAssessment RotationOf(
-        ServingState state, NodeHealth? expected, HealthState frontDoor, IReadOnlyList<NodeHealth> primaries) =>
-        new(
-            State: state,
-            Expected: expected,
-            FailedPrimary: null,
-            FrontDoor: Compare(state, frontDoor),
-            FrontDoorState: frontDoor,
-            OnlyNode: null,
-            Rotation: primaries);
-
-    /// <summary>
-    /// A deployable where one node is expected to serve: <paramref name="onlyNode"/> is set when that node is the only
-    /// one and has no Front Door endpoint in front of it.
-    /// </summary>
-    private static ServingAssessment OneNode(
-        ServingState state, NodeHealth? expected, NodeHealth? failedPrimary, HealthState? frontDoor, NodeHealth? onlyNode) =>
+    private static ServingAssessment Decided(
+        ServingState state,
+        NodeHealth? expected,
+        HealthState? frontDoor,
+        NodeHealth? failedPrimary = null,
+        NodeHealth? onlyNode = null,
+        IReadOnlyList<NodeHealth>? rotation = null) =>
         new(
             State: state,
             Expected: expected,
@@ -145,7 +166,7 @@ public sealed record ServingAssessment(
             FrontDoor: Compare(state, frontDoor),
             FrontDoorState: frontDoor,
             OnlyNode: onlyNode,
-            Rotation: null);
+            Rotation: rotation);
 
     /// <summary>
     /// A rotation is decided when every primary node is checked: the healthy ones serve. With none healthy, the

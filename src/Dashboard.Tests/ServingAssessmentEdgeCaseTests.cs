@@ -804,6 +804,34 @@ public class ServingAssessmentEdgeCaseTests
         Assert.Equal("Front Door rotates over 1 of 2 regions: eastus2 is not healthy", one.Headline);
     }
 
+    /// <summary>The decision builds one of three shapes and never a mix: a rotation (several primaries behind a Front
+    /// Door endpoint), an only node (one node and no endpoint) or a plain deployable - so the rotation outranking the
+    /// only node, pinned above, is a rule for hand-made assessments alone (#1497).</summary>
+    [Theory]
+    [InlineData(true, 2, 0, true, false)]
+    [InlineData(true, 3, 1, true, false)]
+    [InlineData(false, 1, 0, false, true)]
+    [InlineData(false, 0, 1, false, true)]
+    [InlineData(false, 2, 0, false, false)]
+    [InlineData(false, 1, 1, false, false)]
+    [InlineData(true, 1, 0, false, false)]
+    [InlineData(true, 1, 1, false, false)]
+    [InlineData(false, 0, 0, false, false)]
+    [InlineData(true, 0, 0, false, false)]
+    public void TheDecisionBuildsOneShapeAndNeverBoth(bool frontDoor, int primaries, int standbys, bool rotation, bool only)
+    {
+        var nodes = Enumerable.Range(0, primaries).Select(index => Primary(Healthy, $"p{index}"))
+            .Concat(Enumerable.Range(0, standbys).Select(index => Standby(Healthy, $"s{index}")))
+            .ToList();
+
+        var assessment = ServingAssessment.Assess(nodes, frontDoor ? Healthy : null);
+
+        Assert.Equal(rotation, assessment.IsRotation);
+        Assert.Equal(rotation, assessment.Rotation is not null);
+        Assert.Equal(only, assessment.OnlyNode is not null);
+        Assert.False(assessment.Rotation is not null && assessment.OnlyNode is not null);
+    }
+
     /// <summary>The words an assessment says of itself are its fourteen public members in the order the record
     /// declares them - the seven parts first, then the seven worked out of them - each said in its own words: a node
     /// as the node says itself, an absent part as nothing at all between two commas, and a list as a list says

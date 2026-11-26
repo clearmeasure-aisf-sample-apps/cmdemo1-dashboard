@@ -180,7 +180,7 @@
 
 @code {
     private readonly CancellationTokenSource _stopping = new();
-    private readonly Dictionary<string, RuntimeDiagram> _diagrams = new(StringComparer.Ordinal);
+    private readonly Dictionary<EnvironmentName, RuntimeDiagram> _diagrams = [];
     private RuntimeIndexResult? _index;
     private RuntimeDiagram? _diagram;
     private IJSObjectReference? _module;
@@ -258,24 +258,27 @@
 
     /// <summary>The monitor's environment of the diagram that is shown; null while none is, or when the topology has none of that name.</summary>
     private EnvironmentStatus? Shown => _diagram is { IsValid: true } diagram
-        ? Monitor.Environments.FirstOrDefault(status => string.Equals(status.Name, diagram.Manifest!.Environment, StringComparison.OrdinalIgnoreCase))
+        ? Monitor.Environments.FirstOrDefault(status => new EnvironmentName(status.Name).Matches(diagram.Manifest!.Environment))
         : null;
 
     private RuntimeIndexEntry? Current => _index is { HasEnvironments: true, Index.Environments: var entries }
-        ? entries.FirstOrDefault(entry => string.Equals(entry.Name, Environment, StringComparison.OrdinalIgnoreCase)) ?? entries[0]
+        ? entries.FirstOrDefault(entry => new EnvironmentName(entry.Name).Matches(Environment)) ?? entries[0]
         : null;
+
+    /// <summary>The shown environment when the address names it, in any case; null when the address names none or another.</summary>
+    private RuntimeIndexEntry? Addressed => Current is { } entry && new EnvironmentName(entry.Name).Matches(Environment) ? entry : null;
 
     /// <summary>The environment whose database view is shown; null while the diagram is.</summary>
     private RuntimeIndexEntry? DatabaseEntry =>
-        Database && Current is { Database: not null } entry && string.Equals(entry.Name, Environment, StringComparison.OrdinalIgnoreCase) ? entry : null;
+        Database && Addressed is { Database: not null } entry ? entry : null;
 
     private bool ShowsDatabase => DatabaseEntry is not null;
 
     /// <summary>The boxes of the deployable whose application view is shown, the primary first; null while the diagram is.</summary>
     private IReadOnlyList<RuntimeNode>? ApplicationBoxes =>
         Application is { } deployable && !ShowsDatabase && _diagram is { IsValid: true, Manifest: { } manifest }
-        && Current is { } entry && string.Equals(entry.Name, Environment, StringComparison.OrdinalIgnoreCase)
-        && string.Equals(entry.Name, _diagram.Environment, StringComparison.Ordinal)
+        && Addressed is { } entry
+        && new EnvironmentName(entry.Name) == new EnvironmentName(_diagram.Environment)
         && ApplicationText.Boxes(manifest, deployable) is { Count: > 0 } boxes
             ? boxes
             : null;
@@ -304,7 +307,7 @@
     public async Task OpenBox(string alias)
     {
         if (Current is not { } entry || _mounted is not { IsValid: true, Manifest: { } manifest }
-            || !string.Equals(entry.Name, _mounted.Environment, StringComparison.Ordinal)
+            || new EnvironmentName(entry.Name) != new EnvironmentName(_mounted.Environment)
             || manifest.Nodes.FirstOrDefault(node => string.Equals(node.Alias, alias, StringComparison.Ordinal)) is not { } box)
         {
             return;
@@ -359,11 +362,12 @@
             return;
         }
 
-        if (!_diagrams.TryGetValue(entry.Name, out var diagram))
+        var name = new EnvironmentName(entry.Name);
+        if (!_diagrams.TryGetValue(name, out var diagram))
         {
             _diagram = null;
             diagram = await Loader.LoadDiagramAsync(entry, _stopping.Token);
-            _diagrams[entry.Name] = diagram;
+            _diagrams[name] = diagram;
         }
 
         _diagram = diagram;

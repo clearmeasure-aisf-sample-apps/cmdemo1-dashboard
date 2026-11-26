@@ -2,6 +2,8 @@ using System.Net;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Dashboard.Health;
+using Dashboard.Runtime;
+using Dashboard.Work;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Dashboard.Tests;
@@ -549,6 +551,52 @@ public static class ApplicationNames
 
     /// <summary>One character past the longest deployable name the address takes.</summary>
     public const string LongestPlusOne = Longest + "4";
+}
+
+/// <summary>
+/// The one way a test walks a <see cref="ViewAddress" /> parsed from a hash: parse it, assert the
+/// whole record against the address built from the named parts, assert each of the five parts by
+/// name, assert the hash the address writes back, and assert the round trip. The four test files
+/// that pin <c>src/Dashboard/Runtime/ViewAddress.cs</c> each wrote this walk again for every
+/// behaviour they test (#1119); a new test that needs to say something the walk does not cover
+/// (identity of a fixed address, the <c>ToHash</c> of an address built by hand) asserts that
+/// itself and calls this for the walk.
+/// </summary>
+public static class ViewAddresses
+{
+    /// <summary>
+    /// Parses <paramref name="hash" /> and asserts the whole address, each of its five parts by
+    /// name, the hash it writes back, and the round trip through <see cref="ViewAddress.ToHash" />
+    /// and <see cref="ViewAddress.Parse(string)" />.
+    /// </summary>
+    /// <param name="hash">The hash to parse; may be <c>null</c>.</param>
+    /// <param name="view">The <see cref="DashboardView" /> the parsed address must carry.</param>
+    /// <param name="environment">The environment name, or <c>null</c> for none.</param>
+    /// <param name="database">Whether the runtime view's database zoom is set.</param>
+    /// <param name="application">The deployable's name, or <c>null</c> for none.</param>
+    /// <param name="audience">The work items filter.</param>
+    public static void AssertHash(
+        string? hash,
+        DashboardView view,
+        string? environment = null,
+        bool database = false,
+        string? application = null,
+        WorkAudience audience = WorkAudience.All)
+    {
+        var address = ViewAddress.Parse(hash);
+        var expected = new ViewAddress(view, environment, database, application, audience);
+
+        Assert.Equal(expected, address);
+        Assert.Equal(view, address.View);
+        Assert.Equal(environment, address.Environment);
+        Assert.Equal(database, address.Database);
+        Assert.Equal(application, address.Application);
+        Assert.Equal(audience, address.Audience);
+
+        var written = expected.ToHash();
+        Assert.Equal(written, address.ToHash());
+        Assert.Equal(address, ViewAddress.Parse(address.ToHash()));
+    }
 }
 
 /// <summary>

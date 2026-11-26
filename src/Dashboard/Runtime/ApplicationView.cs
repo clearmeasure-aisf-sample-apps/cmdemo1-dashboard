@@ -48,12 +48,28 @@ public enum ApplicationReadState
     Failed,
 }
 
-/// <summary>The outcome of asking for <c>&lt;version&gt;.json</c>.</summary>
-public sealed record ApplicationRead(ApplicationReadState State, ApplicationArchitecture? Architecture = null)
+/// <summary>
+/// The outcome of asking for <c>&lt;version&gt;.json</c>: the three states it says, and, for the one that failed, the
+/// reasons why - said in the word and the way of <see cref="RuntimeIndexResult.Failed"/> and
+/// <see cref="RuntimeParseResult{T}.Failed"/>. A read or a missing file carries no problems.
+/// </summary>
+/// <param name="State">What the ask answered.</param>
+/// <param name="Architecture">The assemblies, when the state is <see cref="ApplicationReadState.Read" />; else null.</param>
+/// <param name="Problems">Why the file could not be read, in the order they were found; empty but for <see cref="ApplicationReadState.Failed" />.</param>
+public sealed record ApplicationRead(ApplicationReadState State, ApplicationArchitecture? Architecture, IReadOnlyList<string> Problems)
 {
-    public static ApplicationRead Missing { get; } = new(ApplicationReadState.Missing);
+    /// <summary>HTTP 404: the named outcome that is no problem - the repository published none of that version.</summary>
+    public static ApplicationRead Missing { get; } = new(ApplicationReadState.Missing, null, []);
 
-    public static ApplicationRead Failed { get; } = new(ApplicationReadState.Failed);
+    /// <summary>
+    /// The file is no JSON object or could not be read: failed, with the reasons why. One reason or many, given one by
+    /// one, or a list gathered beforehand and handed over as it is (the same list, not a copy).
+    /// </summary>
+    /// <param name="problems">Why the file could not be read, in the order they were found.</param>
+    public static ApplicationRead Failed(params string[] problems) => new(ApplicationReadState.Failed, null, problems);
+
+    /// <summary>The file was read: the architecture, with no problems.</summary>
+    public static ApplicationRead Read(ApplicationArchitecture architecture) => new(ApplicationReadState.Read, architecture, []);
 }
 
 /// <summary>
@@ -290,7 +306,17 @@ public static class ApplicationText
         return architecture.Truncated ? "The diagram and the list show only a part of the assemblies." : null;
     }
 
-    /// <summary>The line of a version whose file did not answer; null for one that was read.</summary>
+    /// <summary>The line of a version whose file did not answer, saying what it could not read; null for one that was read.</summary>
+    public static string? ProblemLine(string deployable, string version, ApplicationRead read) => read switch
+    {
+        { State: ApplicationReadState.Failed, Problems.Count: > 0 } =>
+            $"The architecture diagram of {deployable} {version} could not be read: {string.Join("; ", read.Problems)}",
+        { State: ApplicationReadState.Failed } => $"The architecture diagram of {deployable} {version} could not be read.",
+        { State: ApplicationReadState.Missing } => $"No architecture diagram of {deployable} {version} yet: its repository publishes one with each release.",
+        _ => null,
+    };
+
+    /// <summary>The line of a version whose file did not answer, by its state alone; null for one that was read.</summary>
     public static string? ProblemLine(string deployable, string version, ApplicationReadState state) => state switch
     {
         ApplicationReadState.Missing => $"No architecture diagram of {deployable} {version} yet: its repository publishes one with each release.",

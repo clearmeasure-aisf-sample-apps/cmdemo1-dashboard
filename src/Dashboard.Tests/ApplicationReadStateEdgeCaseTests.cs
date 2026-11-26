@@ -65,9 +65,10 @@ public class ApplicationReadStateEdgeCaseTests
         Assert.Equal(ApplicationReadState.Read, default(ApplicationReadState));
         Assert.Equal(ApplicationReadState.Read, new ApplicationReadState());
 
-        var read = new ApplicationRead(default);
+        var read = new ApplicationRead(default, null, []);
         Assert.Equal(ApplicationReadState.Read, read.State);
         Assert.Null(read.Architecture);
+        Assert.Empty(read.Problems);
     }
 
     /// <summary>One below the first, one above the last and either end of <see cref="int" /> have no name and say their number.</summary>
@@ -103,21 +104,27 @@ public class ApplicationReadStateEdgeCaseTests
 
     // ----- The outcomes that carry a state -----
 
-    /// <summary>The shared outcomes carry the state of their name, no architecture, and are the same object every time.</summary>
+    /// <summary>
+    /// The named outcome <see cref="ApplicationRead.Missing" /> carries its state, no architecture and no problems, and
+    /// is the same object every time; a failed read carries no architecture, and one made without reasons is the
+    /// silence of <see cref="ApplicationReadState.Failed" />.
+    /// </summary>
     [Fact]
     public void TheSharedOutcomesCarryTheStateOfTheirNameAndNoArchitecture()
     {
         Assert.Equal(ApplicationReadState.Missing, ApplicationRead.Missing.State);
         Assert.Null(ApplicationRead.Missing.Architecture);
+        Assert.Empty(ApplicationRead.Missing.Problems);
         Assert.Same(ApplicationRead.Missing, ApplicationRead.Missing);
 
-        Assert.Equal(ApplicationReadState.Failed, ApplicationRead.Failed.State);
-        Assert.Null(ApplicationRead.Failed.Architecture);
-        Assert.Same(ApplicationRead.Failed, ApplicationRead.Failed);
+        var failed = ApplicationRead.Failed();
+        Assert.Equal(ApplicationReadState.Failed, failed.State);
+        Assert.Null(failed.Architecture);
+        Assert.Empty(failed.Problems);
 
-        Assert.NotEqual(ApplicationRead.Missing, ApplicationRead.Failed);
-        Assert.Equal(new ApplicationRead(ApplicationReadState.Missing), ApplicationRead.Missing);
-        Assert.Equal(new ApplicationRead(ApplicationReadState.Failed), ApplicationRead.Failed);
+        Assert.NotEqual(ApplicationRead.Missing, failed);
+        Assert.Equal(new ApplicationRead(ApplicationReadState.Missing, null, []), ApplicationRead.Missing);
+        Assert.Equal(new ApplicationRead(ApplicationReadState.Failed, null, []), failed);
     }
 
     // ----- Text that is or is not a state -----

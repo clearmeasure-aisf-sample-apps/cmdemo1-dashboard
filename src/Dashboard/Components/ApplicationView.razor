@@ -30,7 +30,7 @@
         {
             <p class="empty" role="status">Loading the assemblies of @Deployable @version.Text</p>
         }
-        else if (ApplicationText.ProblemLine(Deployable, version.Text, _read.State) is { } problem)
+        else if (ApplicationText.ProblemLine(Deployable, version.Text, _read) is { } problem)
         {
             <p class="application__note" role="status">@problem</p>
         }

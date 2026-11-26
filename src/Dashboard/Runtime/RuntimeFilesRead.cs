@@ -8,5 +8,5 @@ internal sealed record RuntimeFilesRead<TManifest>(TManifest? Manifest, string? 
     where TManifest : class
 {
     internal static RuntimeFilesRead<TManifest> Of(TManifest? manifest, string? svg, IReadOnlyList<string> errors) =>
-        errors.Count > 0 || manifest is null || svg is null ? new(null, null, errors) : new(manifest, svg, []);
+        errors.Count > 0 || !PairParts.Both(manifest, svg) ? new(null, null, errors) : new(manifest, svg, []);
 }

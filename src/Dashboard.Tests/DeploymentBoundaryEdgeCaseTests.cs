@@ -59,11 +59,11 @@ public class DeploymentBoundaryEdgeCaseTests
     private static readonly DeploymentWait Question = new(DeploymentWait.GuidedFailure, "Database is unreachable", Ended, "jeffrey");
 
     /// <summary>A deployment of no address, nobody and nowhere to act on: the eight parts a file must give.</summary>
-    private static Deployment Bare() => new("demo-ui", "uat", "1", DeploymentState.Unknown, "paused", null, null, null);
+    private static Deployment Bare() => Deployments.Bare();
 
     /// <summary>One deployment of a state and an end, of nothing else: the flight and the marking ask no more.</summary>
     private static Deployment Of(DeploymentState state, DateTimeOffset? finished) =>
-        new("demo-ui", "uat", "1", state, "as the file wrote it", Since, finished, null);
+        Deployments.InState(state, finished, since: Since, stateText: "as the file wrote it");
 
     /// <summary>The words a deployment says its parts in, taken in the invariant culture whatever the reader of this
     /// test happens to be, since the record's own words follow whoever reads them.</summary>

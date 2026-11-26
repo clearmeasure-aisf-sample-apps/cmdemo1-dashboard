@@ -42,11 +42,11 @@ public class DeploymentTextEdgeCaseTests
 
     /// <summary>A deployment of uat, started when the page is asked, and ended when the end says it is.</summary>
     private static Deployment One(DeploymentState state, string stateText, DateTimeOffset? finished = null, DeploymentWait? waitsFor = null) =>
-        new("demo-ui", "uat", "2.4.43", state, stateText, ActivityLines.Now, finished, null, null, waitsFor);
+        Deployments.InState(state, finished, since: ActivityLines.Now, stateText: stateText, release: "2.4.43", waitsFor: waitsFor);
 
     /// <summary>A deployment that is waiting, asked five minutes before the page is asked.</summary>
     private static Deployment Waiting(DeploymentWait? wait, string? startedBy = null) =>
-        new("demo-ui", "uat", "2.4.43", DeploymentState.Waiting, "waiting", ActivityLines.Now - TimeSpan.FromMinutes(5), null, null, startedBy, wait);
+        Deployments.InState(DeploymentState.Waiting, since: ActivityLines.Now - TimeSpan.FromMinutes(5), stateText: "waiting", release: "2.4.43", startedBy: startedBy, waitsFor: wait);
 
     /// <summary>A mark the test builds from its own words, its count and what the file says more.</summary>
     private static DeploymentMark Mark(string sentence, int? minutes, bool inFlight, string? detail = null) =>

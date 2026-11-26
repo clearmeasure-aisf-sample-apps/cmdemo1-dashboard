@@ -246,7 +246,10 @@ public class RuntimeTrendEdgeCaseTests
         var trend = new RuntimeTrend(new List<double> { double.NaN, 1 }, Title);
         var payload = new RuntimePayload([], [], [new RuntimeEdgeMark("e1", "active", null, null, null, "t", null, trend)]);
 
-        Assert.Throws<ArgumentException>(() => payload.ToJson());
+        var refusal = Assert.Throws<ArgumentException>(() => payload.ToJson());
+
+        Assert.Contains("relationship 'e1'", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("(NaN at 0)", refusal.Message, StringComparison.Ordinal);
     }
 
     // ------------------------------------------------------------------------ the record's own shape

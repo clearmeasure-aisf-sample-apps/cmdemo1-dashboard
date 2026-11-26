@@ -64,9 +64,10 @@ public sealed record DatabaseListRow(string Name, int? Columns, long? Rows);
 public static class DatabaseParser
 {
     /// <summary>The most tables and the most columns of one table that are kept.</summary>
-    private const int MostTables = 2000;
+    internal const int MostTables = 2000;
     private const int MostColumns = 1000;
 
+    /// <summary>The manifest: its shape checked here, its names, its tables and the rest each read in their own step.</summary>
     public static RuntimeParseResult<DatabaseManifest> ParseManifest(string? json)
     {
         if (!RuntimeManifestParser.TryOpen(json, out var document, out var problem))
@@ -78,54 +79,47 @@ public static class DatabaseParser
         {
             var root = document.RootElement;
             var errors = new List<string>();
-            var environment = JsonRead.Text(root, "environment");
-            var database = JsonRead.Text(root, "database");
-            if (environment is null)
-            {
-                errors.Add("environment: missing or empty.");
-            }
-
-            if (database is null)
-            {
-                errors.Add("database: missing or empty.");
-            }
-
+            var names = ReadManifestFields(root, errors);
             if (root.TryGetProperty("tables", out var array) && array.ValueKind is not (JsonValueKind.Array or JsonValueKind.Null))
             {
                 errors.Add("tables: not an array.");
             }
 
-            var tables = new List<DatabaseTable>();
-            var index = 0;
-            foreach (var element in JsonRead.Items(root, "tables").Take(MostTables))
-            {
-                var path = $"tables[{index++}]";
-                var alias = JsonRead.Text(element, "alias");
-                var qualifiedName = JsonRead.Text(element, "qualifiedName");
-                var name = JsonRead.Text(element, "name");
-                if (alias is null || qualifiedName is null || name is null)
-                {
-                    errors.Add($"{path}: alias, qualifiedName and name are required.");
-                    continue;
-                }
-
-                tables.Add(new DatabaseTable(alias, qualifiedName, JsonRead.Text(element, "schema") ?? string.Empty, name, JsonRead.Long(element, "rows"), JsonRead.Count(element, "columns")));
-            }
-
-            return RuntimeParseResult<DatabaseManifest>.Collected(
-                errors,
-                () => environment is null || database is null
-                    ? null
-                    : new DatabaseManifest(
-                        environment,
-                        database,
-                        JsonRead.Time(root, "readAt"),
-                        Source(root),
-                        JsonRead.Flag(root, "truncated") ?? false,
-                        tables,
-                        JsonRead.Count(root, "drawn") ?? tables.Count));
+            var tables = DatabaseTableReader.ReadAll(root, errors);
+            return RuntimeParseResult<DatabaseManifest>.Collected(errors, () => names is { } read ? Build(root, read, tables) : null);
         }
     }
+
+    /// <summary>The manifest's two required names; null, with a problem for each one missing, when either is.</summary>
+    private static ManifestNames? ReadManifestFields(JsonElement root, List<string> errors)
+    {
+        var environment = JsonRead.Text(root, "environment");
+        var database = JsonRead.Text(root, "database");
+        if (environment is null)
+        {
+            errors.Add("environment: missing or empty.");
+        }
+
+        if (database is null)
+        {
+            errors.Add("database: missing or empty.");
+        }
+
+        return environment is null || database is null ? null : new ManifestNames(environment, database);
+    }
+
+    /// <summary>The manifest of the read names and tables, with the optional fields of the file.</summary>
+    private static DatabaseManifest Build(JsonElement root, ManifestNames names, IReadOnlyList<DatabaseTable> tables) =>
+        new(
+            names.Environment,
+            names.Database,
+            JsonRead.Time(root, "readAt"),
+            Source(root),
+            JsonRead.Flag(root, "truncated") ?? false,
+            tables,
+            JsonRead.Count(root, "drawn") ?? tables.Count);
+
+    private readonly record struct ManifestNames(string Environment, string Database);
 
     /// <summary>The live file; null for anything that is no JSON object with a list of tables.</summary>
     public static DatabaseLive? ParseLive(string? json)

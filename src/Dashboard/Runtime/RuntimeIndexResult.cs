@@ -25,7 +25,13 @@ public sealed record RuntimeIndexResult(RuntimeAvailability Availability, Runtim
     /// <summary>The index lists at least one environment to pick and draw.</summary>
     internal bool HasEnvironments => Index is { Environments.Count: > 0 };
 
-    /// <summary>Whether the index records a database view for the environment of that exact name.</summary>
-    internal bool RecordsDatabaseOf(string environment) =>
-        Index?.Environments.Any(entry => entry.Database is not null && string.Equals(entry.Name, environment, StringComparison.Ordinal)) ?? false;
+    /// <summary>
+    /// Whether the index records a database view for the environment of that exact name: the same
+    /// <see cref="EnvironmentName"/>, case for case, not the page's case-insensitive <see cref="EnvironmentName.Matches"/>.
+    /// </summary>
+    internal bool RecordsDatabaseOf(string environment)
+    {
+        var name = new EnvironmentName(environment);
+        return Index?.Environments.Any(entry => entry.Database is not null && new EnvironmentName(entry.Name) == name) ?? false;
+    }
 }

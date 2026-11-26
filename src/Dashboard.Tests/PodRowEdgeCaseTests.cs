@@ -354,11 +354,12 @@ public class PodRowEdgeCaseTests
     public void AStateTheEnumDoesNotNameIsHeldAsTheNumberItStandsOn(int number)
     {
         var row = new PodRow(ClusterFixture.SilentPod("ui-0"), (PodState)number);
+        var sameNumberRow = new PodRow(ClusterFixture.SilentPod("ui-0"), (PodState)number);
 
         Assert.Equal(number, (int)row.State);
         Assert.False(Enum.IsDefined(row.State));
-        Assert.Equal(row, new PodRow(ClusterFixture.SilentPod("ui-0"), (PodState)number));
-        Assert.True(row == new PodRow(ClusterFixture.SilentPod("ui-0"), (PodState)number));
+        Assert.Equal(row, sameNumberRow);
+        Assert.True(row == sameNumberRow);
     }
 
     /// <summary>The restart count the pod says is the row's to hold: the zero the pod that says nothing stands on,

@@ -32,7 +32,8 @@ public class DashboardMonitorTests
             TopologyParser.Parse(TwoEnvironments).Topology!,
             new NodeProber(http, _time),
             new PinnedVersionsReader(http, _time),
-            _time);
+            _time,
+            pageAddress: new Uri(Optics.Page));
     }
 
     private static HttpResponseMessage Healthy(HttpRequestMessage request) =>

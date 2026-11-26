@@ -9,6 +9,10 @@ namespace Dashboard.Tests;
 /// </summary>
 internal static class Optics
 {
+    /// <summary>The page's own address, as <c>Program.cs</c> gives the browser's client; the site the dashboard's own
+    /// build file is read from.</summary>
+    public const string Page = "https://dashboard.example.net/";
+
     public const string Topology = """
         {
           "system": { "slug": "demo", "name": "Demo", "deliveryUrl": "https://raw.example.net/org/demo-system/status/delivery.json" },
@@ -104,11 +108,14 @@ internal static class Optics
             $$"""{ "windowSeconds": 60, "startedAt": "{{startedAt}}", "requests": { "perMinute": {{requests}}, "frontDoor": {{requests - 2}}, "direct": 2, "errors": {{errors}}, "p95Ms": 85 }, "probes": { "perMinute": 4, "frontDoor": 6 }, "sql": { "perMinute": {{sql}}, "p95Ms": 12 }, "http": { "perMinute": 0 }{{process}} }""");
     }
 
-    public static DashboardMonitor Monitor(StubHandler handler, SignallingTimeProvider time, EventLog? events = null, string topology = Topology)
+    public static DashboardMonitor Monitor(StubHandler handler, SignallingTimeProvider time, EventLog? events = null, string topology = Topology, string pageAddress = Page)
     {
         var http = new HttpClient(handler);
-        return new DashboardMonitor(TopologyParser.Parse(topology).Topology!, new NodeProber(http, time), new PinnedVersionsReader(http, time), time, events);
+        return new DashboardMonitor(TopologyParser.Parse(topology).Topology!, new NodeProber(http, time), new PinnedVersionsReader(http, time), time, new Uri(pageAddress), events);
     }
+
+    /// <summary>True for the page's own site, which is where the dashboard's build facts are read from.</summary>
+    public static bool OwnSite(HttpRequestMessage request) => request.RequestUri!.Host == "dashboard.example.net";
 
     /// <summary>Every endpoint healthy, on the given version, with telemetry, build facts and the delivery file.</summary>
     public static HttpResponseMessage Answer(HttpRequestMessage request, string version = "2.4.15", string? telemetry = null) =>

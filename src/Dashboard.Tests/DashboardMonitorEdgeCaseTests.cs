@@ -44,7 +44,8 @@ public class DashboardMonitorEdgeCaseTests
             TopologyParser.Parse(topology).Topology!,
             new NodeProber(http, _time),
             new PinnedVersionsReader(http, _time),
-            _time);
+            _time,
+            pageAddress: new Uri(Optics.Page));
     }
 
     // ----- the intervals -----
@@ -68,12 +69,12 @@ public class DashboardMonitorEdgeCaseTests
     [Fact]
     public void TheMonitorIsAskedForItsTopologyAndOnlyForIt()
     {
-        var error = Assert.Throws<ArgumentNullException>(() => new DashboardMonitor(null!, null!, null!, null!));
+        var error = Assert.Throws<ArgumentNullException>(() => new DashboardMonitor(null!, null!, null!, null!, pageAddress: new Uri(Optics.Page)));
 
         Assert.Equal("topology", error.ParamName);
 
         var topology = TopologyParser.Parse(Optics.Topology).Topology!;
-        var monitor = new DashboardMonitor(topology, null!, null!, null!);
+        var monitor = new DashboardMonitor(topology, null!, null!, null!, pageAddress: new Uri(Optics.Page));
 
         Assert.Same(topology, monitor.Topology);
         Assert.NotNull(monitor.Events);

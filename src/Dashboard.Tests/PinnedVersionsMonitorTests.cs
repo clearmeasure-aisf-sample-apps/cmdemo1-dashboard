@@ -45,7 +45,8 @@ public class PinnedVersionsMonitorTests
             TopologyParser.Parse(Tracked).Topology!,
             new NodeProber(http, _time),
             new PinnedVersionsReader(http, _time),
-            _time);
+            _time,
+            pageAddress: new Uri(Optics.Page));
     }
 
     private static bool IsVersions(HttpRequestMessage request) => request.RequestUri!.Host == VersionsHost;

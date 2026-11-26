@@ -457,7 +457,7 @@
                 previous.Changed -= OnMonitorChanged;
             }
 
-            _monitor = result.Topology is { } topology ? new DashboardMonitor(topology, Prober, Versions, Clock, _events, ClusterFiles) : null;
+            _monitor = result.Topology is { } topology ? new DashboardMonitor(topology, Prober, Versions, Clock, PageAddress, _events, ClusterFiles) : null;
             _errors = result.Topology is null ? result.Errors : null;
 
             // Without a topology the page has no traffic panel, and what it sent has stopped with it.

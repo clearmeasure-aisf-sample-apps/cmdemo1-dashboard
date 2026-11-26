@@ -362,7 +362,6 @@ public class DeployableFactsTests
 /// </summary>
 public class DashboardCodeTests
 {
-    private const string Page = "https://dashboard.example.net/";
     private const string FactsPath = "/build-facts.json";
 
     /// <summary>The build that serves the page, with every part a build may measure.</summary>
@@ -395,23 +394,23 @@ public class DashboardCodeTests
     private static string RuntimeViewComponent([CallerFilePath] string here = "") =>
         Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here)!, "..", "Dashboard", "Components", "RuntimeView.razor"));
 
-    /// <summary>True for the page's own site, which is where the dashboard's build facts are read from.</summary>
-    private static bool IsFacts(HttpRequestMessage request) => request.RequestUri!.Host == "dashboard.example.net";
-
+    /// <summary>A monitor whose page is served from <see cref="Optics.Page"/>: the address is written to the
+    /// monitor, and the client is set up without one, as the prober's clients now are.</summary>
     private DashboardMonitor Monitor(StubHandler handler, string? topology = null)
     {
-        var http = new HttpClient(handler) { BaseAddress = new Uri(Page) };
+        var http = new HttpClient(handler);
         return new DashboardMonitor(
             TopologyParser.Parse(topology ?? TopologyWithDashboard).Topology!,
             new NodeProber(http, _time),
             new PinnedVersionsReader(http, _time),
-            _time);
+            _time,
+            pageAddress: new Uri(Optics.Page));
     }
 
     /// <summary>The monitor of the dashboard's own card after the one round that reads its file.</summary>
     private async Task<DashboardMonitor> ReadAsync(string facts)
     {
-        var monitor = Monitor(new StubHandler(request => IsFacts(request) ? StubHandler.Answer(HttpStatusCode.OK, facts) : Optics.Answer(request)));
+        var monitor = Monitor(new StubHandler(request => Optics.OwnSite(request) ? StubHandler.Answer(HttpStatusCode.OK, facts) : Optics.Answer(request)));
         await monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
 
         Assert.Equal(new DateTimeOffset(2026, 10, 4, 22, 0, 0, TimeSpan.Zero), _time.GetUtcNow());
@@ -543,7 +542,7 @@ public class DashboardCodeTests
 
         Assert.Null(monitor.Topology.System.Dashboard);
         Assert.Null(monitor.DashboardBuild);
-        Assert.DoesNotContain(handler.Requests, IsFacts);
+        Assert.DoesNotContain(handler.Requests, Optics.OwnSite);
 
         // The apps' rows are untouched: each deployable still has the build its node reported.
         Assert.All(
@@ -554,7 +553,7 @@ public class DashboardCodeTests
     [Fact]
     public async Task WhileItsOwnFileDoesNotAnswerThereIsNoCardYetAndItIsAskedAgain()
     {
-        var handler = new StubHandler(request => IsFacts(request)
+        var handler = new StubHandler(request => Optics.OwnSite(request)
             ? StubHandler.Answer(HttpStatusCode.NotFound, "<html>404</html>")
             : Optics.Answer(request));
         var monitor = Monitor(handler);
@@ -563,12 +562,12 @@ public class DashboardCodeTests
         // The guard's first read is there and its second is not: nothing renders, although the apps' cards do.
         Assert.NotNull(monitor.Topology.System.Dashboard);
         Assert.Null(monitor.DashboardBuild);
-        Assert.Equal(1, handler.Requests.Count(IsFacts));
+        Assert.Equal(1, handler.Requests.Count(Optics.OwnSite));
 
         _time.Advance(DashboardMonitor.DashboardBuildRetry);
         await monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
 
-        Assert.Equal(2, handler.Requests.Count(IsFacts));
+        Assert.Equal(2, handler.Requests.Count(Optics.OwnSite));
         Assert.Null(monitor.DashboardBuild);
 
         // The deployables' own rows are unaffected: their builds come from their nodes, not from this file.

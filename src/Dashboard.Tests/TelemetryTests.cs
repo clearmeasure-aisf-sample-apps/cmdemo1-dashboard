@@ -170,7 +170,7 @@ public class TelemetryTests
             _ => StubHandler.Answer(HttpStatusCode.OK, "Healthy"),
         });
         var http = new HttpClient(handler);
-        var monitor = new DashboardMonitor(TopologyParser.Parse(WithTelemetry).Topology!, new NodeProber(http, time), new PinnedVersionsReader(http, time), time);
+        var monitor = new DashboardMonitor(TopologyParser.Parse(WithTelemetry).Topology!, new NodeProber(http, time), new PinnedVersionsReader(http, time), time, pageAddress: new Uri(Optics.Page));
 
         await monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
 

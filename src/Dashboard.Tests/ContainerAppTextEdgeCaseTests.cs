@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace Dashboard.Tests;
 
 /// <summary>
@@ -43,19 +41,8 @@ public class ContainerAppTextEdgeCaseTests
 
     /// <summary>The number line as a viewer of another culture would see it: the code asks the invariant one, so
     /// even at the ends of the number the digits and the minus sign never change.</summary>
-    private static string Facts(ContainerAppStatus status)
-    {
-        var culture = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = new CultureInfo("de-DE");
-            return ContainerAppText.Facts(status);
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = culture;
-        }
-    }
+    private static string Facts(ContainerAppStatus status) =>
+        CultureScope.Says("de-DE", () => ContainerAppText.Facts(status));
 
     // ----- the number line next to the badge, at the ends of the number
 

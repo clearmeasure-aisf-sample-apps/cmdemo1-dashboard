@@ -513,11 +513,8 @@ public class DashboardEventEdgeCaseTests
     [Fact]
     public void TheEventSaysItsSixPartsInTheirOrder()
     {
-        var culture = Thread.CurrentThread.CurrentCulture;
-        try
+        CultureScope.Runs(CultureInfo.InvariantCulture, () =>
         {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-
             Assert.Equal(
                 "DashboardEvent { At = 11/21/2026 09:00:00 +00:00, Kind = Health, Level = Info, Environment = prod, "
                 + "Node = westus3, Text = ui is healthy }",
@@ -568,11 +565,7 @@ public class DashboardEventEdgeCaseTests
                 "DashboardEvent { At = 11/21/2026 14:30:00 +05:30, Kind = Health, Level = Info, Environment = prod, "
                 + "Node = westus3, Text = ui is healthy }",
                 Event(at: AtInOtherHours).ToString());
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = culture;
-        }
+        });
     }
 
     /// <summary>
@@ -587,20 +580,13 @@ public class DashboardEventEdgeCaseTests
     {
         var entry = Event(kind: EventKind.Cluster, level: EventLevel.Warning, environment: "uat", node: "AKS", text: "The cluster status file changed.");
 
-        var culture = Thread.CurrentThread.CurrentCulture;
-        try
+        CultureScope.Runs(CultureInfo.InvariantCulture, () =>
         {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-
             Assert.Equal(
                 "DashboardEvent { At = 11/21/2026 09:00:00 +00:00, Kind = Cluster, Level = Warning, "
                 + "Environment = uat, Node = AKS, Text = The cluster status file changed. }",
                 entry.ToString());
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = culture;
-        }
+        });
 
         ViewerCulture.German(() => Assert.Equal(
             "DashboardEvent { At = 21.11.2026 09:00:00 +00:00, Kind = Cluster, Level = Warning, "

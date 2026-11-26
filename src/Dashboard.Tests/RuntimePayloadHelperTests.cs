@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace Dashboard.Tests;
 
 /// <summary>
@@ -344,19 +342,8 @@ public class RuntimePayloadHelperTests
             new ContainerAppAnswer("/_healthcheck", true, status, opaque, ms, Checked, status is null && !opaque ? "No answer within 10 s." : null));
 
     /// <summary>The number line as a viewer of another culture would see it: the code asks the invariant one, so the digits and the separators never change.</summary>
-    private static string Facts(ContainerAppStatus status)
-    {
-        var culture = Thread.CurrentThread.CurrentCulture;
-        try
-        {
-            Thread.CurrentThread.CurrentCulture = new CultureInfo("de-DE");
-            return ContainerAppText.Facts(status);
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = culture;
-        }
-    }
+    private static string Facts(ContainerAppStatus status) =>
+        CultureScope.Says("de-DE", () => ContainerAppText.Facts(status));
 
     // The last rows are the fall-through: an answer with nothing to show, and the state the probe holds with it.
     [Theory]

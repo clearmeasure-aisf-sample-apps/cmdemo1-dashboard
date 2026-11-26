@@ -230,11 +230,8 @@ public class ContainerAppStatusEdgeCaseTests
     [Fact]
     public void TheStatusSaysItsPartsInTheirOrderWhenAnAnswerStandsUnderIt()
     {
-        var culture = Thread.CurrentThread.CurrentCulture;
-        try
+        CultureScope.Runs(CultureInfo.InvariantCulture, () =>
         {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-
             Assert.Equal(
                 "ContainerAppStatus { State = Healthy, Last = ContainerAppAnswer { Path = /_healthcheck, ReadsHealth = True, StatusCode = 200, Opaque = False, LatencyMs = 85, CheckedAt = 10/04/2026 22:00:00 +00:00, Detail = , HealthyPayload = True, Answered = True }, CorsRefused = True }",
                 new ContainerAppStatus(ContainerAppState.Healthy, Heard(200, healthyPayload: true), true).ToString());
@@ -250,10 +247,6 @@ public class ContainerAppStatusEdgeCaseTests
             Assert.Equal(
                 "ContainerAppStatus { State = Unhealthy, Last = ContainerAppAnswer { Path = /_healthcheck, ReadsHealth = True, StatusCode = , Opaque = False, LatencyMs = , CheckedAt = 10/04/2026 22:00:00 +00:00, Detail = , HealthyPayload = False, Answered = False }, CorsRefused = False }",
                 new ContainerAppStatus(ContainerAppState.Unhealthy, Silent(string.Empty)).ToString());
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = culture;
-        }
+        });
     }
 }

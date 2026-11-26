@@ -412,11 +412,8 @@ public class HourlyCheckEdgeCaseTests
     [Fact]
     public void TheCheckSaysItsTwoPartsInTheirOrder()
     {
-        var culture = Thread.CurrentThread.CurrentCulture;
-        try
+        CultureScope.Runs(CultureInfo.InvariantCulture, () =>
         {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-
             Assert.Equal(
                 "HourlyCheck { Result = healthy, At = 10/07/2026 01:02:13 +00:00 }",
                 ReportedAs(HourlyCheck.Healthy).ToString());
@@ -432,10 +429,6 @@ public class HourlyCheckEdgeCaseTests
             Assert.Equal(
                 "HourlyCheck { Result = healthy, At = 10/07/2026 01:02:13 +00:00 }",
                 Moment("\"2026-10-07T01:02:13.4567890Z\"")!.ToString());
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = culture;
-        }
+        });
     }
 }

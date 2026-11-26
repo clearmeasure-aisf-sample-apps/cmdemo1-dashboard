@@ -305,21 +305,14 @@ public class ContainerAppAnswerEdgeCaseTests
     [Fact]
     public void TheAnswerSaysItsPartsInTheirOrder()
     {
-        var culture = Thread.CurrentThread.CurrentCulture;
-        try
+        CultureScope.Runs(CultureInfo.InvariantCulture, () =>
         {
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-
             Assert.Equal(
                 "ContainerAppAnswer { Path = /health, ReadsHealth = True, StatusCode = 200, Opaque = False, LatencyMs = 85, CheckedAt = 10/04/2026 22:00:00 +00:00, Detail = No answer within 10 s., HealthyPayload = True, Answered = True }",
                 new ContainerAppAnswer("/health", true, 200, false, 85, Checked, "No answer within 10 s.", true).ToString());
             Assert.Equal(
                 "ContainerAppAnswer { Path = /_healthcheck, ReadsHealth = False, StatusCode = , Opaque = True, LatencyMs = , CheckedAt = 01/01/2026 00:00:00 +05:00, Detail = , HealthyPayload = False, Answered = True }",
                 new ContainerAppAnswer("/_healthcheck", false, null, true, null, new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.FromHours(5))).ToString());
-        }
-        finally
-        {
-            Thread.CurrentThread.CurrentCulture = culture;
-        }
+        });
     }
 }

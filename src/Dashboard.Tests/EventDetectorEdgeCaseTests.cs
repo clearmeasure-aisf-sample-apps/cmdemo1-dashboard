@@ -1,3 +1,5 @@
+using static Dashboard.Tests.NodeObservations;
+
 namespace Dashboard.Tests;
 
 /// <summary>
@@ -33,28 +35,8 @@ public class EventDetectorEdgeCaseTests
     private static readonly DateTimeOffset Started = Now.AddHours(-1);
     private static readonly string[] Regions = ["westus3", "eastus2", "centralus"];
 
-    /// <summary>One endpoint at one check: the state, and where the check answers, its words.</summary>
-    private static NodeObservation Seen(HealthState state, string? version = "2.4.14", long? uptime = null, int? status = null, string? detail = null)
-    {
-        var telemetry = uptime is null
-            ? null
-            : new TelemetrySnapshot(0, 0, 0, 0, null, 0, 0, 0, null, 0, Now)
-            {
-                Process = new ProcessVitals(null, null, null, null, null, null, uptime),
-            };
-        return new NodeObservation(state, version, telemetry, state == HealthState.Pending ? null : new ProbeResult(state, status, status is null ? null : 40, Now, version, detail));
-    }
-
     private static IReadOnlyList<DashboardEvent> Node(NodeObservation before, NodeObservation after, bool isNode = true) =>
         EventDetector.Node(before, after, "uat", "ui", isNode ? "westus3" : "Front Door", isNode, Now);
-
-    /// <summary>One telemetry reading: the uptime, the moment the process started, or neither.</summary>
-    private static TelemetrySnapshot Reading(long? uptime = null, DateTimeOffset? startedAt = null) =>
-        new(0, 0, 0, 0, null, 0, 0, 0, null, 0, Now)
-        {
-            Process = uptime is null ? null : new ProcessVitals(null, null, null, null, null, null, uptime),
-            StartedAt = startedAt,
-        };
 
     /// <summary>The serving decision of two nodes: the primary standing in westus3, the standby in eastus2.</summary>
     private static ServingAssessment Serving(HealthState primary, HealthState standby) =>

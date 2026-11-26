@@ -1,4 +1,5 @@
 using System.Net;
+using static Dashboard.Tests.NodeObservations;
 
 namespace Dashboard.Tests;
 
@@ -6,18 +7,6 @@ public class EventDetectorTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 4, 22, 0, 0, TimeSpan.Zero);
     private readonly SignallingTimeProvider _time = new();
-
-    private static NodeObservation Seen(HealthState state, string? version = "2.4.14", long? uptime = null, string? startedAt = null, int? status = null, string? detail = null)
-    {
-        var telemetry = uptime is null && startedAt is null
-            ? null
-            : new TelemetrySnapshot(0, 0, 0, 0, null, 0, 0, 0, null, 0, Now)
-            {
-                Process = uptime is null ? null : new ProcessVitals(null, null, null, null, null, null, uptime),
-                StartedAt = startedAt is null ? null : DateTimeOffset.Parse(startedAt, System.Globalization.CultureInfo.InvariantCulture),
-            };
-        return new NodeObservation(state, version, telemetry, state == HealthState.Pending ? null : new ProbeResult(state, status, status is null ? null : 40, Now, version, detail));
-    }
 
     private static IReadOnlyList<DashboardEvent> Node(NodeObservation before, NodeObservation after, bool isNode = true) =>
         EventDetector.Node(before, after, "uat", "ui", isNode ? "westus3" : "Front Door", isNode, Now);
@@ -65,11 +54,11 @@ public class EventDetectorTests
     public void ALaterStartIsARestartOfAnAppThatReportsNoUptime()
     {
         var restart = Assert.Single(Node(
-            Seen(HealthState.Healthy, startedAt: "2026-10-04T20:00:00Z"),
-            Seen(HealthState.Healthy, startedAt: "2026-10-04T21:59:30Z")));
+            Seen(HealthState.Healthy, startedAt: Now.AddHours(-2)),
+            Seen(HealthState.Healthy, startedAt: Now.AddSeconds(-30))));
 
         Assert.Equal((EventKind.Restart, "ui restarted"), (restart.Kind, restart.Text));
-        Assert.Empty(Node(Seen(HealthState.Healthy, startedAt: "2026-10-04T20:00:00Z"), Seen(HealthState.Healthy, startedAt: "2026-10-04T20:00:00Z")));
+        Assert.Empty(Node(Seen(HealthState.Healthy, startedAt: Now.AddHours(-2)), Seen(HealthState.Healthy, startedAt: Now.AddHours(-2))));
     }
 
     [Fact]

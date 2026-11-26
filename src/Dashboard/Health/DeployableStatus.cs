@@ -10,25 +10,31 @@ public sealed class DeployableStatus
         FrontDoor = TargetStatus.ForFrontDoor(info);
         Nodes = [.. info.Nodes.Select(TargetStatus.ForNode)];
         BuildSource = info.BuildPath is null ? null : Nodes.FirstOrDefault(node => node.IsPrimary) ?? (Nodes.Count > 0 ? Nodes[0] : null);
-        Pinned = info.PinUrl is null ? null : PinnedVersions.Pending;
+        _pin.Show(info.PinUrl is null ? null : PinnedVersions.Pending);
     }
+
+    /// <summary>
+    /// The reading of the deployable's own pin: what it shows, and the last reading that succeeded, owned by one
+    /// <see cref="Reading{T}" />.
+    /// </summary>
+    private readonly Reading<PinnedVersions> _pin = new();
 
     /// <summary>
     /// The last reading of the deployable's own pin (<c>pinUrl</c>, a Kustomize file); a failed reading replaces a good
     /// one. Null when the topology names none: the environment's <c>versions.json</c> then holds the pin.
     /// </summary>
-    public PinnedVersions? Pinned { get; private set; }
+    public PinnedVersions? Pinned => _pin.Current;
 
     /// <summary>The last reading of the deployable's own pin that succeeded: what a new reading is compared with to find a new pin.</summary>
-    public PinnedVersions? LastReadPinned { get; private set; }
+    public PinnedVersions? LastReadPinned => _pin.LastGood;
 
     public void RecordPin(PinnedVersions pinned)
     {
         ArgumentNullException.ThrowIfNull(pinned);
-        Pinned = pinned;
+        _pin.Show(pinned);
     }
 
-    public void RememberPin(PinnedVersions pinned) => LastReadPinned = pinned;
+    public void RememberPin(PinnedVersions pinned) => _pin.Remember(pinned);
 
     /// <summary>The node asked for the build facts: the primary; null when the topology names no <c>buildPath</c>.</summary>
     public TargetStatus? BuildSource { get; }

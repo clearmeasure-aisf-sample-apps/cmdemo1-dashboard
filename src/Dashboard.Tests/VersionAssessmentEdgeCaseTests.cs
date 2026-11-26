@@ -1,5 +1,8 @@
 using System.Reflection;
 
+using static Dashboard.Tests.HealthStates;
+using static Dashboard.Tests.Nodes;
+
 namespace Dashboard.Tests;
 
 /// <summary>
@@ -46,21 +49,6 @@ namespace Dashboard.Tests;
 /// </summary>
 public class VersionAssessmentEdgeCaseTests
 {
-    private const HealthState Healthy = HealthState.Healthy;
-    private const HealthState Unhealthy = HealthState.Unhealthy;
-    private const HealthState Unreachable = HealthState.Unreachable;
-    private const HealthState Pending = HealthState.Pending;
-
-    /// <summary>The number one step past the four states a check leaves behind: no state of the enum, and one a
-    /// caller can still hand the record.</summary>
-    private const HealthState Unnamed = (HealthState)4;
-
-    private static readonly PinnedVersions Pinned = PinnedVersions.Parse("""{ "dashboard": "1.0.1", "ui": "2.4.7" }""");
-
-    private static NodeVersion West(HealthState state, string? version) => new("westus3", state, version);
-
-    private static NodeVersion East(HealthState state, string? version) => new("eastus2", state, version);
-
     private static VersionAssessment Assess(params NodeVersion[] nodes) => VersionAssessment.Assess(Pinned, "ui", nodes);
 
     /// <summary>A reading of the file that pins <c>ui</c> to this very text, as the record of a reading holds it and

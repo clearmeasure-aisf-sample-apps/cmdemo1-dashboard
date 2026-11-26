@@ -469,12 +469,15 @@ public static class ActivityLines
 /// <see cref="States(HealthState[])" />, and the heap of <see cref="States(HealthState, int)" /> answers that
 /// all say the one state, and the summary the counts make, <see cref="Summary(int, int, int)" />, beside
 /// the summary the states make, <see cref="Summary(HealthState[])" />, counted through
-/// <see cref="HealthSummary.Of" />. Ten health test files declared their own copies of these four
-/// aliases and built the summaries three more ways; the copies are held to these answers in
-/// <see cref="HealthStatesObjectMotherTests" />, so a copy may be retired file by file without changing
-/// a test's expectation. The sentinels a file casts for an absent state - the <c>Unknown</c> of the
-/// serving tests and the <c>Unnamed</c> of the version tests - are not kept here: they name one edge
-/// case of their own file, and a shared name would blur what they say.
+/// <see cref="HealthSummary.Of" />. This is the one place a <see cref="HealthState" /> is named in the tests:
+/// the health and version files that used to declare their own four aliases and, in
+/// <see cref="HealthSummaryEdgeCaseTests" />, their own <c>Summary</c> and <c>States</c> builders, now name the
+/// states, the summary and the heap builders through <see cref="HealthStates" /> - so a new <c>HealthState</c>,
+/// or a moved default, is written here once and not in every file. The node-version fixtures that stand on the
+/// states - the regional builders, the one-past sentinel and the pinned reading - are held by <see cref="Nodes" />
+/// in <c>Fixtures/Nodes.cs</c>. The <c>Unknown</c> a serving test casts for an absent state is that file's own word
+/// and is not kept here; the <c>Unnamed</c> of the version tests is the number one past the four states and is held
+/// by <see cref="Nodes" />.
 /// </summary>
 public static class HealthStates
 {

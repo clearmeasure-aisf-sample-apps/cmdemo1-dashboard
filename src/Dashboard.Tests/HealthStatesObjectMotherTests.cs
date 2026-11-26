@@ -1,24 +1,22 @@
-using System.Reflection;
-
 namespace Dashboard.Tests;
 
 /// <summary>
 /// The <see cref="HealthStates" /> object mother in <c>TestSupport.cs</c>, pinned where it lives: the four states
 /// by the word the health tests say them, the heap of answers built from the answers given, the heap of answers
 /// that all say the one state, the summary the three counts make, and the summary the states make, counted
-/// through <see cref="HealthSummary.Of" />. The mother answers the questions the health tests keep asking in the
-/// words the private copies of the ten files that still carry their own aliases and builders answer them -
-/// <see cref="EachFilesWithPrivateCopiesSaysWhatTheMotherSays" /> and
-/// <see cref="TheFilesPrivateSummaryAndStatesHelpersSayWhatTheMothersSay" /> hold each copy to the shared
-/// answer - so a copy may be retired file by file without changing a test's expectation, the way
-/// <see cref="EdgeCaseSupportTests" /> holds the <c>Own</c> copies. The sentinels a file casts for an absent
-/// state - the <c>Unknown</c> of the serving tests and the <c>Unnamed</c> of the version tests - are the
-/// file's own words and are not held here.
+/// through <see cref="HealthSummary.Of" />. The mother is the one place a <see cref="HealthState" /> is named in
+/// the tests: the ten health and version files that used to carry their own four aliases and, in
+/// <see cref="HealthSummaryEdgeCaseTests" />, their own <c>Summary</c> and <c>States</c> builders, now name the
+/// states through <see cref="HealthStates" /> and the summary and heap builders through it too - so a new
+/// <c>HealthState</c>, or a moved default, is written here once and not in every file. The node-version fixtures
+/// that stand on the states - the regional builders, the one-past sentinel and the pinned reading - are held by
+/// <see cref="Nodes" /> in <c>Fixtures/Nodes.cs</c>, which <see cref="NodesObjectMotherTests" /> pins. The
+/// sentinels a file still casts for an absent state - the <c>Unknown</c> of the serving tests - are the file's own
+/// words and are not held here; the <c>Unnamed</c> of the version tests is the number one past the four states and
+/// is held by <see cref="Nodes" />.
 /// </summary>
 public class HealthStatesObjectMotherTests
 {
-    private const BindingFlags Private = BindingFlags.NonPublic | BindingFlags.Static;
-
     // ------------------------------- the four states, held once
 
     /// <summary>The mother's four aliases are the four states the enum says, each one the very member of the
@@ -97,68 +95,5 @@ public class HealthStatesObjectMotherTests
         Assert.Equal((5, 2, 1), (everything.Total, everything.Healthy, everything.Pending));
         Assert.Equal(2, everything.NotHealthy);
         Assert.Equal(SummaryLevel.Problems, everything.Level);
-    }
-
-    // ------------------------------- the private copies, held to the shared answers
-
-    /// <summary>The ten files that still carry their own four aliases of the node's states, in the words they
-    /// say them.</summary>
-    public static TheoryData<Type> FilesCopied =>
-    [
-        typeof(FrontDoorAgreementEdgeCaseTests),
-        typeof(HealthSummaryEdgeCaseTests),
-        typeof(NodeHealthEdgeCaseTests),
-        typeof(RotationTests),
-        typeof(ServingAssessmentEdgeCaseTests),
-        typeof(ServingAssessmentTests),
-        typeof(ServingStateBoundaryEdgeCaseTests),
-        typeof(ServingStateDecisionEdgeCaseTests),
-        typeof(VersionAssessmentEdgeCaseTests),
-        typeof(VersionAssessmentTests),
-    ];
-
-    /// <summary>Every file that still carries its four private aliases says what the mother says - the
-    /// <c>Healthy</c> of every copy stands on <see cref="HealthState.Healthy" />, and so for the other three -
-    /// so an alias may be retired file by file without changing a test's expectation.</summary>
-    [Theory]
-    [MemberData(nameof(FilesCopied))]
-    public void EachFilesWithPrivateCopiesSaysWhatTheMotherSays(Type tests)
-    {
-        Assert.Equal(HealthStates.Healthy, (HealthState)tests.GetField("Healthy", Private)!
-            .GetRawConstantValue()!);
-        Assert.Equal(HealthStates.Unhealthy, (HealthState)tests.GetField("Unhealthy", Private)!
-            .GetRawConstantValue()!);
-        Assert.Equal(HealthStates.Pending, (HealthState)tests.GetField("Pending", Private)!
-            .GetRawConstantValue()!);
-        Assert.Equal(HealthStates.Unreachable, (HealthState)tests.GetField("Unreachable", Private)!
-            .GetRawConstantValue()!);
-    }
-
-    /// <summary>The one file that still carries the private builders - the <c>Summary</c> of the three counts
-    /// and the two <c>States</c> heaps, <see cref="HealthSummaryEdgeCaseTests" /> - says what the mother's
-    /// builders say: the same record the same counts stand on, and the same heap the same answers make, whatever
-    /// the copy does on its way there. The other nine files carry only the aliases, which
-    /// <see cref="EachFilesWithPrivateCopiesSaysWhatTheMotherSays" /> holds.</summary>
-    [Fact]
-    public void TheFilesPrivateSummaryAndStatesHelpersSayWhatTheMothersSay()
-    {
-        var copy = typeof(HealthSummaryEdgeCaseTests);
-
-        var summary = copy.GetMethod("Summary", Private, new[] { typeof(int), typeof(int), typeof(int) })!;
-        foreach (var (total, healthy, pending) in new[] { (0, 0, 0), (1, 1, 0), (7, 5, 2), (11, 4, 3) })
-        {
-            Assert.Equal(HealthStates.Summary(total, healthy, pending), Assert.IsType<HealthSummary>(summary.Invoke(null, [total, healthy, pending])));
-        }
-
-        var states = copy.GetMethod("States", Private, new[] { typeof(HealthState[]) })!;
-        Assert.Equal(HealthStates.States(HealthStates.Healthy, HealthStates.Unreachable),
-            Assert.IsType<HealthState[]>(states.Invoke(null, new object?[] { new HealthState[] { HealthState.Healthy, HealthState.Unreachable } })));
-
-        var repeat = copy.GetMethod("States", Private, new[] { typeof(HealthState), typeof(int) })!;
-        foreach (var count in new[] { 0, 1, 3, 11 })
-        {
-            Assert.Equal(HealthStates.States(HealthStates.Pending, count),
-                Assert.IsType<HealthState[]>(repeat.Invoke(null, [HealthState.Pending, count])));
-        }
     }
 }

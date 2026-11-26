@@ -302,7 +302,7 @@ public class TargetStatusEdgeCaseTests
     [InlineData(HealthState.Healthy)]
     [InlineData(HealthState.Unhealthy)]
     [InlineData(HealthState.Unreachable)]
-    [InlineData((HealthState)4)]
+    [InlineData(Nodes.Unnamed)]
     [InlineData((HealthState)(-1))]
     public void TheStateIsTheLastChecksStateAndNoStateOfItsOwn(HealthState state)
     {

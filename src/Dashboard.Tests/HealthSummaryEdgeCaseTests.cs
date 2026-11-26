@@ -1,5 +1,7 @@
 using System.Collections;
 
+using static Dashboard.Tests.HealthStates;
+
 namespace Dashboard.Tests;
 
 /// <summary>
@@ -40,21 +42,6 @@ namespace Dashboard.Tests;
 /// </summary>
 public class HealthSummaryEdgeCaseTests
 {
-    private const HealthState Healthy = HealthState.Healthy;
-    private const HealthState Unhealthy = HealthState.Unhealthy;
-    private const HealthState Pending = HealthState.Pending;
-    private const HealthState Unreachable = HealthState.Unreachable;
-
-    /// <summary>A summary built of the three counts the header weighs: the total, the healthy count, the pending count.</summary>
-    private static HealthSummary Summary(int total, int healthy, int pending) => new(total, healthy, pending);
-
-    /// <summary>A heap of answers built from the answers given, in the order given.</summary>
-    private static HealthState[] States(params HealthState[] states) => states;
-
-    /// <summary>A heap of <paramref name="count" /> answers that all say the one <paramref name="state" />.</summary>
-    private static HealthState[] States(HealthState state, int count) =>
-        [.. Enumerable.Repeat(state, count)];
-
     // ----- the words of counts that cannot be, and of counts at the ends of int
 
     /// <summary>The words of counts that cannot be, and of counts at the ends of <see cref="int" />: a healthy count

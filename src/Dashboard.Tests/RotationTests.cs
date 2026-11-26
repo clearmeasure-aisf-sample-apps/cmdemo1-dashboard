@@ -1,3 +1,5 @@
+using static Dashboard.Tests.HealthStates;
+
 namespace Dashboard.Tests;
 
 /// <summary>
@@ -6,11 +8,6 @@ namespace Dashboard.Tests;
 /// </summary>
 public class RotationTests
 {
-    private const HealthState Healthy = HealthState.Healthy;
-    private const HealthState Unhealthy = HealthState.Unhealthy;
-    private const HealthState Unreachable = HealthState.Unreachable;
-    private const HealthState Pending = HealthState.Pending;
-
     private static readonly DateTimeOffset Now = new(2026, 10, 13, 9, 0, 0, TimeSpan.Zero);
     private static readonly Uri Page = new("http://localhost:5210/");
     private static readonly string[] Regions = ["westus3", "eastus2", "centralus", "northeurope", "uksouth"];

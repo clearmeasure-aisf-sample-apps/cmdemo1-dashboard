@@ -1,3 +1,5 @@
+using static Dashboard.Tests.HealthStates;
+
 namespace Dashboard.Tests;
 
 /// <summary>
@@ -11,11 +13,6 @@ namespace Dashboard.Tests;
 /// </summary>
 public class ServingStateDecisionEdgeCaseTests
 {
-    private const HealthState Healthy = HealthState.Healthy;
-    private const HealthState Unhealthy = HealthState.Unhealthy;
-    private const HealthState Unreachable = HealthState.Unreachable;
-    private const HealthState Pending = HealthState.Pending;
-
     private static NodeHealth Primary(HealthState state, string region) => new($"app-{region}", region, true, state);
 
     private static NodeHealth Standby(HealthState state, string region) => new($"app-{region}", region, false, state);

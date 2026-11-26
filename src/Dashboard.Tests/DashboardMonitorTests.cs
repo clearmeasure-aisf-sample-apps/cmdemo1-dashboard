@@ -107,6 +107,36 @@ public class DashboardMonitorTests
         Assert.Equal("uat-east", expected?.Name);
     }
 
+    /// <summary>
+    /// Repeated reads of <see cref="DashboardMonitor.Summary" /> between changes return the same instance:
+    /// the summary is computed once per change, not once per access, so the four reads the page makes per
+    /// render (the class, the text, the state and the page title) all share one immutable record.
+    /// </summary>
+    [Fact]
+    public async Task RepeatedReadsOfSummaryBetweenChangesReturnTheSameInstance()
+    {
+        var monitor = Monitor(new StubHandler(Healthy));
+
+        // Before any round: five pending nodes.
+        var first = monitor.Summary;
+        Assert.Equal("Checking 5 nodes", first.Text);
+
+        // Repeated reads without a change return the same instance.
+        Assert.Same(first, monitor.Summary);
+        Assert.Same(first, monitor.Summary);
+        Assert.Same(first, monitor.Summary);
+
+        // A round changes the states; the next read is a different instance with the new counts.
+        await monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
+        var afterRound = monitor.Summary;
+        Assert.NotSame(first, afterRound);
+        Assert.Equal("All 5 nodes healthy", afterRound.Text);
+
+        // And repeated reads after the round share that new instance.
+        Assert.Same(afterRound, monitor.Summary);
+        Assert.Same(afterRound, monitor.Summary);
+    }
+
     [Fact]
     public async Task ANodeThatHangsDoesNotBlockTheOthers()
     {

@@ -47,6 +47,7 @@ public sealed class DashboardMonitor
     private readonly IntervalRead<ResourceHealthReport> _resourceHealth = new(ResourceHealthInterval);
     private IReadOnlyList<ContainerAppProbe> _watched = [];
     private bool _resourceHealthWanted;
+    private HealthSummary? _summaryCache;
 
     /// <param name="events">
     /// Where the monitor writes what it observes; the page keeps one log across reloads of the topology. A log of its
@@ -88,7 +89,7 @@ public sealed class DashboardMonitor
         if (topology.Cluster is { } info && cluster is not null)
         {
             Cluster = new ClusterMonitor(info, topology.Environments, cluster, time, Events);
-            Cluster.Changed += () => Changed?.Invoke();
+            Cluster.Changed += RaiseChanged;
         }
     }
 
@@ -101,7 +102,14 @@ public sealed class DashboardMonitor
 
     public IEnumerable<TargetStatus> Targets => _targets.Select(entry => entry.Target);
 
-    public HealthSummary Summary => HealthSummary.Of(Targets.Select(target => target.State));
+    public HealthSummary Summary => _summaryCache ??= HealthSummary.Of(Targets.Select(target => target.State));
+
+    /// <summary>Invalidates the cached summary and raises <see cref="Changed" />.</summary>
+    private void RaiseChanged()
+    {
+        _summaryCache = null;
+        Changed?.Invoke();
+    }
 
     /// <summary>In how many environments a node runs another version than the one pinned in Git.</summary>
     public VersionSummary VersionSummary => new(Environments.Count(environment => environment.VersionsDiffer));
@@ -258,7 +266,7 @@ public sealed class DashboardMonitor
         AssessServingRound(now);
 
         LastRefresh = now;
-        Changed?.Invoke();
+        RaiseChanged();
     }
 
     /// <summary>
@@ -305,7 +313,7 @@ public sealed class DashboardMonitor
             environment.RecordGoodPinned(after);
         }
 
-        Changed?.Invoke();
+        RaiseChanged();
     }
 
     /// <summary>Reads the pin of a deployable that has one of its own: its Kustomize file, by the rules of <c>versions.json</c>.</summary>
@@ -331,7 +339,7 @@ public sealed class DashboardMonitor
             deployable.RecordGoodPin(after);
         }
 
-        Changed?.Invoke();
+        RaiseChanged();
     }
 
     private async Task ReadDeliveryAsync(CancellationToken cancellationToken)
@@ -343,7 +351,7 @@ public sealed class DashboardMonitor
 
         if (await _delivery.ReadIfDueAsync(_time.GetUtcNow(), token => _prober.ReadDeliveryAsync(address, token), cancellationToken) is not null)
         {
-            Changed?.Invoke();
+            RaiseChanged();
         }
     }
 
@@ -360,7 +368,7 @@ public sealed class DashboardMonitor
 
         if (await _workItems.ReadIfDueAsync(_time.GetUtcNow(), token => _prober.ReadWorkItemsAsync(address, token), cancellationToken) is not null)
         {
-            Changed?.Invoke();
+            RaiseChanged();
         }
     }
 
@@ -373,7 +381,7 @@ public sealed class DashboardMonitor
 
         if (await _cost.ReadIfDueAsync(_time.GetUtcNow(), token => _prober.ReadCostAsync(address, token), cancellationToken) is not null)
         {
-            Changed?.Invoke();
+            RaiseChanged();
         }
     }
 
@@ -393,7 +401,7 @@ public sealed class DashboardMonitor
         Deployments = await _deployments.AskIfDueAsync(now, token => _prober.ReadDeploymentsAsync(address, token), cancellationToken);
         if (before is not null || Deployments is not null)
         {
-            Changed?.Invoke();
+            RaiseChanged();
         }
     }
 
@@ -402,7 +410,7 @@ public sealed class DashboardMonitor
     {
         app.Start(now);
         app.Record(await _prober.ProbeContainerAppAsync(app.Target, probe, app.Status.CorsRefused, cancellationToken));
-        Changed?.Invoke();
+        RaiseChanged();
     }
 
     private async Task ReadResourceHealthAsync(CancellationToken cancellationToken)
@@ -414,7 +422,7 @@ public sealed class DashboardMonitor
 
         if (await _resourceHealth.ReadIfDueAsync(_time.GetUtcNow(), token => _prober.ReadResourceHealthAsync(address, token), cancellationToken) is not null)
         {
-            Changed?.Invoke();
+            RaiseChanged();
         }
     }
 
@@ -427,7 +435,7 @@ public sealed class DashboardMonitor
 
         if (await _dashboardBuild.ReadIfDueAsync(_time.GetUtcNow(), token => _prober.ReadOwnBuildAsync(_pageAddress, dashboard.BuildPath, token), cancellationToken) is not null)
         {
-            Changed?.Invoke();
+            RaiseChanged();
         }
     }
 
@@ -461,7 +469,7 @@ public sealed class DashboardMonitor
             target.Label,
             kind.IsNode,
             _time.GetUtcNow()));
-        Changed?.Invoke();
+        RaiseChanged();
 
         // The build facts change only with a deployment: asked once, and again when the node reports another version.
         if (target == status.BuildSource && deployable.BuildPath is { } buildPath
@@ -469,7 +477,7 @@ public sealed class DashboardMonitor
         {
             var version = target.Version;
             status.RecordBuild(await _prober.ReadBuildAsync(target.Url, buildPath, cancellationToken), version);
-            Changed?.Invoke();
+            RaiseChanged();
         }
     }
 }

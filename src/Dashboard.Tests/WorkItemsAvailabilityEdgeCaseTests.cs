@@ -339,6 +339,12 @@ public class WorkItemsAvailabilityEdgeCaseTests
         Assert.NotEqual(WorkItemsAvailability.NotPublished, WorkItemsText.Availability(false, true, null));
     }
 
+    /// <summary>The named read is no read at all when it is missing: the overload refuses null by name rather than
+    /// settling on a state for facts nobody gave.</summary>
+    [Fact]
+    public void AMissingReadIsRefusedByName() =>
+        Assert.Equal("read", Assert.Throws<ArgumentNullException>(() => WorkItemsText.Availability((WorkItemsRead)null!)).ParamName);
+
     /// <summary>The three facts answer with every one of the four states and with nothing else: the twelve rows -
     /// no report, a report of one item, a report of nothing, each against an address and an ask in both their
     /// values - hold no gap and no fifth answer: every row is asked, every row answers with a state the enum
@@ -359,6 +365,7 @@ public class WorkItemsAvailabilityEdgeCaseTests
                 foreach (var asked in new[] { false, true })
                 {
                     var state = WorkItemsText.Availability(hasAddress, asked, report);
+                    Assert.Equal(state, WorkItemsText.Availability(new WorkItemsRead(HasAddress: hasAddress, Asked: asked, Report: report)));
                     Assert.True(Enum.IsDefined(state), $"({hasAddress}, {asked}) answers {state.ToString("D")}, which is no state.");
 
                     var sentence = WorkItemsText.Unavailable(state);
@@ -576,13 +583,22 @@ public class WorkItemsAvailabilityEdgeCaseTests
             .Order(StringComparer.Ordinal)
             .ToList();
 
-        Assert.Equal(["Availability", "Unavailable"], methods);
+        Assert.Equal(["Availability", "Availability", "Unavailable"], methods);
 
         var settle = typeof(WorkItemsText).GetMethod("Availability", [typeof(bool), typeof(bool), typeof(WorkItemsReport)])!;
         Assert.True(settle.IsStatic);
         Assert.True(settle.IsPublic);
         Assert.Equal(typeof(WorkItemsAvailability), settle.ReturnType);
         Assert.Equal(["hasAddress", "asked", "report"], settle.GetParameters().Select(parameter => parameter.Name));
+
+        var settleRead = typeof(WorkItemsText).GetMethod("Availability", [typeof(WorkItemsRead)])!;
+        Assert.True(settleRead.IsStatic);
+        Assert.True(settleRead.IsPublic);
+        Assert.Equal(typeof(WorkItemsAvailability), settleRead.ReturnType);
+        Assert.Equal(["read"], settleRead.GetParameters().Select(parameter => parameter.Name));
+        Assert.Equal(
+            ["HasAddress", "Asked", "Report"],
+            typeof(WorkItemsRead).GetConstructor([typeof(bool), typeof(bool), typeof(WorkItemsReport)])!.GetParameters().Select(parameter => parameter.Name));
 
         var say = typeof(WorkItemsText).GetMethod("Unavailable", [typeof(WorkItemsAvailability)])!;
         Assert.True(say.IsStatic);

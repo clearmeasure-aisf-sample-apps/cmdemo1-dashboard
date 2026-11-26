@@ -99,11 +99,11 @@ public class WorkItemsTextOpenEdgeCaseTests
             .Where(method => !method.IsSpecialName)
             .ToList();
 
-        Assert.Equal(40, methods.Count);
+        Assert.Equal(41, methods.Count);
         Assert.All(methods, method => Assert.True(method.IsStatic));
         Assert.Equal(
             [
-                "Active", "Agent", "Assignee", "AudienceHash", "AudienceLabel", "AudienceOf", "Availability",
+                "Active", "Agent", "Assignee", "AudienceHash", "AudienceLabel", "AudienceOf", "Availability", "Availability",
                 "BarHeight", "CandidateTitle", "Carries", "Chart", "ColumnId", "Comparison", "Cost", "Duration",
                 "Entered", "HasMeteredCost", "IsMerged", "IssueTitle", "ItemCost", "LatestWeek", "NoneOf", "Number",
                 "PlaceLabel", "PlaceTitle", "Places", "PullLabel", "PullTitle", "RecentlyDone", "Rework", "Scope",

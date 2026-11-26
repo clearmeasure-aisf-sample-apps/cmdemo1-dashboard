@@ -2,7 +2,7 @@
    The filter is the address (#work-items, #work-items/bot, #work-items/team). Every word is decided in C#; this places it. *@
 @{
     var report = Monitor.WorkItems;
-    var availability = WorkItemsText.Availability(Monitor.Topology.System.WorkItemsUrl is not null, Monitor.WorkItemsAsked, report);
+    var availability = WorkItemsText.Availability(Monitor.WorkItemsRead);
 }
 <section class="work" aria-labelledby="work-title">
     <header class="work__header">

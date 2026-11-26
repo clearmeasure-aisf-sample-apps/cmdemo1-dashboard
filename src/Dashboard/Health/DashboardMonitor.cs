@@ -128,6 +128,9 @@ public sealed class DashboardMonitor
     /// <summary>True after a read of the work items was attempted, so the view can tell "loading" from "not published".</summary>
     public bool WorkItemsAsked => _workItems.Asked;
 
+    /// <summary>The three facts of the work items read, by name: the address the topology names, the ask, the report.</summary>
+    public WorkItemsRead WorkItemsRead => new(HasAddress: Topology.System.WorkItemsUrl is not null, Asked: WorkItemsAsked, Report: WorkItems);
+
     /// <summary>
     /// What the system cost in Azure, as last read; null when the topology names no <c>costUrl</c> or the file was
     /// never read. A reading that fails keeps the last good one: the file names the day its numbers are of.

@@ -8,7 +8,11 @@ public sealed class DeployableStatus
         ArgumentNullException.ThrowIfNull(info);
         Info = info;
         FrontDoor = TargetStatus.ForFrontDoor(info);
-        Nodes = [.. info.Nodes.Select(TargetStatus.ForNode)];
+        TargetStatus[] nodes = [.. info.Nodes.Select(TargetStatus.ForNode)];
+        Nodes = nodes;
+        // One list of the deployable's tiles, made once here and answered by <see cref="Targets" /> on every read:
+        // the Front Door tile first where there is one, the nodes after it in the order of the topology.
+        Targets = FrontDoor is null ? nodes : [FrontDoor, .. nodes];
         BuildSource = info.BuildPath is null ? null : Nodes.FirstOrDefault(node => node.IsPrimary) ?? (Nodes.Count > 0 ? Nodes[0] : null);
         _pin.Show(info.PinUrl is null ? null : PinnedVersions.Pending);
     }
@@ -77,8 +81,13 @@ public sealed class DeployableStatus
 
     public IReadOnlyList<TargetStatus> Nodes { get; }
 
-    /// <summary>The Front Door endpoint first, then the nodes in the order of the topology.</summary>
-    public IEnumerable<TargetStatus> Targets => FrontDoor is null ? Nodes : Nodes.Prepend(FrontDoor);
+    /// <summary>
+    /// The tiles of the deployable's endpoints, one stored list read on every call: the Front Door tile first
+    /// where there is one, the nodes after it in the order of the topology - the same instances as
+    /// <see cref="FrontDoor" /> and <see cref="Nodes" />, and one list rather than a sequence made again on each
+    /// read.
+    /// </summary>
+    public IReadOnlyList<TargetStatus> Targets { get; }
 
     public ServingAssessment Assess() => Assess(out _);
 

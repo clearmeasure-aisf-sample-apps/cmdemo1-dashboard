@@ -105,7 +105,7 @@ public class DeployableStatusTileAndRecordEdgeCaseTests
         Assert.Equal(HealthState.Pending, frontDoor.State);
 
         // A target and no node: the decision, the node list and the build source all pass it by.
-        Assert.Same(frontDoor, deployable.Targets.First());
+        Assert.Same(frontDoor, deployable.Targets[0]);
         Assert.DoesNotContain(frontDoor, deployable.Nodes);
         Assert.Same(deployable.Nodes[0], deployable.BuildSource);
 
@@ -181,8 +181,9 @@ public class DeployableStatusTileAndRecordEdgeCaseTests
 
     /// <summary>The tiles are made once, so the lists are the same objects on every read:
     /// <see cref="DeployableStatus.Nodes" /> is one list and the tiles in it one apiece, whatever the rounds go on
-    /// recording - which is what lets a table keyed on a tile keep its rows - while <see cref="DeployableStatus.Targets" />
-    /// is a sequence made again over those very tiles whenever there is a public address to put first.</summary>
+    /// recording - which is what lets a table keyed on a tile keep its rows - and <see cref="DeployableStatus.Targets" />
+    /// is the stored list of the very same tiles, the Front Door tile first where there is one, read again as itself
+    /// on every call and standing beside the node list rather than being it.</summary>
     [Fact]
     public void TheNodeListIsTheSameListAndTheSameTilesOnEveryRead()
     {
@@ -193,15 +194,19 @@ public class DeployableStatusTileAndRecordEdgeCaseTests
 
         Assert.Same(deployable.Nodes, deployable.Nodes);
         Assert.Same(deployable.Nodes[0], deployable.Nodes[0]);
+        // One stored list on every read, standing beside the node list: a different instance that holds the very
+        // same tiles, the Front Door tile first.
+        Assert.Same(deployable.Targets, deployable.Targets);
         Assert.NotSame(deployable.Nodes, deployable.Targets);
         Assert.Equal(2, deployable.Nodes.Count);
+        Assert.Equal(3, deployable.Targets.Count);
 
         deployable.Nodes[0].Record(Answer(HealthState.Healthy));
         deployable.FrontDoor!.Record(Answer(HealthState.Unreachable));
 
         Assert.Same(deployable.Nodes, deployable.Nodes);
-        Assert.Same(deployable.Nodes[0], deployable.Targets.Skip(1).First());
-        Assert.Same(deployable.FrontDoor, deployable.Targets.First());
+        Assert.Same(deployable.Nodes[0], deployable.Targets[1]);
+        Assert.Same(deployable.FrontDoor, deployable.Targets[0]);
 
         // The empty list of a deployable of no node is one list too, read again as itself.
         var none = new DeployableStatus(Row(nodes: []));

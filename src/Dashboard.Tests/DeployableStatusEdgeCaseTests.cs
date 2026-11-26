@@ -30,9 +30,10 @@ namespace Dashboard.Tests;
 /// once from the row as it stood, so that neither a node added to the file's list afterwards nor a copy of the record
 /// moves one; the four parts each node tile takes from its own row, the absent region and the empty one included, and
 /// the deployable's links going to the Front Door tile alone; a deployable of no nodes at all - no tiles, no targets,
-/// no build source, and a decision of nothing serving; <see cref="DeployableStatus.Targets" /> being the node list
-/// itself without a Front Door endpoint and a fresh sequence over the very same tiles with one, read after a check as
-/// before it; the three answers of <see cref="DeployableStatus.BuildSource" /> where the file names a build path -
+/// no build source, and a decision of nothing serving; <see cref="DeployableStatus.Targets" /> being one stored list
+/// on every read - the Front Door tile first where there is one, the nodes after it - standing beside
+/// <see cref="DeployableStatus.Nodes" /> and answering with the very same tiles, read after a check as before it;
+/// the three answers of <see cref="DeployableStatus.BuildSource" /> where the file names a build path -
 /// the first primary, the first node when none is, and nobody when there is none;
 /// <see cref="DeployableStatus.BuildIsDue" /> before anything has been asked, and the sixteen pairs of version it is
 /// asked about afterwards, compared without regard to case and with everything else kept; a build read being kept
@@ -207,7 +208,8 @@ public class DeployableStatusEdgeCaseTests
         Assert.Empty(deployable.Targets);
         Assert.Empty(deployable.Targets);
 
-        // Without a Front Door endpoint there is nothing to prepend: the read is the node list it always was.
+        // One stored list on every read, the very same tiles the deployable answers by name for.
+        Assert.Same(deployable.Targets, deployable.Targets);
         Assert.Same(deployable.Nodes, deployable.Targets);
 
         var assessment = deployable.Assess(out var expected);
@@ -234,12 +236,13 @@ public class DeployableStatusEdgeCaseTests
         Assert.Equal(FrontDoorAgreement.Pending, alone.Assess().FrontDoor);
     }
 
-    /// <summary>The targets of a deployable are its tiles and not pictures of them: with a Front Door endpoint the
-    /// read is a sequence made again on every call - which is why reading it twice is not reading the same object -
-    /// and every element of it is the tile the deployable also answers by name for, state and all. A check recorded on
-    /// a tile is seen through the read, and a read the page walks twice says the same thing twice.</summary>
+    /// <summary>The targets of a deployable are its tiles and not pictures of them: one stored list on every read,
+    /// the Front Door tile first where there is one and the nodes after it in the order of the topology, standing
+    /// beside the node list and never it - which is why the two are different instances that hold the very same
+    /// tiles, state and all. A check recorded on a tile is seen through the read, and a read the page walks twice
+    /// says the same thing twice.</summary>
     [Fact]
-    public void TheTargetsAreTheSameTilesOnEveryReadAndASequenceOfTheirOwnWithAPublicAddress()
+    public void TheTargetsAreTheSameStoredListAndTheSameTilesOnEveryReadWithAPublicAddress()
     {
         var deployable = Deployable(
             frontDoor: Door,
@@ -247,8 +250,11 @@ public class DeployableStatusEdgeCaseTests
             links: DeployableLinks);
         var frontDoor = deployable.FrontDoor!;
 
-        Assert.NotSame(deployable.Targets, deployable.Targets);
-        Assert.Equal(deployable.Nodes.Count + 1, deployable.Targets.Count());
+        // One stored list: the very same instance on every read, the tiles standing beside it in the node list
+        // included - but a list of its own, not the node list the tiles are also answered from by name.
+        Assert.Same(deployable.Targets, deployable.Targets);
+        Assert.NotSame(deployable.Nodes, deployable.Targets);
+        Assert.Equal(deployable.Nodes.Count + 1, deployable.Targets.Count);
         Assert.Equal([frontDoor, deployable.Nodes[0], deployable.Nodes[1]], deployable.Targets);
         Assert.Equal([frontDoor, deployable.Nodes[0], deployable.Nodes[1]], deployable.Targets);
 
@@ -260,16 +266,18 @@ public class DeployableStatusEdgeCaseTests
         frontDoor.Record(Answer(HealthState.Unreachable, 30));
 
         Assert.Equal([HealthState.Unreachable, HealthState.Healthy, HealthState.Pending], deployable.Targets.Select(target => target.State));
-        Assert.Same(deployable.Nodes[0], deployable.Targets.Skip(1).First());
+        Assert.Same(deployable.Nodes[0], deployable.Targets[1]);
         Assert.Single(frontDoor.History);
         Assert.Equal(HealthState.Unreachable, frontDoor.History[0].State);
         Assert.Empty(deployable.Nodes[1].History);
 
-        // Without the public address the read is the node list, and its count is the deployable's own.
+        // Without the public address the stored list is the node list itself - one list, read again as itself - and
+        // its count is the deployable's own.
         var bare = Deployable(nodes: [Node("app-west"), Node("app-east", "eastus2", NodeInfo.StandbyRole)]);
 
+        Assert.Same(bare.Targets, bare.Targets);
         Assert.Same(bare.Nodes, bare.Targets);
-        Assert.Equal(2, bare.Targets.Count());
+        Assert.Equal(2, bare.Targets.Count);
     }
 
     // ----- the node the build facts come from
@@ -813,7 +821,7 @@ public class DeployableStatusEdgeCaseTests
         Assert.Equal(typeof(TargetStatus), properties["FrontDoor"].PropertyType);
         Assert.Equal(typeof(bool), properties["HasFrontDoor"].PropertyType);
         Assert.Equal(typeof(IReadOnlyList<TargetStatus>), properties["Nodes"].PropertyType);
-        Assert.Equal(typeof(IEnumerable<TargetStatus>), properties["Targets"].PropertyType);
+        Assert.Equal(typeof(IReadOnlyList<TargetStatus>), properties["Targets"].PropertyType);
 
         // Everything is readable from outside. Four of the twelve are still writable from nowhere else; the pin
         // pair (Pinned, LastReadPinned) is no longer written by a set method - the two memories are owned by one

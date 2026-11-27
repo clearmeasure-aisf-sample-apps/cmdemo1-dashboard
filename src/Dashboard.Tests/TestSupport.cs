@@ -1,5 +1,6 @@
 using System.Net;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Threading.Channels;
 using Dashboard.Health;
 using Dashboard.Runtime;
@@ -7,6 +8,21 @@ using Dashboard.Work;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Dashboard.Tests;
+
+/// <summary>Build answers for the tests that read one section of a build file.</summary>
+internal static class BuildAnswers
+{
+    /// <summary>The version every answer carries, so that the answer is a build whatever its section says.</summary>
+    public const string Version = "2.4.15";
+
+    /// <summary>
+    /// The build the dashboard reads from an answer that holds the version and the one <paramref name="section" />,
+    /// whose <paramref name="body" /> is the JSON text the test brings: a section, a word, a list or the nothing.
+    /// The section name is written as a JSON string, so any name stays well-formed.
+    /// </summary>
+    public static BuildInfo Of(string section, string body) =>
+        BuildInfo.Parse($$"""{ "version": "{{Version}}", {{JsonSerializer.Serialize(section)}}: {{body}} }""")!;
+}
 
 /// <summary>An HTTP handler whose answers the test decides; it records the requests it saw.</summary>
 internal sealed class StubHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond)

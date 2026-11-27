@@ -114,8 +114,6 @@ public class CrapFactsReadEdgeCaseTests
         Assert.Equal(new CrapFacts(null, 30, null), CrapOf("""{ "Max": 28.5, "threshold": 30, "overthreshold": 0 }"""));
     }
 
-    /// <summary>The CRAP facts one answer reports, as the dashboard reads them: the version stands so that the answer is
-    /// a build whatever the section says.</summary>
-    private static CrapFacts? CrapOf(string crap) =>
-        BuildInfo.Parse($$"""{ "version": "2.4.15", "crap": {{crap}} }""")!.Crap;
+    /// <summary>The CRAP facts one answer reports, as the dashboard reads them.</summary>
+    private static CrapFacts? CrapOf(string crap) => BuildAnswers.Of("crap", crap).Crap;
 }

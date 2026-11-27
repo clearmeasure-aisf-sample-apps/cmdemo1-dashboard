@@ -266,10 +266,8 @@ public class ComplexityFactsJsonRoundTripEdgeCaseTests
 
     // ---------------------------------------------------------------------------------- the machinery
 
-    /// <summary>The complexity one answer holds, as the dashboard reads it: the version stands so that the answer is
-    /// a build whatever its section says, and the section under the question is the text the test brings.</summary>
-    private static ComplexityFacts? ReadBack(string section) =>
-        BuildInfo.Parse($$"""{ "version": "2.4.15", "complexity": {{section}} }""")!.Complexity;
+    /// <summary>The complexity one answer holds, as the dashboard reads it, the section being the text the test brings.</summary>
+    private static ComplexityFacts? ReadBack(string section) => BuildAnswers.Of("complexity", section).Complexity;
 
     /// <summary>The facts as a build file would write them, under the names the endpoint writes its parts under.</summary>
     private static string Written(ComplexityFacts facts)

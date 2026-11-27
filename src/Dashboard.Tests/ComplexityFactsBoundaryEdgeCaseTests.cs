@@ -304,10 +304,8 @@ public class ComplexityFactsBoundaryEdgeCaseTests
 
     // ----- the machinery
 
-    /// <summary>The complexity one answer reports, as the dashboard reads it: the version stands so that the answer
-    /// is a build whatever its section says, and the section under the question is the text the test brings.</summary>
-    private static ComplexityFacts? ComplexityOf(string complexity) =>
-        BuildInfo.Parse($$"""{ "version": "2.4.15", "complexity": {{complexity}} }""")!.Complexity;
+    /// <summary>The complexity one answer reports, as the dashboard reads it, the section being the text the test brings.</summary>
+    private static ComplexityFacts? ComplexityOf(string complexity) => BuildAnswers.Of("complexity", complexity).Complexity;
 
     /// <summary>The words a record says its three parts in, taken in the invariant culture whoever reads this test
     /// happens to stand in: the record's own words follow the reader, which is pinned on its own above, so the

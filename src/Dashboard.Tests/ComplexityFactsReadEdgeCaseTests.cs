@@ -100,8 +100,6 @@ public class ComplexityFactsReadEdgeCaseTests
         Assert.Equal(new ComplexityFacts(null, 34, null), ComplexityOf("""{ "Average": 1.9, "max": 34, "Methods": 5210 }"""));
     }
 
-    /// <summary>The complexity one answer reports, as the dashboard reads it: the version stands so that the answer is a
-    /// build whatever the section says.</summary>
-    private static ComplexityFacts? ComplexityOf(string complexity) =>
-        BuildInfo.Parse($$"""{ "version": "2.4.15", "complexity": {{complexity}} }""")!.Complexity;
+    /// <summary>The complexity one answer reports, as the dashboard reads it.</summary>
+    private static ComplexityFacts? ComplexityOf(string complexity) => BuildAnswers.Of("complexity", complexity).Complexity;
 }

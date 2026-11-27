@@ -471,11 +471,9 @@ public class CoverageFactsEdgeCaseTests
 
     // ----- the machinery -----
 
-    /// <summary>The coverage one answer reports, as the dashboard reads it: the version stands so that the answer is a
-    /// build whatever else it says, and the section under the question is the text given - a section, a word, a list or
-    /// the nothing, as each test writes it.</summary>
-    private static CoverageFacts? CoverageOf(string coverage) =>
-        BuildInfo.Parse($$"""{ "version": "2.4.15", "coverage": {{coverage}} }""")!.Coverage;
+    /// <summary>The coverage one answer reports, as the dashboard reads it, the section being the text given - a
+    /// section, a word, a list or the nothing, as each test writes it.</summary>
+    private static CoverageFacts? CoverageOf(string coverage) => BuildAnswers.Of("coverage", coverage).Coverage;
 
     /// <summary>The words a record says its two parts in, taken in the invariant culture whatever the reader of this
     /// test happens to be: the record's own words follow whoever reads them, which is pinned on its own below, so the

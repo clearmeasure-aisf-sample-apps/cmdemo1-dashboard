@@ -18,6 +18,12 @@ internal static class WorkMeasureText
     /// <summary>A percent is shown to one decimal, without a trailing zero.</summary>
     private const string PercentFormat = "0.#";
 
+    /// <summary>The unit a percent rate is written with, after a space: <c>12.5 %</c>.</summary>
+    private const string PercentSuffix = " %";
+
+    /// <summary>The middle dot that joins a measure's parts: <c>median 18.5 h · p85 3 d · 11 items</c>.</summary>
+    private const string PartSeparator = " · ";
+
     /// <summary>A rate above one is shown as the file gave it, to two decimals.</summary>
     private const string KeptFormat = "0.##";
 
@@ -73,11 +79,11 @@ internal static class WorkMeasureText
         return Joined(parts);
     }
 
-    /// <summary>The parts a measure has, joined by a middle dot; <see cref="WorkItemsText.NotMetered"/> when it has none.</summary>
-    private static string Joined(List<string> parts) => parts.Count == 0 ? WorkItemsText.NotMetered : string.Join(" · ", parts);
+    /// <summary>The parts a measure has, joined by <see cref="PartSeparator"/>; <see cref="WorkItemsText.NotMetered"/> when it has none.</summary>
+    private static string Joined(List<string> parts) => parts.Count == 0 ? WorkItemsText.NotMetered : string.Join(PartSeparator, parts);
 
     private static string Rate(double rate) =>
         rate <= LargestFraction
-            ? Math.Round(rate * PercentPerWhole, PercentDecimals).ToString(PercentFormat, CultureInfo.InvariantCulture) + " %"
+            ? Math.Round(rate * PercentPerWhole, PercentDecimals).ToString(PercentFormat, CultureInfo.InvariantCulture) + PercentSuffix
             : rate.ToString(KeptFormat, CultureInfo.InvariantCulture);
 }

@@ -56,6 +56,13 @@ public static class WorkItemsText
     /// <summary>The height of the weekly chart, in its own units. A bar of the largest count fills it.</summary>
     public const double ChartHeight = WorkWeekCharts.Height;
 
+    /// <summary>
+    /// The format the week chart writes its bar coordinates with: at most <see cref="WorkWeekCharts.HeightDecimals" />
+    /// decimals, a whole number without a point. It keeps exactly that many places, so it must change with
+    /// <see cref="WorkWeekCharts.HeightDecimals" /> or a bar's number and its drawn height disagree.
+    /// </summary>
+    public const string PixelFormat = WorkWeekCharts.PixelFormat;
+
     public const string NotMetered = "n/a";
 
     /// <summary>What a cell shows when the file does not have that part. Cost uses <see cref="NotMetered"/>.</summary>

@@ -1,19 +1,19 @@
 @* The merged and deployed-to-prod bars for one slice. The words of the chart are on the chart itself. *@
 @{
-    var width = Chart.Bars.Count * 14;
+    var width = Chart.Bars.Count * BarPitch;
 }
-<svg class="weeks" viewBox="0 0 @Pixel(width) @Pixel(WorkItemsText.ChartHeight)" width="@Pixel(width * 3)" height="@Pixel(WorkItemsText.ChartHeight * 1.4)" role="img" aria-label="@Chart.Title" focusable="false">
+<svg class="weeks" viewBox="0 0 @Pixel(width) @Pixel(WorkItemsText.ChartHeight)" width="@Pixel(width * DrawnWidthScale)" height="@Pixel(WorkItemsText.ChartHeight * DrawnHeightScale)" role="img" aria-label="@Chart.Title" focusable="false">
     <title>@Chart.Title</title>
     @for (var index = 0; index < Chart.Bars.Count; index++)
     {
         var bar = Chart.Bars[index];
-        var x = index * 14;
+        var x = index * BarPitch;
         var merged = WorkItemsText.BarHeight(bar.Merged, Chart.Scale);
         var deployed = WorkItemsText.BarHeight(bar.DeployedProd, Chart.Scale);
-        <rect class="weeks__merged" x="@Pixel(x)" y="@Pixel(WorkItemsText.ChartHeight - merged)" width="5" height="@Pixel(merged)">
+        <rect class="weeks__merged" x="@Pixel(x)" y="@Pixel(WorkItemsText.ChartHeight - merged)" width="@BarWidth" height="@Pixel(merged)">
             <title>@bar.Title</title>
         </rect>
-        <rect class="weeks__deployed" x="@Pixel(x + 6)" y="@Pixel(WorkItemsText.ChartHeight - deployed)" width="5" height="@Pixel(deployed)">
+        <rect class="weeks__deployed" x="@Pixel(x + DeployedOffset)" y="@Pixel(WorkItemsText.ChartHeight - deployed)" width="@BarWidth" height="@Pixel(deployed)">
             <title>@bar.Title</title>
         </rect>
     }
@@ -27,5 +27,20 @@
     [Parameter, EditorRequired]
     public WorkWeekChart Chart { get; set; } = default!;
 
-    private static string Pixel(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+    /// <summary>The pitch of one week's slot: the distance from the start of one bar pair to the start of the next.</summary>
+    private const int BarPitch = 14;
+
+    /// <summary>The width of each bar, merged and deployed alike.</summary>
+    private const int BarWidth = 5;
+
+    /// <summary>How far the deployed bar sits from the merged bar of the same week.</summary>
+    private const int DeployedOffset = 6;
+
+    /// <summary>How the drawn width scales against the viewBox width.</summary>
+    private const int DrawnWidthScale = 3;
+
+    /// <summary>How the drawn height scales against the viewBox height.</summary>
+    private const double DrawnHeightScale = 1.4;
+
+    private static string Pixel(double value) => value.ToString(WorkItemsText.PixelFormat, CultureInfo.InvariantCulture);
 }

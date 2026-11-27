@@ -103,12 +103,12 @@ public static class DatabaseParser
         var database = JsonRead.Text(root, "database");
         if (environment is null)
         {
-            errors.Add("environment: missing or empty.");
+            errors.Add(FileProblems.MissingOrEmpty("environment"));
         }
 
         if (database is null)
         {
-            errors.Add("database: missing or empty.");
+            errors.Add(FileProblems.MissingOrEmpty("database"));
         }
 
         return environment is null || database is null ? null : new ManifestNames(environment, database);

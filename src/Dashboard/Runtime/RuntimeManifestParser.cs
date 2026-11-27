@@ -80,7 +80,7 @@ public static class RuntimeManifestParser
                 var name = element.ValueKind == JsonValueKind.Object ? JsonRead.Text(element, Name) : null;
                 if (name is null)
                 {
-                    errors.Add($"{path}.{Name}: missing or empty.");
+                    errors.Add(FileProblems.MissingOrEmpty($"{path}.{Name}"));
                     continue;
                 }
 
@@ -107,7 +107,7 @@ public static class RuntimeManifestParser
             var environment = JsonRead.Text(root, "environment");
             if (environment is null)
             {
-                errors.Add("environment: missing or empty.");
+                errors.Add(FileProblems.MissingOrEmpty("environment"));
             }
 
             var nodes = ReadArray(root, "nodes", errors, (element, path) =>
@@ -255,10 +255,10 @@ public static class RuntimeManifestParser
 
     /// <summary>
     /// The one required word of an element of a manifest's list: its text, or null with the refusal
-    /// <c>{path}.{word}: missing or empty.</c> added for the place it was asked at.
+    /// <see cref="FileProblems.MissingOrEmpty"/> added for the place it was asked at (<c>{path}.{word}</c>).
     /// </summary>
     private static string? RequiredWord(JsonElement element, string path, string word, List<string> errors) =>
-        RequiredWords(element, $"{path}.{word}: missing or empty.", errors, word) is [var text] ? text : null;
+        RequiredWords(element, FileProblems.MissingOrEmpty($"{path}.{word}"), errors, word) is [var text] ? text : null;
 
     /// <summary>
     /// The required words of an element of a manifest's list, in the order named: all their texts, or null with

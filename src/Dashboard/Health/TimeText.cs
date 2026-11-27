@@ -40,6 +40,9 @@ public static class TimeText
     /// <summary>The word a length in days is said in: <c>4 d</c>, <c>3.5 d</c>.</summary>
     public const string DaysUnit = "d";
 
+    /// <summary>The word that turns a length into a moment in the past: <c>3 min</c> → <c>3 min ago</c>.</summary>
+    private const string AgoSuffix = " ago";
+
     /// <summary>
     /// A length in one whole unit, truncated and in the invariant culture: <c>45 s</c>, <c>3 min</c>, <c>2 h</c>,
     /// <c>4 d</c> (<c>5 h</c> for five and a half hours). The one home of how a count of whole units is said, for
@@ -49,6 +52,12 @@ public static class TimeText
     /// </summary>
     internal static string Whole(double amount, string unit) =>
         string.Create(CultureInfo.InvariantCulture, $"{(int)amount} {unit}");
+
+    /// <summary>
+    /// A length said as a moment in the past: <c>3 min</c> → <c>3 min ago</c>. The one home of the <see cref="AgoSuffix"/>
+    /// suffix, for <see cref="Ago"/>, <see cref="DeploymentText.Ago"/> and <see cref="VitalsText.Uptime"/>.
+    /// </summary>
+    internal static string Before(string length) => length + AgoSuffix;
 
     /// <summary>The time of day: <c>15:04:05</c>.</summary>
     public static string Clock(DateTimeOffset time, TimeZoneInfo zone) =>
@@ -81,5 +90,5 @@ public static class TimeText
 
     /// <summary>How long ago a moment was: <c>just now</c> within a minute (and for a moment ahead of the clock), then <c>3 min ago</c>.</summary>
     public static string Ago(DateTimeOffset then, DateTimeOffset now) =>
-        now - then < JustNow ? "just now" : $"{Span(now - then)} ago";
+        now - then < JustNow ? "just now" : Before(Span(now - then));
 }

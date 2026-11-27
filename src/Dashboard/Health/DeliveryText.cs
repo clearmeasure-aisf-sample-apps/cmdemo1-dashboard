@@ -14,6 +14,21 @@ public static class AvailabilityText
     /// <summary>The number of decimal places the percent is rounded to: one tenth of a percent.</summary>
     private const int PercentDecimals = 1;
 
+    /// <summary>What the percent says when the window holds no report: the dash, the answer the count no report
+    /// stands behind is no share.</summary>
+    private const string NoReports = "–";
+
+    /// <summary>
+    /// The display format of the percent: <c>0.#</c>, at most one decimal, none for a whole number. It must show
+    /// <see cref="PercentDecimals" /> decimal places - the rounding and the format agree on the one decimal the
+    /// percent says - and a whole number is said without the decimal that has nothing to say (<c>100 %</c>,
+    /// <c>99 %</c>, not <c>100.0 %</c> or <c>99.0 %</c>).
+    /// </summary>
+    private const string PercentFormat = "0.#";
+
+    /// <summary>What every percent word ends with: a space and the sign, <c>95.8 %</c>.</summary>
+    private const string PercentSuffix = " %";
+
     /// <summary>
     /// The highest percent said while a report failed: one tenth below the whole, so the rounding of a single
     /// failure in many reports never carries the share onto all.
@@ -124,13 +139,13 @@ public static class AvailabilityText
         ArgumentNullException.ThrowIfNull(window);
         if (window.Reports == 0)
         {
-            return "–";
+            return NoReports;
         }
 
         var percent = Math.Round(Shares.Of(window.Healthy, window.Reports), PercentDecimals);
         percent = window.Healthy < window.Reports ? Math.Min(percent, BelowWhole) : percent;
         percent = window.Healthy > 0 ? Math.Max(percent, AboveNothing) : percent;
-        return string.Create(CultureInfo.InvariantCulture, $"{percent:0.#} %");
+        return string.Create(CultureInfo.InvariantCulture, $"{percent.ToString(PercentFormat, CultureInfo.InvariantCulture)}{PercentSuffix}");
     }
 }
 

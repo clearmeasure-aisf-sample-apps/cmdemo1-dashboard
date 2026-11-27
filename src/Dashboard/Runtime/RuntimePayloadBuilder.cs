@@ -97,6 +97,9 @@ public static class RuntimePayloadBuilder
     /// <summary>How many characters of a health check entry's name fit the line of a dependency's tile, where no description stands in for it.</summary>
     private const int CheckNameLength = 14;
 
+    /// <summary>The mark between the parts of one tile line: `120 req/min · p95 40 ms`.</summary>
+    private const string PartSeparator = " · ";
+
     /// <summary>
     /// A monitor target as the payload reads it: its deployable, the target, the serving decision of the deployable,
     /// and whether that decision sends traffic through it. Internal so the edge marks (<see cref="RuntimeEdgeMarks"/>)
@@ -885,7 +888,7 @@ public static class RuntimePayloadBuilder
         var traffic = new List<RuntimeTextPart> { new(requests, RuntimeTargetLink.To(target, LinkSet.Performance, node.Name)) };
         if (telemetry.P95Ms is { } p95)
         {
-            traffic.Add(new RuntimeTextPart(string.Create(CultureInfo.InvariantCulture, $" · p95 {p95} ms")));
+            traffic.Add(new RuntimeTextPart(string.Create(CultureInfo.InvariantCulture, $"{PartSeparator}p95 {p95} ms")));
         }
 
         yield return RuntimeTileLine.Of(RuntimeLineTone.Plain, traffic, RuntimeTrend.Of(Trends.Requests(target)));
@@ -894,7 +897,7 @@ public static class RuntimePayloadBuilder
         var failed = new List<RuntimeTextPart> { new(Errors(telemetry.Errors), RuntimeTargetLink.To(target, LinkSet.Failures, node.Name)) };
         if (vitals?.ExceptionsPerMinute is { } exceptions)
         {
-            failed.Add(new RuntimeTextPart(string.Create(CultureInfo.InvariantCulture, $" · {exceptions} exceptions/min")));
+            failed.Add(new RuntimeTextPart(string.Create(CultureInfo.InvariantCulture, $"{PartSeparator}{exceptions} exceptions/min")));
         }
 
         yield return RuntimeTileLine.Of(telemetry.Errors > 0 || vitals?.ExceptionsPerMinute > 0 ? RuntimeLineTone.Warn : RuntimeLineTone.Plain, failed);
@@ -922,7 +925,7 @@ public static class RuntimePayloadBuilder
 
         if (process.Count > 0)
         {
-            yield return new RuntimeTileLine(string.Join(" · ", process), RuntimeLineTone.Plain, null, RuntimeTrend.Of(Trends.Cpu(target)));
+            yield return new RuntimeTileLine(string.Join(PartSeparator, process), RuntimeLineTone.Plain, null, RuntimeTrend.Of(Trends.Cpu(target)));
         }
 
         if (vitals.UptimeSeconds is { } uptime)
@@ -970,7 +973,7 @@ public static class RuntimePayloadBuilder
         {
             null => "not checked yet",
             { StatusCode: null } => "no answer",
-            _ => HistoryText.ResultFacts(last, " · "),
+            _ => HistoryText.ResultFacts(last, PartSeparator),
         };
         var title = new List<string> { $"{node.Name}: {HealthClassifier.Label(target.State)}", target.Url.AbsoluteUri };
         if (last is not null)

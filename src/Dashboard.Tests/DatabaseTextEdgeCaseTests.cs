@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Dashboard.Tests;
 
 /// <summary>
@@ -246,5 +248,25 @@ public sealed class DatabaseTextEdgeCaseTests
     {
         Assert.Equal(DatabaseText.NotSaid, DatabaseText.Nullable(null));
         Assert.Equal(DatabaseText.NotSaid, DatabaseText.Number(null));
+    }
+
+    [Theory]
+    [InlineData("fi-FI")]
+    [InlineData("de-DE")]
+    public void ACountIsGroupedWithACommaUnderAnyAmbientCulture(string cultureName)
+    {
+        var previous = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(cultureName);
+
+            Assert.Equal("1,234,567", DatabaseText.Number(1_234_567));
+            Assert.Equal("0", DatabaseText.Number(0));
+            Assert.Equal("-1,234", DatabaseText.Number(-1_234));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
     }
 }

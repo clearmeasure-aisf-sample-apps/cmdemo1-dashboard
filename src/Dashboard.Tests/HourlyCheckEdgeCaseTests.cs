@@ -101,6 +101,41 @@ public class HourlyCheckEdgeCaseTests
         Assert.Equal("unreachable", HourlyCheck.Unreachable.Word());
     }
 
+    /// <summary>
+    /// The two halves of the vocabulary are inverses: for every defined result, the word the box says is the word
+    /// the file writes, and the word the file writes reads back as the result it said. The file is built the way
+    /// the page reads it - the hourly <c>result</c> is <c>r.Word()</c> - and the reading that turns it back is the
+    /// one the page does. A word that <see cref="HourlyCheckResultWords.Word" /> says and <see cref="HourlyCheckResultWords" />
+    /// ' <c>Of</c> no longer accepts would read as no check here, so this is the tie between the two switches that
+    /// nothing else holds (#2061).
+    /// </summary>
+    [Theory]
+    [InlineData(HourlyCheckResult.Healthy)]
+    [InlineData(HourlyCheckResult.Unhealthy)]
+    [InlineData(HourlyCheckResult.Unreachable)]
+    public void TheWordTheBoxSaysReadsBackAsTheResultItSaid(HourlyCheckResult result)
+    {
+        var found = Result($"\"{result.Word()}\"");
+
+        Assert.NotNull(found);
+        Assert.Equal(result, found!.Result);
+        Assert.Equal(Reported, found.At);
+    }
+
+    /// <summary>
+    /// The refusal of a value outside the three names the three words it would accept, in the words they are: the
+    /// message the box owes a reader of the runbook's log, character for character, and not a word the reader no
+    /// longer accepts. The three words the message names are the same three the vocabulary says, so a change to one
+    /// of them is seen in the message and not only in the line the box shows (#2061).
+    /// </summary>
+    [Fact]
+    public void TheRefusalOfAValueOutsideTheThreeNamesTheThreeWords()
+    {
+        var refused = Assert.Throws<ArgumentOutOfRangeException>(() => HourlyCheckResultWords.Word((HourlyCheckResult)3));
+
+        Assert.StartsWith("An hourly check is healthy, unhealthy or unreachable.", refused.Message, StringComparison.Ordinal);
+    }
+
     /// <summary>The three words are three, each already in its own lower case, trimmed and of no spaces: the
     /// reading lowers and trims what the file wrote before it compares the whole word against these three, so a
     /// word that stood for two of them would make one report say two things. The words are those of

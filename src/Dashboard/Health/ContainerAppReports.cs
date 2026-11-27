@@ -57,21 +57,25 @@ public enum HourlyCheckResult
 /// <summary>The lower-case words of <see cref="HourlyCheckResult"/>, as the file writes them and the box says them.</summary>
 public static class HourlyCheckResultWords
 {
+    private const string HealthyWord = "healthy";
+    private const string UnhealthyWord = "unhealthy";
+    private const string UnreachableWord = "unreachable";
+
     /// <summary><c>healthy</c>, <c>unhealthy</c> or <c>unreachable</c>; any other value is refused.</summary>
     public static string Word(this HourlyCheckResult result) => result switch
     {
-        HourlyCheckResult.Healthy => "healthy",
-        HourlyCheckResult.Unhealthy => "unhealthy",
-        HourlyCheckResult.Unreachable => "unreachable",
-        _ => throw new ArgumentOutOfRangeException(nameof(result), result, "An hourly check is healthy, unhealthy or unreachable."),
+        HourlyCheckResult.Healthy => HealthyWord,
+        HourlyCheckResult.Unhealthy => UnhealthyWord,
+        HourlyCheckResult.Unreachable => UnreachableWord,
+        _ => throw new ArgumentOutOfRangeException(nameof(result), result, $"An hourly check is {HealthyWord}, {UnhealthyWord} or {UnreachableWord}.")
     };
 
     /// <summary>The result a word of the file names, in any case; null for any other word, or none.</summary>
     internal static HourlyCheckResult? Of(string? word) => word?.ToLowerInvariant() switch
     {
-        "healthy" => HourlyCheckResult.Healthy,
-        "unhealthy" => HourlyCheckResult.Unhealthy,
-        "unreachable" => HourlyCheckResult.Unreachable,
+        HealthyWord => HourlyCheckResult.Healthy,
+        UnhealthyWord => HourlyCheckResult.Unhealthy,
+        UnreachableWord => HourlyCheckResult.Unreachable,
         _ => null,
     };
 }

@@ -24,7 +24,12 @@ public sealed record DeploymentsReport(DateTimeOffset? Generated, IReadOnlyList<
     /// </summary>
     public IReadOnlyList<DeploymentFreeze> Freezes { get; init; } = [];
 
-    private static readonly string[] ActivityLists = ["recent", "freezes", "missing"];
+    private const string DeploymentsList = "deployments";
+    private const string RecentList = "recent";
+    private const string FreezesList = "freezes";
+    private const string MissingList = "missing";
+
+    private static readonly string[] ActivityLists = [RecentList, FreezesList, MissingList];
 
     /// <summary>The parts the system could not read from Octopus Deploy (<c>missing</c>), in the file's words.</summary>
     public IReadOnlyList<string> Missing { get; init; } = [];
@@ -79,8 +84,8 @@ public sealed record DeploymentsReport(DateTimeOffset? Generated, IReadOnlyList<
         {
             using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
-            return root.ValueKind == JsonValueKind.Object && root.TryGetProperty("deployments", out var list) && list.ValueKind == JsonValueKind.Array
-                ? new DeploymentsReport(JsonRead.Time(root, "generated"), [.. JsonRead.Items(root, "deployments").Select(Deployment.Read).OfType<Deployment>()])
+            return root.ValueKind == JsonValueKind.Object && root.TryGetProperty(DeploymentsList, out var list) && list.ValueKind == JsonValueKind.Array
+                ? new DeploymentsReport(JsonRead.Time(root, "generated"), [.. JsonRead.Items(root, DeploymentsList).Select(Deployment.Read).OfType<Deployment>()])
                 {
                     Recent = ReadRecent(root),
                     Freezes = ReadFreezes(root),
@@ -97,15 +102,15 @@ public sealed record DeploymentsReport(DateTimeOffset? Generated, IReadOnlyList<
 
     /// <summary>The last deployments that ended, newest first; empty for a file from before the field.</summary>
     private static IReadOnlyList<RecentDeployment> ReadRecent(JsonElement root) =>
-        [.. JsonRead.Items(root, "recent").Select(RecentDeployment.Read).OfType<RecentDeployment>().OrderByDescending(recent => recent.Finished)];
+        [.. JsonRead.Items(root, RecentList).Select(RecentDeployment.Read).OfType<RecentDeployment>().OrderByDescending(recent => recent.Finished)];
 
     /// <summary>The deployment freezes, in the file's order; empty for a file from before the field.</summary>
     private static IReadOnlyList<DeploymentFreeze> ReadFreezes(JsonElement root) =>
-        [.. JsonRead.Items(root, "freezes").Select(DeploymentFreeze.Read).OfType<DeploymentFreeze>()];
+        [.. JsonRead.Items(root, FreezesList).Select(DeploymentFreeze.Read).OfType<DeploymentFreeze>()];
 
     /// <summary>The parts the system could not read, in the file's words; empty for a file from before the field.</summary>
     private static IReadOnlyList<string> ReadMissing(JsonElement root) =>
-        [.. JsonRead.Items(root, "missing").Where(item => item.ValueKind == JsonValueKind.String).Select(item => item.GetString()!)];
+        [.. JsonRead.Items(root, MissingList).Where(item => item.ValueKind == JsonValueKind.String).Select(item => item.GetString()!)];
 
     /// <summary>True when the file has one of the activity lists: recent, freezes or missing.</summary>
     private static bool ReadSaysActivity(JsonElement root) => ActivityLists.Any(name => JsonRead.HasArray(root, name));

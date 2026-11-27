@@ -150,6 +150,8 @@ public class ClusterTextTests
         Assert.Equal("3 nodes", ClusterText.PoolSize(new AksPool("user", null, 3, null, null, null, null, null)));
         Assert.Equal("Standard_D2s_v5", ClusterText.PoolSize(new AksPool("user", null, null, "Standard_D2s_v5", null, null, null, null)));
         Assert.Null(ClusterText.PoolSize(new AksPool("user", null, null, null, null, null, null, null)));
+        Assert.Equal("Running, Succeeded", ClusterText.PoolState(ClusterFixture.SampleService.Pools[0]));
+        Assert.Null(ClusterText.PoolState(new AksPool("user", null, null, null, null, null, null, null)));
         Assert.Equal("average of the last 15 minutes", ClusterText.MetricsWindow(new AksMetrics(15, 1, 2, 3)));
         Assert.Equal("average of the last minute", ClusterText.MetricsWindow(new AksMetrics(1, 1, 2, 3)));
         Assert.Equal("average, as Azure Monitor reports it", ClusterText.MetricsWindow(new AksMetrics(null, 1, 2, 3)));

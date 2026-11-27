@@ -473,6 +473,25 @@ public class ClusterTextEdgeCaseTests
     public void APoolThatIsNotThereIsNoPool() =>
         Assert.Equal("pool", Assert.Throws<ArgumentNullException>(() => ClusterText.PoolSize(null!)).ParamName);
 
+    /// <summary>The states of a node pool, power first: both, one, the other, and the one that says
+    /// nothing at all. An empty-string state is still a state: only null is skipped.</summary>
+    [Fact]
+    public void TheStatesOfANodePoolAreSaidPowerFirst()
+    {
+        Assert.Equal("Running, Succeeded", ClusterText.PoolState(ClusterFixture.SampleService.Pools[0]));
+        Assert.Equal("Running, Succeeded", ClusterText.PoolState(new AksPool("system", "System", 1, "Standard_D4as_v6", 128, "Running", "Succeeded", null)));
+        Assert.Equal("Running", ClusterText.PoolState(new AksPool("user", null, 3, null, null, "Running", null, null)));
+        Assert.Equal("Updating", ClusterText.PoolState(new AksPool("user", null, 3, null, null, null, "Updating", null)));
+        Assert.Null(ClusterText.PoolState(new AksPool("user", null, 3, null, null, null, null, null)));
+        Assert.Equal(", Succeeded", ClusterText.PoolState(new AksPool("user", null, 3, null, null, string.Empty, "Succeeded", null)));
+    }
+
+    /// <summary>The pool that is not there is no pool at all: the rule says so before it says anything
+    /// else.</summary>
+    [Fact]
+    public void APoolWithNoStateThatIsNotThereIsNoPool() =>
+        Assert.Equal("pool", Assert.Throws<ArgumentNullException>(() => ClusterText.PoolState(null!)).ParamName);
+
     /// <summary>The window the metrics are an average of, at its ends: the minutes that are none, the two,
     /// the negative, and the most a window of minutes can be.</summary>
     [Fact]

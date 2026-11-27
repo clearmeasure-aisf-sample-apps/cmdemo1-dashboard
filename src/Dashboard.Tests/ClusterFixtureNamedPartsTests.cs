@@ -133,4 +133,49 @@ public class ClusterFixtureNamedPartsTests
         Assert.Equal(100, pod.Cpu.Requests);
         Assert.Equal(268435456, pod.Memory.Requests);
     }
+
+    /// <summary>The fixture's least file names an empty list of nodes and nothing else: no namespaces, no moment, no
+    /// interval and no version, so a test that reads it starts from nothing but the list.</summary>
+    [Fact]
+    public void TheFileWithNoNodesReadsAsAStatusOfNothing()
+    {
+        var status = ClusterFixture.Read(ClusterFixture.NoNodes);
+
+        Assert.Empty(status.Nodes);
+        Assert.Empty(status.Namespaces);
+        Assert.Null(status.Generated);
+        Assert.Null(status.IntervalSeconds);
+        Assert.Null(status.KubernetesVersion);
+    }
+
+    /// <summary>The fixture's file of the three facts says the fixture's own moment, the fifteen-second interval and the
+    /// version the fixture's status is built with, over an empty list of nodes.</summary>
+    [Fact]
+    public void TheFileWithTheThreeFactsReadsAsTheFixturesThreeFacts()
+    {
+        var status = ClusterFixture.Read(ClusterFixture.FileWithTheThreeFacts);
+
+        Assert.Equal(ClusterFixture.Generated, status.Generated);
+        Assert.Equal(15, status.IntervalSeconds);
+        Assert.Equal("v1.33.3", status.KubernetesVersion);
+        Assert.Empty(status.Nodes);
+        Assert.Empty(status.Namespaces);
+    }
+
+    /// <summary>A file the reader refuses fails the fixture's read, and the failure a person reads carries the
+    /// reader's own problem, word for word.</summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("{ not json")]
+    [InlineData("""{ "generated": "2026-10-06T20:15:30Z" }""")]
+    public void AFileTheReaderRefusesFailsTheReadWithTheProblemToRead(string json)
+    {
+        var problem = ClusterStatus.Parse(json).Problem;
+
+        Assert.NotNull(problem);
+
+        var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => ClusterFixture.Read(json));
+
+        Assert.Contains(problem, failure.Message, StringComparison.Ordinal);
+    }
 }

@@ -174,7 +174,7 @@ public class ClusterStatusBoundaryEdgeCaseTests
     [InlineData("""{ "generated": "2026-10-06T20:15:30", "intervalSeconds": 900, "nodes": [] }""", 0)]
     public void AMomentInAFileIsTheInstantItMeansAndKeepsTheOffsetItWasWrittenWith(string json, int offsetHours)
     {
-        var status = Read(json);
+        var status = ClusterFixture.Read(json);
 
         Assert.Equal(Generated, status.Generated);
         Assert.Equal(Generated.UtcDateTime, status.Generated!.Value.UtcDateTime);
@@ -199,7 +199,7 @@ public class ClusterStatusBoundaryEdgeCaseTests
     [InlineData("""{ "generated": "", "nodes": [] }""")]
     public void AMomentThatSaysNoMomentLeavesAFileThatSaysNoMoment(string json)
     {
-        var status = Read(json);
+        var status = ClusterFixture.Read(json);
 
         Assert.Null(status.Generated);
         Assert.Null(status.IntervalSeconds);
@@ -227,7 +227,7 @@ public class ClusterStatusBoundaryEdgeCaseTests
     [InlineData("899.6", 900, 3600)]
     public void TheIntervalAFileGivesIsWholeSecondsOrNone(string seconds, int? expected, long staleAfterSeconds)
     {
-        var status = Read($$"""{ "intervalSeconds": {{seconds}}, "nodes": [] }""");
+        var status = ClusterFixture.Read($$"""{ "intervalSeconds": {{seconds}}, "nodes": [] }""");
 
         Assert.Equal(expected, status.IntervalSeconds);
         Assert.Equal(TimeSpan.FromSeconds(staleAfterSeconds), status.StaleAfter);
@@ -245,19 +245,5 @@ public class ClusterStatusBoundaryEdgeCaseTests
         Assert.Contains("StaleAfter = 00:01:00", (ClusterFixture.Status() with { IntervalSeconds = int.MinValue }).ToString(), StringComparison.Ordinal);
         Assert.Contains("StaleAfter = 01:00:00", (ClusterFixture.Status() with { IntervalSeconds = 900 }).ToString(), StringComparison.Ordinal);
         Assert.Contains("StaleAfter = 99420.12:56:28", (ClusterFixture.Status() with { IntervalSeconds = int.MaxValue }).ToString(), StringComparison.Ordinal);
-    }
-
-    // --------------------------------------------------------------------------------------------- helpers
-
-    /// <summary>The status a file holds, with nothing said against it; a file the reader answers with a problem fails
-    /// here with that problem to read.</summary>
-    private static ClusterStatus Read(string json)
-    {
-        var parsed = ClusterStatus.Parse(json);
-
-        Assert.NotNull(parsed.Value);
-        Assert.Null(parsed.Problem);
-
-        return parsed.Value!;
     }
 }

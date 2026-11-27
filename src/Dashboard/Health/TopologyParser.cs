@@ -146,13 +146,14 @@ public static class TopologyParser
     /// </summary>
     private static List<PageLink>? ReadPages(JsonElement parent)
     {
-        if (!parent.TryGetProperty("pages", out var pages) || pages.ValueKind != JsonValueKind.Array)
+        const string Pages = "pages";
+        if (!JsonRead.HasArray(parent, Pages))
         {
             return null;
         }
 
         var found = new List<PageLink>();
-        foreach (var page in pages.EnumerateArray())
+        foreach (var page in JsonRead.Items(parent, Pages))
         {
             if (page.ValueKind == JsonValueKind.Object
                 && JsonRead.Text(page, "name") is { } name

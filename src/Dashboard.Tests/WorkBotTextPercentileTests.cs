@@ -12,7 +12,7 @@ public class WorkBotTextPercentileTests
     private static DateTimeOffset At(int day, int hour = 0, int minute = 0) => new(2026, 11, day, hour, minute, 0, TimeSpan.Zero);
 
     private static WorkItem Item(int number, string? column = null, IReadOnlyList<ColumnVisit>? history = null, IReadOnlyList<WorkPullRequest>? pulls = null) =>
-        new(number, $"Item {number}", null, null, column, history ?? [], null, null, [], pulls ?? [], null, WorkItemEnvironments.None, null);
+        new(new WorkItemIdentity(number, $"Item {number}", null, null, column), history ?? [], null, null, [], pulls ?? [], null, WorkItemEnvironments.None, null);
 
     /// <summary>An item that completed after <paramref name="hours"/> of cycle time (Todo→InProgress→Done).</summary>
     private static WorkItem DoneAfterHours(double hours) =>
@@ -120,7 +120,7 @@ public class WorkBotTextPercentileTests
     {
         // One item merged then deployed 4 hours later
         var item = new WorkItem(
-            1, "Item 1", null, null, WorkColumns.Done,
+            new WorkItemIdentity(1, "Item 1", null, null, WorkColumns.Done),
             [
                 new ColumnVisit(WorkColumns.Todo, At(1, 8)),
                 new ColumnVisit(WorkColumns.Done, At(2, 8)),

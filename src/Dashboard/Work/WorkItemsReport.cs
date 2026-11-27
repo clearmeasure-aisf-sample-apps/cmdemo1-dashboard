@@ -395,12 +395,28 @@ public sealed record WorkNote(string? Text, Uri? Url, DateTimeOffset? At, string
     }
 }
 
-/// <summary>One work item on the board.</summary>
+/// <summary>Which item on the board this is: its number, title, page, state word and column.</summary>
 /// <param name="Number">Its number on the board; null when the file does not give one.</param>
 /// <param name="Title">Its title.</param>
 /// <param name="Url">Its page.</param>
 /// <param name="State">The board's own state word, when it is not the column.</param>
 /// <param name="Column">The column it is in now.</param>
+public sealed record WorkItemIdentity(int? Number, string? Title, Uri? Url, string? State, string? Column)
+{
+    /// <summary>True when the file names no item: no number, title, page or column. A state word alone names none.</summary>
+    public bool IsUnsaid => Number is null && Title is null && Url is null && Column is null;
+
+    internal static WorkItemIdentity Read(JsonElement element) =>
+        new(
+            JsonRead.Count(element, "number"),
+            JsonRead.Text(element, "title"),
+            JsonRead.Address(element, "url"),
+            JsonRead.Text(element, "state"),
+            JsonRead.Text(element, "column"));
+}
+
+/// <summary>One work item on the board.</summary>
+/// <param name="Identity">Which item it is: its number, title, page, state word and column.</param>
 /// <param name="ColumnHistory">When it entered each column, in the file's order.</param>
 /// <param name="Assignee">Who it is assigned to, a person or a bot.</param>
 /// <param name="Agent">The bot handling it, when one is.</param>
@@ -413,11 +429,7 @@ public sealed record WorkNote(string? Text, Uri? Url, DateTimeOffset? At, string
 /// <param name="Rework">Functional-test failures and reverts of this item; null when the file does not say.</param>
 /// <param name="Blocker">The bot's latest status, or the comment that says what blocked it; null when the file does not say.</param>
 public sealed record WorkItem(
-    int? Number,
-    string? Title,
-    Uri? Url,
-    string? State,
-    string? Column,
+    WorkItemIdentity Identity,
     IReadOnlyList<ColumnVisit> ColumnHistory,
     string? Assignee,
     string? Agent,
@@ -438,11 +450,7 @@ public sealed record WorkItem(
         }
 
         var item = new WorkItem(
-            JsonRead.Count(element, "number"),
-            JsonRead.Text(element, "title"),
-            JsonRead.Address(element, "url"),
-            JsonRead.Text(element, "state"),
-            JsonRead.Text(element, "column"),
+            WorkItemIdentity.Read(element),
             [.. JsonRead.Items(element, "columnHistory").Select(ColumnVisit.Read).OfType<ColumnVisit>()],
             JsonRead.Text(element, "assignee"),
             JsonRead.Text(element, "agent"),
@@ -454,7 +462,7 @@ public sealed record WorkItem(
             ReadWorker(element),
             ItemRework(element),
             Note(element));
-        return item.Number is null && item.Title is null && item.Url is null && item.Column is null ? null : item;
+        return item.Identity.IsUnsaid ? null : item;
     }
 
     private static List<Uri> Addresses(JsonElement parent, string name)

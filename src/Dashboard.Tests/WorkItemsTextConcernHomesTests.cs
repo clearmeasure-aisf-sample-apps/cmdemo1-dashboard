@@ -19,7 +19,7 @@ public class WorkItemsTextConcernHomesTests
         App.GetType("Dashboard.Work." + name, throwOnError: true)!;
 
     private static WorkItem Item(int number, string? column, double? costUsd = null) =>
-        new(number, $"Item {number}", null, null, column, [], null, null, [], [], null, WorkItemEnvironments.None, costUsd);
+        new(new WorkItemIdentity(number, $"Item {number}", null, null, column), [], null, null, [], [], null, WorkItemEnvironments.None, costUsd);
 
     private static object? Call(string home, string method, params object?[] arguments) =>
         Home(home).GetMethod(method, BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)!.Invoke(null, arguments);
@@ -140,7 +140,7 @@ public class WorkItemsTextConcernHomesTests
         var unplacedGroup = Assert.Single(WorkItemsText.Active(items), group => group.Column == WorkColumns.Unplaced);
 
         Assert.Equal(2, unplacedRow.Count);
-        Assert.Equal([1, 2], unplacedGroup.Items.Select(item => item.Number));
+        Assert.Equal([1, 2], unplacedGroup.Items.Select(item => item.Identity.Number));
         Assert.Equal(WorkItemsText.Active(items).Select(group => group.Column), ((IReadOnlyList<WorkColumnGroup>)Call("WorkBoard", "Active", (object)items)!).Select(group => group.Column));
     }
 }

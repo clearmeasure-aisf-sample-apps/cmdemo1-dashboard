@@ -3,15 +3,15 @@
 <ul class="work-list">
     @foreach (var item in Items)
     {
-        <li @key="@($"{item.Number}:{item.Title}:{item.Worker}")">
+        <li @key="@($"{item.Identity.Number}:{item.Identity.Title}:{item.Worker}")">
             @if (item.Worker == WorkWorker.Bot)
             {
                 <details class="work-bot">
                     <summary class="work-line">
                         <span class="work-line__issue">
                             <span class="chip chip--bot">bot</span>
-                            <DeepLink Href="item.Url" Title="@WorkItemsText.IssueTitle(item)">@WorkItemsText.Number(item)</DeepLink>
-                            @if (item.Title is { } title)
+                            <DeepLink Href="item.Identity.Url" Title="@WorkItemsText.IssueTitle(item)">@WorkItemsText.Number(item)</DeepLink>
+                            @if (item.Identity.Title is { } title)
                             {
                                 <span class="work__title">@title</span>
                             }
@@ -145,8 +145,8 @@
                         {
                             <span class="chip chip--team">@who</span>
                         }
-                        <DeepLink Href="item.Url" Title="@WorkItemsText.IssueTitle(item)">@WorkItemsText.Number(item)</DeepLink>
-                        @if (item.Title is { } title)
+                        <DeepLink Href="item.Identity.Url" Title="@WorkItemsText.IssueTitle(item)">@WorkItemsText.Number(item)</DeepLink>
+                        @if (item.Identity.Title is { } title)
                         {
                             <span class="work__title">@title</span>
                         }

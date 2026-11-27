@@ -193,7 +193,7 @@ public static class WorkItemsText
 
     /// <summary><c>since 3 h ago</c>; null when the history does not say when the item entered its column.</summary>
     public static string? Since(WorkItem item, DateTimeOffset now) =>
-        item.Column is { } column && Entered(item, column) is { } at ? $"since {TimeText.Ago(at, now)}" : null;
+        item.Identity.Column is { } column && Entered(item, column) is { } at ? $"since {TimeText.Ago(at, now)}" : null;
 
     /// <summary><c>median 18.5 h · p85 3 d · 11 items</c>, or <see cref="NotMetered"/> when the file gives none of it.</summary>
     public static string Duration(WorkDuration? duration) => WorkMeasureText.Duration(duration);
@@ -274,13 +274,13 @@ public static class WorkItemsText
     }
 
     public static string Number(WorkItem item) =>
-        item.Number is { } number ? "#" + number.ToString(CultureInfo.InvariantCulture) : "Item";
+        item.Identity.Number is { } number ? "#" + number.ToString(CultureInfo.InvariantCulture) : "Item";
 
     public static string IssueTitle(WorkItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        var name = item.Number is { } number ? $"Work item #{number.ToString(CultureInfo.InvariantCulture)}" : "Work item";
-        return item.State is { } state ? $"{name}, {state}{LinkText.GitHubSuffix}" : name + LinkText.GitHubSuffix;
+        var name = item.Identity.Number is { } number ? $"Work item #{number.ToString(CultureInfo.InvariantCulture)}" : "Work item";
+        return item.Identity.State is { } state ? $"{name}, {state}{LinkText.GitHubSuffix}" : name + LinkText.GitHubSuffix;
     }
 
     /// <summary>The bot handling the item, or who it is assigned to when no bot is named.</summary>

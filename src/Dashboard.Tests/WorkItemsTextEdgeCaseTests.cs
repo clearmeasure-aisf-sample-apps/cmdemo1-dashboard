@@ -24,7 +24,7 @@ public class WorkItemsTextEdgeCaseTests
         WorkItemEnvironments? environments = null,
         double? costUsd = null,
         WorkWorker worker = WorkWorker.Unknown) =>
-        new(number, "An item", null, null, column, history ?? [], assignee, agent, [], [], null, environments ?? WorkItemEnvironments.None, costUsd, worker);
+        new(new WorkItemIdentity(number, "An item", null, null, column), history ?? [], assignee, agent, [], [], null, environments ?? WorkItemEnvironments.None, costUsd, worker);
 
     private static WorkItemsReport Report(IReadOnlyList<WorkItem> items, WorkItemsStats? bot = null, WorkItemsStats? team = null) =>
         new(null, null, WorkItemsStats.Empty, items, [], bot, team);
@@ -62,8 +62,8 @@ public class WorkItemsTextEdgeCaseTests
         IReadOnlyList<WorkItem> items = [Item(1, worker: WorkWorker.Bot), Item(2), Item(3, worker: WorkWorker.Team), Item(4, worker: WorkWorker.Bot)];
 
         Assert.Same(items, WorkItemsText.Select(items, WorkAudience.All));
-        Assert.Equal([1, 4], WorkItemsText.Select(items, WorkAudience.Bot).Select(item => item.Number));
-        Assert.Equal([3], WorkItemsText.Select(items, WorkAudience.Team).Select(item => item.Number));
+        Assert.Equal([1, 4], WorkItemsText.Select(items, WorkAudience.Bot).Select(item => item.Identity.Number));
+        Assert.Equal([3], WorkItemsText.Select(items, WorkAudience.Team).Select(item => item.Identity.Number));
     }
 
     [Theory]
@@ -145,7 +145,7 @@ public class WorkItemsTextEdgeCaseTests
     {
         IReadOnlyList<WorkItem> items = [Item(null, WorkColumns.Done), Item(3, WorkColumns.Done), Item(9, WorkColumns.Done), Item(5, WorkColumns.Todo)];
 
-        Assert.Equal([9, 3, null], WorkItemsText.RecentlyDone(items).Select(item => item.Number));
+        Assert.Equal([9, 3, null], WorkItemsText.RecentlyDone(items).Select(item => item.Identity.Number));
     }
 
     [Fact]
@@ -158,7 +158,7 @@ public class WorkItemsTextEdgeCaseTests
             Item(2, WorkColumns.Done, [new ColumnVisit(WorkColumns.Done, Now)]),
         ];
 
-        Assert.Equal([2, 1, 50], WorkItemsText.RecentlyDone(items).Select(item => item.Number));
+        Assert.Equal([2, 1, 50], WorkItemsText.RecentlyDone(items).Select(item => item.Identity.Number));
     }
 
     [Fact]

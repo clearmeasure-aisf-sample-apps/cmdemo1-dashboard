@@ -29,7 +29,7 @@ public class WorkBotTextEdgeCaseTests
         IReadOnlyList<WorkPullRequest>? pulls = null,
         WorkItemEnvironments? environments = null,
         double? cost = null) =>
-        new(number, $"Item {number}", null, null, column, history ?? [], null, agent, [], pulls ?? [], null, environments ?? WorkItemEnvironments.None, cost);
+        new(new WorkItemIdentity(number, $"Item {number}", null, null, column), history ?? [], null, agent, [], pulls ?? [], null, environments ?? WorkItemEnvironments.None, cost);
 
     private static WorkPullRequest Pull(int? number = null, string? state = null, DateTimeOffset? mergedAt = null, string? checks = null, string? sha = null) =>
         new(number, null, state, mergedAt, sha, checks);

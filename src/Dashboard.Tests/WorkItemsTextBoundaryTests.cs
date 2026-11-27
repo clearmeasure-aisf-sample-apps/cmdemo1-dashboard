@@ -14,7 +14,7 @@ public class WorkItemsTextBoundaryTests
     private static readonly DateTimeOffset ThreeHoursAgo = new(2026, 11, 9, 19, 30, 0, TimeSpan.Zero);
 
     private static WorkItem Item(int? number, string? column = null, IReadOnlyList<ColumnVisit>? history = null, double? costUsd = null) =>
-        new(number, "An item", null, null, column, history ?? [], null, null, [], [], null, WorkItemEnvironments.None, costUsd);
+        new(new WorkItemIdentity(number, "An item", null, null, column), history ?? [], null, null, [], [], null, WorkItemEnvironments.None, costUsd);
 
     // ---- Rework rate ----
 
@@ -110,7 +110,7 @@ public class WorkItemsTextBoundaryTests
         var groups = WorkItemsText.Active(items);
 
         Assert.Equal([WorkColumns.Todo, WorkColumns.Unplaced], groups.Select(group => group.Column));
-        Assert.Equal([1, 3, 4], groups[1].Items.Select(item => item.Number));
+        Assert.Equal([1, 3, 4], groups[1].Items.Select(item => item.Identity.Number));
     }
 
     // ---- Since ----

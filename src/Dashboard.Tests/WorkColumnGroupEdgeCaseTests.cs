@@ -10,7 +10,7 @@ namespace Dashboard.Tests;
 public class WorkColumnGroupEdgeCaseTests
 {
     private static WorkItem Item(int? number, string? column = null) =>
-        new(number, $"Item {number}", null, null, column, [], null, null, [], [], null, WorkItemEnvironments.None, null);
+        new(new WorkItemIdentity(number, $"Item {number}", null, null, column), [], null, null, [], [], null, WorkItemEnvironments.None, null);
 
     // ----- the parts, kept as given -----
 
@@ -33,7 +33,7 @@ public class WorkColumnGroupEdgeCaseTests
         var group = new WorkColumnGroup(WorkColumns.Todo, items);
 
         Assert.Same(items, group.Items);
-        Assert.Equal([3, 1, 2], group.Items.Select(item => item.Number));
+        Assert.Equal([3, 1, 2], group.Items.Select(item => item.Identity.Number));
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public class WorkColumnGroupEdgeCaseTests
     {
         var group = new WorkColumnGroup(WorkColumns.Todo, [Item(1, WorkColumns.Done), Item(2, null)]);
 
-        Assert.Equal([1, 2], group.Items.Select(item => item.Number));
+        Assert.Equal([1, 2], group.Items.Select(item => item.Identity.Number));
     }
 
     [Fact]

@@ -17,7 +17,7 @@ public class WorkItemsTextTests
         string? column = null,
         IReadOnlyList<ColumnVisit>? history = null,
         WorkItemEnvironments? environments = null) =>
-        new(number, "An item", null, state, column, history ?? [], null, null, [], [], null, environments ?? WorkItemEnvironments.None, null);
+        new(new WorkItemIdentity(number, "An item", null, state, column), history ?? [], null, null, [], [], null, environments ?? WorkItemEnvironments.None, null);
 
     // ---- AudienceHash ----
 

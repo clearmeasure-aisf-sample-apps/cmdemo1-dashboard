@@ -14,7 +14,7 @@ public class ColumnWaitTests
     private static DateTimeOffset At(int day, int hour = 0) => new(2026, 11, day, hour, 0, 0, TimeSpan.Zero);
 
     private static WorkItem Item(int number, string? column = null, IReadOnlyList<ColumnVisit>? history = null) =>
-        new(number, $"Item {number}", null, null, column, history ?? [], null, null, [], [], null, WorkItemEnvironments.None, null);
+        new(new WorkItemIdentity(number, $"Item {number}", null, null, column), history ?? [], null, null, [], [], null, WorkItemEnvironments.None, null);
 
     /// <summary>A finished stay of <paramref name="hours"/> hours in <paramref name="column"/>, starting at 08:00 on <paramref name="day"/>.</summary>
     private static ColumnVisit Visit(string column, int day, double hours) =>

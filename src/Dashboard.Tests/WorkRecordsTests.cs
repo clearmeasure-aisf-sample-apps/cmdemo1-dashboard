@@ -181,11 +181,11 @@ public class WorkRecordsTests
     {
         var item = WorkRecords.Item();
 
-        Assert.Equal(490, item.Number);
-        Assert.Equal("Pin the board", item.Title);
-        Assert.Equal("https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/490", item.Url!.AbsoluteUri);
-        Assert.Equal("Active", item.State);
-        Assert.Equal(WorkColumns.Review, item.Column);
+        Assert.Equal(490, item.Identity.Number);
+        Assert.Equal("Pin the board", item.Identity.Title);
+        Assert.Equal("https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/490", item.Identity.Url!.AbsoluteUri);
+        Assert.Equal("Active", item.Identity.State);
+        Assert.Equal(WorkColumns.Review, item.Identity.Column);
         Assert.Equal("cm-ai-ops", item.Assignee);
         Assert.Equal("dashboard-bot", item.Agent);
         Assert.Equal(4.5, item.CostUsd);
@@ -252,7 +252,7 @@ public class WorkRecordsTests
             rework: rework,
             blocker: blocker);
 
-        Assert.Same(title, item.Title);
+        Assert.Same(title, item.Identity.Title);
         Assert.Same(history, item.ColumnHistory);
         Assert.Same(sessions, item.CursorSessions);
         Assert.Same(pulls, item.PullRequests);
@@ -303,9 +303,9 @@ public class WorkRecordsTests
         Assert.NotNull(report.Scope);
         Assert.True(report.Stats.HasAny);
         Assert.Equal(2, report.Items.Count);
-        Assert.Equal([490, 491], report.Items.Select(item => item.Number));
-        Assert.Equal(WorkColumns.Review, report.Items[0].Column);
-        Assert.Equal(WorkColumns.InProgress, report.Items[1].Column);
+        Assert.Equal([490, 491], report.Items.Select(item => item.Identity.Number));
+        Assert.Equal(WorkColumns.Review, report.Items[0].Identity.Column);
+        Assert.Equal(WorkColumns.InProgress, report.Items[1].Identity.Column);
         Assert.Equal(WorkWorker.Bot, report.Items[0].Worker);
         Assert.Equal(WorkWorker.Team, report.Items[1].Worker);
         Assert.Single(report.Releases);
@@ -346,7 +346,7 @@ public class WorkRecordsTests
         var first = WorkRecords.Report();
         var rebuilt = WorkRecords.Report(items: [WorkRecords.Item(number: 490), WorkRecords.Item(number: 491, column: WorkColumns.InProgress, worker: WorkWorker.Team)]);
 
-        Assert.Equal(first.Items.Select(item => item.Number), rebuilt.Items.Select(item => item.Number));
+        Assert.Equal(first.Items.Select(item => item.Identity.Number), rebuilt.Items.Select(item => item.Identity.Number));
         Assert.NotEqual(first.Items[0], rebuilt.Items[0]);
         Assert.NotEqual(first.Items[1], rebuilt.Items[1]);
         Assert.Equal(4, new HashSet<WorkItem>(first.Items.Concat(rebuilt.Items)).Count);

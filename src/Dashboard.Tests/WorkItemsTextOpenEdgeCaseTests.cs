@@ -52,7 +52,7 @@ public class WorkItemsTextOpenEdgeCaseTests
         string? state = null,
         double? costUsd = null,
         WorkWorker worker = WorkWorker.Unknown) =>
-        new(number, "An item", null, state, column, history ?? [], assignee, agent, [], [], null, WorkItemEnvironments.None, costUsd, worker);
+        new(new WorkItemIdentity(number, "An item", null, state, column), history ?? [], assignee, agent, [], [], null, WorkItemEnvironments.None, costUsd, worker);
 
     private static WorkItemsReport Report(IReadOnlyList<WorkItem> items, WorkItemsStats? bot = null, WorkItemsStats? team = null) =>
         new(null, null, WorkItemsStats.Empty, items, [], bot, team);
@@ -206,8 +206,8 @@ public class WorkItemsTextOpenEdgeCaseTests
         var groups = WorkItemsText.Active(items);
 
         Assert.Equal([WorkColumns.Todo, WorkColumns.Unplaced], groups.Select(group => group.Column));
-        Assert.Equal([2], groups[0].Items.Select(item => item.Number));
-        Assert.Equal([1, 3], groups[1].Items.Select(item => item.Number));
+        Assert.Equal([2], groups[0].Items.Select(item => item.Identity.Number));
+        Assert.Equal([1, 3], groups[1].Items.Select(item => item.Identity.Number));
         Assert.Same(items[0], groups[1].Items[0]);
         Assert.Same(items[2], groups[1].Items[1]);
     }
@@ -222,7 +222,7 @@ public class WorkItemsTextOpenEdgeCaseTests
             Item(3, WorkColumns.Done, [new ColumnVisit(WorkColumns.Done, Now)]),
         ];
 
-        Assert.Equal([3, 20, 1], WorkItemsText.RecentlyDone(items).Select(item => item.Number));
+        Assert.Equal([3, 20, 1], WorkItemsText.RecentlyDone(items).Select(item => item.Identity.Number));
     }
 
     // ---- Wip: a count the file gives below zero ----

@@ -16,11 +16,7 @@ public class WorkBotTextEarliestTests
         IReadOnlyList<WorkPullRequest>? pulls = null,
         DateTimeOffset? deployedProd = null) =>
         new(
-            number,
-            $"Item {number}",
-            null,
-            null,
-            "Done",
+            new WorkItemIdentity(number, $"Item {number}", null, null, "Done"),
             history,
             null,
             null,

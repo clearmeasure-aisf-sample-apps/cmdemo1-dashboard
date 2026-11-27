@@ -5,10 +5,10 @@ using System.Runtime.CompilerServices;
 namespace Dashboard.Tests;
 
 /// <summary>
-/// The boundary, null/empty and fixed-value tests of <see cref="WorkItem" />, one item on the board: the sixteen
+/// The boundary, null/empty and fixed-value tests of <see cref="WorkItem" />, one item on the board: the twelve
 /// parts a line of <c>workitems.json</c> lands in, declared beside its file in
-/// <c>src/Dashboard/Work/WorkItemsReport.cs</c> - the number on the board, the title, the address, the board's own
-/// state word, the column it stands in now, the history of the columns it passed through, who it is assigned to, which
+/// <c>src/Dashboard/Work/WorkItemsReport.cs</c> - its <see cref="WorkItemIdentity" /> (the number on the board, the
+/// title, the address, the board's own state word and the column it stands in now), the history of the columns it passed through, who it is assigned to, which
 /// bot is handling it, the sessions that worked on it, the pull requests opened for it, the release cut for it, where
 /// that release is deployed, what the agent cost, whose work it is, the work that had to be done again, and the note
 /// that says what blocks it.
@@ -29,7 +29,7 @@ namespace Dashboard.Tests;
 /// the board a file came from, is <see cref="WorkItemsScopeEdgeCaseTests" />.
 /// </para>
 /// <para>
-/// What is left, and is pinned here, is the record itself: the constructor handing each of its sixteen arguments to
+/// What is left, and is pinned here, is the record itself: the constructor handing each of its twelve arguments to
 /// the property of its name and holding the very instance it was given; the three parts a caller may leave out
 /// falling to <see cref="WorkWorker.Unknown" />, and to the nothing that is not an empty note or a rework of nought;
 /// nothing refused - the item built on nothing at all is an item, with the lists unsaid as the unsaid thing rather
@@ -38,11 +38,11 @@ namespace Dashboard.Tests;
 /// number included; the address held as the instance it stands on and never opened, not even asked whether it is an
 /// address; the three lists held as the instances they are, which is why two items written out of the same letters
 /// are two items while a copy of one item is the same item; the parts coming back out in the order they went in and
-/// the copy turning the one part it names while it keeps the other fifteen; the
+/// the copy turning the one part it names while it keeps the others; the
 /// two items being one while their parts are, with the hash, the set and the operators following that, and the
-/// nothing on either side of each; the words the item says its sixteen parts in, and those words following whoever
-/// reads a number or a moment; and the public surface, so that the day a seventeenth part is added the list below
-/// says so.
+/// nothing on either side of each; the words the item says its twelve parts in, and those words following whoever
+/// reads a number or a moment; and the public surfaces of the item and of its identity, so that the day a part is
+/// added to either the lists below say so.
 /// </para>
 /// <para>
 /// Beside the record, the file's reading of the item's parts is pinned here through <see cref="WorkItemsReport.Parse" />
@@ -96,11 +96,7 @@ public class WorkItemEdgeCaseTests
         WorkRework? rework = null,
         WorkNote? blocker = null) =>
         new(
-            number,
-            title,
-            url ?? new Uri(Issue),
-            state,
-            column,
+            new WorkItemIdentity(number, title, url ?? new Uri(Issue), state, column),
             history ?? [],
             assignee,
             agent,
@@ -113,7 +109,7 @@ public class WorkItemEdgeCaseTests
             rework,
             blocker);
 
-    /// <summary>The sixteen parts of an item, each one said: the record the tests below turn a part of, and hand back
+    /// <summary>The twelve parts of an item, each one said: the record the tests below turn a part of, and hand back
     /// whole wherever the equality of a list is not what is being asked about.</summary>
     private static WorkItem Full() =>
         Item(
@@ -127,11 +123,11 @@ public class WorkItemEdgeCaseTests
 
     // ------------------------- the constructor, handing each argument to the property of its name
 
-    /// <summary>The constructor's sixteen arguments, position by position, come back as the property of the same
+    /// <summary>The constructor's twelve arguments, position by position, come back as the property of the same
     /// name, in the order the file names them. Reference-typed parts are held as the very instances the item was
     /// built of - the words, the address, the three lists, the four records - and none of them is copied, trimmed or
     /// rebuilt on the way in; the numbers and the worker stand on the values they were given. A second item of the
-    /// same sixteen parts is another item, never the one it was built from.</summary>
+    /// same twelve parts is another item, never the one it was built from.</summary>
     [Fact]
     public void TheConstructorHandsEachArgumentToThePropertyOfItsName()
     {
@@ -150,11 +146,7 @@ public class WorkItemEdgeCaseTests
         var blocker = new WorkNote("Functional tests failed", null, At(10), "blocker");
 
         var item = new WorkItem(
-            490,
-            title,
-            url,
-            state,
-            column,
+            new WorkItemIdentity(490, title, url, state, column),
             history,
             assignee,
             agent,
@@ -167,11 +159,11 @@ public class WorkItemEdgeCaseTests
             rework,
             blocker);
 
-        Assert.Equal(490, item.Number);
-        Assert.Same(title, item.Title);
-        Assert.Same(url, item.Url);
-        Assert.Same(state, item.State);
-        Assert.Same(column, item.Column);
+        Assert.Equal(490, item.Identity.Number);
+        Assert.Same(title, item.Identity.Title);
+        Assert.Same(url, item.Identity.Url);
+        Assert.Same(state, item.Identity.State);
+        Assert.Same(column, item.Identity.Column);
         Assert.Same(history, item.ColumnHistory);
         Assert.Same(assignee, item.Assignee);
         Assert.Same(agent, item.Agent);
@@ -184,8 +176,8 @@ public class WorkItemEdgeCaseTests
         Assert.Same(rework, item.Rework);
         Assert.Same(blocker, item.Blocker);
 
-        Assert.Equal("Pin the board", item.Title);
-        Assert.Equal(Issue, item.Url!.AbsoluteUri);
+        Assert.Equal("Pin the board", item.Identity.Title);
+        Assert.Equal(Issue, item.Identity.Url!.AbsoluteUri);
         Assert.Equal(WorkColumns.Todo, Assert.Single(item.ColumnHistory).Column);
         Assert.Equal(Session, Assert.Single(item.CursorSessions).AbsoluteUri);
         Assert.Equal(912, Assert.Single(item.PullRequests).Number);
@@ -196,11 +188,7 @@ public class WorkItemEdgeCaseTests
         Assert.Equal("blocker", item.Blocker!.Kind);
 
         var again = new WorkItem(
-            490,
-            title,
-            url,
-            state,
-            column,
+            new WorkItemIdentity(490, title, url, state, column),
             history,
             assignee,
             agent,
@@ -225,13 +213,9 @@ public class WorkItemEdgeCaseTests
     [Fact]
     public void TheThreePartsACallerMayLeaveOutFallToUnknownAndToNothing()
     {
-        var left = new WorkItem(490, "Pin the board", null, null, "Review", [], null, null, [], [], null, WorkItemEnvironments.None, null);
+        var left = new WorkItem(new WorkItemIdentity(490, "Pin the board", null, null, "Review"), [], null, null, [], [], null, WorkItemEnvironments.None, null);
         var said = new WorkItem(
-            490,
-            "Pin the board",
-            null,
-            null,
-            "Review",
+            new WorkItemIdentity(490, "Pin the board", null, null, "Review"),
             [],
             null,
             null,
@@ -270,13 +254,13 @@ public class WorkItemEdgeCaseTests
     [Fact]
     public void AnItemBuiltOnNothingIsStillAnItemAndRefusesNothing()
     {
-        var nothing = new WorkItem(null, null, null, null, null, null!, null, null, null!, null!, null, null!, null);
+        var nothing = new WorkItem(new WorkItemIdentity(null, null, null, null, null), null!, null, null, null!, null!, null, null!, null);
 
-        Assert.Null(nothing.Number);
-        Assert.Null(nothing.Title);
-        Assert.Null(nothing.Url);
-        Assert.Null(nothing.State);
-        Assert.Null(nothing.Column);
+        Assert.Null(nothing.Identity.Number);
+        Assert.Null(nothing.Identity.Title);
+        Assert.Null(nothing.Identity.Url);
+        Assert.Null(nothing.Identity.State);
+        Assert.Null(nothing.Identity.Column);
         Assert.Null(nothing.ColumnHistory);
         Assert.Null(nothing.Assignee);
         Assert.Null(nothing.Agent);
@@ -289,13 +273,13 @@ public class WorkItemEdgeCaseTests
         Assert.Null(nothing.Rework);
         Assert.Null(nothing.Blocker);
 
-        Assert.Equal(nothing, new WorkItem(null, null, null, null, null, null!, null, null, null!, null!, null, null!, null));
-        Assert.True(nothing == new WorkItem(null, null, null, null, null, null!, null, null, null!, null!, null, null!, null));
-        Assert.Equal("WorkItem { Number = , Title = , Url = , State = , Column = , ColumnHistory = , Assignee = , Agent = , CursorSessions = , PullRequests = , ReleaseCandidate = , Environments = , CostUsd = , Worker = Unknown, Rework = , Blocker =  }", Words(nothing));
+        Assert.Equal(nothing, new WorkItem(new WorkItemIdentity(null, null, null, null, null), null!, null, null, null!, null!, null, null!, null));
+        Assert.True(nothing == new WorkItem(new WorkItemIdentity(null, null, null, null, null), null!, null, null, null!, null!, null, null!, null));
+        Assert.Equal("WorkItem { Identity = WorkItemIdentity { Number = , Title = , Url = , State = , Column = , IsUnsaid = True }, ColumnHistory = , Assignee = , Agent = , CursorSessions = , PullRequests = , ReleaseCandidate = , Environments = , CostUsd = , Worker = Unknown, Rework = , Blocker =  }", Words(nothing));
 
         // The empty lists are a list with nothing in it: another item than the one whose lists are not there at all,
         // and the one the file's <c>"prs": []</c> arrives as.
-        var empty = new WorkItem(null, null, null, null, null, [], null, null, [], [], null, WorkItemEnvironments.None, null);
+        var empty = new WorkItem(new WorkItemIdentity(null, null, null, null, null), [], null, null, [], [], null, WorkItemEnvironments.None, null);
 
         Assert.NotNull(empty.ColumnHistory);
         Assert.Empty(empty.ColumnHistory);
@@ -334,21 +318,21 @@ public class WorkItemEdgeCaseTests
     public void AWordOfAnItemIsKeptExactlyAsItIsGiven(string word)
     {
         var own = Own(word);
-        var item = new WorkItem(490, own, null, own, own, [], own, own, [], [], null, WorkItemEnvironments.None, null);
+        var item = new WorkItem(new WorkItemIdentity(490, own, null, own, own), [], own, own, [], [], null, WorkItemEnvironments.None, null);
 
-        Assert.Same(own, item.Title);
-        Assert.Same(own, item.State);
-        Assert.Same(own, item.Column);
+        Assert.Same(own, item.Identity.Title);
+        Assert.Same(own, item.Identity.State);
+        Assert.Same(own, item.Identity.Column);
         Assert.Same(own, item.Assignee);
         Assert.Same(own, item.Agent);
-        Assert.Equal(word, item.Title);
-        Assert.Equal(word, item.Column);
+        Assert.Equal(word, item.Identity.Title);
+        Assert.Equal(word, item.Identity.Column);
 
         // The board's own column words are letters like any other to the record: an item may stand on "todo" while
         // the board spells it "Todo", and the two are two items. Which column an item is counted in is
         // WorkColumns' asking, pinned in WorkItemsTests.
-        Assert.NotEqual(new WorkItem(490, null, null, null, WorkColumns.Todo, [], null, null, [], [], null, WorkItemEnvironments.None, null), item);
-        Assert.Contains(word, Words(new WorkItem(490, word, null, null, null, [], null, null, [], [], null, WorkItemEnvironments.None, null)), StringComparison.Ordinal);
+        Assert.NotEqual(new WorkItem(new WorkItemIdentity(490, null, null, null, WorkColumns.Todo), [], null, null, [], [], null, WorkItemEnvironments.None, null), item);
+        Assert.Contains(word, Words(new WorkItem(new WorkItemIdentity(490, word, null, null, null), [], null, null, [], [], null, WorkItemEnvironments.None, null)), StringComparison.Ordinal);
     }
 
     /// <summary>The empty word is a word and not the absence of one: an item titled nothing at all and an item with no
@@ -360,17 +344,17 @@ public class WorkItemEdgeCaseTests
     [Fact]
     public void AnEmptyWordIsAWordAndNotTheAbsenceOfOne()
     {
-        var empty = new WorkItem(490, string.Empty, null, string.Empty, string.Empty, [], string.Empty, string.Empty, [], [], null, WorkItemEnvironments.None, null);
-        var unsaid = new WorkItem(490, null, null, null, null, [], null, null, [], [], null, WorkItemEnvironments.None, null);
+        var empty = new WorkItem(new WorkItemIdentity(490, string.Empty, null, string.Empty, string.Empty), [], string.Empty, string.Empty, [], [], null, WorkItemEnvironments.None, null);
+        var unsaid = new WorkItem(new WorkItemIdentity(490, null, null, null, null), [], null, null, [], [], null, WorkItemEnvironments.None, null);
 
-        Assert.Equal(string.Empty, empty.Title);
-        Assert.Equal(string.Empty, empty.Column);
+        Assert.Equal(string.Empty, empty.Identity.Title);
+        Assert.Equal(string.Empty, empty.Identity.Column);
         Assert.Equal(string.Empty, empty.Assignee);
         Assert.Equal(string.Empty, empty.Agent);
-        Assert.Equal(string.Empty, empty.State);
-        Assert.Null(unsaid.Title);
-        Assert.Null(unsaid.State);
-        Assert.Null(unsaid.Column);
+        Assert.Equal(string.Empty, empty.Identity.State);
+        Assert.Null(unsaid.Identity.Title);
+        Assert.Null(unsaid.Identity.State);
+        Assert.Null(unsaid.Identity.Column);
         Assert.Null(unsaid.Assignee);
         Assert.Null(unsaid.Agent);
 
@@ -385,16 +369,16 @@ public class WorkItemEdgeCaseTests
         // of - which part the page leaves out is the reading's, pinned in WorkItemsTests.
         Assert.Equal(Words(empty), Words(unsaid));
         Assert.DoesNotContain("—", Words(unsaid), StringComparison.Ordinal);
-        Assert.Equal("WorkItem { Number = 490, Title = , Url = , State = , Column = , ColumnHistory = Dashboard.Work.ColumnVisit[], Assignee = , Agent = , CursorSessions = System.Uri[], PullRequests = Dashboard.Work.WorkPullRequest[], ReleaseCandidate = , Environments = WorkItemEnvironments { Tdd = , Uat = , Prod =  }, CostUsd = , Worker = Unknown, Rework = , Blocker =  }", Words(unsaid));
+        Assert.Equal("WorkItem { Identity = WorkItemIdentity { Number = 490, Title = , Url = , State = , Column = , IsUnsaid = False }, ColumnHistory = Dashboard.Work.ColumnVisit[], Assignee = , Agent = , CursorSessions = System.Uri[], PullRequests = Dashboard.Work.WorkPullRequest[], ReleaseCandidate = , Environments = WorkItemEnvironments { Tdd = , Uat = , Prod =  }, CostUsd = , Worker = Unknown, Rework = , Blocker =  }", Words(unsaid));
 
         var longTitle = new string('t', 1000);
-        var longItem = unsaid with { Title = longTitle };
+        var longItem = unsaid with { Identity = unsaid.Identity with { Title = longTitle } };
 
-        Assert.Same(longTitle, longItem.Title);
-        Assert.Equal(1000, longItem.Title!.Length);
+        Assert.Same(longTitle, longItem.Identity.Title);
+        Assert.Equal(1000, longItem.Identity.Title!.Length);
         Assert.Contains(longTitle, Words(longItem), StringComparison.Ordinal);
         Assert.DoesNotContain("…", Words(longItem), StringComparison.Ordinal);
-        Assert.Equal(longItem, new WorkItem(490, new string('t', 1000), null, null, null, [], null, null, [], [], null, WorkItemEnvironments.None, null));
+        Assert.Equal(longItem, new WorkItem(new WorkItemIdentity(490, new string('t', 1000), null, null, null), [], null, null, [], [], null, WorkItemEnvironments.None, null));
     }
 
     /// <summary>The five words of an item are compared in their own letters and not as a reader hears them: the same
@@ -409,10 +393,10 @@ public class WorkItemEdgeCaseTests
         Assert.True(StringComparer.OrdinalIgnoreCase.Equals("dashboard-bot", item.Agent));
         Assert.NotEqual(item, item with { Agent = "DASHBOARD-BOT" });
         Assert.NotEqual(item, item with { Agent = " dashboard-bot" });
-        Assert.NotEqual(item, item with { Title = "pin the board" });
-        Assert.NotEqual(item, item with { Title = "Pin the  board" });
-        Assert.NotEqual(item, item with { State = "active" });
-        Assert.NotEqual(item, item with { Column = "review" });
+        Assert.NotEqual(item, item with { Identity = item.Identity with { Title = "pin the board" } });
+        Assert.NotEqual(item, item with { Identity = item.Identity with { Title = "Pin the  board" } });
+        Assert.NotEqual(item, item with { Identity = item.Identity with { State = "active" } });
+        Assert.NotEqual(item, item with { Identity = item.Identity with { Column = "review" } });
         Assert.NotEqual(item, item with { Assignee = "CM-AI-OPS" });
 
         Assert.Equal(
@@ -421,8 +405,8 @@ public class WorkItemEdgeCaseTests
             {
                 item,
                 item with { Agent = "DASHBOARD-BOT" },
-                item with { Title = "pin the board" },
-                item with { Column = WorkColumns.Review.ToLowerInvariant() },
+                item with { Identity = item.Identity with { Title = "pin the board" } },
+                item with { Identity = item.Identity with { Column = WorkColumns.Review.ToLowerInvariant() } },
                 item with { Assignee = "cm-ai-ops " },
             }.Count);
     }
@@ -445,8 +429,8 @@ public class WorkItemEdgeCaseTests
     {
         var item = Item(number: number);
 
-        Assert.Equal(number, item.Number);
-        Assert.Equal(number, (Item(number: number) with { }).Number);
+        Assert.Equal(number, item.Identity.Number);
+        Assert.Equal(number, (Item(number: number) with { }).Identity.Number);
         Assert.Equal(item, Item(number: number));
         Assert.NotEqual(item, Item(number: null));
         Assert.NotEqual(item, Item(number: number == 0 ? 1 : 0));
@@ -464,19 +448,20 @@ public class WorkItemEdgeCaseTests
         var unsaid = Item(number: null);
         var nought = Item(number: 0);
 
-        Assert.Null(unsaid.Number);
-        Assert.Equal(0, nought.Number);
+        Assert.Null(unsaid.Identity.Number);
+        Assert.Equal(0, nought.Identity.Number);
         Assert.NotEqual(unsaid, nought);
         Assert.False(unsaid == nought);
         Assert.True(unsaid != nought);
         Assert.NotEqual(Words(unsaid), Words(nought));
         Assert.Equal(2, new HashSet<WorkItem> { unsaid, nought }.Count);
-        Assert.StartsWith("WorkItem { Number = ,", Words(unsaid), StringComparison.Ordinal);
-        Assert.StartsWith("WorkItem { Number = 0,", Words(nought), StringComparison.Ordinal);
+        Assert.StartsWith("WorkItem { Identity = WorkItemIdentity { Number = ,", Words(unsaid), StringComparison.Ordinal);
+        Assert.StartsWith("WorkItem { Identity = WorkItemIdentity { Number = 0,", Words(nought), StringComparison.Ordinal);
 
-        var turnOff = Item(number: 490) with { Number = null };
+        var numbered = Item(number: 490);
+        var turnOff = numbered with { Identity = numbered.Identity with { Number = null } };
 
-        Assert.Null(turnOff.Number);
+        Assert.Null(turnOff.Identity.Number);
         Assert.Equal(unsaid, turnOff);
         Assert.NotEqual(nought, turnOff);
     }
@@ -558,34 +543,34 @@ public class WorkItemEdgeCaseTests
     public void TheUrlIsHeldAsTheAddressItWasGivenAndNeverOpened()
     {
         var address = new Uri(Issue);
-        var item = new WorkItem(490, null, address, null, null, [], null, null, [], [], null, WorkItemEnvironments.None, null);
+        var item = new WorkItem(new WorkItemIdentity(490, null, address, null, null), [], null, null, [], [], null, WorkItemEnvironments.None, null);
 
-        Assert.Same(address, item.Url);
-        Assert.Equal(Issue, item.Url!.AbsoluteUri);
-        Assert.Equal(item, new WorkItem(490, null, new Uri(Issue), null, null, [], null, null, [], [], null, WorkItemEnvironments.None, null));
-        Assert.Equal(item.GetHashCode(), new WorkItem(490, null, new Uri(Issue), null, null, [], null, null, [], [], null, WorkItemEnvironments.None, null).GetHashCode());
+        Assert.Same(address, item.Identity.Url);
+        Assert.Equal(Issue, item.Identity.Url!.AbsoluteUri);
+        Assert.Equal(item, new WorkItem(new WorkItemIdentity(490, null, new Uri(Issue), null, null), [], null, null, [], [], null, WorkItemEnvironments.None, null));
+        Assert.Equal(item.GetHashCode(), new WorkItem(new WorkItemIdentity(490, null, new Uri(Issue), null, null), [], null, null, [], [], null, WorkItemEnvironments.None, null).GetHashCode());
 
         // Another address is another item, whichever part of it differs: the scheme, the host's letters, or the path.
-        Assert.NotEqual(item, new WorkItem(490, null, new Uri("http://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/490"), null, null, [], null, null, [], [], null, WorkItemEnvironments.None, null));
-        Assert.NotEqual(item, new WorkItem(490, null, new Uri("https://github.com/clearmeasure-aisf-sample-apps/cmdemo1/issues/490"), null, null, [], null, null, [], [], null, WorkItemEnvironments.None, null));
-        Assert.NotEqual(item, new WorkItem(490, null, new Uri("https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/491"), null, null, [], null, null, [], [], null, WorkItemEnvironments.None, null));
-        Assert.NotEqual(item, new WorkItem(490, null, null, null, null, [], null, null, [], [], null, WorkItemEnvironments.None, null));
+        Assert.NotEqual(item, new WorkItem(new WorkItemIdentity(490, null, new Uri("http://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/490"), null, null), [], null, null, [], [], null, WorkItemEnvironments.None, null));
+        Assert.NotEqual(item, new WorkItem(new WorkItemIdentity(490, null, new Uri("https://github.com/clearmeasure-aisf-sample-apps/cmdemo1/issues/490"), null, null), [], null, null, [], [], null, WorkItemEnvironments.None, null));
+        Assert.NotEqual(item, new WorkItem(new WorkItemIdentity(490, null, new Uri("https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/491"), null, null), [], null, null, [], [], null, WorkItemEnvironments.None, null));
+        Assert.NotEqual(item, new WorkItem(new WorkItemIdentity(490, null, null, null, null), [], null, null, [], [], null, WorkItemEnvironments.None, null));
 
         // The host's letters are the address's own canonicalising, not the item's doing, and the path's are not.
-        Assert.Equal(item, new WorkItem(490, null, new Uri("https://GitHub.COM/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/490"), null, null, [], null, null, [], [], null, WorkItemEnvironments.None, null));
-        Assert.NotEqual(item, new WorkItem(490, null, new Uri("https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/490".ToUpperInvariant()), null, null, [], null, null, [], [], null, WorkItemEnvironments.None, null));
+        Assert.Equal(item, new WorkItem(new WorkItemIdentity(490, null, new Uri("https://GitHub.COM/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/490"), null, null), [], null, null, [], [], null, WorkItemEnvironments.None, null));
+        Assert.NotEqual(item, new WorkItem(new WorkItemIdentity(490, null, new Uri("https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/490".ToUpperInvariant()), null, null), [], null, null, [], [], null, WorkItemEnvironments.None, null));
 
         // The address the file's reading refuses is an address to the record, and it is said in the item's own words.
-        var relative = new WorkItem(490, null, new Uri("/issues/490", UriKind.RelativeOrAbsolute), null, null, [], null, null, [], [], null, WorkItemEnvironments.None, null);
+        var relative = new WorkItem(new WorkItemIdentity(490, null, new Uri("/issues/490", UriKind.RelativeOrAbsolute), null, null), [], null, null, [], [], null, WorkItemEnvironments.None, null);
 
-        Assert.False(relative.Url!.IsAbsoluteUri);
-        Assert.Equal("/issues/490", relative.Url.ToString());
+        Assert.False(relative.Identity.Url!.IsAbsoluteUri);
+        Assert.Equal("/issues/490", relative.Identity.Url.ToString());
         Assert.Contains("Url = /issues/490,", Words(relative), StringComparison.Ordinal);
-        Assert.Equal(relative, new WorkItem(490, null, new Uri("/issues/490", UriKind.RelativeOrAbsolute), null, null, [], null, null, [], [], null, WorkItemEnvironments.None, null));
+        Assert.Equal(relative, new WorkItem(new WorkItemIdentity(490, null, new Uri("/issues/490", UriKind.RelativeOrAbsolute), null, null), [], null, null, [], [], null, WorkItemEnvironments.None, null));
 
-        var scripted = new WorkItem(490, null, new Uri("javascript:alert(1)", UriKind.RelativeOrAbsolute), null, null, [], null, null, [], [], null, WorkItemEnvironments.None, null);
+        var scripted = new WorkItem(new WorkItemIdentity(490, null, new Uri("javascript:alert(1)", UriKind.RelativeOrAbsolute), null, null), [], null, null, [], [], null, WorkItemEnvironments.None, null);
 
-        Assert.Equal("javascript:alert(1)", scripted.Url!.ToString());
+        Assert.Equal("javascript:alert(1)", scripted.Identity.Url!.ToString());
         Assert.NotEqual(item, scripted);
     }
 
@@ -669,8 +654,8 @@ public class WorkItemEdgeCaseTests
         var first = WorkItemsReport.Parse(Board)!.Items;
         var second = WorkItemsReport.Parse(Board)!.Items;
 
-        Assert.Equal(first.Select(item => item.Number), second.Select(item => item.Number));
-        Assert.Equal(first.Select(item => item.Column), second.Select(item => item.Column));
+        Assert.Equal(first.Select(item => item.Identity.Number), second.Select(item => item.Identity.Number));
+        Assert.Equal(first.Select(item => item.Identity.Column), second.Select(item => item.Identity.Column));
         Assert.Equal(Assert.Single(first[0].PullRequests).Number, Assert.Single(second[0].PullRequests).Number);
         Assert.NotEqual(first[0], second[0]);
         Assert.NotEqual(first[1], second[1]);
@@ -824,12 +809,12 @@ public class WorkItemEdgeCaseTests
         Assert.Null(Item(worker: WorkWorker.Bot, agent: null, assignee: null).Agent);
     }
 
-    // --------------------------------- the sixteen parts coming back out, and the copies between them
+    // ---------------------------------- the twelve parts coming back out, and the copies between them
 
-    /// <summary>The sixteen parts of an item come back out in the order they went in - the number, the title, the
-    /// address, the state, the column, the history, the assignee, the agent, the sessions, the pulls, the release, the
+    /// <summary>The twelve parts of an item come back out in the order they went in - the identity (the number, the
+    /// title, the address, the state, the column), the history, the assignee, the agent, the sessions, the pulls, the release, the
     /// places, the cost, the worker, the rework and the note - each of them the very instance the item was built of,
-    /// and what came out goes back in the same way: the item the sixteen parts fall apart into is the item they were,
+    /// and what came out goes back in the same way: the item the twelve parts fall apart into is the item they were,
     /// one item and one place in a set. An item built on nothing falls apart to the nothing it was built on, the worker
     /// the only part that cannot be unsaid.</summary>
     [Fact]
@@ -837,7 +822,7 @@ public class WorkItemEdgeCaseTests
     {
         var one = Full();
 
-        var (number, title, url, state, column, history, assignee, agent, sessions, pulls, candidate, environments, cost, worker, rework, blocker) = one;
+        var ((number, title, url, state, column), history, assignee, agent, sessions, pulls, candidate, environments, cost, worker, rework, blocker) = one;
 
         Assert.Equal(490, number);
         Assert.Equal("Pin the board", title);
@@ -864,13 +849,13 @@ public class WorkItemEdgeCaseTests
         Assert.Same(one.Rework, rework);
         Assert.Same(one.Blocker, blocker);
 
-        var again = new WorkItem(number, title, url, state, column, history, assignee, agent, sessions, pulls, candidate, environments, cost, worker, rework, blocker);
+        var again = new WorkItem(new WorkItemIdentity(number, title, url, state, column), history, assignee, agent, sessions, pulls, candidate, environments, cost, worker, rework, blocker);
 
         Assert.Equal(one, again);
         Assert.Single(new HashSet<WorkItem> { one, again });
 
-        var (noNumber, noTitle, noUrl, noState, noColumn, noHistory, noAssignee, noAgent, noSessions, noPulls, noCandidate, noEnvironments, noCost, noWorker, noRework, noBlocker) =
-            new WorkItem(null, null, null, null, null, null!, null, null, null!, null!, null, null!, null);
+        var ((noNumber, noTitle, noUrl, noState, noColumn), noHistory, noAssignee, noAgent, noSessions, noPulls, noCandidate, noEnvironments, noCost, noWorker, noRework, noBlocker) =
+            new WorkItem(new WorkItemIdentity(null, null, null, null, null), null!, null, null, null!, null!, null, null!, null);
 
         Assert.Null(noNumber);
         Assert.Null(noTitle);
@@ -892,11 +877,11 @@ public class WorkItemEdgeCaseTests
 
     /// <summary>Each part may be turned as the item is copied - the number to another number, the title to nothing, the
     /// address to another page, a list to a list of one, a record to a record of another word, the worker to the other
-    /// two - and stands where it is turned to, while the fifteen parts the turn does not name stay the very instances
+    /// two - and stands where it is turned to, while the parts the turn does not name stay the very instances
     /// the item was built of. A copy that names no part at all is the item it was copied from, in its parts, in its
     /// hash and in its words, and another reference; the original stands as it stood whichever way the copies went.</summary>
     [Fact]
-    public void ACopyTurnsThePartItNamesAndKeepsTheOtherFifteen()
+    public void ACopyTurnsThePartItNamesAndKeepsTheOthers()
     {
         var one = Full();
 
@@ -906,27 +891,27 @@ public class WorkItemEdgeCaseTests
         Assert.NotSame(one, unchanged);
         Assert.Equal(one.GetHashCode(), unchanged.GetHashCode());
         Assert.Equal(Words(one), Words(unchanged));
-        Assert.Same(one.Title, unchanged.Title);
+        Assert.Same(one.Identity.Title, unchanged.Identity.Title);
         Assert.Same(one.Environments, unchanged.Environments);
 
-        var numbered = one with { Number = 491 };
+        var numbered = one with { Identity = one.Identity with { Number = 491 } };
 
-        Assert.Equal(491, numbered.Number);
-        Assert.Equal(490, one.Number);
+        Assert.Equal(491, numbered.Identity.Number);
+        Assert.Equal(490, one.Identity.Number);
         Assert.Equal(4.5, numbered.CostUsd);
         Assert.Same(one.ColumnHistory, numbered.ColumnHistory);
         Assert.NotEqual(one, numbered);
 
-        var titledOff = one with { Title = null };
+        var titledOff = one with { Identity = one.Identity with { Title = null } };
 
-        Assert.Null(titledOff.Title);
-        Assert.Equal("Review", titledOff.Column);
+        Assert.Null(titledOff.Identity.Title);
+        Assert.Equal("Review", titledOff.Identity.Column);
         Assert.NotEqual(one, titledOff);
 
-        var addressed = one with { Url = new Uri("https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/491") };
+        var addressed = one with { Identity = one.Identity with { Url = new Uri("https://github.com/clearmeasure-aisf-sample-apps/cmdemo1-system/issues/491") } };
 
-        Assert.NotSame(one.Url, addressed.Url);
-        Assert.Equal(Issue, one.Url!.AbsoluteUri);
+        Assert.NotSame(one.Identity.Url, addressed.Identity.Url);
+        Assert.Equal(Issue, one.Identity.Url!.AbsoluteUri);
         Assert.NotEqual(one, addressed);
 
         var histories = one with { ColumnHistory = [new ColumnVisit(WorkColumns.Todo, At(9, 8)), new ColumnVisit(WorkColumns.Review, At(9, 12))] };
@@ -938,11 +923,14 @@ public class WorkItemEdgeCaseTests
 
         var repacked = one with
         {
-            Number = one.Number,
-            Title = one.Title,
-            Url = one.Url,
-            State = one.State,
-            Column = one.Column,
+            Identity = one.Identity with
+            {
+                Number = one.Identity.Number,
+                Title = one.Identity.Title,
+                Url = one.Identity.Url,
+                State = one.Identity.State,
+                Column = one.Identity.Column,
+            },
             ColumnHistory = one.ColumnHistory,
             Assignee = one.Assignee,
             Agent = one.Agent,
@@ -961,22 +949,22 @@ public class WorkItemEdgeCaseTests
         Assert.Same(one.Blocker, repacked.Blocker);
 
         // The parts stand as they were whichever way the copies went.
-        Assert.Equal(490, one.Number);
-        Assert.Equal("Pin the board", one.Title);
+        Assert.Equal(490, one.Identity.Number);
+        Assert.Equal("Pin the board", one.Identity.Title);
         Assert.Equal(WorkWorker.Bot, one.Worker);
         Assert.Equal(4.5, one.CostUsd);
     }
 
     // -------------------------------------------------- the equality, the hash, and the two operators
 
-    /// <summary>Two items are one while their sixteen parts are - each word as the letters it is, the address as the
+    /// <summary>Two items are one while their twelve parts are - each word as the letters it is, the address as the
     /// address it compares to, the records as the records they are, the numbers as the numbers they stand on, the
     /// worker as the word it was said as, and the three lists as the one list they stand on - whichever of the ways of
     /// asking is used, from either side. The hash follows the equality, boxed or unboxed and from one call to the
     /// next, so the items that are one are one item of a set: which is how an item the test writes is found again in
     /// the board the file made, and how the same item turned out of it is not.</summary>
     [Fact]
-    public void TwoItemsAreOneWhileTheirSixteenPartsAre()
+    public void TwoItemsAreOneWhileTheirTwelvePartsAre()
     {
         List<ColumnVisit> history = [new ColumnVisit(WorkColumns.Todo, At(9, 8))];
         List<Uri> sessions = [new Uri(Session)];
@@ -1003,7 +991,7 @@ public class WorkItemEdgeCaseTests
 
         // The words are compared as the letters they are and not as the instances they stand on, and the records an
         // item carries are compared as the records they are, whichever instance each of them stands in.
-        Assert.NotSame(Own("Pin the board"), one.Title);
+        Assert.NotSame(Own("Pin the board"), one.Identity.Title);
         Assert.Equal(Item(title: Own("Pin the board"), history: history, sessions: sessions, pulls: pulls, environments: environments), one);
 
         var records = Item(candidate: new ReleaseCandidate("2.4.9", null), rework: new WorkRework(1, 2, 0.5), blocker: new WorkNote("n", null, null, "status"));
@@ -1016,7 +1004,7 @@ public class WorkItemEdgeCaseTests
         Assert.Single(new HashSet<WorkItem> { records, alsoRecords });
     }
 
-    /// <summary>A difference in one part is another item, and every one of the sixteen is such a part: the number
+    /// <summary>A difference in one part is another item, and every one of the twelve is such a part, the identity's five within it: the number
     /// turned by one or turned to the nothing it is not, the title emptied, the address moved to another issue, the
     /// state and the column and the assignee and the agent turned in their letters, a second visit added to the
     /// history, the pull requests emptied, the sessions written out again as the one session they hold, the release
@@ -1029,13 +1017,13 @@ public class WorkItemEdgeCaseTests
     {
         var one = Full();
 
-        Assert.NotEqual(one, one with { Number = null });
-        Assert.NotEqual(one, one with { Number = 491 });
-        Assert.NotEqual(one, one with { Title = null });
-        Assert.NotEqual(one, one with { Title = string.Empty });
-        Assert.NotEqual(one, one with { Url = null });
-        Assert.NotEqual(one, one with { State = null });
-        Assert.NotEqual(one, one with { Column = WorkColumns.Todo });
+        Assert.NotEqual(one, one with { Identity = one.Identity with { Number = null } });
+        Assert.NotEqual(one, one with { Identity = one.Identity with { Number = 491 } });
+        Assert.NotEqual(one, one with { Identity = one.Identity with { Title = null } });
+        Assert.NotEqual(one, one with { Identity = one.Identity with { Title = string.Empty } });
+        Assert.NotEqual(one, one with { Identity = one.Identity with { Url = null } });
+        Assert.NotEqual(one, one with { Identity = one.Identity with { State = null } });
+        Assert.NotEqual(one, one with { Identity = one.Identity with { Column = WorkColumns.Todo } });
         Assert.NotEqual(one, one with { Assignee = null });
         Assert.NotEqual(one, one with { Agent = null });
         Assert.NotEqual(one, one with { ReleaseCandidate = null });
@@ -1056,9 +1044,9 @@ public class WorkItemEdgeCaseTests
             new HashSet<WorkItem>
             {
                 one,
-                one with { Number = null },
-                one with { Title = null },
-                one with { Url = null },
+                one with { Identity = one.Identity with { Number = null } },
+                one with { Identity = one.Identity with { Title = null } },
+                one with { Identity = one.Identity with { Url = null } },
                 one with { CostUsd = null },
                 one with { Worker = WorkWorker.Team },
                 one with { Blocker = null },
@@ -1069,7 +1057,7 @@ public class WorkItemEdgeCaseTests
     /// are one, an item and no item are two - the equality and the inequality each saying it, from either side - and the
     /// item asked about itself says no to the word of its title, to its own parts in the order they are said, to the
     /// number it is numbered by, to the address it stands on, to the board the item belongs to and to the anonymous
-    /// thing that happens to carry all sixteen of its parts. That a file's reading turns an item of nothing into no item
+    /// thing that happens to carry its number and its title. That a file's reading turns an item of nothing into no item
     /// at all is <c>WorkItem.Read</c>'s, pinned in <see cref="WorkItemsTests" />, and not the record's.</summary>
     [Fact]
     public void NoItemIsOneWithNoItemAndNotWithAnyOtherThing()
@@ -1090,7 +1078,7 @@ public class WorkItemEdgeCaseTests
         Assert.True(there.Equals(there));
         Assert.Null(default(WorkItem));
 
-        Assert.NotNull(new WorkItem(null, null, null, null, null, null!, null, null, null!, null!, null, null!, null));
+        Assert.NotNull(new WorkItem(new WorkItemIdentity(null, null, null, null, null), null!, null, null, null!, null!, null, null!, null));
         Assert.False(there.Equals((WorkItem?)null));
 
         Assert.False(there.Equals("Pin the board"));
@@ -1104,28 +1092,25 @@ public class WorkItemEdgeCaseTests
 
     // ------------------------------------------------------------ the words the item says itself
 
-    /// <summary>The words the item says its sixteen parts in: its own name at the front, the parts in the order the
+    /// <summary>The words the item says its twelve parts in: its own name at the front, the identity's five parts said
+    /// inside it in their own record's words, the parts in the order the
     /// constructor names them, the words as the letters they are, the address as the address says itself, the numbers
     /// as plain digits with their sign below zero, the worker by its word, and a part nobody said as the empty place
     /// between the mark and the comma. A list is said as the list says itself - the type it stands on, and not the
     /// visits, the sessions or the pulls it carries - and the records an item holds are said whole, in their own
     /// names. These are the record's words and not the page's: no <c>#</c>, no <c>$</c>, no <c>·</c>, no dash and no
-    /// link, which are what <see cref="WorkItemsText" /> makes of the same sixteen parts.</summary>
+    /// link, which are what <see cref="WorkItemsText" /> makes of the same twelve parts.</summary>
     [Fact]
-    public void TheItemSaysItsSixteenPartsInTheOrderTheyAreNamed()
+    public void TheItemSaysItsTwelvePartsInTheOrderTheyAreNamed()
     {
-        var bare = new WorkItem(12, "Keep it", null, null, "Todo", [], null, null, [], [], null, WorkItemEnvironments.None, null);
+        var bare = new WorkItem(new WorkItemIdentity(12, "Keep it", null, null, "Todo"), [], null, null, [], [], null, WorkItemEnvironments.None, null);
 
         Assert.Equal(
-            "WorkItem { Number = 12, Title = Keep it, Url = , State = , Column = Todo, ColumnHistory = Dashboard.Work.ColumnVisit[], Assignee = , Agent = , CursorSessions = System.Uri[], PullRequests = Dashboard.Work.WorkPullRequest[], ReleaseCandidate = , Environments = WorkItemEnvironments { Tdd = , Uat = , Prod =  }, CostUsd = , Worker = Unknown, Rework = , Blocker =  }",
+            "WorkItem { Identity = WorkItemIdentity { Number = 12, Title = Keep it, Url = , State = , Column = Todo, IsUnsaid = False }, ColumnHistory = Dashboard.Work.ColumnVisit[], Assignee = , Agent = , CursorSessions = System.Uri[], PullRequests = Dashboard.Work.WorkPullRequest[], ReleaseCandidate = , Environments = WorkItemEnvironments { Tdd = , Uat = , Prod =  }, CostUsd = , Worker = Unknown, Rework = , Blocker =  }",
             Words(bare));
 
         var said = new WorkItem(
-            490,
-            "Pin the board",
-            new Uri(Issue),
-            "Active",
-            "Review",
+            new WorkItemIdentity(490, "Pin the board", new Uri(Issue), "Active", "Review"),
             [],
             "cm-ai-ops",
             "dashboard-bot",
@@ -1140,17 +1125,18 @@ public class WorkItemEdgeCaseTests
 
         var words = Words(said);
 
-        Assert.StartsWith("WorkItem { Number = 490, Title = Pin the board, Url = " + Issue + ", State = Active, Column = Review, ", words, StringComparison.Ordinal);
+        Assert.StartsWith("WorkItem { Identity = WorkItemIdentity { Number = 490, Title = Pin the board, Url = " + Issue + ", State = Active, Column = Review, IsUnsaid = False }, ", words, StringComparison.Ordinal);
         Assert.Contains("ReleaseCandidate = ReleaseCandidate { Version = 2.4.86, CreatedAt = 11/09/2026 23:00:00 +00:00 }, ", words, StringComparison.Ordinal);
         Assert.Contains("Environments = WorkItemEnvironments { Tdd = WorkDeployment { Version = 2.4.86, DeployedAt = 11/09/2026 23:04:00 +00:00 }, Uat = , Prod =  }, ", words, StringComparison.Ordinal);
         Assert.Contains("CostUsd = 4.5, Worker = Bot, ", words, StringComparison.Ordinal);
         Assert.Contains("Rework = WorkRework { FtFailures = 1, Reverts = 0, Rate = 0.125 }, ", words, StringComparison.Ordinal);
         Assert.EndsWith("Blocker = WorkNote { Text = Functional tests failed, Url = , At = 11/10/2026 00:00:00 +00:00, Kind = blocker } }", words, StringComparison.Ordinal);
 
-        // The sixteen parts are said in the order the constructor takes them, and one time each.
+        // The twelve parts are said in the order the constructor takes them, and one time each, the identity's five
+        // said inside the identity, at the front.
         string[] names =
         [
-            "Number = ", "Title = ", "Url = ", "State = ", "Column = ", "ColumnHistory = ", "Assignee = ", "Agent = ",
+            "Identity = ", "Number = ", "Title = ", "Url = ", "State = ", "Column = ", "ColumnHistory = ", "Assignee = ", "Agent = ",
             "CursorSessions = ", "PullRequests = ", "ReleaseCandidate = ", "Environments = ", "CostUsd = ", "Worker = ",
             "Rework = ", "Blocker = ",
         ];
@@ -1159,14 +1145,14 @@ public class WorkItemEdgeCaseTests
 
         for (var index = 0; index < names.Length; index++)
         {
-            var needle = index == 0 ? "{ " + names[index] : ", " + names[index];
+            var needle = index <= 1 ? "{ " + names[index] : ", " + names[index];
             var found = words.IndexOf(needle, StringComparison.Ordinal);
 
             Assert.True(found > at, $"the item does not say {names[index]} after the part before it: {words}");
             at = found;
         }
 
-        Assert.Equal(16, names.Count(name => words.Contains(name, StringComparison.Ordinal)));
+        Assert.Equal(17, names.Count(name => words.Contains(name, StringComparison.Ordinal)));
 
         // No word of the page is among the record's own.
         foreach (var word in new[] { "#490", "$4.50", " · ", " so far", "—", "<a ", "opens in a new tab" })
@@ -1179,18 +1165,14 @@ public class WorkItemEdgeCaseTests
 
     /// <summary>The numbers and the moments in the item's own words follow whoever reads them, which is what sets them
     /// apart from the page's: a German reader of the item is told <c>CostUsd = 4,5</c> and the note's moment written
-    /// day-first, while the sixteen part names, the words, the address, the version, the worker's word and the two
+    /// day-first, while the part names, the words, the address, the version, the worker's word and the two
     /// marks of a record of nothing are the same letters to whichever reader - and two items the two readers see
     /// differently worded are one item still, for the words are no part of the equality.</summary>
     [Fact]
     public void TheWordsOfAnItemFollowTheReaderWhileThePartsThemselvesDoNot()
     {
         var item = new WorkItem(
-            -490,
-            "Pin the board",
-            new Uri(Issue),
-            null,
-            null,
+            new WorkItemIdentity(-490, "Pin the board", new Uri(Issue), null, null),
             [],
             null,
             null,
@@ -1249,20 +1231,20 @@ public class WorkItemEdgeCaseTests
         Assert.DoesNotContain(",", Words(Item(number: 1234567)).Split("Number = ")[1].Split(',')[0], StringComparison.Ordinal);
         Assert.Contains("Worker = 7,", Words(Item(worker: (WorkWorker)7)), StringComparison.Ordinal);
         Assert.Contains("Worker = -1,", Words(Item(worker: (WorkWorker)(-1))), StringComparison.Ordinal);
-        Assert.StartsWith("WorkItem { Number = ,", Words(Item(number: null)), StringComparison.Ordinal);
+        Assert.StartsWith("WorkItem { Identity = WorkItemIdentity { Number = ,", Words(Item(number: null)), StringComparison.Ordinal);
     }
 
     // ---------------------------------------------------------------- the record's own declared shape
 
-    /// <summary>The item's whole public surface, as the running assembly holds it: its sixteen parts named in the
-    /// order the constructor names them, and the members every record is asked - comparing, hashing, saying itself and
+    /// <summary>The item's whole public surface, as the running assembly holds it: its twelve parts named in the
+    /// order the constructor names them, the first of them its <see cref="WorkItemIdentity" />, and the members every record is asked - comparing, hashing, saying itself and
     /// falling apart, the two operators kept although the compiler names them specially, since they are the <c>==</c>
-    /// and the <c>!=</c> a caller writes - and nothing else to call. One public way in: the sixteen parts, of which the
-    /// last three may be left out, and the copy the <c>with</c> walks is the compiler's private one. A seventeenth part
+    /// and the <c>!=</c> a caller writes - and nothing else to call. One public way in: the twelve parts, of which the
+    /// last three may be left out, and the copy the <c>with</c> walks is the compiler's private one. A thirteenth part
     /// added to the item has to be written here as well as in every list above, which is the point: the board cannot be
     /// shown a part nobody decided what it means.</summary>
     [Fact]
-    public void TheItemHasSixteenPartsAndTheMembersEveryRecordIsAsked()
+    public void TheItemHasTwelvePartsAndTheMembersEveryRecordIsAsked()
     {
         var type = typeof(WorkItem);
 
@@ -1277,14 +1259,14 @@ public class WorkItemEdgeCaseTests
 
         Assert.Equal(
             [
-                "Number", "Title", "Url", "State", "Column", "ColumnHistory", "Assignee", "Agent", "CursorSessions",
+                "Identity", "ColumnHistory", "Assignee", "Agent", "CursorSessions",
                 "PullRequests", "ReleaseCandidate", "Environments", "CostUsd", "Worker", "Rework", "Blocker",
             ],
             properties.Select(property => property.Name));
 
         Assert.Equal(
             [
-                typeof(int?), typeof(string), typeof(Uri), typeof(string), typeof(string),
+                typeof(WorkItemIdentity),
                 typeof(IReadOnlyList<ColumnVisit>), typeof(string), typeof(string), typeof(IReadOnlyList<Uri>),
                 typeof(IReadOnlyList<WorkPullRequest>), typeof(ReleaseCandidate), typeof(WorkItemEnvironments),
                 typeof(double?), typeof(WorkWorker), typeof(WorkRework), typeof(WorkNote),
@@ -1310,45 +1292,45 @@ public class WorkItemEdgeCaseTests
 
         Assert.Equal(
             [
-                "Agent", "Assignee", "Blocker", "Column", "ColumnHistory", "CostUsd", "CursorSessions", "Deconstruct",
-                "Environments", "Equals", "GetHashCode", "Number", "PullRequests", "ReleaseCandidate", "Rework",
-                "State", "Title", "ToString", "Url", "Worker", "op_Equality", "op_Inequality",
+                "Agent", "Assignee", "Blocker", "ColumnHistory", "CostUsd", "CursorSessions", "Deconstruct",
+                "Environments", "Equals", "GetHashCode", "Identity", "PullRequests", "ReleaseCandidate", "Rework",
+                "ToString", "Worker", "op_Equality", "op_Inequality",
             ],
             PublicSurface());
 
         var arguments = type.GetConstructors().Single().GetParameters();
 
-        Assert.Equal(16, arguments.Length);
+        Assert.Equal(12, arguments.Length);
         Assert.Equal(
             [
-                "Number", "Title", "Url", "State", "Column", "ColumnHistory", "Assignee", "Agent", "CursorSessions",
+                "Identity", "ColumnHistory", "Assignee", "Agent", "CursorSessions",
                 "PullRequests", "ReleaseCandidate", "Environments", "CostUsd", "Worker", "Rework", "Blocker",
             ],
             arguments.Select(argument => argument.Name));
-        Assert.All(arguments.Take(13), argument => Assert.False(argument.HasDefaultValue, $"{argument.Name} may be left out"));
-        Assert.True(arguments[13].HasDefaultValue);
-        Assert.Equal<object>(WorkWorker.Unknown, arguments[13].DefaultValue!);
-        Assert.True(arguments[14].HasDefaultValue);
-        Assert.Null(arguments[14].DefaultValue);
-        Assert.True(arguments[15].HasDefaultValue);
-        Assert.Null(arguments[15].DefaultValue);
+        Assert.All(arguments.Take(9), argument => Assert.False(argument.HasDefaultValue, $"{argument.Name} may be left out"));
+        Assert.True(arguments[9].HasDefaultValue);
+        Assert.Equal<object>(WorkWorker.Unknown, arguments[9].DefaultValue!);
+        Assert.True(arguments[10].HasDefaultValue);
+        Assert.Null(arguments[10].DefaultValue);
+        Assert.True(arguments[11].HasDefaultValue);
+        Assert.Null(arguments[11].DefaultValue);
 
         Assert.Single(type.GetConstructors(BindingFlags.Public | BindingFlags.Instance));
         var copy = Assert.Single(type.GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance));
         Assert.Equal(type, copy.GetParameters().Single().ParameterType);
 
-        // The two overloads of the equality every record is asked with, and the one Deconstruct of sixteen parts.
+        // The two overloads of the equality every record is asked with, and the one Deconstruct of twelve parts.
         Assert.Equal(2, type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly).Count(method => method.Name == "Equals"));
         var parts = type.GetMethod("Deconstruct")!;
         Assert.Equal(
             [
-                "Number", "Title", "Url", "State", "Column", "ColumnHistory", "Assignee", "Agent", "CursorSessions",
+                "Identity", "ColumnHistory", "Assignee", "Agent", "CursorSessions",
                 "PullRequests", "ReleaseCandidate", "Environments", "CostUsd", "Worker", "Rework", "Blocker",
             ],
             parts.GetParameters().Select(parameter => parameter.Name));
         Assert.All(parts.GetParameters(), parameter => Assert.True(parameter.IsOut));
 
-        // Nothing to call but the parts: the item is sixteen held values and no asking, and no part of it stands on a
+        // Nothing to call but the parts: the item is twelve held values and no asking, and no part of it stands on a
         // moment the record would have to be asked the time of.
         Assert.DoesNotContain(
             type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly),
@@ -1367,6 +1349,102 @@ public class WorkItemEdgeCaseTests
                 $"{property.Name} would stand on a moment the record would have to be asked the time of"));
     }
 
+    /// <summary>The identity's whole public surface, as the running assembly holds it: its five parts - the number, the
+    /// title, the address, the state word and the column - named in the order the constructor names them, none of them
+    /// one a caller may leave out; the one thing it is asked, <see cref="WorkItemIdentity.IsUnsaid" />, read and never
+    /// set; and the members every record is asked. A sixth part, or a second thing to ask, has to be written here.</summary>
+    [Fact]
+    public void TheIdentityHasFivePartsAndTheMembersEveryRecordIsAsked()
+    {
+        var type = typeof(WorkItemIdentity);
+
+        Assert.True(type.IsSealed);
+        Assert.False(type.IsValueType);
+        Assert.Equal([typeof(IEquatable<WorkItemIdentity>)], type.GetInterfaces());
+        Assert.Equal(typeof(object), type.BaseType);
+        Assert.Equal(nameof(WorkItemIdentity), type.Name);
+        Assert.Equal("Dashboard.Work", type.Namespace);
+
+        var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+
+        Assert.Equal(["Number", "Title", "Url", "State", "Column", "IsUnsaid"], properties.Select(property => property.Name));
+        Assert.Equal(
+            [typeof(int?), typeof(string), typeof(Uri), typeof(string), typeof(string), typeof(bool)],
+            properties.Select(property => property.PropertyType));
+        Assert.All(
+            properties.Take(5),
+            property =>
+            {
+                Assert.True(property is { CanRead: true, CanWrite: true }, $"{property.Name} is not a part a caller can read and turn");
+                Assert.Contains(typeof(IsExternalInit), property.SetMethod!.ReturnParameter.GetRequiredCustomModifiers());
+            });
+
+        var unsaid = properties[5];
+        Assert.True(unsaid.CanRead);
+        Assert.False(unsaid.CanWrite);
+        Assert.True(unsaid.GetMethod!.IsPublic);
+        Assert.Equal("get_IsUnsaid", unsaid.GetMethod.Name);
+        Assert.Contains(
+            type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly),
+            method => method.Name == "get_IsUnsaid");
+
+        Assert.Equal(
+            [
+                "Column", "Deconstruct", "Equals", "GetHashCode", "IsUnsaid", "Number", "State", "Title", "ToString",
+                "Url", "op_Equality", "op_Inequality",
+            ],
+            PublicSurfaceOf(type));
+
+        var constructor = Assert.Single(type.GetConstructors(BindingFlags.Public | BindingFlags.Instance));
+        var arguments = constructor.GetParameters();
+
+        Assert.Equal(["Number", "Title", "Url", "State", "Column"], arguments.Select(argument => argument.Name));
+        Assert.Equal(
+            [typeof(int?), typeof(string), typeof(Uri), typeof(string), typeof(string)],
+            arguments.Select(argument => argument.ParameterType));
+        Assert.All(arguments, argument => Assert.False(argument.HasDefaultValue, $"{argument.Name} may be left out"));
+
+        var copy = Assert.Single(type.GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance));
+        Assert.Equal(type, copy.GetParameters().Single().ParameterType);
+
+        Assert.Equal(
+            ["Number", "Title", "Url", "State", "Column"],
+            type.GetMethod("Deconstruct")!.GetParameters().Select(parameter => parameter.Name));
+
+        // Nothing else to call: the five held values and the one thing asked of them.
+        Assert.DoesNotContain(
+            type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly),
+            method => !method.IsSpecialName
+                      && !method.Name.Contains('<', StringComparison.Ordinal)
+                      && method.Name != "Deconstruct"
+                      && method.Name != "Equals"
+                      && method.Name != "GetHashCode"
+                      && method.Name != "ToString");
+        Assert.Empty(type.GetEvents());
+        Assert.Empty(type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly));
+    }
+
+    /// <summary>An identity is unsaid only when it names no item: no number, no title, no address and no column. The
+    /// state word alone names none, so an identity of a state and nothing else is still unsaid; any one of the other
+    /// four parts said alone - even a number of nought or an empty title - names an item.</summary>
+    [Theory]
+    [InlineData(null, null, null, null, null, true)]
+    [InlineData(null, null, null, "Active", null, true)]
+    [InlineData(490, null, null, null, null, false)]
+    [InlineData(0, null, null, null, null, false)]
+    [InlineData(null, "Pin the board", null, null, null, false)]
+    [InlineData(null, "", null, null, null, false)]
+    [InlineData(null, null, Issue, null, null, false)]
+    [InlineData(null, null, null, null, "Review", false)]
+    [InlineData(490, "Pin the board", Issue, "Active", "Review", false)]
+    public void TheIdentityIsUnsaidOnlyWhenNumberTitleUrlAndColumnAreAllMissing(
+        int? number, string? title, string? url, string? state, string? column, bool unsaid)
+    {
+        var identity = new WorkItemIdentity(number, title, url is null ? null : new Uri(url), state, column);
+
+        Assert.Equal(unsaid, identity.IsUnsaid);
+    }
+
     // -------------------------------------------- the file's reading of the item's parts
 
     /// <summary>The report of a file whose only said parts are its items, in the order they are said: a
@@ -1377,7 +1455,7 @@ public class WorkItemEdgeCaseTests
         WorkItemsReport.Parse("{ \"items\": [ " + string.Join(", ", itemBodies) + " ] }");
 
     /// <summary>The item a file says of only by its number is the item of that number: the number the file says, and
-    /// every one of the other fifteen parts as the nothing the record stands on when the file does not say it - the
+    /// every one of its other parts as the nothing the record stands on when the file does not say it - the
     /// title, the address, the state and the column as the no word they are, the history and the sessions and the pull
     /// requests as the no list they are, the candidate and the cost and the rework and the note as the no record they
     /// are, the environments as the none they are, and the worker as the unknown it is not named.</summary>
@@ -1386,11 +1464,11 @@ public class WorkItemEdgeCaseTests
     {
         var item = ItemsOf("""{ "number": 490 }""")!.Items.Single();
 
-        Assert.Equal(490, item.Number);
-        Assert.Null(item.Title);
-        Assert.Null(item.Url);
-        Assert.Null(item.State);
-        Assert.Null(item.Column);
+        Assert.Equal(490, item.Identity.Number);
+        Assert.Null(item.Identity.Title);
+        Assert.Null(item.Identity.Url);
+        Assert.Null(item.Identity.State);
+        Assert.Null(item.Identity.Column);
         Assert.Empty(item.ColumnHistory);
         Assert.Null(item.Assignee);
         Assert.Null(item.Agent);
@@ -1405,18 +1483,18 @@ public class WorkItemEdgeCaseTests
     }
 
     /// <summary>The item a file says of only by its title is the item of that title: the word the file says, trimmed
-    /// the way the reading says a title, and every one of the other fifteen parts as the nothing the record stands on
+    /// the way the reading says a title, and every one of its other parts as the nothing the record stands on
     /// when the file does not say it.</summary>
     [Fact]
     public void AnItemThatSaysOnlyItsTitleIsTheItemOfThatTitleAndOfNothingElse()
     {
         var item = ItemsOf("""{ "title": "  Keep it  " }""")!.Items.Single();
 
-        Assert.Equal("Keep it", item.Title);
-        Assert.Null(item.Number);
-        Assert.Null(item.Url);
-        Assert.Null(item.State);
-        Assert.Null(item.Column);
+        Assert.Equal("Keep it", item.Identity.Title);
+        Assert.Null(item.Identity.Number);
+        Assert.Null(item.Identity.Url);
+        Assert.Null(item.Identity.State);
+        Assert.Null(item.Identity.Column);
         Assert.Empty(item.ColumnHistory);
         Assert.Null(item.Assignee);
         Assert.Null(item.Agent);
@@ -1431,17 +1509,17 @@ public class WorkItemEdgeCaseTests
     }
 
     /// <summary>The item a file says of only by its column is the item of that column: the word the file says, and
-    /// every one of the other fifteen parts as the nothing the record stands on when the file does not say it.</summary>
+    /// every one of its other parts as the nothing the record stands on when the file does not say it.</summary>
     [Fact]
     public void AnItemThatSaysOnlyItsColumnIsTheItemOfThatColumnAndOfNothingElse()
     {
         var item = ItemsOf("""{ "column": "Todo" }""")!.Items.Single();
 
-        Assert.Equal("Todo", item.Column);
-        Assert.Null(item.Number);
-        Assert.Null(item.Title);
-        Assert.Null(item.Url);
-        Assert.Null(item.State);
+        Assert.Equal("Todo", item.Identity.Column);
+        Assert.Null(item.Identity.Number);
+        Assert.Null(item.Identity.Title);
+        Assert.Null(item.Identity.Url);
+        Assert.Null(item.Identity.State);
         Assert.Empty(item.ColumnHistory);
         Assert.Null(item.Assignee);
         Assert.Null(item.Agent);
@@ -1466,8 +1544,8 @@ public class WorkItemEdgeCaseTests
     {
         var parsed = ItemsOf(item)!.Items.Single();
 
-        Assert.Null(parsed.Number);
-        Assert.Equal("Keep it", parsed.Title);
+        Assert.Null(parsed.Identity.Number);
+        Assert.Equal("Keep it", parsed.Identity.Title);
     }
 
     /// <summary>A number the file says as a float is the integer it rounds to - the one away from zero when it lands midway -
@@ -1480,8 +1558,8 @@ public class WorkItemEdgeCaseTests
     {
         var parsed = ItemsOf($$"""{ "number": {{number}}, "title": "Keep it" }""")!.Items.Single();
 
-        Assert.Equal(expected, parsed.Number);
-        Assert.Equal("Keep it", parsed.Title);
+        Assert.Equal(expected, parsed.Identity.Number);
+        Assert.Equal("Keep it", parsed.Identity.Title);
     }
 
     /// <summary>An item whose only part is a number that is no number is no item at all: the file's reading is the
@@ -1505,8 +1583,8 @@ public class WorkItemEdgeCaseTests
     {
         var parsed = ItemsOf(item)!.Items.Single();
 
-        Assert.Null(parsed.Title);
-        Assert.Equal("Todo", parsed.Column);
+        Assert.Null(parsed.Identity.Title);
+        Assert.Equal("Todo", parsed.Identity.Column);
     }
 
     /// <summary>An item whose only part is a title of another type is no item at all: the file's reading is the report
@@ -1525,8 +1603,8 @@ public class WorkItemEdgeCaseTests
     {
         var parsed = ItemsOf(item)!.Items.Single();
 
-        Assert.Null(parsed.Column);
-        Assert.Equal("Keep it", parsed.Title);
+        Assert.Null(parsed.Identity.Column);
+        Assert.Equal("Keep it", parsed.Identity.Title);
     }
 
     /// <summary>An address the file says that is no absolute http or https address is no address: the item keeps the
@@ -1542,8 +1620,8 @@ public class WorkItemEdgeCaseTests
     {
         var parsed = ItemsOf(item)!.Items.Single();
 
-        Assert.Null(parsed.Url);
-        Assert.Equal(490, parsed.Number);
+        Assert.Null(parsed.Identity.Url);
+        Assert.Equal(490, parsed.Identity.Number);
     }
 
     /// <summary>An address the file says that is an absolute http or https address is the address: the item keeps it
@@ -1554,10 +1632,10 @@ public class WorkItemEdgeCaseTests
         var both = ItemsOf($$"""{ "number": 490, "url": "{{Issue}}" }""")!.Items.Single();
         var only = ItemsOf($$"""{ "url": "{{Issue}}" }""")!.Items.Single();
 
-        Assert.Equal(new Uri(Issue), both.Url);
-        Assert.Equal(490, both.Number);
-        Assert.Equal(new Uri(Issue), only.Url);
-        Assert.Null(only.Number);
+        Assert.Equal(new Uri(Issue), both.Identity.Url);
+        Assert.Equal(490, both.Identity.Number);
+        Assert.Equal(new Uri(Issue), only.Identity.Url);
+        Assert.Null(only.Identity.Number);
     }
 
     /// <summary>A session the file says that is no session - not a word, or a word that is no absolute http or https
@@ -1573,7 +1651,7 @@ public class WorkItemEdgeCaseTests
         var parsed = ItemsOf($$"""{ "number": 490, "cursorSessions": {{sessions}} }""")!.Items.Single();
 
         Assert.Empty(parsed.CursorSessions);
-        Assert.Equal(490, parsed.Number);
+        Assert.Equal(490, parsed.Identity.Number);
     }
 
     /// <summary>A session the file says that is an absolute http or https address is the session: the item keeps it
@@ -1584,7 +1662,7 @@ public class WorkItemEdgeCaseTests
         var parsed = ItemsOf($$"""{ "number": 490, "cursorSessions": [ "javascript:alert(1)", "{{Session}}" ] }""")!.Items.Single();
 
         Assert.Equal([new Uri(Session)], parsed.CursorSessions);
-        Assert.Equal(490, parsed.Number);
+        Assert.Equal(490, parsed.Identity.Number);
     }
 
     /// <summary>A pull request the file says that is no pull request - not an object, an object that says no number,
@@ -1599,7 +1677,7 @@ public class WorkItemEdgeCaseTests
         var parsed = ItemsOf($$"""{ "number": 490, "prs": {{pulls}} }""")!.Items.Single();
 
         Assert.Empty(parsed.PullRequests);
-        Assert.Equal(490, parsed.Number);
+        Assert.Equal(490, parsed.Identity.Number);
     }
 
     /// <summary>A pull request the file says that is a pull request is the pull request: the number, the address, the
@@ -1612,7 +1690,7 @@ public class WorkItemEdgeCaseTests
         Assert.Equal(
             [new WorkPullRequest(null, null, "open", null, null, null, null), new WorkPullRequest(912, new Uri(PullAddress), "merged", null, null, null, null)],
             parsed.PullRequests);
-        Assert.Equal(490, parsed.Number);
+        Assert.Equal(490, parsed.Identity.Number);
     }
 
     /// <summary>A release candidate the file says that is no candidate - not an object, an object that says no version
@@ -1628,7 +1706,7 @@ public class WorkItemEdgeCaseTests
         var parsed = ItemsOf(item)!.Items.Single();
 
         Assert.Null(parsed.ReleaseCandidate);
-        Assert.Equal(490, parsed.Number);
+        Assert.Equal(490, parsed.Identity.Number);
     }
 
     /// <summary>A release candidate the file says that is a candidate is the candidate: the version with its build
@@ -1639,7 +1717,7 @@ public class WorkItemEdgeCaseTests
         var parsed = ItemsOf("""{ "number": 490, "releaseCandidate": { "version": "2.4.9+abc123", "createdAt": "2026-11-09T21:00:00Z" } }""")!.Items.Single();
 
         Assert.Equal(new ReleaseCandidate("2.4.9", At(9, 21)), parsed.ReleaseCandidate);
-        Assert.Equal(490, parsed.Number);
+        Assert.Equal(490, parsed.Identity.Number);
     }
 
     /// <summary>An environments the file says that is no environments - a word, an object that says no deployment in
@@ -1655,7 +1733,7 @@ public class WorkItemEdgeCaseTests
         var parsed = ItemsOf(item)!.Items.Single();
 
         Assert.Equal(WorkItemEnvironments.None, parsed.Environments);
-        Assert.Equal(490, parsed.Number);
+        Assert.Equal(490, parsed.Identity.Number);
     }
 
     /// <summary>An environments the file says that is a deployment is the deployment: the place the file names in
@@ -1669,7 +1747,7 @@ public class WorkItemEdgeCaseTests
         Assert.Equal(
             new WorkItemEnvironments(new WorkDeployment(null, null), null, new WorkDeployment("2.4.84", At(8, 6))),
             parsed.Environments);
-        Assert.Equal(490, parsed.Number);
+        Assert.Equal(490, parsed.Identity.Number);
     }
 
     /// <summary>A cost the file says that is no cost - a word, a negative, a flag or nothing - is no cost: the item
@@ -1684,7 +1762,7 @@ public class WorkItemEdgeCaseTests
         var parsed = ItemsOf(item)!.Items.Single();
 
         Assert.Null(parsed.CostUsd);
-        Assert.Equal(490, parsed.Number);
+        Assert.Equal(490, parsed.Identity.Number);
     }
 
     /// <summary>A cost the file says that is a cost is the cost: the number it says, with the other parts the item
@@ -1695,7 +1773,7 @@ public class WorkItemEdgeCaseTests
         var parsed = ItemsOf("""{ "number": 490, "costUsd": 4.5 }""")!.Items.Single();
 
         Assert.Equal(4.5, parsed.CostUsd);
-        Assert.Equal(490, parsed.Number);
+        Assert.Equal(490, parsed.Identity.Number);
     }
 
     /// <summary>A worker the file says that is no worker - not a word, or a word that is not a worker, or a word of
@@ -1710,7 +1788,7 @@ public class WorkItemEdgeCaseTests
         var parsed = ItemsOf(item)!.Items.Single();
 
         Assert.Equal(WorkWorker.Unknown, parsed.Worker);
-        Assert.Equal(490, parsed.Number);
+        Assert.Equal(490, parsed.Identity.Number);
     }
 
     /// <summary>A worker the file says that is a worker is the worker: the bot and the team, in whatever case the file
@@ -1740,7 +1818,7 @@ public class WorkItemEdgeCaseTests
         var parsed = ItemsOf(item)!.Items.Single();
 
         Assert.Null(parsed.Rework);
-        Assert.Equal(490, parsed.Number);
+        Assert.Equal(490, parsed.Identity.Number);
     }
 
     /// <summary>A rework the file says that is a rework is the rework: the failures and the reverts the file says, the
@@ -1770,7 +1848,7 @@ public class WorkItemEdgeCaseTests
         var parsed = ItemsOf(item)!.Items.Single();
 
         Assert.Null(parsed.Blocker);
-        Assert.Equal(490, parsed.Number);
+        Assert.Equal(490, parsed.Identity.Number);
     }
 
     /// <summary>A note the file says that is a note is the note: the word it says, the address and the moment it says
@@ -1910,7 +1988,7 @@ public class WorkItemEdgeCaseTests
         var parsed = ItemsOf($$"""{ "number": 490, "costUsd": {{cost}} }""")!.Items.Single();
 
         Assert.Equal(0d, parsed.CostUsd);
-        Assert.Equal(490, parsed.Number);
+        Assert.Equal(490, parsed.Identity.Number);
     }
 
     /// <summary>An item the file says that is no object - a number, a word, a flag, a list or nothing - is no item:
@@ -1928,12 +2006,16 @@ public class WorkItemEdgeCaseTests
 
     // ------------------------------------------------------------------------------- the machinery
 
-    /// <summary>The public members the item declares itself: its sixteen properties and the methods that are not the
+    /// <summary>The public members the item declares itself: its twelve properties and the methods that are not the
     /// get and the set of one - the two operators kept although the compiler names them specially, since they are the
     /// <c>==</c> and the <c>!=</c> a caller writes - with the record's compiler-named clone walked past. The
     /// constructor is no method, so it is named by the test of the surface rather than by this list.</summary>
-    private static List<string> PublicSurface() =>
-        [.. typeof(WorkItem)
+    private static List<string> PublicSurface() => PublicSurfaceOf(typeof(WorkItem));
+
+    /// <summary>The public members <paramref name="type" /> declares itself, the way <see cref="PublicSurface" /> lists
+    /// the item's: its properties and the methods that are not the get and the set of one, the two operators kept.</summary>
+    private static List<string> PublicSurfaceOf(Type type) =>
+        [.. type
             .GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
             .Where(member => member is PropertyInfo
                              || member is MethodInfo method
@@ -1943,7 +2025,7 @@ public class WorkItemEdgeCaseTests
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)];
 
-    /// <summary>The words an item says its sixteen parts in, taken in the invariant culture whatever the reader of this
+    /// <summary>The words an item says its twelve parts in, taken in the invariant culture whatever the reader of this
     /// test happens to be: the record's own words follow whoever reads them, which is pinned on its own further up this
     /// file, so the strings here are the point and the culture only the way to say them once.</summary>
     private static string Words(WorkItem item) => ViewerCulture.Invariant(() => item.ToString()!);

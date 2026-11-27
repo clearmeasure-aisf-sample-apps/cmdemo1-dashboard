@@ -11,7 +11,7 @@ public class WorkWipTests
     private static readonly IReadOnlyList<WorkItem> NoItems = [];
 
     private static WorkItem Item(int? number, string? column = null) =>
-        new(number, $"Item {number}", null, null, column, [], null, null, [], [], null, WorkItemEnvironments.None, null);
+        new(new WorkItemIdentity(number, $"Item {number}", null, null, column), [], null, null, [], [], null, WorkItemEnvironments.None, null);
 
     /// <summary><c>stats.wipByColumn</c> as the file gives it: the column's own spelling, matched however it is cased.</summary>
     private static WorkItemsStats Stats(params (string Column, int Count)[] counts) =>

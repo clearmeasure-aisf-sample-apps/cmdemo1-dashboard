@@ -375,7 +375,7 @@ public class RuntimeWorkHelperCoverageTests
     /// <summary>A work item the tests above read the number of: the number is what varies, the rest is the shape
     /// of an item as the file writes one.</summary>
     private static WorkItem Item(int? number) =>
-        new(number, "A title", null, "In progress", "in-progress", [], null, "the bot", [], [], null, WorkItemEnvironments.None, null);
+        new(new WorkItemIdentity(number, "A title", null, "In progress", "in-progress"), [], null, "the bot", [], [], null, WorkItemEnvironments.None, null);
 
     /// <summary>One public static method the guard read: the file and the line it declares on, and the type that
     /// owns it - the file as the walk prints it, under <c>src/Dashboard</c>.</summary>

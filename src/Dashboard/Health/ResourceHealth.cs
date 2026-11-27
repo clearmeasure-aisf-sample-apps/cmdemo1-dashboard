@@ -172,6 +172,14 @@ public static class ResourceHealthText
     private const string Available = "Available";
     private const int MostNamed = 8;
 
+    private const string PartSeparator = " · ";
+    private const string FromResourceHealthWords = "Resource Health";
+    private const string FromProvisioningWords = "provisioning state";
+    private const string NoResourceHealthWords = "no Resource Health";
+    private const string NotInReadingWords = "not in the hourly reading";
+    private const string NotReadYetWords = "no Resource Health read yet";
+    private const string AgeLead = ", ";
+
     /// <summary>The words of a box of these resources; null for a box without ids (a manifest from before them).</summary>
     public static ResourceHealthWords? Of(IReadOnlyList<string>? ids, ResourceHealthReport? report, DateTimeOffset? now, TimeZoneInfo zone)
     {
@@ -185,7 +193,7 @@ public static class ResourceHealthText
         {
             return new ResourceHealthWords(
                 NotKnown,
-                "no Resource Health read yet",
+                NotReadYetWords,
                 HealthTone.Muted,
                 $"{Source} The page has not read it: {SystemInfo.ContainersFileName} on branch status, next to delivery.json, is not there or not read yet.");
         }
@@ -214,7 +222,7 @@ public static class ResourceHealthText
     /// </summary>
     private static string Line(List<(string Id, ResourceHealthReading? Reading)> readings, List<string> labels, DateTimeOffset? oldest, DateTimeOffset? now)
     {
-        var age = oldest is { } at && now is { } moment ? $", {TimeText.Ago(at, moment)}" : string.Empty;
+        var age = oldest is { } at && now is { } moment ? $"{AgeLead}{TimeText.Ago(at, moment)}" : string.Empty;
         var words = readings.Count == 1 ? Origin(readings[0].Reading) : Counted(labels);
         return words + age;
     }
@@ -222,15 +230,15 @@ public static class ResourceHealthText
     /// <summary>Where the words of a box of one come from.</summary>
     private static string Origin(ResourceHealthReading? reading) => reading?.Source switch
     {
-        ResourceHealthReading.FromResourceHealth => "Resource Health",
-        ResourceHealthReading.FromProvisioningState => "provisioning state",
-        ResourceHealthReading.None => "no Resource Health",
-        _ => "not in the hourly reading",
+        ResourceHealthReading.FromResourceHealth => FromResourceHealthWords,
+        ResourceHealthReading.FromProvisioningState => FromProvisioningWords,
+        ResourceHealthReading.None => NoResourceHealthWords,
+        _ => NotInReadingWords,
     };
 
     /// <summary>The count of each badge of a box of several, most urgent first: <c>1 degraded · 2 available</c>.</summary>
     private static string Counted(IEnumerable<string> labels) => string.Join(
-        " · ",
+        PartSeparator,
         labels.GroupBy(word => word)
             .OrderBy(group => Rank(group.Key))
             .Select(group => string.Create(CultureInfo.InvariantCulture, $"{group.Count()} {group.Key.ToLowerInvariant()}")));

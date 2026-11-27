@@ -42,6 +42,12 @@ public static class AvailabilityText
     private const double AboveNothing = 0.1;
 
     /// <summary>
+    /// What a window with no ended report says in place of <see cref="Count"/>: the word the count stands in for
+    /// while no report has ended in the window.
+    /// </summary>
+    internal const string NoneCounted = "none";
+
+    /// <summary>
     /// The day's window word: the last 24 hours, as the hourly reports count them (<c>ContainerAppReports</c> names
     /// the same window <c>Day</c>).
     /// </summary>
@@ -100,7 +106,7 @@ public static class AvailabilityText
         if (afterTheDay)
         {
             return noneEnded
-                ? new AvailabilityPart(string.Empty, "none", $" in {WeekWindow}")
+                ? new AvailabilityPart(string.Empty, NoneCounted, $" in {WeekWindow}")
                 : new AvailabilityPart(string.Empty, Count(week), $" in {WeekWindow}", $"{Percent(week)} of the hourly checks of the last {WeekWindow}");
         }
 

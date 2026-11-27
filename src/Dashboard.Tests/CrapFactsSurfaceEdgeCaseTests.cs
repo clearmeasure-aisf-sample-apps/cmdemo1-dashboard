@@ -51,7 +51,7 @@ public class CrapFactsSurfaceEdgeCaseTests
                 .Select(property => property.Name)]);
 
         Assert.Equal(
-            ["Deconstruct", "Equals", "GetHashCode", "Max", "OverThreshold", "Threshold", "ToString", "op_Equality", "op_Inequality"],
+            ["Deconstruct", "Equals", "GetHashCode", "IsOver", "Max", "OverThreshold", "Threshold", "ToString", "op_Equality", "op_Inequality"],
             PublicSurface());
 
         var properties = typeof(CrapFacts)

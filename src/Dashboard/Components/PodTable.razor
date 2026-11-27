@@ -79,7 +79,7 @@ else
     }
     @if (Group.Volumes.Count > 0)
     {
-        <p class="namespace__volumes"><span class="namespace__label">Volumes</span> @string.Join(" · ", Group.Volumes.Select(ClusterText.Volume))</p>
+        <p class="namespace__volumes"><span class="namespace__label">Volumes</span> @ClusterText.Volumes(Group.Volumes)</p>
     }
 }
 

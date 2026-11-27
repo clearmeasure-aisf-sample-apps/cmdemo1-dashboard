@@ -308,6 +308,22 @@ public static class WorkItemsText
         return name + when + LinkText.GitHubSuffix;
     }
 
+    /// <summary>
+    /// <c>#181 merged, #182 open</c>; <see cref="Missing"/> without a pull request. Each pull is its
+    /// <see cref="PullLabel"/>, followed by its state when the file gives one, joined with ", ".
+    /// </summary>
+    public static string PullSummary(WorkItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        if (item.PullRequests.Count == 0)
+        {
+            return Missing;
+        }
+
+        return string.Join(", ", item.PullRequests.Select(pull =>
+            pull.State is { } state ? $"{PullLabel(pull)} {state}" : PullLabel(pull)));
+    }
+
     public static bool IsMerged(string? state) => string.Equals(state, "merged", StringComparison.OrdinalIgnoreCase);
 
     public static string SessionTitle(int index, int count) =>

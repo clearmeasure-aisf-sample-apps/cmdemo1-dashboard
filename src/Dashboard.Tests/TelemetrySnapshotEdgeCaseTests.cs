@@ -1020,6 +1020,46 @@ public class TelemetrySnapshotEdgeCaseTests
                ?? throw new InvalidOperationException($"the answer was read as no reading: {body}");
     }
 
+    [Theory]
+    [InlineData("requests")]
+    [InlineData("probes")]
+    [InlineData("sql")]
+    [InlineData("http")]
+    public void ASectionWithoutPerMinuteReadsZeroWhileMissingP95StaysNull(string section)
+    {
+        var body = section switch
+        {
+            "requests" => $"{{ \"requests\": {{}} }}",
+            "probes" => $"{{ \"requests\": {{ \"perMinute\": 1 }}, \"probes\": {{}} }}",
+            "sql" => $"{{ \"requests\": {{ \"perMinute\": 1 }}, \"sql\": {{}} }}",
+            _ => $"{{ \"requests\": {{ \"perMinute\": 1 }}, \"http\": {{}} }}",
+        };
+
+        var snapshot = TelemetrySnapshot.Parse(body, Read);
+        Assert.NotNull(snapshot);
+
+        switch (section)
+        {
+            case "requests":
+                Assert.Equal(0, snapshot!.Requests);
+                Assert.Null(snapshot.P95Ms);
+                break;
+            case "probes":
+                Assert.Equal(0, snapshot!.Probes);
+                Assert.Equal(0, snapshot.FrontDoorProbes);
+                break;
+            case "sql":
+                Assert.Equal(0, snapshot!.Sql);
+                Assert.Null(snapshot.SqlP95Ms);
+                Assert.Null(snapshot.SqlRequests);
+                Assert.Null(snapshot.SqlBackground);
+                break;
+            case "http":
+                Assert.Equal(0, snapshot!.Http);
+                break;
+        }
+    }
+
     /// <summary>The public members a type declares itself: its properties and its public fields and the methods
     /// that are not the get and the set of one - the two operators kept although the compiler names them specially,
     /// since they are the <c>==</c> and the <c>!=</c> a caller writes - with the record's compiler-named clone

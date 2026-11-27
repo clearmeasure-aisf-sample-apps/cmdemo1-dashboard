@@ -51,6 +51,22 @@ public sealed record TelemetrySnapshot(
     /// </summary>
     public int SqlOfTraffic => SplitsSql ? SqlRequests!.Value : Sql;
 
+    // The words of the node's /_telemetry answer, named once here so a mistype in one
+    // section cannot silently read 0 while the true word sits untyped elsewhere.
+
+    private const string RequestsSection = "requests";
+    private const string ProbesSection = "probes";
+    private const string SqlSection = "sql";
+    private const string HttpSection = "http";
+    private const string PerMinute = "perMinute";
+    private const string FrontDoor = "frontDoor";
+    private const string DirectWord = "direct";
+    private const string ErrorsWord = "errors";
+    private const string P95 = "p95Ms";
+    private const string SqlRequestsWord = "requests";
+    private const string Background = "background";
+    private const string StartedAtWord = "startedAt";
+
     /// <summary>The endpoint's answer; null when it is not the expected JSON (an older app, an error page).</summary>
     public static TelemetrySnapshot? Parse(string json, DateTimeOffset readAt)
     {
@@ -58,31 +74,31 @@ public sealed record TelemetrySnapshot(
         {
             using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
-            if (JsonRead.Section(root, "requests") is not { } requests)
+            if (JsonRead.Section(root, RequestsSection) is not { } requests)
             {
                 return null;
             }
 
-            var probes = JsonRead.Section(root, "probes");
-            var sql = JsonRead.Section(root, "sql");
-            var http = JsonRead.Section(root, "http");
+            var probes = JsonRead.Section(root, ProbesSection);
+            var sql = JsonRead.Section(root, SqlSection);
+            var http = JsonRead.Section(root, HttpSection);
             return new TelemetrySnapshot(
-                JsonRead.SaturatedCount(requests, "perMinute") ?? 0,
-                JsonRead.SaturatedCount(requests, "frontDoor") ?? 0,
-                JsonRead.SaturatedCount(requests, "direct") ?? 0,
-                JsonRead.SaturatedCount(requests, "errors") ?? 0,
-                JsonRead.SaturatedCount(requests, "p95Ms"),
-                JsonRead.SaturatedCount(probes, "perMinute") ?? 0,
-                JsonRead.SaturatedCount(probes, "frontDoor") ?? 0,
-                JsonRead.SaturatedCount(sql, "perMinute") ?? 0,
-                JsonRead.SaturatedCount(sql, "p95Ms"),
-                JsonRead.SaturatedCount(http, "perMinute") ?? 0,
+                Count(requests, PerMinute),
+                Count(requests, FrontDoor),
+                Count(requests, DirectWord),
+                Count(requests, ErrorsWord),
+                JsonRead.SaturatedCount(requests, P95),
+                Count(probes, PerMinute),
+                Count(probes, FrontDoor),
+                Count(sql, PerMinute),
+                JsonRead.SaturatedCount(sql, P95),
+                Count(http, PerMinute),
                 readAt)
             {
                 Process = ProcessVitals.Read(root),
-                SqlRequests = JsonRead.SaturatedCount(sql, "requests"),
-                SqlBackground = JsonRead.SaturatedCount(sql, "background"),
-                StartedAt = JsonRead.Time(root, "startedAt"),
+                SqlRequests = JsonRead.SaturatedCount(sql, SqlRequestsWord),
+                SqlBackground = JsonRead.SaturatedCount(sql, Background),
+                StartedAt = JsonRead.Time(root, StartedAtWord),
             };
         }
         catch (JsonException)
@@ -90,4 +106,7 @@ public sealed record TelemetrySnapshot(
             return null;
         }
     }
+
+    /// <summary>A count the record holds as a plain <see cref="int" />: a missing one is a zero, as the nullable reads stay null.</summary>
+    private static int Count(JsonElement? section, string word) => JsonRead.SaturatedCount(section, word) ?? 0;
 }

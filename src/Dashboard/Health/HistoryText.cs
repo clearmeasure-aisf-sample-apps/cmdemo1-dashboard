@@ -6,6 +6,14 @@ namespace Dashboard.Health;
 public static class HistoryText
 {
     /// <summary>
+    /// The no-check wording, owned here once and read by both the strip's empty-slot hover title and
+    /// <see cref="Describe(IReadOnlyCollection{ProbeResult})" /> for an empty history: <c>No checks yet</c>.
+    /// Zero checks takes the plural, and the strip's title and the aria-label say the same words, so an
+    /// empty history never has two different sentences depending on where you read it.
+    /// </summary>
+    public const string NoChecksYet = "No checks yet";
+
+    /// <summary>
     /// The states a history is counted by, in the order the sentence reads them: healthy first, then the two ways
     /// a check can fail - an answer that was not healthy, then no answer at all. <see cref="HealthState.Pending" />
     /// is left out on purpose: a check not yet answered counts in the total but names no state.
@@ -23,7 +31,7 @@ public static class HistoryText
         ArgumentNullException.ThrowIfNull(history);
         if (history.Count == 0)
         {
-            return "No checks yet";
+            return NoChecksYet;
         }
 
         var parts = Counted

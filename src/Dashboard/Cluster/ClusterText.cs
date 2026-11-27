@@ -45,6 +45,9 @@ public static class ClusterText
     /// <summary>The suffix a percentage is said with: <c>63 %</c>.</summary>
     private const string PercentSign = " %";
 
+    /// <summary>The separator between the parts of one cluster line: <c>3 of 3 ready · 1 restart</c>.</summary>
+    private const string PartSeparator = " · ";
+
     private const double Kibibyte = 1024;
     private const double Mebibyte = Kibibyte * 1024;
 
@@ -244,7 +247,7 @@ public static class ClusterText
             parts.Add($"memory {Memory(memory)}");
         }
 
-        return string.Join(" · ", parts);
+        return string.Join(PartSeparator, parts);
     }
 
     /// <summary>The line of the group of every namespace that belongs to no environment: <c>Platform: 9 namespaces, 54 of 54 pods ready</c>.</summary>
@@ -263,6 +266,13 @@ public static class ClusterText
         ArgumentNullException.ThrowIfNull(volume);
         var size = volume.Capacity is { } capacity ? $"{volume.Name} {Memory(capacity)}" : volume.Name;
         return volume.Phase is { } phase ? $"{size}, {phase}" : size;
+    }
+
+    /// <summary>The line of a namespace's volume claims, joined in the order given: <c>data-db-0 8 GiB, Bound · logs 1 GiB</c>.</summary>
+    public static string Volumes(IEnumerable<ClusterVolume> volumes)
+    {
+        ArgumentNullException.ThrowIfNull(volumes);
+        return string.Join(PartSeparator, volumes.Select(Volume));
     }
 
     /// <summary>A node pool as Azure describes it: <c>1 × Standard_D4as_v6</c>; null when Azure names neither.</summary>

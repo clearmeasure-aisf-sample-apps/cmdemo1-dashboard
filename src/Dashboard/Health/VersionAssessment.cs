@@ -15,6 +15,11 @@ public sealed record VersionAssessment(
     string Headline,
     string? Detail)
 {
+    private const string InSyncWord = "In sync";
+    private const string DiffersWord = "Differs";
+    private const string NotComparedWord = "Not compared";
+    private const string NoPinnedVersion = "No pinned version";
+
     public bool Differs => State == VersionState.Differs;
 
     /// <summary>The whole line in words, for a tooltip and for tests.</summary>
@@ -39,7 +44,7 @@ public sealed record VersionAssessment(
             case PinnedVersionsState.Missing:
                 return Without(
                     VersionState.NotDeployed,
-                    "No pinned version",
+                    NoPinnedVersion,
                     $"{file} was not found: nothing was deployed here yet, or the repository is not public.");
             case PinnedVersionsState.Unavailable:
                 return Without(
@@ -52,7 +57,7 @@ public sealed record VersionAssessment(
         {
             return Without(
                 VersionState.NotDeployed,
-                "No pinned version",
+                NoPinnedVersion,
                 $"{file} has no entry for {deployable}: it was not deployed here yet.");
         }
 
@@ -97,12 +102,12 @@ public sealed record VersionAssessment(
         var (total, state) = (tally.Total, tally.State);
         var known = state switch
         {
-            VersionState.Differs => $"Differs: {string.Join(", ", differing.Select(node => $"{node.Label} runs {node.Running}"))}",
-            VersionState.InSync when matching.Count == 1 => $"In sync: {matching[0].Label} runs {version}",
-            VersionState.InSync when matching.Count == total => $"In sync: all {total} nodes run {version}",
-            VersionState.InSync => $"In sync: {matching.Count} of {total} nodes run {version}",
-            _ when total == 0 => "Not compared: the deployable has no nodes",
-            _ => "Not compared",
+            VersionState.Differs => $"{DiffersWord}: {string.Join(", ", differing.Select(node => $"{node.Label} runs {node.Running}"))}",
+            VersionState.InSync when matching.Count == 1 => $"{InSyncWord}: {matching[0].Label} runs {version}",
+            VersionState.InSync when matching.Count == total => $"{InSyncWord}: all {total} nodes run {version}",
+            VersionState.InSync => $"{InSyncWord}: {matching.Count} of {total} nodes run {version}",
+            _ when total == 0 => $"{NotComparedWord}: the deployable has no nodes",
+            _ => NotComparedWord,
         };
         if (unknown.Count == 0)
         {

@@ -207,6 +207,43 @@ public class VersionAssessmentTests
         Assert.Equal("Reading the pinned version", assessment.Text);
     }
 
+    [Fact]
+    public void AMissingFileAndAMissingEntryShareOneNoPinnedVersionHeadline()
+    {
+        var missing = VersionAssessment.Assess(PinnedVersions.Missing, "ui", [West(Healthy, "2.4.7")]);
+        var noEntry = VersionAssessment.Assess(Pinned, "api", [West(Healthy, "2.4.7")]);
+
+        Assert.Equal("No pinned version", missing.Headline);
+        Assert.Equal(missing.Headline, noEntry.Headline);
+        Assert.Equal(missing.State, noEntry.State);
+    }
+
+    [Fact]
+    public void EveryInSyncPhrasingStartsWithTheSameWord()
+    {
+        string?[] details =
+        [
+            Assess(West(Healthy, "2.4.7")).Detail,
+            Assess(West(Healthy, "2.4.7"), East(Healthy, "2.4.7")).Detail,
+            Assess(West(Healthy, "2.4.7"), East(Healthy, "2.4.7"), Central(Pending, null)).Detail,
+        ];
+
+        Assert.All(details, detail => Assert.StartsWith("In sync: ", detail, StringComparison.Ordinal));
+        Assert.Equal(3, details.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Fact]
+    public void EveryNotComparedPhrasingStartsWithTheSameWord()
+    {
+        var noNodes = Assess();
+        var noneKnown = Assess(West(Unreachable, null), East(Pending, null));
+
+        Assert.Equal(VersionState.NodesUnknown, noNodes.State);
+        Assert.Equal(VersionState.NodesUnknown, noneKnown.State);
+        Assert.StartsWith("Not compared", noNodes.Detail, StringComparison.Ordinal);
+        Assert.StartsWith("Not compared", noneKnown.Detail, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(0, null)]
     [InlineData(1, "Versions differ in 1 environment")]

@@ -28,6 +28,9 @@ public static class VersionText
         return text.Length == 0 ? null : text;
     }
 
+    /// <summary>The shown version of <paramref name="parent"/>'s <c>version</c> word (see <see cref="Display"/>); null when the object gives none.</summary>
+    public static string? Read(JsonElement? parent) => Display(JsonRead.Text(parent, VersionProperty));
+
     /// <summary>Reads the body of a version endpoint: JSON <c>{"version":"2.4.21+sha"}</c>.</summary>
     public static string? FromVersionResponse(string? body)
     {

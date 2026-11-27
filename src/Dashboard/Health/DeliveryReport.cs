@@ -162,7 +162,7 @@ public sealed record DeliveryEntry(
         var behind = JsonRead.Section(element, "behindFirst");
         return new DeliveryEntry(
             name,
-            VersionText.Display(JsonRead.Text(element, "version")),
+            VersionText.Read(element),
             JsonRead.Time(element, "deployedAt"),
             JsonRead.Text(element, "signedOffBy"),
             JsonRead.Text(element, "reason"),
@@ -192,7 +192,7 @@ public sealed record PersonSignOff(string? Version, string? By, DateTimeOffset? 
     /// <summary>The sign-off; null unless it names a version or a person.</summary>
     internal static PersonSignOff? Read(JsonElement? section)
     {
-        var version = VersionText.Display(JsonRead.Text(section, "version"));
+        var version = VersionText.Read(section);
         var by = JsonRead.Text(section, "by");
         return version is null && by is null
             ? null

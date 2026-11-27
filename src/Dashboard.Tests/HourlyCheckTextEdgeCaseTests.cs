@@ -106,17 +106,17 @@ public class HourlyCheckTextEdgeCaseTests
     // ---------------------------------------------------------------- the word the check holds, in the line and the tooltip
 
     /// <summary>
-    /// The line says the word the check carries and the tooltip says it in its own sentence, whichever word the
-    /// check carries: the reading makes the three words it knows, but a check built by hand carries the other case,
-    /// the empty word and the word of spaces just as it holds them, which
-    /// <see cref="HourlyCheckEdgeCaseTests" /> pins of the record itself - and the line and the tooltip say the
-    /// word they are given, the empty word and the word of spaces saying themselves in the spaces they take.
+    /// The line says the word of the result the check holds and the tooltip says it in its own sentence, for each
+    /// of the three results there are, each in its lower-case word. The former cases <c>"HEALTHY"</c>, <c>""</c> and
+    /// <c>" "</c> are retired one for one by <see cref="HourlyCheckResult.Healthy" />,
+    /// <see cref="HourlyCheckResult.Unhealthy" /> and <see cref="HourlyCheckResult.Unreachable" />: a check can no
+    /// longer hold a word outside the three (#897).
     /// </summary>
     [Theory]
-    [InlineData("HEALTHY", "hourly: HEALTHY, 40 min ago", "and found it HEALTHY.")]
-    [InlineData("", "hourly: , 40 min ago", "and found it .")]
-    [InlineData(" ", "hourly:  , 40 min ago", "and found it  .")]
-    public void TheLineAndTheTooltipSayTheWordTheCheckHolds(string word, string line, string sentence)
+    [InlineData(HourlyCheckResult.Healthy, "hourly: healthy, 40 min ago", "and found it healthy.")]
+    [InlineData(HourlyCheckResult.Unhealthy, "hourly: unhealthy, 40 min ago", "and found it unhealthy.")]
+    [InlineData(HourlyCheckResult.Unreachable, "hourly: unreachable, 40 min ago", "and found it unreachable.")]
+    public void TheLineAndTheTooltipSayTheWordTheCheckHolds(HourlyCheckResult word, string line, string sentence)
     {
         var reports = Reports("ui", new HourlyCheck(word, Checked));
 
@@ -125,17 +125,18 @@ public class HourlyCheckTextEdgeCaseTests
     }
 
     /// <summary>
-    /// No word at all is the word the line and the tooltip say: a check built by hand with no word carries none, as
-    /// it carries the empty word, and the line and the tooltip say the line they say with the word the check holds -
-    /// nothing the page refuses and nothing the page fills in.
+    /// A result outside the three is refused before the line or the tooltip says it, rather than said as no word
+    /// (<c>hourly: , 40 min ago</c>). Retires the former test of a check holding no word at all: a check can no
+    /// longer hold a word outside the three (#897), and the only way left to build one is a cast, which
+    /// <see cref="HourlyCheckResultWords.Word" /> refuses.
     /// </summary>
     [Fact]
-    public void TheLineAndTheTooltipSayNoWordWhenTheCheckHoldsNone()
+    public void AResultOutsideTheThreeIsRefusedBeforeTheBoxSaysIt()
     {
-        var reports = Reports("ui", new HourlyCheck(null!, Checked));
+        var reports = Reports("ui", new HourlyCheck((HourlyCheckResult)99, Checked));
 
-        Assert.Equal("hourly: , 40 min ago", HourlyCheckText.Result(reports, Now));
-        Assert.Contains("and found it .", HourlyCheckText.Title(reports, Now, Utc), StringComparison.Ordinal);
+        Assert.Throws<ArgumentOutOfRangeException>(() => HourlyCheckText.Result(reports, Now));
+        Assert.Throws<ArgumentOutOfRangeException>(() => HourlyCheckText.Title(reports, Now, Utc));
     }
 
     // ---------------------------------------------------------------- the counts, where one window counts nothing and the other counts

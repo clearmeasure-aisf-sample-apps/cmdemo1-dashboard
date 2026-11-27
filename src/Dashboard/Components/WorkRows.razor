@@ -17,7 +17,7 @@
                             }
                         </span>
                         <span>@WorkItemsText.Agent(item)</span>
-                        <span class="work-line__rest">@SummaryPulls(item)</span>
+                        <span class="work-line__rest">@WorkItemsText.PullSummary(item)</span>
                     </summary>
                     <div class="work-detail">
                         @{
@@ -206,19 +206,5 @@
         {
             yield return (item.CursorSessions[index], index + 1);
         }
-    }
-
-    private static string SummaryPulls(WorkItem item)
-    {
-        if (item.PullRequests.Count == 0)
-        {
-            return WorkItemsText.Missing;
-        }
-
-        return string.Join(", ", item.PullRequests.Select(pull =>
-        {
-            var label = WorkItemsText.PullLabel(pull);
-            return pull.State is { } state ? $"{label} {state}" : label;
-        }));
     }
 }

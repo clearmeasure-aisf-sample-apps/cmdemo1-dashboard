@@ -13,7 +13,7 @@ public class WorkBotTextWeekEdgeCaseTests
     private static readonly DateTimeOffset SundayNight = new(2026, 11, 8, 23, 59, 0, TimeSpan.Zero);
 
     private static WorkItem Item(int number, IReadOnlyList<WorkPullRequest> pulls, WorkItemEnvironments? environments = null) =>
-        new(number, $"Item {number}", null, null, "Done", [], null, null, [], pulls, null, environments ?? WorkItemEnvironments.None, null, WorkWorker.Unknown, null);
+        new(new WorkItemIdentity(number, $"Item {number}", null, null, "Done"), [], null, null, [], pulls, null, environments ?? WorkItemEnvironments.None, null, WorkWorker.Unknown, null);
 
     private static WorkPullRequest Merged(DateTimeOffset at) => new(1, null, "merged", at, null);
 

@@ -16,7 +16,7 @@ public class WorkBotTextTests
         WorkRework? rework = null,
         IReadOnlyList<WorkPullRequest>? pulls = null,
         WorkItemEnvironments? environments = null) =>
-        new(number, $"Item {number}", null, null, column, history ?? [], null, null, [], pulls ?? [], null, environments ?? WorkItemEnvironments.None, cost, WorkWorker.Unknown, rework);
+        new(new WorkItemIdentity(number, $"Item {number}", null, null, column), history ?? [], null, null, [], pulls ?? [], null, environments ?? WorkItemEnvironments.None, cost, WorkWorker.Unknown, rework);
 
     private static WorkPullRequest Pull(int? number = null, string? state = null, DateTimeOffset? mergedAt = null) =>
         new(number, null, state, mergedAt, null);

@@ -16,11 +16,7 @@ public class WorkThroughputAndReleaseTests
         IReadOnlyList<WorkPullRequest>? pulls = null,
         bool toProd = false) =>
         new(
-            number,
-            $"Item {number}",
-            null,
-            null,
-            null,
+            new WorkItemIdentity(number, $"Item {number}", null, null, null),
             [],
             null,
             agent,

@@ -19,12 +19,12 @@ internal static class WorkBoard
         var rows = new List<WorkWip>();
         foreach (var column in WorkColumns.Active)
         {
-            rows.Add(new WorkWip(column, fromFile ? CountOf(counts, column) : items.Count(item => WorkColumns.Same(item.Column, column))));
+            rows.Add(new WorkWip(column, fromFile ? CountOf(counts, column) : items.Count(item => WorkColumns.Same(item.Identity.Column, column))));
         }
 
         var unplaced = fromFile
             ? counts.Where(pair => !WorkColumns.IsKnown(pair.Key)).Sum(pair => pair.Value)
-            : items.Count(item => IsUnplaced(item.Column));
+            : items.Count(item => IsUnplaced(item.Identity.Column));
         if (unplaced > 0)
         {
             rows.Add(new WorkWip(WorkColumns.Unplaced, unplaced));
@@ -40,14 +40,14 @@ internal static class WorkBoard
         var groups = new List<WorkColumnGroup>();
         foreach (var column in WorkColumns.Active)
         {
-            var found = items.Where(item => WorkColumns.Same(item.Column, column)).ToList();
+            var found = items.Where(item => WorkColumns.Same(item.Identity.Column, column)).ToList();
             if (found.Count > 0)
             {
                 groups.Add(new WorkColumnGroup(column, found));
             }
         }
 
-        var unplaced = items.Where(item => IsUnplaced(item.Column)).ToList();
+        var unplaced = items.Where(item => IsUnplaced(item.Identity.Column)).ToList();
         if (unplaced.Count > 0)
         {
             groups.Add(new WorkColumnGroup(WorkColumns.Unplaced, unplaced));
@@ -62,9 +62,9 @@ internal static class WorkBoard
         ArgumentNullException.ThrowIfNull(items);
         return
         [
-            .. items.Where(item => WorkColumns.IsDone(item.Column))
+            .. items.Where(item => WorkColumns.IsDone(item.Identity.Column))
                 .OrderByDescending(item => Entered(item, WorkColumns.Done) ?? DateTimeOffset.MinValue)
-                .ThenByDescending(item => item.Number ?? int.MinValue),
+                .ThenByDescending(item => item.Identity.Number ?? int.MinValue),
         ];
     }
 

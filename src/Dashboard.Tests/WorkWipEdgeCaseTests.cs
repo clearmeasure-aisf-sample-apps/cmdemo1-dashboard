@@ -12,7 +12,7 @@ public class WorkWipEdgeCaseTests
     private static readonly IReadOnlyList<WorkItem> NoItems = [];
 
     private static WorkItem Item(int? number, string? column = null) =>
-        new(number, $"Item {number}", null, null, column, [], null, null, [], [], null, WorkItemEnvironments.None, null);
+        new(new WorkItemIdentity(number, $"Item {number}", null, null, column), [], null, null, [], [], null, WorkItemEnvironments.None, null);
 
     private static WorkItemsStats Stats(params (string Column, int Count)[] counts) =>
         new(counts.ToDictionary(pair => pair.Column, pair => pair.Count, StringComparer.OrdinalIgnoreCase), null, null, [], null, null);

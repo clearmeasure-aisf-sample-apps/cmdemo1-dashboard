@@ -156,7 +156,7 @@ public static class WorkBotText
             else if (visit.EnteredAt is { } entered)
             {
                 DateTimeOffset? end = index + 1 < visits.Count ? visits[index + 1].EnteredAt : null;
-                if (end is null && visit.Column is { } column && WorkColumns.Same(item.Column, column))
+                if (end is null && visit.Column is { } column && WorkColumns.Same(item.Identity.Column, column))
                 {
                     end = now;
                     open = true;
@@ -222,10 +222,10 @@ public static class WorkBotText
         var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var column in WorkColumns.Active)
         {
-            counts[column] = items.Count(item => WorkColumns.Same(item.Column, column));
+            counts[column] = items.Count(item => WorkColumns.Same(item.Identity.Column, column));
         }
 
-        var unplaced = items.Count(item => !WorkColumns.IsKnown(item.Column) && !WorkColumns.IsDone(item.Column));
+        var unplaced = items.Count(item => !WorkColumns.IsKnown(item.Identity.Column) && !WorkColumns.IsDone(item.Identity.Column));
         if (unplaced > 0)
         {
             counts[WorkColumns.Unplaced] = unplaced;

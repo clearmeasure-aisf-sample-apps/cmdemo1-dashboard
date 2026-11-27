@@ -22,25 +22,25 @@ public class WorkItemsTests
         Assert.Equal(
             ["Todo", "In Progress", "Review", "Merged", "TDD", "UAT"],
             WorkItemsText.Active(Sample.Items).Select(group => group.Column));
-        Assert.Equal([490, 476], WorkItemsText.Active(Sample.Items).Single(group => group.Column == WorkColumns.Review).Items.Select(item => item.Number));
-        Assert.Equal([455, 421, 440], WorkItemsText.RecentlyDone(Sample.Items).Select(item => item.Number));
-        Assert.Equal(WorkWorker.Team, Sample.Items.Single(item => item.Number == 501).Worker);
-        Assert.Equal(WorkWorker.Bot, Sample.Items.Single(item => item.Number == 476).Worker);
-        Assert.Equal("failed", Sample.Items.Single(item => item.Number == 458).PullRequests[0].Checks);
-        Assert.Equal("Functional tests failed on the release build", Sample.Items.Single(item => item.Number == 458).Blocker!.Text);
+        Assert.Equal([490, 476], WorkItemsText.Active(Sample.Items).Single(group => group.Column == WorkColumns.Review).Items.Select(item => item.Identity.Number));
+        Assert.Equal([455, 421, 440], WorkItemsText.RecentlyDone(Sample.Items).Select(item => item.Identity.Number));
+        Assert.Equal(WorkWorker.Team, Sample.Items.Single(item => item.Identity.Number == 501).Worker);
+        Assert.Equal(WorkWorker.Bot, Sample.Items.Single(item => item.Identity.Number == 476).Worker);
+        Assert.Equal("failed", Sample.Items.Single(item => item.Identity.Number == 458).PullRequests[0].Checks);
+        Assert.Equal("Functional tests failed on the release build", Sample.Items.Single(item => item.Identity.Number == 458).Blocker!.Text);
         Assert.Equal(8, WorkItemsText.Select(Sample.Items, WorkAudience.Bot).Count);
         Assert.Equal(3, WorkItemsText.Select(Sample.Items, WorkAudience.Team).Count);
         Assert.Equal("median 14 h · p85 2 d · 8 items", WorkItemsText.Duration(Sample.BotStats!.CycleTimeHours));
         Assert.Equal("TDD", WorkBotText.Longest(WorkBotText.ColumnWaits(Sample.BotStats, WorkItemsText.Select(Sample.Items, WorkAudience.Bot), Now))!.Column);
         Assert.NotNull(WorkItemsText.Comparison(Sample));
 
-        var queued = Sample.Items.Single(item => item.Number == 462);
+        var queued = Sample.Items.Single(item => item.Identity.Number == 462);
         Assert.Equal("2.4.86", queued.ReleaseCandidate!.Version);
         Assert.Equal(["tdd", "uat"], WorkItemsText.Places(queued).Select(place => place.Name));
         Assert.Equal("tdd 2.4.86", WorkItemsText.PlaceLabel(WorkItemsText.Places(queued)[0]));
         Assert.Equal(["Session 1", "Session 2"], Enumerable.Range(1, queued.CursorSessions.Count).Select(index => WorkItemsText.SessionLabel(index, queued.CursorSessions.Count)));
 
-        var rework = Sample.Items.Single(item => item.Number == 458);
+        var rework = Sample.Items.Single(item => item.Identity.Number == 458);
         Assert.Equal("dashboard-bot", WorkItemsText.Agent(rework));
         Assert.Equal("cm-ai-ops", WorkItemsText.Assignee(rework));
         Assert.Equal("closed", Assert.Single(rework.PullRequests).State);
@@ -60,7 +60,7 @@ public class WorkItemsTests
         Assert.Equal(
             "$1.64 per item · $18.00 total · Cursor agent usage for these items, last 30 days",
             WorkItemsText.Cost(Sample.Stats.Cost, Sample.Items));
-        Assert.Equal("n/a", WorkItemsText.ItemCost(Sample.Items.Single(item => item.Number == 501).CostUsd));
+        Assert.Equal("n/a", WorkItemsText.ItemCost(Sample.Items.Single(item => item.Identity.Number == 501).CostUsd));
         Assert.Equal("$4.50", WorkItemsText.ItemCost(4.5));
 
         var chart = WorkItemsText.Chart(Sample.Stats.PerWeek)!;
@@ -124,9 +124,9 @@ public class WorkItemsTests
             """)!;
 
         var item = Assert.Single(report.Items);
-        Assert.Equal(12, item.Number);
-        Assert.Equal("Keep it", item.Title);
-        Assert.Null(item.Url);
+        Assert.Equal(12, item.Identity.Number);
+        Assert.Equal("Keep it", item.Identity.Title);
+        Assert.Null(item.Identity.Url);
         Assert.Equal(new Uri("https://cursor.com/agents/bc-1"), Assert.Single(item.CursorSessions));
         Assert.Equal("open", Assert.Single(item.PullRequests).State);
         Assert.Equal("2.4.3", item.ReleaseCandidate!.Version);
@@ -155,8 +155,8 @@ public class WorkItemsTests
             """)!;
 
         Assert.Equal([WorkColumns.Unplaced], WorkItemsText.Active(report.Items).Select(group => group.Column));
-        Assert.Equal([1, 2, 3], WorkItemsText.Active(report.Items)[0].Items.Select(item => item.Number));
-        Assert.Equal([4], WorkItemsText.RecentlyDone(report.Items).Select(item => item.Number));
+        Assert.Equal([1, 2, 3], WorkItemsText.Active(report.Items)[0].Items.Select(item => item.Identity.Number));
+        Assert.Equal([4], WorkItemsText.RecentlyDone(report.Items).Select(item => item.Identity.Number));
         Assert.Equal("work-col-in-progress", WorkItemsText.ColumnId("In Progress"));
         Assert.Equal("work-col-unplaced", WorkItemsText.ColumnId(WorkColumns.Unplaced));
     }
@@ -190,14 +190,14 @@ public class WorkItemsTests
         Assert.Equal(
             ["Todo", "In Progress", "Review", "Merged", "TDD", "UAT", WorkColumns.Unplaced],
             WorkItemsText.Active(report.Items).Select(group => group.Column));
-        Assert.Equal(1, WorkItemsText.Active(report.Items).Single(group => group.Column == WorkColumns.Todo).Items.Single().Number);
-        Assert.Equal(2, WorkItemsText.Active(report.Items).Single(group => group.Column == WorkColumns.InProgress).Items.Single().Number);
-        Assert.Equal(3, WorkItemsText.Active(report.Items).Single(group => group.Column == WorkColumns.Review).Items.Single().Number);
-        Assert.Equal(4, WorkItemsText.Active(report.Items).Single(group => group.Column == WorkColumns.Merged).Items.Single().Number);
-        Assert.Equal(5, WorkItemsText.Active(report.Items).Single(group => group.Column == WorkColumns.Tdd).Items.Single().Number);
-        Assert.Equal(6, WorkItemsText.Active(report.Items).Single(group => group.Column == WorkColumns.Uat).Items.Single().Number);
-        Assert.Equal([8, 9, 10, 11], WorkItemsText.Active(report.Items).Single(group => group.Column == WorkColumns.Unplaced).Items.Select(item => item.Number));
-        Assert.Equal([7], WorkItemsText.RecentlyDone(report.Items).Select(item => item.Number));
+        Assert.Equal(1, WorkItemsText.Active(report.Items).Single(group => group.Column == WorkColumns.Todo).Items.Single().Identity.Number);
+        Assert.Equal(2, WorkItemsText.Active(report.Items).Single(group => group.Column == WorkColumns.InProgress).Items.Single().Identity.Number);
+        Assert.Equal(3, WorkItemsText.Active(report.Items).Single(group => group.Column == WorkColumns.Review).Items.Single().Identity.Number);
+        Assert.Equal(4, WorkItemsText.Active(report.Items).Single(group => group.Column == WorkColumns.Merged).Items.Single().Identity.Number);
+        Assert.Equal(5, WorkItemsText.Active(report.Items).Single(group => group.Column == WorkColumns.Tdd).Items.Single().Identity.Number);
+        Assert.Equal(6, WorkItemsText.Active(report.Items).Single(group => group.Column == WorkColumns.Uat).Items.Single().Identity.Number);
+        Assert.Equal([8, 9, 10, 11], WorkItemsText.Active(report.Items).Single(group => group.Column == WorkColumns.Unplaced).Items.Select(item => item.Identity.Number));
+        Assert.Equal([7], WorkItemsText.RecentlyDone(report.Items).Select(item => item.Identity.Number));
         Assert.Equal(WorkColumns.Active.Append(WorkColumns.Unplaced), WorkItemsText.Wip(report).Select(column => column.Column));
         Assert.DoesNotContain(WorkItemsText.Wip(report), column => column.Column is "Technical Design" or "Development" or "Functional Testing" or "Release Queue");
         Assert.DoesNotContain(WorkColumns.Order, column => column is "Technical Design" or "Development" or "Functional Testing" or "Release Queue");
@@ -233,7 +233,7 @@ public class WorkItemsTests
         Assert.Null(WorkItemsText.Cost(report.Stats.Cost, report.Items));
         Assert.Null(WorkItemsText.Cost(new WorkCost(null, "Cursor spend is not published"), report.Items));
         Assert.Null(WorkItemsText.Cost(new WorkCost(18, null), report.Items));
-        Assert.Equal("—", WorkItemsText.Agent(new WorkItem(1, null, null, null, null, [], null, null, [], [], null, WorkItemEnvironments.None, null)));
+        Assert.Equal("—", WorkItemsText.Agent(new WorkItem(new WorkItemIdentity(1, null, null, null, null), [], null, null, [], [], null, WorkItemEnvironments.None, null)));
     }
 
     [Fact]
@@ -333,13 +333,13 @@ public class WorkItemsTests
         var monitor = Optics.Monitor(handler, time);
 
         await monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
-        Assert.Equal(7, Assert.Single(monitor.WorkItems!.Items).Number);
+        Assert.Equal(7, Assert.Single(monitor.WorkItems!.Items).Identity.Number);
 
         offline = true;
         time.Advance(DashboardMonitor.WorkItemsInterval);
         await monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
 
-        Assert.Equal(7, Assert.Single(monitor.WorkItems.Items).Number);
+        Assert.Equal(7, Assert.Single(monitor.WorkItems.Items).Identity.Number);
         Assert.Equal(2, Optics.Count(handler, "/org/demo-system/status/workitems.json"));
     }
 
@@ -420,8 +420,8 @@ public class WorkItemsTests
     public void TheFeedSampleUsesThePublishedNames()
     {
         var feed = WorkItemsReport.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "feed-workitems.json")))!;
-        var bot = feed.Items.Single(item => item.Number == 1565);
-        var failed = feed.Items.Single(item => item.Number == 852);
+        var bot = feed.Items.Single(item => item.Identity.Number == 1565);
+        var failed = feed.Items.Single(item => item.Identity.Number == 852);
 
         Assert.Equal("clearmeasure-aisf-sample-apps/cmdemo1-workorders", feed.Scope!.Repo);
         Assert.Contains("worker", feed.Scope.Rules, StringComparison.Ordinal);
@@ -440,7 +440,7 @@ public class WorkItemsTests
         Assert.Equal(
             ["In Progress · 6 min", "Review · 12 min", "Merged · 30 min", "TDD · 84 min so far"],
             WorkBotText.Timeline(bot, Now).Select(WorkBotText.Stay));
-        Assert.Equal(WorkWorker.Team, feed.Items.Single(item => item.Number == 1543).Worker);
+        Assert.Equal(WorkWorker.Team, feed.Items.Single(item => item.Identity.Number == 1543).Worker);
     }
 
     [Fact]

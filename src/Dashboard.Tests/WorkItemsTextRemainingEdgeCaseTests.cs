@@ -19,7 +19,7 @@ public class WorkItemsTextRemainingEdgeCaseTests
         IReadOnlyList<ColumnVisit>? history = null,
         double? costUsd = null,
         WorkWorker worker = WorkWorker.Unknown) =>
-        new(number, "An item", null, null, column, history ?? [], null, null, [], [], null, WorkItemEnvironments.None, costUsd, worker);
+        new(new WorkItemIdentity(number, "An item", null, null, column), history ?? [], null, null, [], [], null, WorkItemEnvironments.None, costUsd, worker);
 
     private static WorkItemsReport Releases(params WorkRelease[] releases) =>
         new(null, null, WorkItemsStats.Empty, [], releases, null, null);
@@ -151,7 +151,7 @@ public class WorkItemsTextRemainingEdgeCaseTests
         IReadOnlyList<WorkItem> items = [Item(1, worker: WorkWorker.Team), Item(2)];
 
         Assert.Empty(WorkItemsText.Select(items, WorkAudience.Bot));
-        Assert.Equal([1], WorkItemsText.Select(items, WorkAudience.Team).Select(item => item.Number));
+        Assert.Equal([1], WorkItemsText.Select(items, WorkAudience.Team).Select(item => item.Identity.Number));
     }
 
     [Fact]
@@ -160,6 +160,6 @@ public class WorkItemsTextRemainingEdgeCaseTests
         var group = Assert.Single(WorkItemsText.Active([Item(1, "todo"), Item(2, "TODO"), Item(3, "done")]));
 
         Assert.Equal(WorkColumns.Todo, group.Column);
-        Assert.Equal([1, 2], group.Items.Select(item => item.Number));
+        Assert.Equal([1, 2], group.Items.Select(item => item.Identity.Number));
     }
 }

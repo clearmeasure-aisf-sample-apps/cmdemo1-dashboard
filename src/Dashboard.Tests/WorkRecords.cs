@@ -139,11 +139,7 @@ internal static class WorkRecords
         WorkRework? rework = null,
         WorkNote? blocker = null) =>
         new(
-            number,
-            title,
-            string.IsNullOrEmpty(url) ? null : new Uri(url),
-            state,
-            column,
+            new WorkItemIdentity(number, title, string.IsNullOrEmpty(url) ? null : new Uri(url), state, column),
             history ?? [Visit()],
             assignee,
             agent,

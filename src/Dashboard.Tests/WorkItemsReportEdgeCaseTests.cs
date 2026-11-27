@@ -190,8 +190,8 @@ public class WorkItemsReportEdgeCaseTests
               "releases": [ "2.4.1", { "version": "2.4.2", "items": [ 3 ] }, null, { "version": "2.4.1", "items": [ 1 ] } ] }
             """)!;
 
-        Assert.Equal([3, 1], report.Items.Select(item => item.Number));
-        Assert.Equal(["Done", "Todo"], report.Items.Select(item => item.Column));
+        Assert.Equal([3, 1], report.Items.Select(item => item.Identity.Number));
+        Assert.Equal(["Done", "Todo"], report.Items.Select(item => item.Identity.Column));
         Assert.Equal(["2.4.2", "2.4.1"], report.Releases.Select(release => release.Version));
     }
 

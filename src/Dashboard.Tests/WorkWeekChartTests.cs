@@ -31,11 +31,7 @@ public class WorkWeekChartTests
 
     private static WorkItem Item(int number, WorkWorker worker, DateTimeOffset doneAt, IReadOnlyList<WorkPullRequest>? pulls = null) =>
         new(
-            number,
-            $"Item {number}",
-            null,
-            null,
-            WorkColumns.Done,
+            new WorkItemIdentity(number, $"Item {number}", null, null, WorkColumns.Done),
             [new ColumnVisit(WorkColumns.Review, Started), new ColumnVisit(WorkColumns.Done, doneAt)],
             null,
             null,

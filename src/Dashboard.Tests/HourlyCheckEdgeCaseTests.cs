@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Reflection;
 
 namespace Dashboard.Tests;
 
@@ -71,7 +72,16 @@ public class HourlyCheckEdgeCaseTests
 
     /// <summary>A check of the one moment, under whichever word the test names - so that a comparison of two
     /// checks is a comparison of their words and not of the moment they share.</summary>
-    private static HourlyCheck ReportedAs(string result) => new(result, Reported);
+    private static HourlyCheck ReportedAs(HourlyCheckResult result) => new(result, Reported);
+
+    /// <summary>
+    /// <see cref="HourlyCheckResultWords" />'s <c>Of</c>, the word-to-result half of the vocabulary, which is internal
+    /// to an app that declares no <c>InternalsVisibleTo</c>, so it is reached by its name.
+    /// </summary>
+    private static HourlyCheckResult? Of(string? word) =>
+        (HourlyCheckResult?)typeof(HourlyCheckResultWords)
+            .GetMethod("Of", BindingFlags.NonPublic | BindingFlags.Static)!
+            .Invoke(null, [word]);
 
     // ------------------------------------------------------------------ the three words
 
@@ -80,23 +90,25 @@ public class HourlyCheckEdgeCaseTests
     /// compares what it read against these three, and the page's own words (<see cref="HourlyCheckText.Result" />,
     /// <see cref="HourlyCheckText.Title" />) carry whichever one it found - so a change to one of these three is a
     /// change of the contract between the runbook's log and the page, and nothing but this test says the three
-    /// characters themselves.
+    /// characters themselves. The three results are a closed enum now, so the characters are those of their
+    /// <see cref="HourlyCheckResultWords.Word" />: a check can no longer hold a word outside the three (#897).
     /// </summary>
     [Fact]
     public void TheThreeWordsAreTheseThreeWords()
     {
-        Assert.Equal("healthy", HourlyCheck.Healthy);
-        Assert.Equal("unhealthy", HourlyCheck.Unhealthy);
-        Assert.Equal("unreachable", HourlyCheck.Unreachable);
+        Assert.Equal("healthy", HourlyCheck.Healthy.Word());
+        Assert.Equal("unhealthy", HourlyCheck.Unhealthy.Word());
+        Assert.Equal("unreachable", HourlyCheck.Unreachable.Word());
     }
 
     /// <summary>The three words are three, each already in its own lower case, trimmed and of no spaces: the
     /// reading lowers and trims what the file wrote before it compares the whole word against these three, so a
-    /// word that stood for two of them would make one report say two things.</summary>
+    /// word that stood for two of them would make one report say two things. The words are those of
+    /// <see cref="HourlyCheckResultWords.Word" />: a check can no longer hold a word outside the three (#897).</summary>
     [Fact]
     public void TheThreeWordsDifferFromOneAnotherAndSayThemselves()
     {
-        var words = new[] { HourlyCheck.Healthy, HourlyCheck.Unhealthy, HourlyCheck.Unreachable };
+        var words = new[] { HourlyCheck.Healthy.Word(), HourlyCheck.Unhealthy.Word(), HourlyCheck.Unreachable.Word() };
 
         Assert.Equal(3, words.Distinct(StringComparer.Ordinal).Count());
         Assert.All(words, word =>
@@ -105,6 +117,17 @@ public class HourlyCheckEdgeCaseTests
             Assert.Equal(word, word.ToLowerInvariant());
             Assert.DoesNotContain(" ", word, StringComparison.Ordinal);
         });
+    }
+
+    /// <summary>A value of <see cref="HourlyCheckResult" /> outside the three - only a cast makes one - has no
+    /// word: <see cref="HourlyCheckResultWords.Word" /> refuses it rather than say nothing, so the box can never say
+    /// <c>hourly: , 40 min ago</c> (#897). Called by its type's name, as the call a static helper is.</summary>
+    [Fact]
+    public void AResultOutsideTheThreeHasNoWord()
+    {
+        Assert.Equal("unhealthy", HourlyCheckResultWords.Word(HourlyCheckResult.Unhealthy));
+        Assert.Throws<ArgumentOutOfRangeException>(() => HourlyCheckResultWords.Word((HourlyCheckResult)3));
+        Assert.Throws<ArgumentOutOfRangeException>(() => HourlyCheckResultWords.Word((HourlyCheckResult)(-1)));
     }
 
     // ------------------------------------------------------------------ the two parts as the record holds them
@@ -129,37 +152,35 @@ public class HourlyCheckEdgeCaseTests
     }
 
     /// <summary>
-    /// The record lowers nothing, trims nothing and refuses nothing: the word it is handed is the word it says,
-    /// in another case, padded, the empty word, a word of spaces and a whole phrase. It is
-    /// <c>HourlyCheck.Read</c> that turns <c>HEALTHY</c> into <see cref="HourlyCheck.Healthy" /> and a blank into
-    /// no check, which is pinned below through the file - a check built by hand keeps whatever it was given, which
-    /// is why the box says the word exactly as the check carries it, and why the three words above are the only
-    /// words the page can be seen to say.
+    /// The same seven words the record used to hold as given, now read from the file by <c>HourlyCheck.Read</c>:
+    /// the other cases of <c>healthy</c> - and the padded one, which <c>JsonRead.Text</c> trims before the word is
+    /// compared - read as <see cref="HourlyCheckResult.Healthy" />, while the empty word, a word of spaces and a
+    /// phrase read as no check. A check can no longer hold a word outside the three (#897), so what was pinned of
+    /// the record is pinned of the reading that decides which words become a check.
     /// </summary>
     [Theory]
-    [InlineData("HEALTHY")]
-    [InlineData("Healthy")]
-    [InlineData(" healthy ")]
-    [InlineData("")]
-    [InlineData(" ")]
-    [InlineData("healthy and quick")]
-    [InlineData("hourly: healthy")]
-    public void TheWordIsHeldAsItIsGiven(string result)
+    [InlineData("HEALTHY", HourlyCheckResult.Healthy)]
+    [InlineData("Healthy", HourlyCheckResult.Healthy)]
+    [InlineData(" healthy ", HourlyCheckResult.Healthy)]
+    [InlineData("", null)]
+    [InlineData(" ", null)]
+    [InlineData("healthy and quick", null)]
+    [InlineData("hourly: healthy", null)]
+    public void TheWordOfTheFileIsReadOrRefused(string json, HourlyCheckResult? expected)
     {
-        Assert.Equal(result, new HourlyCheck(result, Reported).Result);
+        Assert.Equal(expected, Result($"\"{json}\"")?.Result);
     }
 
-    /// <summary>The part the file cannot leave blank is the one the record does not look at: a word of
-    /// <see langword="null" /> is kept, said as nothing and still tells itself apart from the empty word. The empty
-    /// word is not nothing, and the reading refuses both the same way - below.</summary>
+    /// <summary>No word and the empty word name no result: <see cref="HourlyCheckResultWords" /> refuses both, as
+    /// it refuses a word of spaces, and reads the other case of a word it knows. Retires the test of a check holding
+    /// a word of <see langword="null" />: a check can no longer hold a word outside the three (#897).</summary>
     [Fact]
-    public void AWordOfNullIsHeldTooBecauseTheRecordRefusesNothing()
+    public void NoWordAndTheEmptyWordNameNoResult()
     {
-        var nothing = new HourlyCheck(null!, Reported);
-
-        Assert.Null(nothing.Result);
-        Assert.NotEqual(nothing, new HourlyCheck("", Reported));
-        Assert.Contains("Result = ,", nothing.ToString(), StringComparison.Ordinal);
+        Assert.Null(Of(null));
+        Assert.Null(Of(""));
+        Assert.Null(Of(" "));
+        Assert.Equal(HourlyCheckResult.Unreachable, Of("UNREACHABLE"));
     }
 
     /// <summary>The moment is held to the tick, at the ends of its own number and beyond the second the box says:
@@ -198,7 +219,7 @@ public class HourlyCheckEdgeCaseTests
     [InlineData(""" "  Unreachable  " """, HourlyCheck.Unreachable)]
     [InlineData(""" "unreachable\n" """, HourlyCheck.Unreachable)]
     [InlineData(""" "\tunreachable\t" """, HourlyCheck.Unreachable)]
-    public void TheWordTheFileWritesComesBackAsOneOfTheThree(string result, string word)
+    public void TheWordTheFileWritesComesBackAsOneOfTheThree(string result, HourlyCheckResult word)
     {
         var found = Result(result);
 
@@ -347,7 +368,9 @@ public class HourlyCheckEdgeCaseTests
     /// <summary>A check differs in either of its parts, and in one of its words: the moment one second later, the
     /// word in the case the reading would have forgiven it (which is <c>"HEALTHY"</c> and not
     /// <see cref="HourlyCheck.Healthy" />), the empty word and the word of spaces and no word at all, these last
-    /// three apart from one another as much as from the word the report knows.</summary>
+    /// three apart from one another as much as from the word the report knows. The string cases <c>"HEALTHY"</c>,
+    /// <c>" healthy"</c>, <c>""</c> and <c>null</c> are retired one for one by the values 3, 99, -1 and 100 cast to
+    /// <see cref="HourlyCheckResult" />: a check can no longer hold a word outside the three (#897).</summary>
     [Fact]
     public void ACheckDiffersInEitherOfItsParts()
     {
@@ -357,14 +380,14 @@ public class HourlyCheckEdgeCaseTests
         Assert.NotEqual(check, check with { At = Reported.AddSeconds(1) });
         Assert.NotEqual(check, check with { Result = HourlyCheck.Unhealthy });
         Assert.NotEqual(check, check with { Result = HourlyCheck.Unreachable });
-        Assert.NotEqual(check, check with { Result = "HEALTHY" });
-        Assert.NotEqual(check, check with { Result = " healthy" });
-        Assert.NotEqual(check, check with { Result = "" });
-        Assert.NotEqual(check, check with { Result = null! });
+        Assert.NotEqual(check, check with { Result = (HourlyCheckResult)3 });
+        Assert.NotEqual(check, check with { Result = (HourlyCheckResult)99 });
+        Assert.NotEqual(check, check with { Result = (HourlyCheckResult)(-1) });
+        Assert.NotEqual(check, check with { Result = (HourlyCheckResult)100 });
 
-        Assert.NotEqual(new HourlyCheck("", Reported), new HourlyCheck(" ", Reported));
-        Assert.NotEqual(new HourlyCheck("", Reported), new HourlyCheck(null!, Reported));
-        Assert.NotEqual(new HourlyCheck(" ", Reported), new HourlyCheck(null!, Reported));
+        Assert.NotEqual(new HourlyCheck((HourlyCheckResult)(-1), Reported), new HourlyCheck((HourlyCheckResult)3, Reported));
+        Assert.NotEqual(new HourlyCheck((HourlyCheckResult)(-1), Reported), new HourlyCheck((HourlyCheckResult)100, Reported));
+        Assert.NotEqual(new HourlyCheck((HourlyCheckResult)3, Reported), new HourlyCheck((HourlyCheckResult)100, Reported));
     }
 
     /// <summary><c>with</c> names the part it changes and leaves the rest: the copy that names nothing is the check
@@ -390,7 +413,9 @@ public class HourlyCheckEdgeCaseTests
     }
 
     /// <summary>The two parts read out of the check in the order they stand in it - the word the record was handed
-    /// rather than the word the reading would have made, and the moment at the end of its number.</summary>
+    /// rather than the word the reading would have made, and the moment at the end of its number. The empty word
+    /// of the second check is retired by the value 99 cast to <see cref="HourlyCheckResult" />: a check can no
+    /// longer hold a word outside the three (#897).</summary>
     [Fact]
     public void TheTwoPartsReadOutOfTheCheck()
     {
@@ -399,35 +424,39 @@ public class HourlyCheckEdgeCaseTests
         Assert.Equal(HourlyCheck.Unhealthy, result);
         Assert.Equal(SameInstantWest, at);
 
-        var (noWord, never) = new HourlyCheck("", DateTimeOffset.MinValue);
+        var (noWord, never) = new HourlyCheck((HourlyCheckResult)99, DateTimeOffset.MinValue);
 
-        Assert.Equal("", noWord);
+        Assert.Equal((HourlyCheckResult)99, noWord);
         Assert.Equal(DateTimeOffset.MinValue, never);
     }
 
     /// <summary>The check says its two parts in their order, the name of each with the value it stands on: the word
     /// as the check holds it - the empty word and the other case saying themselves - and the moment in the hours
     /// the viewer reads, with the offset it stands on, the fraction of the second it holds left unsaid. (The words
-    /// the moment says are the viewer's, so they are checked in the hours every viewer shares.)</summary>
+    /// the moment says are the viewer's, so they are checked in the hours every viewer shares.) The record's own
+    /// <c>ToString</c> is unchanged and prints the enum's name, so the result now reads <c>Healthy</c>; the
+    /// <c>""</c> and <c>"HEALTHY"</c> cases are retired one for one by the value 99 cast to
+    /// <see cref="HourlyCheckResult" /> and by <see cref="HourlyCheckResult.Unhealthy" />: a check can no longer
+    /// hold a word outside the three (#897).</summary>
     [Fact]
     public void TheCheckSaysItsTwoPartsInTheirOrder()
     {
         CultureScope.Runs(CultureInfo.InvariantCulture, () =>
         {
             Assert.Equal(
-                "HourlyCheck { Result = healthy, At = 10/07/2026 01:02:13 +00:00 }",
+                "HourlyCheck { Result = Healthy, At = 10/07/2026 01:02:13 +00:00 }",
                 ReportedAs(HourlyCheck.Healthy).ToString());
             Assert.Equal(
-                "HourlyCheck { Result = unreachable, At = 10/06/2026 20:02:13 -05:00 }",
+                "HourlyCheck { Result = Unreachable, At = 10/06/2026 20:02:13 -05:00 }",
                 new HourlyCheck(HourlyCheck.Unreachable, SameInstantWest).ToString());
             Assert.Equal(
-                "HourlyCheck { Result = , At = 01/01/0001 00:00:00 +00:00 }",
-                new HourlyCheck("", DateTimeOffset.MinValue).ToString());
+                "HourlyCheck { Result = 99, At = 01/01/0001 00:00:00 +00:00 }",
+                new HourlyCheck((HourlyCheckResult)99, DateTimeOffset.MinValue).ToString());
             Assert.Equal(
-                "HourlyCheck { Result = HEALTHY, At = 12/31/9999 23:59:59 +00:00 }",
-                new HourlyCheck("HEALTHY", DateTimeOffset.MaxValue).ToString());
+                "HourlyCheck { Result = Unhealthy, At = 12/31/9999 23:59:59 +00:00 }",
+                new HourlyCheck(HourlyCheckResult.Unhealthy, DateTimeOffset.MaxValue).ToString());
             Assert.Equal(
-                "HourlyCheck { Result = healthy, At = 10/07/2026 01:02:13 +00:00 }",
+                "HourlyCheck { Result = Healthy, At = 10/07/2026 01:02:13 +00:00 }",
                 Moment("\"2026-10-07T01:02:13.4567890Z\"")!.ToString());
         });
     }

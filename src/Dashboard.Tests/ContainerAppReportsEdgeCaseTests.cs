@@ -184,11 +184,11 @@ public class ContainerAppReportsEdgeCaseTests
     [Fact]
     public void TheThreeWordsOfAResultAreTheThreeWordsTheFileWritesThemIn()
     {
-        Assert.Equal("healthy", HourlyCheck.Healthy);
-        Assert.Equal("unhealthy", HourlyCheck.Unhealthy);
-        Assert.Equal("unreachable", HourlyCheck.Unreachable);
+        Assert.Equal("healthy", HourlyCheck.Healthy.Word());
+        Assert.Equal("unhealthy", HourlyCheck.Unhealthy.Word());
+        Assert.Equal("unreachable", HourlyCheck.Unreachable.Word());
 
-        Assert.Equal(3, new[] { HourlyCheck.Healthy, HourlyCheck.Unhealthy, HourlyCheck.Unreachable }.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(3, new[] { HourlyCheck.Healthy.Word(), HourlyCheck.Unhealthy.Word(), HourlyCheck.Unreachable.Word() }.Distinct(StringComparer.Ordinal).Count());
     }
 
     /// <summary>
@@ -204,7 +204,7 @@ public class ContainerAppReportsEdgeCaseTests
 
         Assert.Equal(HourlyCheck.Unhealthy, check.Result);
         Assert.Equal(Checked, check.At);
-        Assert.Equal(check, new HourlyCheck("unhealthy", Checked));
+        Assert.Equal(check, new HourlyCheck(HourlyCheckResult.Unhealthy, Checked));
         Assert.Equal(check, check with { At = Checked.ToOffset(TimeSpan.FromMinutes(330)) });
         Assert.Equal(DateTimeOffset.MinValue, new HourlyCheck(HourlyCheck.Healthy, DateTimeOffset.MinValue).At);
         Assert.Equal(DateTimeOffset.MaxValue, new HourlyCheck(HourlyCheck.Healthy, DateTimeOffset.MaxValue).At);

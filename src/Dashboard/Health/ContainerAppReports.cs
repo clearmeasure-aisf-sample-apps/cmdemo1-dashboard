@@ -43,21 +43,53 @@ public sealed record ContainerAppReports(string Name, HourlyCheck? Last, HealthW
             : null;
 }
 
+/// <summary>
+/// What one hourly health report found for a container app: the three results the runbook "Health report" writes,
+/// and nothing else. The word the file writes and the box says is <see cref="HourlyCheckResultWords.Word"/>.
+/// </summary>
+public enum HourlyCheckResult
+{
+    Healthy,
+    Unhealthy,
+    Unreachable,
+}
+
+/// <summary>The lower-case words of <see cref="HourlyCheckResult"/>, as the file writes them and the box says them.</summary>
+public static class HourlyCheckResultWords
+{
+    /// <summary><c>healthy</c>, <c>unhealthy</c> or <c>unreachable</c>; any other value is refused.</summary>
+    public static string Word(this HourlyCheckResult result) => result switch
+    {
+        HourlyCheckResult.Healthy => "healthy",
+        HourlyCheckResult.Unhealthy => "unhealthy",
+        HourlyCheckResult.Unreachable => "unreachable",
+        _ => throw new ArgumentOutOfRangeException(nameof(result), result, "An hourly check is healthy, unhealthy or unreachable."),
+    };
+
+    /// <summary>The result a word of the file names, in any case; null for any other word, or none.</summary>
+    internal static HourlyCheckResult? Of(string? word) => word?.ToLowerInvariant() switch
+    {
+        "healthy" => HourlyCheckResult.Healthy,
+        "unhealthy" => HourlyCheckResult.Unhealthy,
+        "unreachable" => HourlyCheckResult.Unreachable,
+        _ => null,
+    };
+}
+
 /// <summary>What one hourly health report found for a container app, and when.</summary>
 /// <param name="Result"><see cref="Healthy"/>, <see cref="Unhealthy"/> or <see cref="Unreachable"/>.</param>
 /// <param name="At">When that report ended.</param>
-public sealed record HourlyCheck(string Result, DateTimeOffset At)
+public sealed record HourlyCheck(HourlyCheckResult Result, DateTimeOffset At)
 {
-    public const string Healthy = "healthy";
-    public const string Unhealthy = "unhealthy";
-    public const string Unreachable = "unreachable";
+    public const HourlyCheckResult Healthy = HourlyCheckResult.Healthy;
+    public const HourlyCheckResult Unhealthy = HourlyCheckResult.Unhealthy;
+    public const HourlyCheckResult Unreachable = HourlyCheckResult.Unreachable;
 
     /// <summary>The result; null unless it is one of the three words and has its time.</summary>
-    internal static HourlyCheck? Read(JsonElement? section)
-    {
-        var result = JsonRead.Text(section, "result")?.ToLowerInvariant();
-        return result is Healthy or Unhealthy or Unreachable && JsonRead.Time(section, "at") is { } at ? new HourlyCheck(result, at) : null;
-    }
+    internal static HourlyCheck? Read(JsonElement? section) =>
+        HourlyCheckResultWords.Of(JsonRead.Text(section, "result")) is { } result && JsonRead.Time(section, "at") is { } at
+            ? new HourlyCheck(result, at)
+            : null;
 }
 
 /// <summary>
@@ -91,7 +123,7 @@ public static class HourlyCheckText
 
     /// <summary><c>hourly: healthy, 40 min ago</c>; <see cref="NoRecentCheck"/> without a result of the last two hours.</summary>
     public static string Result(ContainerAppReports? reports, DateTimeOffset now) =>
-        RecentResult(reports, now) is { } last ? $"hourly: {last.Result}, {TimeText.Ago(last.At, now)}" : NoRecentCheck;
+        RecentResult(reports, now) is { } last ? $"hourly: {last.Result.Word()}, {TimeText.Ago(last.At, now)}" : NoRecentCheck;
 
     /// <summary>
     /// <c>24 h: 23 of 24 · 7 d: 160 of 168</c>: of the reports that asked the app, those that found it healthy. A time
@@ -112,7 +144,7 @@ public static class HourlyCheckText
         {
             var when = string.Format(CultureInfo.InvariantCulture, HourlyReportWords.When, TimeText.DateAndTime(last.At, zone), TimeText.Ago(last.At, now));
             var found = RecentResult(reports, now) is null ? HourlyReportWords.StaleReport : HourlyReportWords.RecentReport;
-            words.Add(string.Format(CultureInfo.InvariantCulture, found, when, last.Result));
+            words.Add(string.Format(CultureInfo.InvariantCulture, found, when, last.Result.Word()));
         }
         else
         {

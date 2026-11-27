@@ -22,6 +22,12 @@ public sealed record ClusterStatus(
     IReadOnlyList<ClusterNode> Nodes,
     IReadOnlyList<ClusterNamespace> Namespaces)
 {
+    /// <summary>The cluster file's top-level list word for its nodes.</summary>
+    private const string NodesWord = "nodes";
+
+    /// <summary>The cluster file's top-level list word for its namespaces.</summary>
+    private const string NamespacesWord = "namespaces";
+
     /// <summary>A file is stale when it is older than this many of the collector's intervals.</summary>
     public const int StaleIntervals = 4;
 
@@ -64,17 +70,17 @@ public sealed record ClusterStatus(
                 return new Parsed<ClusterStatus>(null, FileProblems.NotAnObject);
             }
 
-            if (!JsonRead.HasArray(root, "nodes") && !JsonRead.HasArray(root, "namespaces"))
+            if (!JsonRead.HasArray(root, NodesWord) && !JsonRead.HasArray(root, NamespacesWord))
             {
-                return new Parsed<ClusterStatus>(null, "the file has neither nodes nor namespaces");
+                return new Parsed<ClusterStatus>(null, $"the file has neither {NodesWord} nor {NamespacesWord}");
             }
 
             return new Parsed<ClusterStatus>(new ClusterStatus(
                 JsonRead.Time(root, "generated"),
                 JsonRead.Count(root, "intervalSeconds"),
                 JsonRead.Text(root, "kubernetesVersion"),
-                JsonRead.Named(root, "nodes", ClusterNode.Read),
-                JsonRead.Named(root, "namespaces", ClusterNamespace.Read)));
+                JsonRead.Named(root, NodesWord, ClusterNode.Read),
+                JsonRead.Named(root, NamespacesWord, ClusterNamespace.Read)));
         }
         catch (JsonException)
         {

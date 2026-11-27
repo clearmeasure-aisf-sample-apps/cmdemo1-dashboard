@@ -180,16 +180,28 @@ public static class DeliveryText
     private const double HoursPerDay = 24.0;
 
     /// <summary>
+    /// The tenth format: at most one decimal, and a whole number is written without it (<c>5.2 h</c>, <c>2 h</c>).
+    /// Both lead-time units (hours and days) and the failover seconds use it.
+    /// </summary>
+    private const string TenthFormat = "0.#";
+
+    /// <summary>The whole-minute format: the already-rounded minutes of a lead time, written without decimals.</summary>
+    private const string WholeFormat = "0";
+
+    /// <summary>
     /// <c>5.2 h</c>; under an hour <c>40 min</c>; from two days on <c>3.5 d</c>. Unlike
-    /// <see cref="DeploymentText.Age" />, a lead time keeps its tenth (the format <c>0.#</c>) rather than
+    /// <see cref="DeploymentText.Age" />, a lead time keeps its tenth (<see cref="TenthFormat" />) rather than
     /// rounding to whole units.
     /// </summary>
     public static string LeadTime(double hours) => hours switch
     {
-        < OneHour => string.Create(CultureInfo.InvariantCulture, $"{Math.Round(hours * MinutesPerHour):0} {TimeText.MinutesUnit}"),
-        < HoursBeforeDays => string.Create(CultureInfo.InvariantCulture, $"{hours:0.#} {TimeText.HoursUnit}"),
-        _ => string.Create(CultureInfo.InvariantCulture, $"{hours / HoursPerDay:0.#} {TimeText.DaysUnit}"),
+        < OneHour => $"{Math.Round(hours * MinutesPerHour).ToString(WholeFormat, CultureInfo.InvariantCulture)} {TimeText.MinutesUnit}",
+        < HoursBeforeDays => $"{Tenth(hours)} {TimeText.HoursUnit}",
+        _ => $"{Tenth(hours / HoursPerDay)} {TimeText.DaysUnit}",
     };
+
+    /// <summary>A number in <see cref="TenthFormat" />, in the invariant culture: <c>5.2</c>, <c>44</c>.</summary>
+    private static string Tenth(double value) => value.ToString(TenthFormat, CultureInfo.InvariantCulture);
 
     /// <summary>Whose delivery a card shows: <c>ui in uat</c>; the system project by what it is.</summary>
     public static string Context(string name, string environment) =>
@@ -270,7 +282,7 @@ public static class DeliveryText
         var text = string.Join(", ", parts);
         if (test.Seconds is { } seconds)
         {
-            var took = string.Create(CultureInfo.InvariantCulture, $"the standby answered after {seconds:0.#} s");
+            var took = $"the standby answered after {Tenth(seconds)} {TimeText.SecondsUnit}";
             text = text.Length > 0 ? $"{text}: {took}" : took;
         }
 

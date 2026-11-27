@@ -175,6 +175,9 @@ public static class DatabaseText
     /// </summary>
     public const string NotSaid = "\u2013";
 
+    /// <summary>A count as the list writes it: <c>1,234</c>, thousands grouped, no decimals, invariant culture.</summary>
+    private const string CountFormat = "#,0";
+
     /// <summary>The line the view shows when the live file's tables are not the diagram's.</summary>
     public const string SchemaChanged = "The schema changed since this diagram was drawn: deploy the dashboard again.";
 
@@ -329,7 +332,7 @@ public static class DatabaseText
 
     /// <summary>A count for the list: <c>1,234</c>; <see cref="NotSaid" /> for one nobody counted.</summary>
     public static string Number(long? number) =>
-        number is { } value ? value.ToString("#,0", CultureInfo.InvariantCulture) : NotSaid;
+        number is { } value ? value.ToString(CountFormat, CultureInfo.InvariantCulture) : NotSaid;
 
     private static Dictionary<string, DatabaseLiveTable> LiveByAlias(DatabaseLive? live)
     {

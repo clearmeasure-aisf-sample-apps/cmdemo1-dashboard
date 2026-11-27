@@ -362,16 +362,16 @@ public static class DeploymentActivity
             $"The last deployment of {last.Project} to {last.Environment} that ended: {Sentence(last, now)} ({TimeText.DateAndTime(last.Finished, zone)}){By(last.StartedBy, ", started by ")}.",
             last.Url);
 
-    /// <summary><c>2.4.43 deployed 5 h ago by ai-ops</c>, <c>2.4.43 failed 5 h ago by ai-ops</c>, <c>2.4.43 canceled 5 h ago</c>.</summary>
+    /// <summary>
+    /// <c>2.4.43 deployed 5 h ago by ai-ops</c>, <c>2.4.43 failed 5 h ago by ai-ops</c>, <c>2.4.43 canceled 5 h ago</c>.
+    /// The word is the mark's kind (<see cref="ActivityKind.OfResult"/>); the file's own word for a result the page
+    /// does not know.
+    /// </summary>
     private static string Brief(RecentDeployment last, DateTimeOffset now)
     {
-        var result = last.Result switch
-        {
-            DeploymentState.Succeeded => "deployed",
-            DeploymentState.Failed => "failed",
-            DeploymentState.Canceled => "canceled",
-            _ => last.ResultText,
-        };
+        var result = last.Result is DeploymentState.Succeeded or DeploymentState.Failed or DeploymentState.Canceled
+            ? ActivityKind.OfResult(last.Result)
+            : last.ResultText;
         return $"{last.Release} {result} {DeploymentText.Ago(now - last.Finished)}{By(last.StartedBy, " by ")}";
     }
 

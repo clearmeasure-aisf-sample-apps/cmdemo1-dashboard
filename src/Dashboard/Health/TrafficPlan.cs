@@ -12,22 +12,13 @@ namespace Dashboard.Health;
 /// <see cref="TrafficRun.Values"/> (#1777), and the run is the only way a caller gets them. What the plan keeps of
 /// them: <see cref="AnswerWithinSeconds"/>, the const the shared-wait guard pins here, naming the wait the run
 /// declares, with its duration <see cref="AnswerWithin"/> beside it the way <see cref="CheckEverySeconds"/> has
-/// <see cref="CheckEvery"/>; and <see cref="PerSecond"/> and <see cref="Seconds"/>, which the plan's own members
-/// read no longer and name the run's numbers for the guard that still reads them from the plan.
+/// <see cref="CheckEvery"/>.
 /// <see cref="CheckEverySeconds"/> is none of them, being how often the page checks while a run lasts - the plan's
 /// own rule, read by <see cref="IntervalNote"/>.
 /// </summary>
 public sealed record TrafficPlan(string Environment, IReadOnlyList<Uri> Addresses, IReadOnlyList<string> Targets)
 {
     public static readonly IReadOnlyList<string> DefaultPaths = ["/"];
-
-    /// <summary>Requests per second while the button runs: the run's own <see cref="TrafficRun.Values.PerSecond"/>.
-    /// The number is declared on the run; this names it for the guard that still reads it from the plan.</summary>
-    public static int PerSecond => TrafficRun.Values.PerSecond;
-
-    /// <summary>How long one press sends: the run's own <see cref="TrafficRun.Values.Seconds"/>. The number is
-    /// declared on the run; this names it for the guard that still reads it from the plan.</summary>
-    public static int Seconds => TrafficRun.Values.Seconds;
 
     /// <summary>
     /// How long a request waits for its answer before the browser gives it up: as long as a check of the page

@@ -46,16 +46,17 @@ public class TrafficRunOwnsItsNumbersTests
     /// declares, and not the numbers read back out of the plan they once came from.
     /// </summary>
     [Fact]
-    public void TheRunIsWrittenFromItsOwnNumbers() =>
-        Assert.Equal(
-            new TrafficRun(TrafficRun.Values.PerSecond, TrafficRun.Values.Seconds, TrafficRun.Values.AnswerWithinSeconds),
-            TrafficRun.Default);
+    public void TheRunIsWrittenFromItsOwnNumbers()
+    {
+        Assert.Equal(TrafficRun.Values.PerSecond, TrafficRun.Default.PerSecond);
+        Assert.Equal(TrafficRun.Values.Seconds, TrafficRun.Default.Seconds);
+        Assert.Equal(TrafficRun.Values.AnswerWithinSeconds, TrafficRun.Default.AnswerWithinSeconds);
+    }
 
     /// <summary>
-    /// The plan keeps no second copy of the run's numbers: where a guard still reads them from the plan, the plan
-    /// names the consts the run declares - <c>PerSecond</c> and <c>Seconds</c> are no literals of the plan at
-    /// all, and the plan's <c>AnswerWithinSeconds</c>, the const the shared-wait guard pins on the plan, is the
-    /// run's own wait.
+    /// The plan keeps no second copy of the run's numbers: the plan's <c>AnswerWithinSeconds</c>, the const the
+    /// shared-wait guard pins on the plan, is the run's own wait, and the plan declares no literal of its own for
+    /// the run's other two numbers.
     /// </summary>
     [Fact]
     public void ThePlanNamesTheRunsNumbersAndKeepsNoSecondCopyOfThem()
@@ -65,16 +66,42 @@ public class TrafficRunOwnsItsNumbersTests
                 .Where(field => field.Name is "PerSecond" or "Seconds"),
             field => field.IsLiteral);
 
-        Assert.Equal(TrafficRun.Values.PerSecond, TrafficPlan.PerSecond);
-        Assert.Equal(TrafficRun.Values.Seconds, TrafficPlan.Seconds);
         Assert.Equal(TrafficRun.Values.AnswerWithinSeconds, TrafficPlan.AnswerWithinSeconds);
+    }
+
+    /// <summary>
+    /// No caller outside the run can write a run: <see cref="TrafficRun" /> declares no public instance
+    /// constructor, and the one run the app has, <see cref="TrafficRun.Default" />, is the same value on every
+    /// read.
+    /// </summary>
+    [Fact]
+    public void NoCallerOutsideTheRunCanWriteARun()
+    {
+        Assert.Empty(typeof(TrafficRun).GetConstructors(BindingFlags.Public | BindingFlags.Instance));
+
+        Assert.Same(TrafficRun.Default, TrafficRun.Default);
+    }
+
+    /// <summary>
+    /// The plan no longer names the run's <c>PerSecond</c> or <c>Seconds</c> at all: those two numbers live only on
+    /// the run's <see cref="TrafficRun.Values" />, and the plan declares no member of either name - not public, not
+    /// private, not static, not instance.
+    /// </summary>
+    [Fact]
+    public void ThePlanNoLongerNamesTheRunsPerSecondOrSeconds()
+    {
+        Assert.Empty(
+            typeof(TrafficPlan).GetMember("PerSecond", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance));
+
+        Assert.Empty(
+            typeof(TrafficPlan).GetMember("Seconds", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance));
     }
 
     /// <summary>
     /// The run is the only way a caller gets the numbers: no source file of the app reads <c>PerSecond</c>,
     /// <c>Seconds</c> or <c>AnswerWithinSeconds</c> from the plan - not the panel's call, countdown and sentence,
-    /// not the count's clause about a request given up. The plan's own file excepted, where the members the guard
-    /// pins are declared, naming the run's numbers.
+    /// not the count's clause about a request given up. The plan's own file excepted, where the const the guard
+    /// pins is declared, naming the run's wait.
     /// </summary>
     [Fact]
     public void NoFileOfTheAppReadsTheNumbersFromThePlan()

@@ -35,9 +35,9 @@ public partial class TrafficRunNamedValueTests
     [Fact]
     public void TheRunIsTheThreeConstsOfThePlanAndKeepsNoCopyOfThem()
     {
-        Assert.Equal(
-            new TrafficRun(TrafficPlan.PerSecond, TrafficPlan.Seconds, TrafficPlan.AnswerWithinSeconds),
-            TrafficRun.Default);
+        Assert.Equal(TrafficRun.Values.PerSecond, TrafficRun.Default.PerSecond);
+        Assert.Equal(TrafficRun.Values.Seconds, TrafficRun.Default.Seconds);
+        Assert.Equal(TrafficPlan.AnswerWithinSeconds, TrafficRun.Default.AnswerWithinSeconds);
 
         Assert.DoesNotContain(
             typeof(TrafficRun).GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly),

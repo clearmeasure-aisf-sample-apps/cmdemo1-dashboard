@@ -94,6 +94,18 @@ public class CostTextEdgeCaseTests
         Assert.Equal("NaN", CostText.Money(double.NaN, null));
     }
 
+    /// <summary>The rounding digits and the format string agree: an amount that rounds to nothing has no sign, and
+    /// the digits after the point are always exactly two, with thousands grouped. Changing one without the other
+    /// would let <c>-0.004</c> print as <c>-$0.004</c> or <c>$0.000</c>; these tests pin the agreement.</summary>
+    [Fact]
+    public void TheCentsDigitsAndTheMoneyFormatAgree()
+    {
+        Assert.Equal("1,204.00", CostText.Money(1204, null));
+        Assert.Equal("$0.01", CostText.Money(0.005, "USD"));
+        Assert.Equal("$0.00", CostText.Money(-0.004, "USD"));
+        Assert.Equal("1,234,567.89 EUR", CostText.Money(1234567.891, "EUR"));
+    }
+
     /// <summary>The currency is compared with <c>USD</c> by sense of case and by nothing else, and an empty code is
     /// a code that is not <c>USD</c>: the number stands with a trailing space and no symbol. Awkward, and the shape
     /// the page would print today - pinned so that a change of mind here is a change of the page's words.</summary>

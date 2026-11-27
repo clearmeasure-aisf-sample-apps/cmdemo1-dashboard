@@ -127,7 +127,9 @@ public static class HourlyCheckText
 
     /// <summary><c>hourly: healthy, 40 min ago</c>; <see cref="NoRecentCheck"/> without a result of the last two hours.</summary>
     public static string Result(ContainerAppReports? reports, DateTimeOffset now) =>
-        RecentResult(reports, now) is { } last ? $"hourly: {last.Result.Word()}, {TimeText.Ago(last.At, now)}" : NoRecentCheck;
+        RecentResult(reports, now) is { } last
+            ? string.Format(CultureInfo.InvariantCulture, BoxWords.Result, last.Result.Word(), TimeText.Ago(last.At, now))
+            : NoRecentCheck;
 
     /// <summary>
     /// <c>24 h: 23 of 24 · 7 d: 160 of 168</c>: of the reports that asked the app, those that found it healthy. A time
@@ -136,8 +138,8 @@ public static class HourlyCheckText
     /// </summary>
     public static string? Counts(ContainerAppReports? reports)
     {
-        var parts = Counted(reports).Select(counted => $"{counted.Kind.Label}: {Count(counted.Window)}").ToList();
-        return parts.Count == 0 ? null : string.Join(" · ", parts);
+        var parts = Counted(reports).Select(counted => string.Format(CultureInfo.InvariantCulture, BoxWords.WindowCount, counted.Kind.Label, Count(counted.Window))).ToList();
+        return parts.Count == 0 ? null : string.Join(BoxWords.PartSeparator, parts);
     }
 
     /// <summary>The tooltip: what the report is, what it last found and when, and what it counted.</summary>
@@ -183,6 +185,23 @@ public static class HourlyCheckText
 
     /// <summary>A window the hourly report counts: its short label on the box, its words in a sentence, and where the report keeps it.</summary>
     private sealed record CountedWindow(string Label, string InSentence, Func<ContainerAppReports, HealthWindow?> Of);
+
+    /// <summary>
+    /// The words of the box's two lines, named so the box's template reads in one place and <see cref="Result"/> and
+    /// <see cref="Counts"/> only choose what to fill: <c>hourly: healthy, 40 min ago</c>, then
+    /// <c>24 h: 23 of 24 · 7 d: 160 of 168</c>.
+    /// </summary>
+    private static class BoxWords
+    {
+        /// <summary>The first line of the box: {0} the result word, {1} how long ago the result is.</summary>
+        public static readonly CompositeFormat Result = CompositeFormat.Parse("hourly: {0}, {1}");
+
+        /// <summary>One part of the box's count line: {0} the window's short label, {1} its count.</summary>
+        public static readonly CompositeFormat WindowCount = CompositeFormat.Parse("{0}: {1}");
+
+        /// <summary>The separator between the counted windows: <c>24 h: 23 of 24 · 7 d: 160 of 168</c>.</summary>
+        public const string PartSeparator = " · ";
+    }
 
     /// <summary>
     /// The sentences of <see cref="Title"/>, named so the tooltip's template reads in one place and

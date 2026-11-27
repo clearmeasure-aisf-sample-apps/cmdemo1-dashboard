@@ -91,6 +91,8 @@ public static class ApplicationParser
     private const int MostAssemblies = 2000;
     private const int MostEntries = 1000;
     private const int LongestText = 300;
+    private const string NameField = "name";
+    private const string EntryField = "entry";
 
     public static ApplicationArchitecture? Parse(string? json)
     {
@@ -102,23 +104,23 @@ public static class ApplicationParser
         using (document)
         {
             var root = document.RootElement;
-            var entry = Text(root, "entry");
+            var entry = Text(root, EntryField);
             var assemblies = new List<ApplicationAssembly>();
             foreach (var element in JsonRead.Items(root, "assemblies").Take(MostAssemblies))
             {
-                if (Text(element, "name") is not { } name)
+                if (Text(element, NameField) is not { } name)
                 {
                     continue;
                 }
 
                 var packages = JsonRead.Items(element, "packages")
                     .Take(MostEntries)
-                    .Where(package => Text(package, "name") is not null)
-                    .Select(package => new ApplicationPackage(Text(package, "name")!, Text(package, "version")))
+                    .Select(Package)
+                    .OfType<ApplicationPackage>()
                     .ToList();
                 assemblies.Add(new ApplicationAssembly(
                     name,
-                    JsonRead.Flag(element, "entry") ?? string.Equals(name, entry, StringComparison.Ordinal),
+                    JsonRead.Flag(element, EntryField) ?? string.Equals(name, entry, StringComparison.Ordinal),
                     Strings(element, "references"),
                     packages));
             }
@@ -131,6 +133,9 @@ public static class ApplicationParser
         JsonRead.Text(parent, name) is { } text ? Shorten(text) : null;
 
     private static string Shorten(string text) => text.Length <= LongestText ? text : text[..LongestText];
+
+    private static ApplicationPackage? Package(JsonElement package) =>
+        Text(package, NameField) is { } name ? new ApplicationPackage(name, Text(package, "version")) : null;
 
     private static List<string> Strings(JsonElement parent, string name) =>
     [

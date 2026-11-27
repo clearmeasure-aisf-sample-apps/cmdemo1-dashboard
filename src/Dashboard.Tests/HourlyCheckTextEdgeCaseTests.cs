@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Dashboard.Tests;
 
 /// <summary>
@@ -101,6 +103,32 @@ public class HourlyCheckTextEdgeCaseTests
         }
 
         Assert.Equal(line, HourlyCheckText.Result(reports, Now));
+    }
+
+    // ---------------------------------------------------------------- the line, in a culture that is not the invariant one
+
+    /// <summary>
+    /// The line is said in the invariant culture and does not follow the culture the thread stands in: with the
+    /// thread in <c>fi-FI</c>, where a comma would otherwise take the place of a decimal point, the line is the
+    /// same word for word - the separator between the result word and the age is the comma the invariant culture
+    /// says, and the age is counted in the whole units the invariant culture counts them in.
+    /// </summary>
+    [Fact]
+    public void TheLineIsSaidInTheInvariantCultureAndNotTheThreadsCulture()
+    {
+        var reports = Reports("ui", new HourlyCheck(HourlyCheck.Healthy, Checked));
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("fi-FI");
+
+            Assert.Equal("hourly: healthy, 40 min ago", HourlyCheckText.Result(reports, Now));
+            Assert.Equal("24 h: 23 of 24 · 7 d: 160 of 168", HourlyCheckText.Counts(Reports("scorecard", new HourlyCheck(HourlyCheck.Healthy, Checked), new HealthWindow(24, 23), new HealthWindow(168, 160))));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
     }
 
     // ---------------------------------------------------------------- the word the check holds, in the line and the tooltip

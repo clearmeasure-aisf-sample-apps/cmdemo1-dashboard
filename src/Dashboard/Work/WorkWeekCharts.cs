@@ -8,6 +8,19 @@ internal static class WorkWeekCharts
     /// <summary>The height of the chart, in its own units. A bar of the largest count fills it.</summary>
     internal const double Height = 36;
 
+    /// <summary>
+    /// How many decimals <see cref="BarHeight" /> keeps. The razor's <see cref="PixelFormat" /> writes exactly this
+    /// many, so the two must agree: change one and the bar's drawn height no longer matches its number.
+    /// </summary>
+    internal const int HeightDecimals = 2;
+
+    /// <summary>
+    /// The format the razor writes every bar coordinate with: at most <see cref="HeightDecimals" /> decimals, a whole
+    /// number without a point. It keeps exactly <see cref="HeightDecimals" /> places, so it must change with
+    /// <see cref="HeightDecimals" /> or a bar's number and its drawn height disagree.
+    /// </summary>
+    internal const string PixelFormat = "0.##";
+
     /// <summary>The weekly chart; null when the file gives no week.</summary>
     internal static WorkWeekChart? Chart(IReadOnlyList<WorkWeek> weeks)
     {
@@ -24,7 +37,7 @@ internal static class WorkWeekCharts
 
     /// <summary>How tall a bar is in the chart's units. Zero stays zero, so a week with nothing is a gap, not a sliver.</summary>
     internal static double BarHeight(int value, int scale) =>
-        scale <= 0 || value <= 0 ? 0 : Math.Round(Height * value / scale, 2);
+        scale <= 0 || value <= 0 ? 0 : Math.Round(Height * value / scale, HeightDecimals);
 
     /// <summary>
     /// The one sentence the bar tooltip, the line under the chart, and the bot throughput line all say: who, how

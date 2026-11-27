@@ -176,6 +176,53 @@ public class WorkWeekChartTests
     public void TheChartIsThirtySixUnitsTallAndItsTallestBarFillsIt() =>
         Assert.Equal(WorkItemsText.ChartHeight, WorkItemsText.BarHeight(9, 9));
 
+    /// <summary>
+    /// The issue's own examples, pinned: <c>BarHeight(1, 3)</c> is 12, and <c>BarHeight(1, 7)</c> gives 5.14 - a bar's
+    /// height keeps at most two decimals, the same two the shared <see cref="WorkItemsText.PixelFormat" /> writes.
+    /// </summary>
+    [Fact]
+    public void BarHeightKeepsAtMostTwoDecimalsAndTheIssueExamplesHold()
+    {
+        Assert.Equal(12d, WorkItemsText.BarHeight(1, 3));
+        Assert.Equal(5.14d, WorkItemsText.BarHeight(1, 7));
+
+        // For a sweep of shares a bar can be - whole, fractional, and the bottom of an int - the height never
+        // carries more than two decimals.
+        var scales = new[] { 1, 3, 7, 12, 31, 32, 97, 1000, int.MaxValue };
+        foreach (var scale in scales)
+        {
+            foreach (var value in new[] { 0, 1, 2, 3, 5, 6, 7, 31, 32, int.MaxValue })
+            {
+                var height = WorkItemsText.BarHeight(value, scale);
+                Assert.Equal(Math.Round(height, 2), height);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Writing a <c>BarHeight</c> result with the shared <see cref="WorkItemsText.PixelFormat" /> loses no digit: the
+    /// string the razor puts in the markup parses back to the very height the bar is drawn at, in every culture the
+    /// page could be read in.
+    /// </summary>
+    [Fact]
+    public void ThePixelFormatRoundTripsBarHeightExactlyWithNoLostDigits()
+    {
+        var samples = new[] { 0, 1, 2, 3, 5, 6, 7, 31, 97 };
+        foreach (var scale in samples)
+        {
+            foreach (var value in samples)
+            {
+                var height = WorkItemsText.BarHeight(value, scale);
+                var text = height.ToString(WorkItemsText.PixelFormat, CultureInfo.InvariantCulture);
+                Assert.Equal(height, double.Parse(text, CultureInfo.InvariantCulture));
+            }
+        }
+
+        // The two decimals the rounding keeps are exactly the two the format writes: 5.14 stays 5.14, not 5.1.
+        Assert.Equal("5.14", WorkItemsText.BarHeight(1, 7).ToString(WorkItemsText.PixelFormat, CultureInfo.InvariantCulture));
+        Assert.Equal("12", WorkItemsText.BarHeight(1, 3).ToString(WorkItemsText.PixelFormat, CultureInfo.InvariantCulture));
+    }
+
     // ---- LatestWeek ----
 
     [Fact]
@@ -371,9 +418,10 @@ public class WorkWeekChartTests
         var text = File.ReadAllText(WeekChartComponent());
 
         Assert.Contains(
-            """<svg class="weeks" viewBox="0 0 @Pixel(width) @Pixel(WorkItemsText.ChartHeight)" width="@Pixel(width * 3)" height="@Pixel(WorkItemsText.ChartHeight * 1.4)" role="img" aria-label="@Chart.Title" focusable="false">""",
+            """<svg class="weeks" viewBox="0 0 @Pixel(width) @Pixel(WorkItemsText.ChartHeight)" width="@Pixel(width * DrawnWidthScale)" height="@Pixel(WorkItemsText.ChartHeight * DrawnHeightScale)" role="img" aria-label="@Chart.Title" focusable="false">""",
             text,
             StringComparison.Ordinal);
+        Assert.Contains("var width = Chart.Bars.Count * BarPitch;", text, StringComparison.Ordinal);
         Assert.Contains("<title>@Chart.Title</title>", text, StringComparison.Ordinal);
         Assert.Contains("<title>@bar.Title</title>", text, StringComparison.Ordinal);
     }
@@ -386,12 +434,56 @@ public class WorkWeekChartTests
         Assert.Contains("var merged = WorkItemsText.BarHeight(bar.Merged, Chart.Scale);", text, StringComparison.Ordinal);
         Assert.Contains("var deployed = WorkItemsText.BarHeight(bar.DeployedProd, Chart.Scale);", text, StringComparison.Ordinal);
         Assert.Contains(
-            """<rect class="weeks__merged" x="@Pixel(x)" y="@Pixel(WorkItemsText.ChartHeight - merged)" width="5" height="@Pixel(merged)">""",
+            """<rect class="weeks__merged" x="@Pixel(x)" y="@Pixel(WorkItemsText.ChartHeight - merged)" width="@BarWidth" height="@Pixel(merged)">""",
             text,
             StringComparison.Ordinal);
         Assert.Contains(
-            """<rect class="weeks__deployed" x="@Pixel(x + 6)" y="@Pixel(WorkItemsText.ChartHeight - deployed)" width="5" height="@Pixel(deployed)">""",
+            """<rect class="weeks__deployed" x="@Pixel(x + DeployedOffset)" y="@Pixel(WorkItemsText.ChartHeight - deployed)" width="@BarWidth" height="@Pixel(deployed)">""",
             text,
             StringComparison.Ordinal);
+        Assert.Contains("var x = index * BarPitch;", text, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The bar geometry of the chart is named, not written as bare numbers: the pitch of a week's slot, the width of
+    /// each bar, the offset of the deployed bar from its merged bar, and the scales the drawn size takes against the
+    /// viewBox. The numbers themselves are the ones a reader of the chart has always seen.
+    /// </summary>
+    [Fact]
+    public void TheBarsGeometryIsNamedAndItsNumbersAreTheOnesTheChartHasAlwaysDrawn()
+    {
+        var text = File.ReadAllText(WeekChartComponent());
+
+        Assert.Contains("private const int BarPitch = 14;", text, StringComparison.Ordinal);
+        Assert.Contains("private const int BarWidth = 5;", text, StringComparison.Ordinal);
+        Assert.Contains("private const int DeployedOffset = 6;", text, StringComparison.Ordinal);
+        Assert.Contains("private const int DrawnWidthScale = 3;", text, StringComparison.Ordinal);
+        Assert.Contains("private const double DrawnHeightScale = 1.4;", text, StringComparison.Ordinal);
+        // No bare number is left where a name belongs: the pitch, the offset and the two scales are not written inline.
+        Assert.DoesNotContain("Bars.Count * 14", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("index * 14", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("x + 6", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("width * 3", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("ChartHeight * 1.4", text, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The chart writes every bar coordinate with the shared <see cref="WorkItemsText.PixelFormat" />, not a format it
+    /// spells for itself, and that format keeps exactly the decimals <c>BarHeight</c> rounds to, so a bar's number and
+    /// its drawn height agree.
+    /// </summary>
+    [Fact]
+    public void ThePixelFormatIsSharedAndKeepsTheDecimalsBarHeightRoundsTo()
+    {
+        var text = File.ReadAllText(WeekChartComponent());
+
+        Assert.Contains("value.ToString(WorkItemsText.PixelFormat, CultureInfo.InvariantCulture)", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("0.##", text, StringComparison.Ordinal);
+        Assert.Equal("0.##", WorkItemsText.PixelFormat);
+
+        // The format keeps exactly two places: two decimals are written, and a whole number is not padded.
+        Assert.Equal("5.14", 5.14.ToString(WorkItemsText.PixelFormat, CultureInfo.InvariantCulture));
+        Assert.Equal("12", 12d.ToString(WorkItemsText.PixelFormat, CultureInfo.InvariantCulture));
+        Assert.Equal("0", 0d.ToString(WorkItemsText.PixelFormat, CultureInfo.InvariantCulture));
     }
 }

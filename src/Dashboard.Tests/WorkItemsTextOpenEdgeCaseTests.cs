@@ -64,9 +64,9 @@ public class WorkItemsTextOpenEdgeCaseTests
     // ---- the surface: every fixed word, and every member the class has ----
 
     /// <summary>
-    /// The whole of what <see cref="WorkItemsText" /> declares of itself: eight fixed words (seven of them the
-    /// sentence or the mark a cell shows, one of them the height of the chart), and exactly forty members - the
-    /// thirty-nine a caller can ask, <see cref="WorkItemsText.Wip(WorkItemsStats, IReadOnlyList{WorkItem})" /> asked
+    /// The whole of what <see cref="WorkItemsText" /> declares of itself: nine fixed words (eight of them the
+    /// sentence, the mark a cell shows, or the format a bar coordinate is written with, and one of them the height of
+    /// the chart), and exactly forty members - the thirty-nine a caller can ask, <see cref="WorkItemsText.Wip(WorkItemsStats, IReadOnlyList{WorkItem})" /> asked
     /// of a report and of a strip being the one name with two doors. Nothing of its own is held by an instance,
     /// because there is no instance: the class is the static one the compiler seals. A member added without a
     /// sentence, or a word renamed, has to be written here as well - which is the point.
@@ -84,7 +84,7 @@ public class WorkItemsTextOpenEdgeCaseTests
 
         var fields = type.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
         Assert.Equal(
-            ["Loading", "NoAddress", "NotPublished", "None", "NoActive", "ChartHeight", "NotMetered", "Missing"],
+            ["Loading", "NoAddress", "NotPublished", "None", "NoActive", "ChartHeight", "PixelFormat", "NotMetered", "Missing"],
             fields.Select(field => field.Name));
         Assert.All(fields, field =>
         {

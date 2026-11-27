@@ -320,4 +320,14 @@ public class RuntimeLoadersRoutingTests
         Assert.Throws<HttpRequestException>(() => failing.Reply());
         Assert.Throws<HttpRequestException>(() => Served.Failing("/runtime/a.json", Closed).Reply());
     }
+
+    [Fact]
+    public void AFailingEntryCarriesNoBodyAndNoStatus()
+    {
+        var failing = Served.Failing("/runtime/a.json", Closed);
+
+        Assert.Equal(string.Empty, failing.Body);
+        Assert.Equal(HttpStatusCode.OK, failing.Status);
+        Assert.Equal(Closed, failing.Failure);
+    }
 }

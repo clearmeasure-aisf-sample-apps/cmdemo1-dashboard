@@ -54,39 +54,23 @@ public sealed record ClusterStatus(
     /// a volume without a name is left out, and unknown fields are ignored. If a field is spelled more than once, the
     /// last spelling is the one the reader takes - the fact it gives is the fact the file gives last.
     /// </summary>
-    public static Parsed<ClusterStatus> Parse(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return new Parsed<ClusterStatus>(null, FileProblems.Empty);
-        }
-
-        try
-        {
-            using var document = JsonDocument.Parse(json);
-            var root = document.RootElement;
-            if (root.ValueKind != JsonValueKind.Object)
+    public static Parsed<ClusterStatus> Parse(string? json) =>
+        JsonRead.Root(json,
+            root =>
             {
-                return new Parsed<ClusterStatus>(null, FileProblems.NotAnObject);
-            }
+                if (!JsonRead.HasArray(root, NodesWord) && !JsonRead.HasArray(root, NamespacesWord))
+                {
+                    return new Parsed<ClusterStatus>(null, $"the file has neither {NodesWord} nor {NamespacesWord}");
+                }
 
-            if (!JsonRead.HasArray(root, NodesWord) && !JsonRead.HasArray(root, NamespacesWord))
-            {
-                return new Parsed<ClusterStatus>(null, $"the file has neither {NodesWord} nor {NamespacesWord}");
-            }
-
-            return new Parsed<ClusterStatus>(new ClusterStatus(
-                JsonRead.Time(root, "generated"),
-                JsonRead.Count(root, "intervalSeconds"),
-                JsonRead.Text(root, "kubernetesVersion"),
-                JsonRead.Named(root, NodesWord, ClusterNode.Read),
-                JsonRead.Named(root, NamespacesWord, ClusterNamespace.Read)));
-        }
-        catch (JsonException)
-        {
-            return new Parsed<ClusterStatus>(null, FileProblems.Broken);
-        }
-    }
+                return new Parsed<ClusterStatus>(new ClusterStatus(
+                    JsonRead.Time(root, "generated"),
+                    JsonRead.Count(root, "intervalSeconds"),
+                    JsonRead.Text(root, "kubernetesVersion"),
+                    JsonRead.Named(root, NodesWord, ClusterNode.Read),
+                    JsonRead.Named(root, NamespacesWord, ClusterNamespace.Read)));
+            },
+            problem => new Parsed<ClusterStatus>(null, problem));
 }
 
 /// <summary>

@@ -470,4 +470,61 @@ public class JsonReadTests
     [Fact]
     public void NamesOnANullParentIsEmpty() =>
         Assert.Empty(JsonRead.Names(null, "environments"));
+
+    // ----- Root: the object a file's text stands as -----
+
+    private sealed record Rooted(string? Answer);
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t\n")]
+    public void RootReturnsEmptyForNullOrBlankText(string? json) =>
+        Assert.Equal(FileProblems.Empty, JsonRead.Root(json, _ => new Rooted("read"), problem => new Rooted(problem)).Answer);
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("42")]
+    [InlineData("\"x\"")]
+    [InlineData("true")]
+    [InlineData("null")]
+    public void RootReturnsNotAnObjectWhenTheRootIsNotAnObject(string json)
+    {
+        var read = false;
+
+        var result = JsonRead.Root(json, _ => { read = true; return new Rooted("read"); }, problem => new Rooted(problem));
+
+        Assert.Equal(FileProblems.NotAnObject, result.Answer);
+        Assert.False(read);
+    }
+
+    [Fact]
+    public void RootReturnsBrokenWhenTheTextIsNotValidJson()
+    {
+        var result = JsonRead.Root("{", _ => new Rooted("read"), problem => new Rooted(problem));
+
+        Assert.Equal(FileProblems.Broken, result.Answer);
+    }
+
+    [Fact]
+    public void RootReturnsTheAnswerOfReadForAValidObject()
+    {
+        const string field = "n";
+
+        var result = JsonRead.Root("{\"n\": 7}", root => new Rooted("n=" + JsonRead.Number(root, field)), problem => new Rooted(problem));
+
+        Assert.Equal("n=7", result.Answer);
+    }
+
+    [Fact]
+    public void RootReturnsBrokenWhenReadThrowsJsonException()
+    {
+        var result = JsonRead.Root(
+            "{}",
+            _ => throw new JsonException(),
+            problem => new Rooted(problem));
+
+        Assert.Equal(FileProblems.Broken, result.Answer);
+    }
 }

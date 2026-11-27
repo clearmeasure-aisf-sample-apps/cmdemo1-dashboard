@@ -8,7 +8,8 @@ namespace Dashboard.Health;
 /// file, the cluster's files): a part that is absent or of another type is null, never an error. It is also the one
 /// reader of the words, moments and addresses of <c>topology.json</c> (#1039): <see cref="TopologyParser"/> asks
 /// whether a member is there itself and reports the one that is there and wrong, but what a word, a moment and an
-/// address are is said here only, so the two cannot drift.
+/// address are is said here only, so the two cannot drift. It also owns the three refusal sentences
+/// <see cref="FileProblems"/> hands to the readers of files, and the order they are checked in (<see cref="Root{T}"/>).
 /// </summary>
 internal static class JsonRead
 {
@@ -162,6 +163,32 @@ internal static class JsonRead
 
     /// <summary>True when the value under <paramref name="name"/> is an array; false when there is no such name or it is not an array.</summary>
     public static bool HasArray(JsonElement? parent, string name) => ArrayUnder(parent, name) is not null;
+
+    /// <summary>
+    /// The object a file's text stands as, read by <paramref name="read"/> from its root: <see cref="FileProblems.Empty"/>
+    /// when the text is null, empty or whitespace only; <see cref="FileProblems.NotAnObject"/> when the root is not an
+    /// object; <paramref name="read"/> otherwise; and <see cref="FileProblems.Broken"/> when the text is not valid JSON.
+    /// The one place the order of the three refusals is applied, so no reader keeps a private copy of it.
+    /// </summary>
+    public static T Root<T>(string? json, Func<JsonElement, T> read, Func<string, T> refuse)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return refuse(FileProblems.Empty);
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            return document.RootElement.ValueKind != JsonValueKind.Object
+                ? refuse(FileProblems.NotAnObject)
+                : read(document.RootElement);
+        }
+        catch (JsonException)
+        {
+            return refuse(FileProblems.Broken);
+        }
+    }
 
     /// <summary>
     /// The array under <paramref name="name"/>, empty or not; null when the parent is no object, or the name is absent

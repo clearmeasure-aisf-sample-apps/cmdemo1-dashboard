@@ -202,9 +202,9 @@ public class FileProblemsTests
         }
     }
 
-    /// <summary>And the readers that refuse do it by the name: each of the three files that turned its own sentences
-    /// into copy quotes the holder for all three of them, so none keeps a private wording the guard above could miss -
-    /// and all three of them are really in the walk, so neither loop passes on an empty one.</summary>
+    /// <summary>And the readers that refuse do it by the name: each of the files that turn a refusal into copy quotes
+    /// the holder for all three of the sentences, so none keeps a private wording the guard above could miss - and
+    /// every one of them is really in the walk, so neither loop passes on an empty one.</summary>
     [Fact]
     public void TheReadersRefuseByTheHoldersName()
     {
@@ -236,9 +236,10 @@ public class FileProblemsTests
     /// <summary>The one file of the app allowed to type the three sentences out.</summary>
     private const string Holder = "Health/FileProblems.cs";
 
-    /// <summary>The three files whose readers the issue found typing the sentences out, in the order the walk of
-    /// <c>src/Dashboard</c> prints them.</summary>
-    private static readonly string[] Readers = ["Cluster/AksService.cs", "Cluster/ClusterStatus.cs", "Health/PinnedVersions.cs"];
+    /// <summary>The files that turn the three sentences into copy, in the order the walk of <c>src/Dashboard</c>
+    /// prints them: the shared scaffold of the cluster's readers in <c>JsonRead.Root</c> and the third copy of
+    /// <c>PinnedVersions.Parse</c>, which keeps its own until it takes the scaffold too.</summary>
+    private static readonly string[] Readers = ["Health/JsonRead.cs", "Health/PinnedVersions.cs"];
 
     /// <summary>A reading of a file the dashboard does not own that came back with a refusal and no value.</summary>
     private static void AssertRefused(PinnedVersions versions)

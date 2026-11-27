@@ -53,43 +53,27 @@ public sealed record AksService(
     /// Reads the file. It must be a JSON object that says something about the service: its availability, its power
     /// state or its provisioning state. Unknown fields are ignored.
     /// </summary>
-    public static Parsed<AksService> Parse(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return new Parsed<AksService>(null, FileProblems.Empty);
-        }
-
-        try
-        {
-            using var document = JsonDocument.Parse(json);
-            var root = document.RootElement;
-            if (root.ValueKind != JsonValueKind.Object)
+    public static Parsed<AksService> Parse(string? json) =>
+        JsonRead.Root(json,
+            root =>
             {
-                return new Parsed<AksService>(null, FileProblems.NotAnObject);
-            }
-
-            var service = new AksService(
-                Generated: JsonRead.Time(root, "generated"),
-                Name: JsonRead.Text(root, "name"),
-                ResourceGroup: JsonRead.Text(root, "resourceGroup"),
-                Location: JsonRead.Text(root, "location"),
-                Availability: AksAvailability.Read(JsonRead.Section(root, "availability")),
-                PowerState: JsonRead.Text(root, AksFields.PowerState),
-                ProvisioningState: JsonRead.Text(root, AksFields.ProvisioningState),
-                KubernetesVersion: JsonRead.Text(root, AksFields.KubernetesVersion),
-                Tier: JsonRead.Text(root, "tier"),
-                Pools: JsonRead.Named(root, "pools", AksPool.Read),
-                Metrics: AksMetrics.Read(JsonRead.Section(root, "metrics")));
-            return service is { Availability: null, PowerState: null, ProvisioningState: null }
-                ? new Parsed<AksService>(null, $"the file says nothing about the service: no availability, no {AksFields.PowerState} and no {AksFields.ProvisioningState}")
-                : new Parsed<AksService>(service);
-        }
-        catch (JsonException)
-        {
-            return new Parsed<AksService>(null, FileProblems.Broken);
-        }
-    }
+                var service = new AksService(
+                    Generated: JsonRead.Time(root, "generated"),
+                    Name: JsonRead.Text(root, "name"),
+                    ResourceGroup: JsonRead.Text(root, "resourceGroup"),
+                    Location: JsonRead.Text(root, "location"),
+                    Availability: AksAvailability.Read(JsonRead.Section(root, "availability")),
+                    PowerState: JsonRead.Text(root, AksFields.PowerState),
+                    ProvisioningState: JsonRead.Text(root, AksFields.ProvisioningState),
+                    KubernetesVersion: JsonRead.Text(root, AksFields.KubernetesVersion),
+                    Tier: JsonRead.Text(root, "tier"),
+                    Pools: JsonRead.Named(root, "pools", AksPool.Read),
+                    Metrics: AksMetrics.Read(JsonRead.Section(root, "metrics")));
+                return service is { Availability: null, PowerState: null, ProvisioningState: null }
+                    ? new Parsed<AksService>(null, $"the file says nothing about the service: no availability, no {AksFields.PowerState} and no {AksFields.ProvisioningState}")
+                    : new Parsed<AksService>(service);
+            },
+            problem => new Parsed<AksService>(null, problem));
 }
 
 /// <summary>The verdict of Azure Resource Health on the service.</summary>

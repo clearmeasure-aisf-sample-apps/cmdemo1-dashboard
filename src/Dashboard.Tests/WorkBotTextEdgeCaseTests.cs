@@ -487,6 +487,13 @@ public class WorkBotTextEdgeCaseTests
     public void APullMergedWithTheClockStandingIsJustMerged() =>
         Assert.Equal("#14 · merged just now", WorkBotText.PullLine(Pull(14, null, Now), Now));
 
+    /// <summary>A pull the file says everything of - a number, a state, checks, a moment of the merge and a
+    /// commit - stands on every part in the order the line keeps them, the same mark of the file's own between
+    /// each pair, no part repeated and none left out.</summary>
+    [Fact]
+    public void APullTheFileSaysEverythingOfStandsOnEveryPartInOrder() =>
+        Assert.Equal("#16 · open · checks passed · merged 2 h ago · a1b2c3d", WorkBotText.PullLine(Pull(16, "open", Now.AddHours(-2), checks: "passed", sha: "a1b2c3d4e5"), Now));
+
     // ---- Merged ----
 
     /// <summary>Merging is read out of the pull, and a pull that is not there has no state and no time to read:

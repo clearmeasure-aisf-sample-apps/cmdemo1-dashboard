@@ -186,6 +186,15 @@ public static class WorkBotText
         return stay.Open ? $"{stay.Column} · {length} so far" : $"{stay.Column} · {length}";
     }
 
+    /// <summary>What stands between the parts of a pull's line.</summary>
+    private const string PartSeparator = " · ";
+
+    /// <summary>The word before what the file says of a pull's checks.</summary>
+    private const string ChecksWord = "checks";
+
+    /// <summary>The word before how long ago a pull was merged.</summary>
+    private const string MergedWord = "merged";
+
     /// <summary><c>#181 · merged · checks passed · merged 2 h ago · a1b2c3d</c>. A part the pull request does not have is left out.</summary>
     public static string PullLine(WorkPullRequest pull, DateTimeOffset now)
     {
@@ -198,12 +207,12 @@ public static class WorkBotText
 
         if (pull.Checks is { } checks)
         {
-            parts.Add($"checks {checks}");
+            parts.Add($"{ChecksWord} {checks}");
         }
 
         if (pull.MergedAt is { } merged)
         {
-            parts.Add($"merged {TimeText.Ago(merged, now)}");
+            parts.Add($"{MergedWord} {TimeText.Ago(merged, now)}");
         }
 
         if (pull.MergeSha is { } sha)
@@ -211,7 +220,7 @@ public static class WorkBotText
             parts.Add(BuildText.ShortCommit(sha));
         }
 
-        return string.Join(" · ", parts);
+        return string.Join(PartSeparator, parts);
     }
 
     public static bool Merged(WorkPullRequest pull) =>

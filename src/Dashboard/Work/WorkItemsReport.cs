@@ -74,7 +74,7 @@ public sealed record WorkItemsScope(string? Repo, int? Project, string? Rules)
     internal static WorkItemsScope? Read(JsonElement? section)
     {
         var scope = new WorkItemsScope(JsonRead.Text(section, "repo"), JsonRead.Count(section, "project"), ReadRules(section));
-        return scope == new WorkItemsScope(null, null, null) ? null : scope;
+        return ReadParts.Said(scope.Repo, scope.Project, scope.Rules) ? scope : null;
     }
 
     /// <summary>A string, or the sentences of an array joined. The feed publishes an array.</summary>
@@ -287,7 +287,7 @@ public sealed record WorkDuration(double? Median, double? P85, int? N)
     internal static WorkDuration? Read(JsonElement? section)
     {
         var duration = new WorkDuration(JsonRead.Number(section, "median"), JsonRead.Number(section, "p85"), JsonRead.Count(section, "n"));
-        return duration == new WorkDuration(null, null, null) ? null : duration;
+        return ReadParts.Said(duration.Median, duration.P85, duration.N) ? duration : null;
     }
 }
 
@@ -302,7 +302,7 @@ public sealed record WorkWeek(DateTimeOffset? WeekStart, int? Merged, int? Deplo
         }
 
         var week = new WorkWeek(JsonRead.Time(element, "weekStart"), JsonRead.Count(element, "merged"), JsonRead.Count(element, "deployedProd"));
-        return week == new WorkWeek(null, null, null) ? null : week;
+        return ReadParts.Said(week.WeekStart, week.Merged, week.DeployedProd) ? week : null;
     }
 }
 
@@ -315,7 +315,7 @@ public sealed record WorkRework(int? FtFailures, int? Reverts, double? Rate)
     internal static WorkRework? Read(JsonElement? section)
     {
         var rework = new WorkRework(JsonRead.Count(section, "ftFailures"), JsonRead.Count(section, "reverts"), JsonRead.Number(section, "rate"));
-        return rework == new WorkRework(null, null, null) ? null : rework;
+        return ReadParts.Said(rework.FtFailures, rework.Reverts, rework.Rate) ? rework : null;
     }
 }
 
@@ -325,7 +325,7 @@ public sealed record WorkCost(double? TotalUsd, string? Note)
     internal static WorkCost? Read(JsonElement? section)
     {
         var cost = new WorkCost(JsonRead.Number(section, "totalUsd"), JsonRead.Text(section, "note"));
-        return cost == new WorkCost(null, null) ? null : cost;
+        return ReadParts.Said(cost.TotalUsd, cost.Note) ? cost : null;
     }
 }
 
@@ -378,7 +378,7 @@ public sealed record WorkThroughput(string Agent, int? Merged, int? DeployedProd
         var name = JsonRead.Text(element, "agent") ?? JsonRead.Text(element, "name") ?? JsonRead.Text(element, "identity");
         var merged = JsonRead.Count(element, "merged");
         var deployed = JsonRead.Count(element, "deployedProd");
-        return name is null && merged is null && deployed is null ? null : new WorkThroughput(name ?? "unnamed", merged, deployed);
+        return ReadParts.Said(name, merged, deployed) ? new WorkThroughput(name ?? "unnamed", merged, deployed) : null;
     }
 }
 
@@ -391,7 +391,7 @@ public sealed record WorkNote(string? Text, Uri? Url, DateTimeOffset? At, string
         var text = JsonRead.Text(section, "text") ?? JsonRead.Text(section, "comment") ?? JsonRead.Text(section, "summary");
         var url = JsonRead.Address(section, "url");
         var at = JsonRead.Time(section, "at");
-        return text is null && url is null && at is null ? null : new WorkNote(text, url, at);
+        return ReadParts.Said(text, url, at) ? new WorkNote(text, url, at) : null;
     }
 }
 
@@ -412,6 +412,7 @@ public sealed record WorkNote(string? Text, Uri? Url, DateTimeOffset? At, string
 /// <param name="Worker">Bot or team. Unknown when the file does not say.</param>
 /// <param name="Rework">Functional-test failures and reverts of this item; null when the file does not say.</param>
 /// <param name="Blocker">The bot's latest status, or the comment that says what blocked it; null when the file does not say.</param>
+/// <remarks>An item's identity is <c>Number</c>, <c>Title</c>, <c>Url</c> and <c>Column</c>. An item that says none of them is left out, even when it carries a cost, pull requests or a release candidate. An item that says only a column is kept.</remarks>
 public sealed record WorkItem(
     int? Number,
     string? Title,
@@ -454,7 +455,7 @@ public sealed record WorkItem(
             ReadWorker(element),
             ItemRework(element),
             Note(element));
-        return item.Number is null && item.Title is null && item.Url is null && item.Column is null ? null : item;
+        return ReadParts.Said(item.Number, item.Title, item.Url, item.Column) ? item : null;
     }
 
     private static List<Uri> Addresses(JsonElement parent, string name)
@@ -532,13 +533,14 @@ public sealed record ColumnVisit(string? Column, DateTimeOffset? EnteredAt, Date
             JsonRead.Time(element, "enteredAt"),
             JsonRead.Time(element, "leftAt"),
             JsonRead.Number(element, "hours"));
-        return visit.Column is null && visit.EnteredAt is null && visit.LeftAt is null && visit.Hours is null ? null : visit;
+        return ReadParts.Said(visit.Column, visit.EnteredAt, visit.LeftAt, visit.Hours) ? visit : null;
     }
 }
 
 /// <summary>A pull request opened for a work item.</summary>
 /// <param name="Checks">What the pull request's checks concluded: <c>passed</c>, <c>failed</c>, <c>pending</c>, or the file's own word.</param>
 /// <param name="ChecksUrl">The checks page, when the file gives one.</param>
+/// <remarks>A pull request is kept when it says any of <c>Number</c>, <c>Url</c>, <c>State</c>, <c>Checks</c> or <c>ChecksUrl</c>. One that says only <c>MergedAt</c> and/or <c>MergeSha</c> is left out.</remarks>
 public sealed record WorkPullRequest(int? Number, Uri? Url, string? State, DateTimeOffset? MergedAt, string? MergeSha, string? Checks = null, Uri? ChecksUrl = null)
 {
     internal static WorkPullRequest? Read(JsonElement element)
@@ -557,7 +559,7 @@ public sealed record WorkPullRequest(int? Number, Uri? Url, string? State, DateT
             JsonRead.Text(element, "mergeSha"),
             checks,
             checksUrl);
-        return pull.Number is null && pull.Url is null && pull.State is null && pull.Checks is null && pull.ChecksUrl is null ? null : pull;
+        return ReadParts.Said(pull.Number, pull.Url, pull.State, pull.Checks, pull.ChecksUrl) ? pull : null;
     }
 
     private static (string? Result, Uri? Url) ChecksOf(JsonElement element)
@@ -587,7 +589,7 @@ public sealed record ReleaseCandidate(string? Version, DateTimeOffset? CreatedAt
     internal static ReleaseCandidate? Read(JsonElement? section)
     {
         var candidate = new ReleaseCandidate(VersionText.Display(JsonRead.Text(section, "version")), JsonRead.Time(section, "createdAt"));
-        return candidate == new ReleaseCandidate(null, null) ? null : candidate;
+        return ReadParts.Said(candidate.Version, candidate.CreatedAt) ? candidate : null;
     }
 }
 
@@ -656,4 +658,10 @@ public sealed record WorkRelease(string? Version, string? Sha, IReadOnlyList<int
         var release = new WorkRelease(VersionText.Display(JsonRead.Text(element, "version")), JsonRead.Text(element, "sha"), items);
         return release.Version is null && items.Count == 0 ? null : release;
     }
+}
+
+internal static class ReadParts
+{
+    /// <summary>True when at least one of the parts the caller names was given. A `Read` drops a record whose named parts are all unsaid.</summary>
+    internal static bool Said(params object?[] parts) => parts.Any(part => part is not null);
 }

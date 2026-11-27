@@ -20,6 +20,24 @@ public sealed record CostReport(DateTimeOffset? Generated, string? Currency, Dat
     /// <summary>The name of the entry of what carries no environment: the resources every environment shares.</summary>
     public const string SharedName = "shared";
 
+    // The words of the cost file, named once here so a rename in the contract cannot silently read null
+    // while the true word sits untyped elsewhere.
+
+    /// <summary>The word of the array of environment entries.</summary>
+    private const string EnvironmentsWord = "environments";
+
+    /// <summary>The word of the whole-system sums.</summary>
+    private const string SystemWord = "system";
+
+    /// <summary>The word of the time the file's content last changed.</summary>
+    private const string GeneratedWord = "generated";
+
+    /// <summary>The word of the currency code.</summary>
+    private const string CurrencyWord = "currency";
+
+    /// <summary>The word of the last complete day the numbers include.</summary>
+    private const string AsOfWord = "asOf";
+
     /// <summary>What no single environment owns; null when the file has no such entry.</summary>
     public CostEntry? Shared => Find(SharedName);
 
@@ -57,12 +75,12 @@ public sealed record CostReport(DateTimeOffset? Generated, string? Currency, Dat
                 return null;
             }
 
-            var entries = JsonRead.Items(root, "environments").Select(CostEntry.Read).OfType<CostEntry>().ToList();
-            var system = JsonRead.Section(root, "system") is { } total ? CostAmounts.Read(total) : null;
+            var entries = JsonRead.Items(root, EnvironmentsWord).Select(CostEntry.Read).OfType<CostEntry>().ToList();
+            var system = JsonRead.Section(root, SystemWord) is { } total ? CostAmounts.Read(total) : null;
             var asOf = ReadDay(root);
             return entries.Count == 0 && system is null
                 ? null
-                : new CostReport(JsonRead.Time(root, "generated"), JsonRead.Text(root, "currency"), asOf, system, entries);
+                : new CostReport(JsonRead.Time(root, GeneratedWord), JsonRead.Text(root, CurrencyWord), asOf, system, entries);
         }
         catch (JsonException)
         {
@@ -72,7 +90,7 @@ public sealed record CostReport(DateTimeOffset? Generated, string? Currency, Dat
 
     /// <summary>The <c>asOf</c> of the file as a day, in exactly <see cref="CostText.DayFormat"/>; null otherwise.</summary>
     private static DateOnly? ReadDay(JsonElement root) =>
-        DateOnly.TryParseExact(JsonRead.Text(root, "asOf"), CostText.DayFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var day)
+        DateOnly.TryParseExact(JsonRead.Text(root, AsOfWord), CostText.DayFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var day)
             ? day
             : null;
 }
@@ -86,8 +104,17 @@ public sealed record CostReport(DateTimeOffset? Generated, string? Currency, Dat
 /// <param name="MonthToDate">The first of its month up to it.</param>
 public sealed record CostAmounts(double? Yesterday, double? Last7Days, double? MonthToDate)
 {
+    /// <summary>The word of the last complete day.</summary>
+    internal const string YesterdayWord = "yesterday";
+
+    /// <summary>The word of the seven days that end with it.</summary>
+    internal const string Last7DaysWord = "last7Days";
+
+    /// <summary>The word of the first of its month up to it.</summary>
+    internal const string MonthToDateWord = "monthToDate";
+
     internal static CostAmounts Read(JsonElement element) =>
-        new(JsonRead.Signed(element, "yesterday"), JsonRead.Signed(element, "last7Days"), JsonRead.Signed(element, "monthToDate"));
+        new(JsonRead.Signed(element, YesterdayWord), JsonRead.Signed(element, Last7DaysWord), JsonRead.Signed(element, MonthToDateWord));
 }
 
 /// <summary>The cost of one environment, or of what the environments share.</summary>
@@ -98,16 +125,25 @@ public sealed record CostAmounts(double? Yesterday, double? Last7Days, double? M
 /// </param>
 public sealed record CostEntry(string Name, CostAmounts Amounts, IReadOnlyList<CostService> TopServices, CostEstimate? Estimate = null)
 {
+    /// <summary>The word of the entry's name and of every service's name.</summary>
+    private const string NameWord = "name";
+
+    /// <summary>The word of the array of the services that cost most.</summary>
+    private const string TopServicesWord = "topServices";
+
+    /// <summary>The word of the environment's estimated part of the shared cost.</summary>
+    private const string EstimateWord = "estimate";
+
     internal static CostEntry? Read(JsonElement element) =>
-        JsonRead.Text(element, "name") is { } name
+        JsonRead.Text(element, NameWord) is { } name
             ? new CostEntry(
                 name,
                 CostAmounts.Read(element),
-                [.. JsonRead.Items(element, "topServices")
-                    .Select(service => (Name: JsonRead.Text(service, "name"), Amount: JsonRead.Signed(service, "monthToDate")))
+                [.. JsonRead.Items(element, TopServicesWord)
+                    .Select(service => (Name: JsonRead.Text(service, NameWord), Amount: JsonRead.Signed(service, CostAmounts.MonthToDateWord)))
                     .Where(service => service.Name is not null)
                     .Select(service => new CostService(service.Name!, service.Amount))],
-                JsonRead.Section(element, "estimate") is { } estimate ? CostEstimate.Read(estimate) : null)
+                JsonRead.Section(element, EstimateWord) is { } estimate ? CostEstimate.Read(estimate) : null)
             : null;
 }
 
@@ -118,10 +154,13 @@ public sealed record CostEntry(string Name, CostAmounts Amounts, IReadOnlyList<C
 /// <param name="Share">The share, 0 to 1; null when the file does not say.</param>
 public sealed record CostEstimate(double? Share, CostAmounts Amounts)
 {
+    /// <summary>The word of the share, 0 to 1.</summary>
+    private const string ShareWord = "share";
+
     internal static CostEstimate? Read(JsonElement element)
     {
         var amounts = CostAmounts.Read(element);
-        var share = JsonRead.Signed(element, "share") is { } value and >= 0 and <= 1 ? value : (double?)null;
+        var share = JsonRead.Signed(element, ShareWord) is { } value and >= 0 and <= 1 ? value : (double?)null;
         return amounts is { Yesterday: null, Last7Days: null, MonthToDate: null } ? null : new CostEstimate(share, amounts);
     }
 }

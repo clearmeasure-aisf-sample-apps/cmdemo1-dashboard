@@ -34,9 +34,8 @@ public static class FreezeText
         ArgumentNullException.ThrowIfNull(freeze);
         ArgumentNullException.ThrowIfNull(zone);
         var more = count > 1 ? string.Create(CultureInfo.InvariantCulture, $", and {count - 1} more") : string.Empty;
-        return freeze.InForceAt(now)
-            ? $"deployment freeze {freeze.Name}: {Words(freeze.Projects)} frozen until {DeploymentActivity.When(freeze.To, now, zone)}{more}"
-            : $"deployment freeze {freeze.Name}: {Words(freeze.Projects)} frozen from {DeploymentActivity.When(Begins(freeze), now, zone)} until {DeploymentActivity.When(freeze.To, now, zone)}{more}";
+        var from = freeze.InForceAt(now) ? string.Empty : $" from {DeploymentActivity.When(Begins(freeze), now, zone)}";
+        return $"deployment freeze {freeze.Name}: {Words(freeze.Projects)} frozen{from} until {DeploymentActivity.When(freeze.To, now, zone)}{more}";
     }
 
     /// <summary>

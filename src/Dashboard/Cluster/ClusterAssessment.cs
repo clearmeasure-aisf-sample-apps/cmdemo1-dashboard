@@ -128,6 +128,18 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
     /// <summary>The headline the cluster card says when the file is silent and Azure says stopped, and the AKS service card says when Azure reports the service stopped.</summary>
     private const string StoppedHeadline = "Stopped";
 
+    // The AKS-service sentences the cluster card and the AKS service card both say, named once each (#2163): the same
+    // words as the headlines above, so a rewording here cannot silently split the page's vocabulary.
+
+    /// <summary>The words both cards say when Azure's facts are not published yet.</summary>
+    private const string NotPublished = "Azure's facts about the AKS service are not published yet";
+
+    /// <summary>The words both cards say when Azure's facts could not be read.</summary>
+    private const string NotRead = "Azure's facts about the AKS service could not be read";
+
+    /// <summary>The lead of the sentence both cards say when Azure reports a verdict, with the space the verdict follows.</summary>
+    private const string ReportsLead = "Azure reports the AKS service ";
+
     /// <summary>Whether the cluster's own status reaches the page, at the page's clock.</summary>
     public static ClusterLiveness LivenessOf(SourceReading<ClusterStatus> reading, DateTimeOffset now)
     {
@@ -254,7 +266,6 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
     public static ClusterAssessment Service(SourceReading<AksService> reading)
     {
         ArgumentNullException.ThrowIfNull(reading);
-        const string NotRead = "Azure's facts about the AKS service could not be read";
         const string Again = "The page reads them again with every check.";
         return reading.State switch
         {
@@ -262,7 +273,7 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
             SourceState.Missing => new ClusterAssessment(
                 ClusterState.Neutral,
                 "Not published",
-                "Azure's facts about the AKS service are not published yet",
+                NotPublished,
                 $"A scheduled workflow publishes them several times an hour; until its first run the address answers HTTP 404. {Again}"),
             SourceState.Malformed => new ClusterAssessment(ClusterState.Warning, UnreadableHeadline, NotRead, Sentence(reading.Detail)),
             SourceState.Read when reading.Value is { } service => Reported(service),
@@ -282,12 +293,12 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
 
         if (verdict.Is(AksAvailability.Unavailable))
         {
-            return new ClusterAssessment(ClusterState.Unhealthy, AksAvailability.Unavailable, "Azure reports the AKS service unavailable", summary);
+            return new ClusterAssessment(ClusterState.Unhealthy, AksAvailability.Unavailable, $"{ReportsLead}unavailable", summary);
         }
 
         if (verdict.Is(AksAvailability.Degraded))
         {
-            return new ClusterAssessment(ClusterState.Warning, AksAvailability.Degraded, "Azure reports the AKS service degraded", summary);
+            return new ClusterAssessment(ClusterState.Warning, AksAvailability.Degraded, $"{ReportsLead}degraded", summary);
         }
 
         if (service.ProvisioningState is { } provisioning && !service.IsProvisioned)
@@ -305,8 +316,8 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
         }
 
         return verdict.Is(AksAvailability.Available)
-            ? new ClusterAssessment(ClusterState.Healthy, AksAvailability.Available, "Azure reports the AKS service available and running", summary)
-            : new ClusterAssessment(ClusterState.Neutral, verdict.ToString(), $"Azure reports the AKS service {verdict}", summary);
+            ? new ClusterAssessment(ClusterState.Healthy, AksAvailability.Available, $"{ReportsLead}available and running", summary)
+            : new ClusterAssessment(ClusterState.Neutral, verdict.ToString(), $"{ReportsLead}{verdict}", summary);
     }
 
     /// <summary>
@@ -365,14 +376,14 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
             case null or SourceState.Pending:
                 return null;
             case SourceState.Missing:
-                return "Azure's facts about the AKS service are not published yet.";
+                return $"{NotPublished}.";
             case SourceState.Read when service.Value is { } facts:
                 var states = new[] { facts.Availability?.State, facts.PowerState }.OfType<string>().ToList();
                 var said = states.Count > 0 ? string.Join(" and ", states) : facts.ProvisioningState;
                 var asOf = facts.Generated is { } generated ? $", {ClusterText.AsOf(generated, now, zone)}" : string.Empty;
-                return said is null ? null : $"Azure reports the AKS service {said}{asOf}.";
+                return said is null ? null : $"{ReportsLead}{said}{asOf}.";
             default:
-                return "Azure's facts about the AKS service could not be read either.";
+                return $"{NotRead} either.";
         }
     }
 

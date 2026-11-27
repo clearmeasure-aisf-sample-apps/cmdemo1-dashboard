@@ -322,7 +322,9 @@ public class TimeTextEdgeCaseTests
     /// <see cref="string" />, each taking exactly the arguments it needs - the two that face a viewer take the zone,
     /// the instant, the length and the two ages take none. A static holder with nothing to construct, nothing to hold
     /// and no nested type to hide. A sixth member has to be written here as well, which is the point: a new way of
-    /// saying a moment on this page is a decision somebody has to have made.</summary>
+    /// saying a moment on this page is a decision somebody has to have made. Its only public fields are the four
+    /// duration unit words (<c>s</c>, <c>min</c>, <c>h</c>, <c>d</c>), string constants shared with the deployment age
+    /// and the delivery lead time.</summary>
     [Fact]
     public void TheHelperIsFiveWaysOfSayingAMomentAndNothingElse()
     {
@@ -331,7 +333,13 @@ public class TimeTextEdgeCaseTests
         Assert.True(type.IsAbstract && type.IsSealed, "TimeText is a static holder: nothing of it is created");
         Assert.Empty(type.GetConstructors(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic));
         Assert.Empty(type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static));
-        Assert.Empty(type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static));
+        Assert.Empty(type.GetFields(BindingFlags.Public | BindingFlags.Instance));
+        var fields = type.GetFields(BindingFlags.Public | BindingFlags.Static);
+        Assert.Equal(
+            ["DaysUnit", "HoursUnit", "MinutesUnit", "SecondsUnit"],
+            [.. fields.Select(field => field.Name).Order(StringComparer.Ordinal)]);
+        Assert.All(fields, field => Assert.True(field.IsLiteral && field.FieldType == typeof(string),
+            $"{field.Name} is a unit word, a string constant and nothing else"));
         Assert.Empty(type.GetEvents(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static));
         Assert.Empty(type.GetNestedTypes(BindingFlags.Public));
         Assert.Empty(type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly));

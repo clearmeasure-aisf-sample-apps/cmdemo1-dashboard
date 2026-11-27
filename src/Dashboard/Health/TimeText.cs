@@ -17,6 +17,17 @@ public static class TimeText
     /// <summary>Moments newer than this are "just now".</summary>
     private static readonly TimeSpan JustNow = TimeSpan.FromMinutes(1);
 
+    /// <summary>The time of day: <c>15:04:05</c>.</summary>
+    private const string ClockFormat = "HH:mm:ss";
+
+    /// <summary>Date and time to the minute with the offset from UTC: <c>2026-10-04 17:00 -05:00</c>.</summary>
+    private const string DateAndTimeFormat = "yyyy-MM-dd HH:mm zzz";
+
+    /// <summary>
+    /// The UTC machine-readable form for a <c>time</c> element's <c>datetime</c> attribute: <c>2026-10-04T22:00:00Z</c>.
+    /// </summary>
+    private const string IsoFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'";
+
     /// <summary>
     /// A length in one whole unit, truncated and in the invariant culture: <c>45 s</c>, <c>3 min</c>, <c>2 h</c>,
     /// <c>4 d</c> (<c>5 h</c> for five and a half hours). The one home of how a count of whole units is said, for
@@ -27,15 +38,15 @@ public static class TimeText
 
     /// <summary>The time of day: <c>15:04:05</c>.</summary>
     public static string Clock(DateTimeOffset time, TimeZoneInfo zone) =>
-        TimeZoneInfo.ConvertTime(time, zone).ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+        TimeZoneInfo.ConvertTime(time, zone).ToString(ClockFormat, CultureInfo.InvariantCulture);
 
     /// <summary>Date and time to the minute with the offset from UTC: <c>2026-10-04 17:00 -05:00</c>.</summary>
     public static string DateAndTime(DateTimeOffset time, TimeZoneInfo zone) =>
-        TimeZoneInfo.ConvertTime(time, zone).ToString("yyyy-MM-dd HH:mm zzz", CultureInfo.InvariantCulture);
+        TimeZoneInfo.ConvertTime(time, zone).ToString(DateAndTimeFormat, CultureInfo.InvariantCulture);
 
     /// <summary>The machine-readable form for the <c>datetime</c> attribute of a <c>time</c> element.</summary>
     public static string Iso(DateTimeOffset time) =>
-        time.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+        time.ToUniversalTime().ToString(IsoFormat, CultureInfo.InvariantCulture);
 
     /// <summary>
     /// A length of time in whole units: <c>45 s</c>, <c>3 min</c>, <c>2 h</c>, <c>4 d</c>. A unit is used until two of

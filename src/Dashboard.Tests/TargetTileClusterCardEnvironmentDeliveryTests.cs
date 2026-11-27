@@ -134,7 +134,7 @@ public class TargetTileClusterCardEnvironmentDeliveryTests
         // status region or empty-state paragraph is in it.
         Assert.Contains("private const string None = \"—\";", text, StringComparison.Ordinal);
         Assert.Contains("""<dd>@(Target.Last?.StatusCode?.ToString(CultureInfo.InvariantCulture) ?? None)</dd>""", text, StringComparison.Ordinal);
-        Assert.Contains("""<dd>@(Target.Last?.LatencyMs is { } latency ? $"{latency} ms" : None)</dd>""", text, StringComparison.Ordinal);
+        Assert.Contains("""<dd>@(Target.Last?.LatencyMs is { } latency ? HistoryText.Milliseconds(latency) : None)</dd>""", text, StringComparison.Ordinal);
         Assert.Contains("""<time datetime="@TimeText.Iso(last.CheckedAt)">@TimeText.Clock(last.CheckedAt, Zone)</time>""", text, StringComparison.Ordinal);
         Assert.DoesNotContain("role=\"status\"", text, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"empty\"", text, StringComparison.Ordinal);
@@ -180,7 +180,7 @@ public class TargetTileClusterCardEnvironmentDeliveryTests
             text,
             StringComparison.Ordinal);
         Assert.Contains("""<TrendLine Trend="Trends.Requests(Target)" />""", text, StringComparison.Ordinal);
-        Assert.Contains("""<dd>@(telemetry.P95Ms is { } p95 ? $"{p95} ms" : None)</dd>""", text, StringComparison.Ordinal);
+        Assert.Contains("""<dd>@(telemetry.P95Ms is { } p95 ? HistoryText.Milliseconds(p95) : None)</dd>""", text, StringComparison.Ordinal);
         Assert.Contains("""<div class="@(telemetry.Errors > 0 ? "metrics__warn" : null)">""", text, StringComparison.Ordinal);
         Assert.Contains("""<dt>Errors</dt>""", text, StringComparison.Ordinal);
         Assert.Contains("""<DeepLink Href="Target.Links[LinkSet.Failures]" Title="@LinkText.For(LinkSet.Failures, Target.Name)">@Count(telemetry.Errors)</DeepLink>""", text, StringComparison.Ordinal);

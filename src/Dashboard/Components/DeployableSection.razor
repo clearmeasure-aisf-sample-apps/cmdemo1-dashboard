@@ -15,21 +15,7 @@
             <div class="serving serving--@serving @(disagrees ? "serving--disagrees" : null)">
                 <p class="serving__headline">
                     <svg class="serving__icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
-                        @switch (assessment.State)
-                        {
-                            case ServingState.Primary:
-                                <path d="M3 8.5l3.2 3.2L13 4.6" />
-                                break;
-                            case ServingState.FailedOver:
-                                <path d="M2 5.5h11M10 2.5l3 3-3 3M14 10.5H3M6 7.5l-3 3 3 3" />
-                                break;
-                            case ServingState.Down:
-                                <path d="M4 4l8 8M12 4l-8 8" />
-                                break;
-                            default:
-                                <path d="M3.9 8h.2M7.9 8h.2M11.9 8h.2" />
-                                break;
-                        }
+                        <path d="@ServingIcon.PathData(assessment.State)" />
                     </svg>
                     <strong>@assessment.Headline</strong>
                 </p>

@@ -66,9 +66,9 @@ public static class RuntimeManifestParser
         using (document)
         {
             var root = document.RootElement;
-            if (!root.TryGetProperty("environments", out var array) || array.ValueKind != JsonValueKind.Array)
+            if (!root.TryGetProperty(Environments, out var array) || array.ValueKind != JsonValueKind.Array)
             {
-                return RuntimeParseResult<RuntimeIndex>.Failed("environments: missing or not an array.");
+                return RuntimeParseResult<RuntimeIndex>.Failed($"{Environments}: missing or not an array.");
             }
 
             var errors = new List<string>();
@@ -76,11 +76,11 @@ public static class RuntimeManifestParser
             var index = 0;
             foreach (var element in array.EnumerateArray())
             {
-                var path = $"environments[{index++}]";
-                var name = element.ValueKind == JsonValueKind.Object ? JsonRead.Text(element, "name") : null;
+                var path = $"{Environments}[{index++}]";
+                var name = element.ValueKind == JsonValueKind.Object ? JsonRead.Text(element, Name) : null;
                 if (name is null)
                 {
-                    errors.Add($"{path}.name: missing or empty.");
+                    errors.Add($"{path}.{Name}: missing or empty.");
                     continue;
                 }
 
@@ -112,22 +112,22 @@ public static class RuntimeManifestParser
 
             var nodes = ReadArray(root, "nodes", errors, (element, path) =>
             {
-                if (RequiredWord(element, path, "alias", errors) is not { } alias)
+                if (RequiredWord(element, path, Alias, errors) is not { } alias)
                 {
                     return null;
                 }
 
-                var url = JsonRead.Address(element, "url");
-                if (url is null && JsonRead.Text(element, "url") is not null)
+                var url = JsonRead.Address(element, Url);
+                if (url is null && JsonRead.Text(element, Url) is not null)
                 {
-                    errors.Add($"{path}.url: not an absolute http or https address.");
+                    errors.Add($"{path}.{Url}: not an absolute http or https address.");
                 }
 
-                var kind = NodeKind(JsonRead.Text(element, "kind"));
+                var kind = NodeKind(JsonRead.Text(element, Kind));
                 return new RuntimeNode(
                     alias,
                     kind,
-                    TextOr(element, "name", alias),
+                    TextOr(element, Name, alias),
                     url,
                     JsonRead.Text(element, "deployable"),
                     JsonRead.Text(element, "role")?.ToLowerInvariant(),
@@ -142,7 +142,7 @@ public static class RuntimeManifestParser
             });
             var regions = ReadArray(root, "regions", errors, (element, path) =>
             {
-                if (RequiredWord(element, path, "alias", errors) is not { } alias)
+                if (RequiredWord(element, path, Alias, errors) is not { } alias)
                 {
                     return null;
                 }
@@ -150,16 +150,16 @@ public static class RuntimeManifestParser
                 var roles = element.TryGetProperty("roles", out var array) && array.ValueKind == JsonValueKind.Array
                     ? array.EnumerateArray().Where(role => role.ValueKind == JsonValueKind.String).Select(role => role.GetString()!).ToList()
                     : [];
-                return new RuntimeRegion(alias, TextOr(element, "name", alias), roles, Links(element));
+                return new RuntimeRegion(alias, TextOr(element, Name, alias), roles, Links(element));
             });
             var frames = ReadArray(root, "frames", errors, (element, path) =>
             {
-                if (RequiredWord(element, path, "alias", errors) is not { } alias)
+                if (RequiredWord(element, path, Alias, errors) is not { } alias)
                 {
                     return null;
                 }
 
-                return new RuntimeFrame(alias, TextOr(element, "kind", string.Empty), TextOr(element, "name", alias), Links(element));
+                return new RuntimeFrame(alias, TextOr(element, Kind, string.Empty), TextOr(element, Name, alias), Links(element));
             });
             var edges = ReadArray(root, "edges", errors, (element, path) =>
             {
@@ -169,7 +169,7 @@ public static class RuntimeManifestParser
                 }
 
                 int? priority = element.TryGetProperty("priority", out var number) && number.TryGetInt32(out var value) ? value : null;
-                return new RuntimeEdge(id, from, to, EdgeKind(JsonRead.Text(element, "kind")), priority);
+                return new RuntimeEdge(id, from, to, EdgeKind(JsonRead.Text(element, Kind)), priority);
             });
 
             return RuntimeParseResult<RuntimeManifest>.Collected(
@@ -337,6 +337,14 @@ public static class RuntimeManifestParser
         return found.Count == 0 ? null : new Health.LinkSet(found);
     }
 
+    /// <summary>The element words the manifest and the index write, named once: a rename here moves every read and every
+    /// refusal with it, and nothing can drift from the file.</summary>
+    private const string Alias = "alias";
+    private const string Name = "name";
+    private const string Kind = "kind";
+    private const string Url = "url";
+    private const string Environments = "environments";
+
     /// <summary>The longest text kept of an entry of <c>unplaced</c>, and the most entries.</summary>
     public const int LongestUnplacedText = 300;
     public const int MostUnplaced = 500;
@@ -363,7 +371,7 @@ public static class RuntimeManifestParser
                 break;
             }
 
-            if (element.ValueKind != JsonValueKind.Object || Cut(element, "name") is not { } name)
+            if (element.ValueKind != JsonValueKind.Object || Cut(element, Name) is not { } name)
             {
                 continue;
             }
@@ -376,7 +384,7 @@ public static class RuntimeManifestParser
                 Cut(element, "words"),
                 Ids(element)?.Select(id => id.Length > LongestUnplacedText * 2 ? id[..(LongestUnplacedText * 2)] : id).ToList(),
                 links is { } portal ? Secure(portal, "portal") : null,
-                (links is { } site ? Secure(site, "site") : null) ?? Secure(element, "url")));
+                (links is { } site ? Secure(site, "site") : null) ?? Secure(element, Url)));
         }
 
         return found;

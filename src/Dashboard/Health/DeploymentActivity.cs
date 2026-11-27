@@ -83,9 +83,7 @@ public sealed record RecentDeployment(
     /// for any other word, a state of a deployment in flight included.
     /// </summary>
     private static DeploymentState ResultOf(string result) =>
-        Deployment.Of(result) is var state and (DeploymentState.Succeeded or DeploymentState.Failed or DeploymentState.Canceled)
-            ? state
-            : DeploymentState.Unknown;
+        Deployment.Of(result) is var state && Deployment.Ended(state) ? state : DeploymentState.Unknown;
 
     /// <summary>The word of the result of the deployment, in the file's own word.</summary>
     private const string ResultWord = "result";
@@ -372,9 +370,7 @@ public static class DeploymentActivity
     /// </summary>
     private static string Brief(RecentDeployment last, DateTimeOffset now)
     {
-        var result = last.Result is DeploymentState.Succeeded or DeploymentState.Failed or DeploymentState.Canceled
-            ? ActivityKind.OfResult(last.Result)
-            : last.ResultText;
+        var result = Deployment.Ended(last.Result) ? ActivityKind.OfResult(last.Result) : last.ResultText;
         return $"{last.Release} {result} {DeploymentText.Ago(now - last.Finished)}{By(last.StartedBy, " by ")}";
     }
 

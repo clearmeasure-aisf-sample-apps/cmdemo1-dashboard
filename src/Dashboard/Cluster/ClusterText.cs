@@ -131,6 +131,29 @@ public static class ClusterText
         return UseAgainst(memory.Usage, memory.Allocatable, MemoryOf, Memory);
     }
 
+    /// <summary><c>12 of 110</c>; <c>12</c> without a capacity; null without a count.</summary>
+    public static string? NodePods(ClusterNode node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        return (node.Pods, node.PodCapacity) switch
+        {
+            ({ } count, { } capacity) => Of(count, capacity),
+            ({ } count, null) => BuildText.Count(count),
+            _ => null,
+        };
+    }
+
+    /// <summary><c>Phase Running; 2 of 2 containers ready</c>; <c>Phase Running</c> without container counts.</summary>
+    public static string PodContainers(ClusterPod pod)
+    {
+        ArgumentNullException.ThrowIfNull(pod);
+        return (pod.ContainersReady, pod.Containers) switch
+        {
+            ({ } ready, { } all) => $"Phase {pod.Phase}; {Of(ready, all)} containers ready",
+            _ => $"Phase {pod.Phase}",
+        };
+    }
+
     /// <summary>What the pods ask for of what the nodes offer: <c>63 % requested</c>; null without both numbers.</summary>
     public static string? Requested(ResourceUse use)
     {

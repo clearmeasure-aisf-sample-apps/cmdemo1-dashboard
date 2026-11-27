@@ -77,7 +77,7 @@
                                          Label="@($"Memory of {node.Name}, used of what it offers")" />
                             </td>
                             <td>
-                                <UseCell Value="@Pods(node)" Percent="ClusterText.Share(node.Pods, node.PodCapacity)"
+                                <UseCell Value="@ClusterText.NodePods(node)" Percent="ClusterText.Share(node.Pods, node.PodCapacity)"
                                          Label="@($"Pods on {node.Name}, of how many it can take")" />
                             </td>
                         </tr>
@@ -100,11 +100,4 @@
 
     [Parameter, EditorRequired]
     public TimeZoneInfo Zone { get; set; } = default!;
-
-    private static string? Pods(ClusterNode node) => (node.Pods, node.PodCapacity) switch
-    {
-        ({ } count, { } capacity) => ClusterText.Of(count, capacity),
-        ({ } count, null) => BuildText.Count(count),
-        _ => null,
-    };
 }

@@ -9,6 +9,19 @@ public static class ClusterText
     /// <summary>From this share of its limit on, a meter is marked as high.</summary>
     public const double HighPercent = 90;
 
+    /// <summary>The low end of the meter's scale, in percent: nothing is said of a share below it.</summary>
+    public const int MeterEmpty = 0;
+
+    /// <summary>The high end of the meter's scale, in percent: a share past it fills the bar.</summary>
+    public const int MeterFull = 100;
+
+    /// <summary>
+    /// Where the bar stands, as the whole number of its scale: the share clamped to the scale, rounded to a whole
+    /// number, in the invariant culture. A share past either end stands on that end.
+    /// </summary>
+    public static string MeterValue(double percent) =>
+        Math.Round(Math.Clamp(percent, MeterEmpty, MeterFull)).ToString(CultureInfo.InvariantCulture);
+
     /// <summary>The millicores in one core: the cluster reads CPU in millicores and says it in cores.</summary>
     internal const double MillicoresPerCore = 1000;
 
@@ -152,6 +165,7 @@ public static class ClusterText
 
     /// <summary>True from <see cref="HighPercent"/> on: the meter and its number are marked.</summary>
     public static bool IsHigh(double? percent) => percent >= HighPercent;
+
 
     /// <summary><c>1 restart</c>, <c>7 restarts</c>.</summary>
     public static string Restarts(int restarts) => Plural.Of(restarts, "restart");

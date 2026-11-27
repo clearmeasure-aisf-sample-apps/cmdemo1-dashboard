@@ -5,7 +5,7 @@
 @if (Percent is { } percent)
 {
     <span class="meter @(Thin ? "meter--thin" : null) @(MarkHigh && ClusterText.IsHigh(percent) ? "meter--high" : null)" role="meter"
-          aria-label="@Label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@Whole(percent)" aria-valuetext="@ValueText"
+          aria-label="@Label" aria-valuemin="@ClusterText.MeterEmpty" aria-valuemax="@ClusterText.MeterFull" aria-valuenow="@Whole(percent)" aria-valuetext="@ValueText"
           title="@($"{Label}: {ValueText}")">
         <span class="meter__fill" style="width: @Whole(percent)%"></span>
     </span>
@@ -32,5 +32,6 @@
     [Parameter]
     public bool MarkHigh { get; set; } = true;
 
-    private static string Whole(double percent) => Math.Round(Math.Clamp(percent, 0, 100)).ToString(CultureInfo.InvariantCulture);
+    /// <summary>Where the bar stands on its 0 to 100 scale, by <see cref="ClusterText.MeterValue"/>.</summary>
+    private static string Whole(double percent) => ClusterText.MeterValue(percent);
 }

@@ -218,11 +218,10 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
         return starting.Count switch
         {
             0 => new ClusterAssessment(ClusterState.Healthy, "Healthy", "Every node is ready and under no pressure, and every pod is ready"),
-            1 => new ClusterAssessment(ClusterState.Checking, "Starting", $"1 pod is starting: {starting[0]}"),
             var count => new ClusterAssessment(
                 ClusterState.Checking,
                 "Starting",
-                string.Create(CultureInfo.InvariantCulture, $"{count} pods are starting: {Named(starting)}")),
+                $"{Plural.Of(count, "pod")} {Plural.Agreement(count, "is", "are")} starting: {Named(starting)}"),
         };
     }
 

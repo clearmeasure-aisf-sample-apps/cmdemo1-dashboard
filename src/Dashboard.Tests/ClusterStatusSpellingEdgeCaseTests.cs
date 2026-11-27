@@ -49,7 +49,7 @@ public class ClusterStatusSpellingEdgeCaseTests
     [Fact]
     public void TheLastNameAFileGivesIsTheFactItGives()
     {
-        var status = Read(
+        var status = ClusterFixture.Read(
             """
             { "generated": "2026-10-06T20:15:30Z", "intervalSeconds": 900, "kubernetesVersion": "v1.33.3", "nodes": [ { "name": "node-1" } ],
               "generated": "2026-10-06T21:15:30Z", "intervalSeconds": 15, "kubernetesVersion": "v1.34.1", "nodes": [ { "name": "node-2" } ] }
@@ -110,7 +110,7 @@ public class ClusterStatusSpellingEdgeCaseTests
     [Fact]
     public void AnArrayOfThingsThatAreNoNodeAndNoNamespaceIsAnEmptyList()
     {
-        var status = Read(
+        var status = ClusterFixture.Read(
             """
             { "generated": "2026-10-06T20:15:30Z", "intervalSeconds": 15, "kubernetesVersion": "v1.33.3",
               "nodes": [ 1, 4.5, "text", true, false, null, [], [ { "name": "node-1" } ], {},
@@ -134,7 +134,7 @@ public class ClusterStatusSpellingEdgeCaseTests
     [Fact]
     public void TheNamedStandAmongTheUnnamedAndAreAllTheFileHas()
     {
-        var status = Read(
+        var status = ClusterFixture.Read(
             """
             { "nodes": [ 7, { "name": "node-1" }, null, "text", { "ready": true }, [ { "name": "node-2" } ] ],
               "namespaces": [ {}, { "name": "apps", "pods": [ 1, { "phase": "Running" }, [] ], "volumes": [ "data", 5 ] },
@@ -172,7 +172,7 @@ public class ClusterStatusSpellingEdgeCaseTests
     public void AMomentSpelledOtherwiseIsTheInstantItNames(string written, int hour, int minute, int second, int ticks, int offsetHours)
     {
         var expected = Moment(hour, minute, second, ticks, offsetHours);
-        var status = Read($$"""{ "generated": {{written}}, "intervalSeconds": 15, "nodes": [] }""");
+        var status = ClusterFixture.Read($$"""{ "generated": {{written}}, "intervalSeconds": 15, "nodes": [] }""");
 
         Assert.NotNull(status.Generated);
         Assert.Equal(expected.UtcDateTime, status.Generated!.Value.UtcDateTime);
@@ -195,7 +195,7 @@ public class ClusterStatusSpellingEdgeCaseTests
     [Fact]
     public void ADayWithNoTimeOfTheDayIsTheMidnightThatOpensIt()
     {
-        var status = Read("""{ "generated": "2026-10-06", "intervalSeconds": 15, "nodes": [] }""");
+        var status = ClusterFixture.Read("""{ "generated": "2026-10-06", "intervalSeconds": 15, "nodes": [] }""");
         var midnight = new DateTimeOffset(2026, 10, 6, 0, 0, 0, TimeSpan.Zero);
 
         Assert.Equal(midnight, status.Generated);
@@ -207,8 +207,8 @@ public class ClusterStatusSpellingEdgeCaseTests
         Assert.True(status.IsStale(ClusterFixture.Generated));
         Assert.False(status.IsStale(midnight - TimeSpan.FromMinutes(1)));
 
-        Assert.True(Read("""{ "generated": "2026-10-05", "nodes": [] }""").IsStale(midnight));
-        Assert.False(Read("""{ "generated": "2026-10-07", "nodes": [] }""").IsStale(midnight));
+        Assert.True(ClusterFixture.Read("""{ "generated": "2026-10-05", "nodes": [] }""").IsStale(midnight));
+        Assert.False(ClusterFixture.Read("""{ "generated": "2026-10-07", "nodes": [] }""").IsStale(midnight));
     }
 
     /// <summary>The two ends of the number of moments, read out of the words rather than handed over as values: the
@@ -220,8 +220,8 @@ public class ClusterStatusSpellingEdgeCaseTests
     [Fact]
     public void TheEndsOfTheNumberOfMomentsComeOutOfAFileAsTheyGoIn()
     {
-        var first = Read("""{ "generated": "0001-01-01T00:00:00.0000000+00:00", "intervalSeconds": 15, "nodes": [] }""");
-        var last = Read("""{ "generated": "9999-12-31T23:59:59.9999999Z", "intervalSeconds": 15, "nodes": [] }""");
+        var first = ClusterFixture.Read("""{ "generated": "0001-01-01T00:00:00.0000000+00:00", "intervalSeconds": 15, "nodes": [] }""");
+        var last = ClusterFixture.Read("""{ "generated": "9999-12-31T23:59:59.9999999Z", "intervalSeconds": 15, "nodes": [] }""");
 
         Assert.Equal(DateTimeOffset.MinValue, first.Generated);
         Assert.Equal(DateTimeOffset.MaxValue, last.Generated);
@@ -258,7 +258,7 @@ public class ClusterStatusSpellingEdgeCaseTests
     public void TheAgeTurnsOverOnATickOfTheFilesOwnHalfSecond(string interval, int staleAfterSeconds)
     {
         var named = interval.Length == 0 ? "" : $$""" "intervalSeconds": {{interval}}, """;
-        var status = Read($$"""{ "generated": "2026-10-06T20:15:30.5Z", {{named}} "nodes": [] }""");
+        var status = ClusterFixture.Read($$"""{ "generated": "2026-10-06T20:15:30.5Z", {{named}} "nodes": [] }""");
         var age = TimeSpan.FromSeconds(staleAfterSeconds);
 
         Assert.Equal(Half, status.Generated);
@@ -298,7 +298,7 @@ public class ClusterStatusSpellingEdgeCaseTests
     [InlineData("-0.5", null, 60)]
     public void AHalfSecondOfAnIntervalIsRoundedUpToTheNextSecond(string written, int? expected, int staleAfterSeconds)
     {
-        var status = Read($$"""{ "generated": "2026-10-06T20:15:30Z", "intervalSeconds": {{written}}, "nodes": [] }""");
+        var status = ClusterFixture.Read($$"""{ "generated": "2026-10-06T20:15:30Z", "intervalSeconds": {{written}}, "nodes": [] }""");
         var age = TimeSpan.FromSeconds(staleAfterSeconds);
 
         Assert.Equal(ClusterFixture.Generated, status.Generated);
@@ -350,16 +350,4 @@ public class ClusterStatusSpellingEdgeCaseTests
     /// spelled in: what the words of a file mean, built out of the calendar rather than out of a parser.</summary>
     private static DateTimeOffset Moment(int hour, int minute, int second, int ticks, int offsetHours) =>
         new DateTimeOffset(2026, 10, 6, hour, minute, second, TimeSpan.FromHours(offsetHours)).AddTicks(ticks);
-
-    /// <summary>The status a file holds. A file the reader answers with a problem fails here with that problem to
-    /// read, so the tests above say what the status is rather than that there is one.</summary>
-    private static ClusterStatus Read(string json)
-    {
-        var parsed = ClusterStatus.Parse(json);
-
-        Assert.Null(parsed.Problem);
-        Assert.NotNull(parsed.Value);
-
-        return parsed.Value!;
-    }
 }

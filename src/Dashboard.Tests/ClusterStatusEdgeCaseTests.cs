@@ -33,13 +33,6 @@ public class ClusterStatusEdgeCaseTests
     /// <summary>The moment the sample file was written; every age below is counted from it.</summary>
     private static readonly DateTimeOffset Generated = ClusterFixture.Generated;
 
-    /// <summary>A file that says the three facts and an empty list of nodes, in the words the two readings are made
-    /// from - the same text twice over is two readings of it.</summary>
-    private const string OneFile = """{ "generated": "2026-10-06T20:15:30Z", "intervalSeconds": 15, "kubernetesVersion": "v1.33.3", "nodes": [] }""";
-
-    /// <summary>The least a file may say and still be a file: one empty list, and nothing else.</summary>
-    private const string NoNodes = """{ "nodes": [] }""";
-
     // ------------------------------------------------------------------------ the stale rule, to its numbers
 
     /// <summary>The two numbers the stale rule is made of, to their value: four of the collector's intervals, and a
@@ -246,7 +239,7 @@ public class ClusterStatusEdgeCaseTests
     {
         var noSpaces = ClusterFixture.Status();
         var emptySpaces = ClusterFixture.Status([], ClusterFixture.Space("apps"), ClusterFixture.Space("jobs"));
-        var parsed = Read("""{ "nodes": [ { "name": "node-1", "pods": { "count": 63, "capacity": 110 } } ], "namespaces": [ { "name": "apps", "pods": [] } ] }""");
+        var parsed = ClusterFixture.Read("""{ "nodes": [ { "name": "node-1", "pods": { "count": 63, "capacity": 110 } } ], "namespaces": [ { "name": "apps", "pods": [] } ] }""");
 
         Assert.Equal(63, Assert.Single(noSpaces.Nodes).Pods);
         Assert.Empty(noSpaces.Pods);
@@ -269,10 +262,10 @@ public class ClusterStatusEdgeCaseTests
     [Fact]
     public void AnEmptyArrayIsStillAnArrayOfNodesOrOfNamespaces()
     {
-        var nodes = Read(NoNodes);
-        var spaces = Read("""{ "namespaces": [] }""");
-        var both = Read("""{ "nodes": [], "namespaces": [] }""");
-        var facts = Read(OneFile);
+        var nodes = ClusterFixture.Read(ClusterFixture.NoNodes);
+        var spaces = ClusterFixture.Read("""{ "namespaces": [] }""");
+        var both = ClusterFixture.Read("""{ "nodes": [], "namespaces": [] }""");
+        var facts = ClusterFixture.Read(ClusterFixture.FileWithTheThreeFacts);
 
         Assert.Empty(nodes.Nodes);
         Assert.Empty(nodes.Namespaces);
@@ -291,14 +284,14 @@ public class ClusterStatusEdgeCaseTests
         Assert.Equal("v1.33.3", facts.KubernetesVersion);
         Assert.Empty(facts.Nodes);
 
-        var zero = Read("""{ "intervalSeconds": 0, "kubernetesVersion": "  ", "namespaces": [] }""");
+        var zero = ClusterFixture.Read("""{ "intervalSeconds": 0, "kubernetesVersion": "  ", "namespaces": [] }""");
 
         Assert.Equal(0, zero.IntervalSeconds);
         Assert.Null(zero.KubernetesVersion);
         Assert.Equal(ClusterStatus.MinimumStaleAfter, zero.StaleAfter);
 
         // One list of the two empty, and the other name holding no array at all, is still a file that is read.
-        var half = Read("""{ "nodes": [], "namespaces": null }""");
+        var half = ClusterFixture.Read("""{ "nodes": [], "namespaces": null }""");
 
         Assert.Empty(half.Nodes);
         Assert.Empty(half.Namespaces);
@@ -345,7 +338,7 @@ public class ClusterStatusEdgeCaseTests
         Assert.Equal(read, new Parsed<ClusterStatus>(status));
         Assert.NotEqual(read, new Parsed<ClusterStatus>(status, "the file is old"));
 
-        var parsed = ClusterStatus.Parse(OneFile);
+        var parsed = ClusterStatus.Parse(ClusterFixture.FileWithTheThreeFacts);
 
         Assert.Null(parsed.Problem);
         Assert.NotNull(parsed.Value);
@@ -435,8 +428,8 @@ public class ClusterStatusEdgeCaseTests
 
         // Two readings of one file are two statuses, and so are two readings of the file that lists nothing: the
         // lists a reader hands over are its own, empty as they are, and an empty list is still a list of its own.
-        Assert.NotEqual(Read(OneFile), Read(OneFile));
-        Assert.NotEqual(Read(NoNodes), Read(NoNodes));
+        Assert.NotEqual(ClusterFixture.Read(ClusterFixture.FileWithTheThreeFacts), ClusterFixture.Read(ClusterFixture.FileWithTheThreeFacts));
+        Assert.NotEqual(ClusterFixture.Read(ClusterFixture.NoNodes), ClusterFixture.Read(ClusterFixture.NoNodes));
     }
 
     /// <summary>The one line the record says about itself - the line a failing test prints - names the type, then its
@@ -478,16 +471,4 @@ public class ClusterStatusEdgeCaseTests
     /// pair of lists.</summary>
     private static ClusterStatus Built(IReadOnlyList<ClusterNode> nodes, IReadOnlyList<ClusterNamespace> spaces) =>
         new(Generated, 15, "v1.33.3", nodes, spaces);
-
-    /// <summary>The status a file holds. A file the reader answers with a problem fails here with that problem to
-    /// read, so the tests above say what the status is rather than that there is one.</summary>
-    private static ClusterStatus Read(string json)
-    {
-        var parsed = ClusterStatus.Parse(json);
-
-        Assert.NotNull(parsed.Value);
-        Assert.Null(parsed.Problem);
-
-        return parsed.Value!;
-    }
 }

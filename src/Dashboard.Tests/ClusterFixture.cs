@@ -120,6 +120,28 @@ internal static class ClusterFixture
     public static ClusterStatus Status(IReadOnlyList<ClusterNode>? nodes = null, params ClusterNamespace[] spaces) =>
         new(Generated, 15, "v1.33.3", nodes ?? [Node()], spaces);
 
+    /// <summary>The least a file may say and still be a file: one empty list of nodes, and nothing else.</summary>
+    public const string NoNodes = """{ "nodes": [] }""";
+
+    /// <summary>A file that says the three facts - when it was written (<see cref="Generated"/>), how often (15 s) and
+    /// which version (v1.33.3) - and an empty list of nodes; the same text twice over is two readings of it.</summary>
+    public const string FileWithTheThreeFacts = """{ "generated": "2026-10-06T20:15:30Z", "intervalSeconds": 15, "kubernetesVersion": "v1.33.3", "nodes": [] }""";
+
+    /// <summary>
+    /// The status a file holds. A file the reader answers with a problem fails here, the problem first and in the
+    /// message, so a test says what the status is rather than that there is one - and every file that calls this
+    /// reads the same failure for the same refused file.
+    /// </summary>
+    public static ClusterStatus Read(string json)
+    {
+        var parsed = ClusterStatus.Parse(json);
+
+        Assert.True(parsed.Problem is null, $"the reader refused the file: {parsed.Problem}");
+        Assert.NotNull(parsed.Value);
+
+        return parsed.Value!;
+    }
+
     public static SourceReading<ClusterStatus> Read(ClusterStatus status) => new(SourceState.Read, status);
 
     public static SourceReading<AksService> Read(AksService service) => new(SourceState.Read, service);

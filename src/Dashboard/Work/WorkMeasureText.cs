@@ -21,6 +21,12 @@ internal static class WorkMeasureText
     /// <summary>A rate above one is shown as the file gave it, to two decimals.</summary>
     private const string KeptFormat = "0.##";
 
+    /// <summary>The sign after a percent, with its space: <c>12.5 %</c>. <see cref="PercentFormat"/> writes the number before it.</summary>
+    private const string PercentSign = " %";
+
+    /// <summary>The middle dot, with a space on each side, that <see cref="Joined"/> puts between the parts of a measure.</summary>
+    private const string PartSeparator = " · ";
+
     internal static string Duration(WorkDuration? duration)
     {
         if (duration is null)
@@ -74,10 +80,10 @@ internal static class WorkMeasureText
     }
 
     /// <summary>The parts a measure has, joined by a middle dot; <see cref="WorkItemsText.NotMetered"/> when it has none.</summary>
-    private static string Joined(List<string> parts) => parts.Count == 0 ? WorkItemsText.NotMetered : string.Join(" · ", parts);
+    private static string Joined(List<string> parts) => parts.Count == 0 ? WorkItemsText.NotMetered : string.Join(PartSeparator, parts);
 
     private static string Rate(double rate) =>
         rate <= LargestFraction
-            ? Math.Round(rate * PercentPerWhole, PercentDecimals).ToString(PercentFormat, CultureInfo.InvariantCulture) + " %"
+            ? Math.Round(rate * PercentPerWhole, PercentDecimals).ToString(PercentFormat, CultureInfo.InvariantCulture) + PercentSign
             : rate.ToString(KeptFormat, CultureInfo.InvariantCulture);
 }

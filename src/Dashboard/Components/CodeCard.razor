@@ -85,7 +85,7 @@
         }
         @if (Build.Crap is { } crap)
         {
-            var over = BuildText.CrapIsOver(crap);
+            var over = crap.IsOver();
             <div class="@(over ? "facts__warn" : null)">
                 <dt title="CRAP score (change risk anti-patterns) per method: complexity that tests do not cover">CRAP</dt>
                 <dd>

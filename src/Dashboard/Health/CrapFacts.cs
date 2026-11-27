@@ -12,4 +12,7 @@ public sealed record CrapFacts(double? Max, double? Threshold, int? OverThreshol
     }
 
     internal bool MeasuredNothing => MeasuredFacts.None(Max, Threshold, OverThreshold);
+
+    /// <summary>True when a method's CRAP score is over the threshold, so the card marks it. The count decides when the build gives one; otherwise the worst score is compared with the threshold.</summary>
+    public bool IsOver() => OverThreshold > 0 || (OverThreshold is null && Max > Threshold);
 }

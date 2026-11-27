@@ -198,7 +198,7 @@ public static class BuildText
     public static bool CrapIsOver(CrapFacts crap)
     {
         ArgumentNullException.ThrowIfNull(crap);
-        return crap.OverThreshold > 0 || (crap.OverThreshold is null && crap.Max > crap.Threshold);
+        return crap.IsOver();
     }
 
     /// <summary><c>no problems</c>, <c>1 problem</c>, <c>12 problems</c>.</summary>

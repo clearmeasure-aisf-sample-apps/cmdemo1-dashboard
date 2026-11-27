@@ -75,14 +75,14 @@ public sealed record AksService(
                 ResourceGroup: JsonRead.Text(root, "resourceGroup"),
                 Location: JsonRead.Text(root, "location"),
                 Availability: AksAvailability.Read(JsonRead.Section(root, "availability")),
-                PowerState: JsonRead.Text(root, "powerState"),
-                ProvisioningState: JsonRead.Text(root, "provisioningState"),
-                KubernetesVersion: JsonRead.Text(root, "kubernetesVersion"),
+                PowerState: JsonRead.Text(root, AksFields.PowerState),
+                ProvisioningState: JsonRead.Text(root, AksFields.ProvisioningState),
+                KubernetesVersion: JsonRead.Text(root, AksFields.KubernetesVersion),
                 Tier: JsonRead.Text(root, "tier"),
                 Pools: JsonRead.Named(root, "pools", AksPool.Read),
                 Metrics: AksMetrics.Read(JsonRead.Section(root, "metrics")));
             return service is { Availability: null, PowerState: null, ProvisioningState: null }
-                ? new Parsed<AksService>(null, "the file says nothing about the service: no availability, no powerState and no provisioningState")
+                ? new Parsed<AksService>(null, $"the file says nothing about the service: no availability, no {AksFields.PowerState} and no {AksFields.ProvisioningState}")
                 : new Parsed<AksService>(service);
         }
         catch (JsonException)
@@ -130,9 +130,20 @@ public sealed record AksPool(
             JsonRead.Count(parts, "count"),
             JsonRead.Text(parts, "size"),
             JsonRead.Count(parts, "osDiskGb"),
-            JsonRead.Text(parts, "powerState"),
-            JsonRead.Text(parts, "provisioningState"),
-            JsonRead.Text(parts, "kubernetesVersion"));
+            JsonRead.Text(parts, AksFields.PowerState),
+            JsonRead.Text(parts, AksFields.ProvisioningState),
+            JsonRead.Text(parts, AksFields.KubernetesVersion));
+}
+
+/// <summary>
+/// The field words the service and its pools share in the file: they describe the same Azure fields at both levels.
+/// File-scoped, so the public surface is unchanged; the casing must stay exact, the lookup is ordinal and case-sensitive.
+/// </summary>
+file static class AksFields
+{
+    public const string PowerState = "powerState";
+    public const string ProvisioningState = "provisioningState";
+    public const string KubernetesVersion = "kubernetesVersion";
 }
 
 /// <summary>

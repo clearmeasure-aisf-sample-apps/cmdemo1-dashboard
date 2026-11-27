@@ -247,7 +247,7 @@ public class AriaHiddenFocusGuardTests
     {
         var hidden = new List<HiddenElement>();
 
-        foreach (var start in OpeningTags(text))
+        foreach (var start in MarkupScan.OpeningTags(text))
         {
             var tag = TagOf(text, start);
 
@@ -375,7 +375,7 @@ public class AriaHiddenFocusGuardTests
 
         while (true)
         {
-            var next = NextTag(text, at);
+            var next = MarkupScan.NextTag(text, at);
 
             if (next < 0)
             {
@@ -415,38 +415,6 @@ public class AriaHiddenFocusGuardTests
         }
 
         return text[from..];
-    }
-
-    /// <summary>Where the text opens a tag - "&lt;" followed by a name, the "&lt;/" of a closing tag left out - in
-    /// the order the text writes them.</summary>
-    private static List<int> OpeningTags(string text)
-    {
-        var starts = new List<int>();
-
-        for (var at = NextTag(text, 0); at >= 0; at = NextTag(text, at + 1))
-        {
-            if (text[at + 1] != '/')
-            {
-                starts.Add(at);
-            }
-        }
-
-        return starts;
-    }
-
-    /// <summary>The next "&lt;" that opens or closes a tag at or after <paramref name="from"/>, or -1. A "&lt;" of
-    /// Razor - <c>@(count &lt; 1)</c> - is followed by a space or a digit and opens nothing.</summary>
-    private static int NextTag(string text, int from)
-    {
-        for (var at = text.IndexOf('<', from); at >= 0; at = text.IndexOf('<', at + 1))
-        {
-            if (at + 1 < text.Length && (text[at + 1] == '/' || char.IsLetter(text[at + 1])))
-            {
-                return at;
-            }
-        }
-
-        return -1;
     }
 
     /// <summary>The element name a tag opens, in lower case: HTML spells an element name the same whichever way its

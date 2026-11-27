@@ -336,6 +336,134 @@ public class MarkupGuardSupportTests
         }
     }
 
+    // ----- the tag scan
+
+    /// <summary>Where <see cref="MarkupScan.NextTag" /> finds a tag and where it does not: a <c>&lt;</c> followed by
+    /// a letter or a <c>/</c> opens or closes one, and a <c>&lt;</c> of Razor or of prose - followed by a space, a
+    /// digit or punctuation - opens nothing.</summary>
+    [Theory]
+    [InlineData("<p>", 0, 0)]
+    [InlineData("x <p>", 0, 2)]
+    [InlineData("</p>", 0, 0)]
+    [InlineData("@(count < 1)", 0, -1)]
+    [InlineData("if <2px", 0, -1)]
+    [InlineData("a <= b <i>", 0, 7)]
+    [InlineData("<p><i>", 1, 3)]
+    [InlineData("<", 0, -1)]
+    [InlineData("", 0, -1)]
+    public void TheSharedScanFindsTheNextTagAndNotTheLessThanOfAnExpression(string text, int from, int expected) =>
+        Assert.Equal(expected, MarkupScan.NextTag(text, from));
+
+    /// <summary><see cref="MarkupScan.OpeningTags" /> names every start tag in the order the text writes them and
+    /// leaves every closing tag and every <c>&lt;</c> of an expression out.</summary>
+    [Fact]
+    public void TheSharedScanNamesEveryStartTagAndNoClosingOne()
+    {
+        const string Markup = "<div>@(a < b)<span>x</span></div><br />";
+
+        Assert.Equal([0, 13, 33], MarkupScan.OpeningTags(Markup));
+        Assert.Empty(MarkupScan.OpeningTags("</div> 1 < 2"));
+        Assert.Empty(MarkupScan.OpeningTags(string.Empty));
+    }
+
+    /// <summary>How <see cref="MarkupScan.TagOf" /> cuts a tag: to the <c>&gt;</c> that closes it, past a <c>&gt;</c>
+    /// inside a value in either kind of quote, inside a Razor <c>@(...)</c> whose literals hold quotes of their own,
+    /// and inside a parenthesised expression outside any value; and to the end of the text when nothing closes it.
+    /// The single-quote cases pin the reading the eleven retired copies gave, which the seven <c>"</c>-only copies
+    /// still standing do not.</summary>
+    [Theory]
+    [InlineData("<p>rest", 0, "<p>")]
+    [InlineData("x<p class=\"a\">rest", 1, "<p class=\"a\">")]
+    [InlineData("<p title=\"a > b\">rest", 0, "<p title=\"a > b\">")]
+    [InlineData("<p title='a > b'>rest", 0, "<p title='a > b'>")]
+    [InlineData("<p title=\"@(x ? \"a>\" : \"b\")\">rest", 0, "<p title=\"@(x ? \"a>\" : \"b\")\">")]
+    [InlineData("<p title='@(x ? \"it's\" : \"b\")'>rest", 0, "<p title='@(x ? \"it's\" : \"b\")'>")]
+    [InlineData("<p @onclick=\"() => Go()\">rest", 0, "<p @onclick=\"() => Go()\">")]
+    [InlineData("<p disabled=@(a > b)>rest", 0, "<p disabled=@(a > b)>")]
+    [InlineData("<p title=\"never closed>", 0, "<p title=\"never closed>")]
+    [InlineData("<p class=\"a\"", 0, "<p class=\"a\"")]
+    public void TheSharedScanCutsATagWhereItsOwnGreaterThanStands(string text, int start, string expected) =>
+        Assert.Equal(expected, MarkupScan.TagOf(text, start));
+
+    /// <summary>The value and expression ends <see cref="MarkupScan.TagOf" /> stands on: a value ends at its own
+    /// quote and not at the other kind, a <c>@(</c> inside it is read to its matching <c>)</c>, an expression's
+    /// literals are run through, and anything left open runs to the end of the text. Space is skipped to the first
+    /// letter that is not space, or to the end.</summary>
+    [Fact]
+    public void TheSharedScanReadsValuesExpressionsAndSpaceToTheirEnds()
+    {
+        Assert.Equal(3, MarkupScan.EndOfValue("\"ab\"c", 0, '"'));
+        Assert.Equal(4, MarkupScan.EndOfValue("'a\"b'", 0, '\''));
+        Assert.Equal(11, MarkupScan.EndOfValue("\"@(f(\")\"))x\"", 0, '"'));
+        Assert.Equal(5, MarkupScan.EndOfValue("\"open", 0, '"'));
+
+        Assert.Equal(4, MarkupScan.EndOfExpression("(a())", 0));
+        Assert.Equal(5, MarkupScan.EndOfExpression("(\")\"x)", 0));
+        Assert.Equal(4, MarkupScan.EndOfExpression("(a(b", 0));
+        Assert.Equal(3, MarkupScan.EndOfExpression("('a", 0));
+
+        Assert.Equal(3, MarkupScan.SkipSpace("  \tx", 0));
+        Assert.Equal(3, MarkupScan.SkipSpace("x  ", 1));
+        Assert.Equal(0, MarkupScan.SkipSpace("x", 0));
+        Assert.Equal(2, MarkupScan.SkipSpace("ab", 2));
+    }
+
+    /// <summary>Every start tag of the page and of every component, read through the shared scan, starts with its
+    /// <c>&lt;</c> and an element's letter and ends at a <c>&gt;</c>: the scan reads the real markup whole, and a
+    /// reading that lost its place in a value would cut a tag off at the end of the file instead.</summary>
+    [Fact]
+    public void TheSharedScanReadsEveryStartTagOfTheAppToItsClose()
+    {
+        var files = Directory.EnumerateFiles(MarkupGuards.DashboardRoot(), "*.razor", SearchOption.AllDirectories).ToList();
+        var tags = 0;
+
+        Assert.True(files.Count >= 20, $"only {files.Count} .razor file(s) were read: the scan proves nothing");
+
+        foreach (var file in files)
+        {
+            var text = File.ReadAllText(file);
+
+            foreach (var start in MarkupScan.OpeningTags(text))
+            {
+                var tag = MarkupScan.TagOf(text, start);
+                tags++;
+
+                Assert.True(char.IsLetter(tag[1]), $"{file}:{MarkupGuards.LineOf(text, start)} opens no element: {tag}");
+                Assert.True(tag.EndsWith('>'), $"{file}:{MarkupGuards.LineOf(text, start)} reads to the end of the file: {tag[..Math.Min(80, tag.Length)]}");
+            }
+        }
+
+        Assert.True(tags >= 200, $"only {tags} start tag(s) were read: the scan proves nothing");
+    }
+
+    /// <summary>The copies of the tag scan still standing are the ones named here and no more. The fourteen
+    /// <c>OpeningTags</c>/<c>NextTag</c> and the eleven quote-aware <c>TagOf</c>/<c>SkipSpace</c>/<c>EndOfValue</c>/
+    /// <c>EndOfExpression</c> are gone into <see cref="MarkupScan" /> and none may come back; what is left is the
+    /// family that reads only <c>"</c> as a quote - which would cut a tag elsewhere if it were folded in unseen - and
+    /// the SVG guard's own <c>TagOf</c>. The set may only shrink.</summary>
+    [Fact]
+    public void TheTagScanCopiesLeftStandingAreTheNamedOnesAndNoMore()
+    {
+        string[] doubleQuoteOnly =
+        [
+            "AriaHiddenFocusGuardTests", "ButtonTypeGuardTests", "DuplicateIdGuardTests", "FormControlNameGuardTests",
+            "LiveRegionGuardTests", "SectionNameGuardTests", "TabOrderAndGroupGuardTests",
+        ];
+
+        Assert.Empty(CopiesOf(nameof(MarkupScan.OpeningTags)));
+        Assert.Empty(CopiesOf(nameof(MarkupScan.NextTag)));
+        Assert.Empty(CopiesOf(nameof(MarkupScan.SkipSpace)));
+        Assert.Equal([.. doubleQuoteOnly.Append("SvgIconGuardTests").Order(StringComparer.Ordinal)], CopiesOf(nameof(MarkupScan.TagOf)).Order(StringComparer.Ordinal));
+        Assert.Equal(doubleQuoteOnly, CopiesOf(nameof(MarkupScan.EndOfValue)).Order(StringComparer.Ordinal));
+        Assert.Equal(doubleQuoteOnly, CopiesOf(nameof(MarkupScan.EndOfExpression)).Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>The names of the test types that keep a private static method of the name given.</summary>
+    private static List<string> CopiesOf(string name) =>
+        [.. TypesOfTheGuardFiles()
+            .Where(type => type.GetMethods(Private).Any(method => method.Name == name))
+            .Select(type => type.Name)];
+
     // ----- the two walks
 
     /// <summary>The text and the needles the shared count and its copies are set against: the markup the guards

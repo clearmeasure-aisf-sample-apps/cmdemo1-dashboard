@@ -216,9 +216,9 @@ public static class ClusterText
             PodState.Starting => $"Starting{Reason(pod.Reason)}",
             _ when phase.Is(PodPhaseKind.Pending) => Age(pod.StartedAt, asOf) is { } age
                 ? $"Pending for {age}{Reason(pod.Reason)}"
-                : Said(pod.Reason) ?? ClusterPod.Pending,
-            _ when phase.Is(PodPhaseKind.Running) => Said(pod.Reason) ?? "Not ready",
-            _ => Said(pod.Reason) ?? pod.Phase,
+                : TextReason.Said(pod.Reason) ?? ClusterPod.Pending,
+            _ when phase.Is(PodPhaseKind.Running) => TextReason.Said(pod.Reason) ?? "Not ready",
+            _ => TextReason.Said(pod.Reason) ?? pod.Phase,
         };
     }
 
@@ -310,27 +310,15 @@ public static class ClusterText
 
     /// <summary>
     /// A reason as the end of what comes before it: <c>: CrashLoopBackOff</c>, trimmed by <see cref="Words"/>; empty
-    /// when there is nothing to say.
+    /// when there is nothing to say. See <see cref="TextReason.Reason"/>.
     /// </summary>
-    internal static string Reason(string? detail) => Said(detail) is { } words ? $": {words}" : string.Empty;
+    internal static string Reason(string? detail) => TextReason.Reason(detail);
 
     /// <summary>
-    /// The words of a reason without the spaces around them and without the full stops they end in - a stop followed
-    /// by a space is still a stop - so the one that closes the sentence is the only one said.
+    /// The words of a reason without the spaces around them and without the full stops they end in. See
+    /// <see cref="TextReason.Words"/>.
     /// </summary>
-    internal static string Words(string? detail)
-    {
-        var words = (detail ?? string.Empty).Trim();
-        while (words.EndsWith('.'))
-        {
-            words = words.TrimEnd('.').TrimEnd();
-        }
-
-        return words;
-    }
-
-    /// <summary>The <see cref="Words"/> of a reason; null when nothing is left of it.</summary>
-    private static string? Said(string? detail) => Words(detail) is { Length: > 0 } words ? words : null;
+    internal static string Words(string? detail) => TextReason.Words(detail);
 
     /// <summary>
     /// The unit a quantity of CPU is said in: <c>core</c> for a quantity of exactly one core (1000 millicores),

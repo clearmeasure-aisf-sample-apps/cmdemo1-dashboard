@@ -18,7 +18,7 @@ internal static class TextReason
     /// The words of a detail without the spaces around them and without the full stops they end in - a stop
     /// followed by a space is still a stop - so the one that closes the sentence is the only one said.
     /// </summary>
-    private static string Words(string? detail)
+    internal static string Words(string? detail)
     {
         var words = (detail ?? string.Empty).Trim();
         while (words.EndsWith('.'))
@@ -28,4 +28,7 @@ internal static class TextReason
 
         return words;
     }
+
+    /// <summary>The <see cref="Words"/> of a detail; null when nothing is left of it.</summary>
+    internal static string? Said(string? detail) => Words(detail) is { Length: > 0 } words ? words : null;
 }

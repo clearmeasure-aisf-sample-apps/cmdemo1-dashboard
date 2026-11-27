@@ -73,17 +73,26 @@ public static class VitalsText
     /// <summary>The digits of a number the tile says whole, <c>3</c>, <c>412</c>: no decimal.</summary>
     private const string WholeFormat = "0";
 
+    /// <summary>The unit the tile says after a cpu percent, <c> %</c>: the same sign <see cref="Trends.Cpu" /> gives its trend.</summary>
+    internal const string PercentSign = " %";
+
+    /// <summary>The unit the tile says after the gigabytes of <see cref="Memory" />, <c> GB</c>: the word the memory switches to at <see cref="MegabytesPerGigabyte" /> MB.</summary>
+    private const string GigabyteUnit = " GB";
+
+    /// <summary>The unit the tile says after the megabytes of <see cref="Memory" />, <c> MB</c>: the word the memory says below <see cref="MegabytesPerGigabyte" /> MB.</summary>
+    private const string MegabyteUnit = " MB";
+
     /// <summary><c>3 %</c>; one decimal below <see cref="OneDecimalBelow" />.</summary>
     public static string Cpu(double percent) =>
-        percent < OneDecimalBelow && Math.Round(percent, OneDecimalDigits) != Math.Round(percent)
-            ? percent.ToString(OneDecimalFormat, CultureInfo.InvariantCulture) + " %"
-            : percent.ToString(WholeFormat, CultureInfo.InvariantCulture) + " %";
+        percent.ToString(percent < OneDecimalBelow && Math.Round(percent, OneDecimalDigits) != Math.Round(percent)
+            ? OneDecimalFormat
+            : WholeFormat, CultureInfo.InvariantCulture) + PercentSign;
 
     /// <summary><c>412 MB</c>, and from <see cref="MegabytesPerGigabyte" /> MB on <c>1.4 GB</c>.</summary>
     public static string Memory(double megabytes) =>
         megabytes >= MegabytesPerGigabyte
-            ? (megabytes / MegabytesPerGigabyte).ToString(OneDecimalFormat, CultureInfo.InvariantCulture) + " GB"
-            : megabytes.ToString(WholeFormat, CultureInfo.InvariantCulture) + " MB";
+            ? (megabytes / MegabytesPerGigabyte).ToString(OneDecimalFormat, CultureInfo.InvariantCulture) + GigabyteUnit
+            : megabytes.ToString(WholeFormat, CultureInfo.InvariantCulture) + MegabyteUnit;
 
     /// <summary><c>up 2 h</c>; below <see cref="ProcessVitals.RecentRestart" /> <c>restarted 3 min ago</c>.</summary>
     public static string Uptime(long seconds)

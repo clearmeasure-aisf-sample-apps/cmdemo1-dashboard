@@ -668,6 +668,35 @@ public class ProcessVitalsEdgeCaseTests
         Assert.Throws<ArgumentOutOfRangeException>(() => VitalsText.Uptime(922337203686));
     }
 
+    /// <summary>The unit the tile says after the cpu percent and after the memory, on each side of the cut-off
+    /// the number changes unit at: the tenth of a percent that keeps the decimal and the one it rounds onto the
+    /// ten it is kept below, and the megabyte the memory crosses onto a gigabyte at - the suffix the number ends in
+    /// is the unit word, the same one on both sides of the line the number crosses, and it is the named const the
+    /// tile and the trend take it from rather than a literal written beside the format.</summary>
+    [Theory]
+    [InlineData(9.94)]
+    [InlineData(9.95)]
+    [InlineData(10)]
+    [InlineData(10.06)]
+    public void TheCpuEndsInThePercentUnitOnEachSideOfTheDecimalCutOff(double percent) =>
+        Assert.EndsWith(" %", VitalsText.Cpu(percent), StringComparison.Ordinal);
+
+    /// <summary>The memory ends in the unit it is said in, on each side of the gigabyte the number crosses onto:
+    /// the megabytes below it say the megabyte, the gigabytes from it on say the gigabyte - the words the tile
+    /// switches between at <see cref="ProcessVitals" />'s <c>MegabytesPerGigabyte</c> are the named consts of
+    /// <see cref="VitalsText" /> and nothing else.</summary>
+    [Theory]
+    [InlineData(1023)]
+    [InlineData(1023.99)]
+    [InlineData(1024)]
+    [InlineData(1024.4)]
+    [InlineData(1048576)]
+    public void TheMemoryEndsInTheUnitItIsSaidInOnEachSideOfTheGigabyte(double megabytes) =>
+        Assert.EndsWith(
+            megabytes >= 1024 ? " GB" : " MB",
+            VitalsText.Memory(megabytes),
+            StringComparison.Ordinal);
+
     // ---------------------------------------------------------------------- the tooltip in words
 
     /// <summary>The tooltip's three branches, in each of the shapes the file's reading leaves them: the heap alone

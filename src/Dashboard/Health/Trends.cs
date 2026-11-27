@@ -42,7 +42,7 @@ public static class Trends
     public static Trend? Cpu(TargetStatus node)
     {
         ArgumentNullException.ThrowIfNull(node);
-        return node.TrendOf(telemetry => telemetry.Process?.CpuPercent, "CPU of the process", " %");
+        return node.TrendOf(telemetry => telemetry.Process?.CpuPercent, "CPU of the process", VitalsText.PercentSign);
     }
 
     /// <summary>

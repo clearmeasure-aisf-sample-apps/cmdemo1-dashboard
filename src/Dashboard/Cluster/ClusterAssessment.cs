@@ -282,12 +282,12 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
 
         if (verdict.Is(AksAvailability.Unavailable))
         {
-            return new ClusterAssessment(ClusterState.Unhealthy, "Unavailable", "Azure reports the AKS service unavailable", summary);
+            return new ClusterAssessment(ClusterState.Unhealthy, AksAvailability.Unavailable, "Azure reports the AKS service unavailable", summary);
         }
 
         if (verdict.Is(AksAvailability.Degraded))
         {
-            return new ClusterAssessment(ClusterState.Warning, "Degraded", "Azure reports the AKS service degraded", summary);
+            return new ClusterAssessment(ClusterState.Warning, AksAvailability.Degraded, "Azure reports the AKS service degraded", summary);
         }
 
         if (service.ProvisioningState is { } provisioning && !service.IsProvisioned)
@@ -301,11 +301,11 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
 
         if (verdict.IsMissing || verdict.Is(AksAvailability.Unknown))
         {
-            return new ClusterAssessment(ClusterState.Neutral, "Unknown", "Azure Resource Health has no verdict on the AKS service at the moment", summary);
+            return new ClusterAssessment(ClusterState.Neutral, AksAvailability.Unknown, "Azure Resource Health has no verdict on the AKS service at the moment", summary);
         }
 
         return verdict.Is(AksAvailability.Available)
-            ? new ClusterAssessment(ClusterState.Healthy, "Available", "Azure reports the AKS service available and running", summary)
+            ? new ClusterAssessment(ClusterState.Healthy, AksAvailability.Available, "Azure reports the AKS service available and running", summary)
             : new ClusterAssessment(ClusterState.Neutral, verdict.ToString(), $"Azure reports the AKS service {verdict}", summary);
     }
 

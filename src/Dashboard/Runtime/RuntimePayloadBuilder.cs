@@ -35,6 +35,9 @@ public static class RuntimePayloadBuilder
     public const string NoNumber = "–";
     public const string CallsUnit = "calls/min";
 
+    /// <summary>What the background SQL commands are (<see cref="TelemetrySnapshot.SqlBackground" />), said after their count.</summary>
+    public const string BackgroundSql = "in the background (mostly the message bus polling the database)";
+
     /// <summary>The label of a neutral tile this page does not check.</summary>
     private const string NotProbed = "Not probed";
 
@@ -746,7 +749,7 @@ public static class RuntimePayloadBuilder
     /// </summary>
     private static string QueriesSentence(IReadOnlyList<TelemetrySnapshot> queries) =>
         queries.Any(telemetry => telemetry.SplitsSql)
-            ? string.Create(CultureInfo.InvariantCulture, $" Queries per minute, counted by the web apps: {queries.Sum(telemetry => telemetry.SqlOfTraffic)} while handling requests, {queries.Sum(telemetry => telemetry.SqlBackground ?? 0)} in the background (mostly the message bus polling the database).")
+            ? string.Create(CultureInfo.InvariantCulture, $" Queries per minute, counted by the web apps: {queries.Sum(telemetry => telemetry.SqlOfTraffic)} while handling requests, {queries.Sum(telemetry => telemetry.SqlBackground ?? 0)} {BackgroundSql}.")
             : string.Empty;
 
     /// <summary>

@@ -66,7 +66,7 @@ internal static class RuntimeEdgeMarks
         var counted = Counted(QueriesWord, telemetry switch
         {
             null => null,
-            { SplitsSql: true } => string.Create(CultureInfo.InvariantCulture, $"{telemetry.SqlRequests} SQL commands while handling requests (the number shown: what traffic causes) and {telemetry.SqlBackground} in the background (mostly the message bus polling the database), {telemetry.Sql} in all{latency}; its health checks query the database too"),
+            { SplitsSql: true } => string.Create(CultureInfo.InvariantCulture, $"{telemetry.SqlRequests} SQL commands while handling requests (the number shown: what traffic causes) and {telemetry.SqlBackground} {RuntimePayloadBuilder.BackgroundSql}, {telemetry.Sql} in all{latency}; its health checks query the database too"),
             _ => string.Create(CultureInfo.InvariantCulture, $"{telemetry.Sql} SQL commands{latency}; its health checks query the database too"),
         });
         // Short words: they stand under the number, in the narrow column between two frames of the diagram.

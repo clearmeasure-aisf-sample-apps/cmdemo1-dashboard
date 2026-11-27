@@ -92,6 +92,14 @@ public class WorkItemsTextRemainingEdgeCaseTests
             WorkItemsText.Cost(new WorkCost(3, "Cursor agent usage"), [Item(1, costUsd: 1), Item(2)]));
 
     [Fact]
+    public void ACostLineWithANoteSplitsIntoExactlyThreeParts() =>
+        Assert.Equal(3, WorkItemsText.Cost(new WorkCost(3, "Cursor agent usage"), [Item(1, costUsd: 1), Item(2)])!.Split(" · ").Length);
+
+    [Fact]
+    public void ACostLineWithoutANoteSplitsIntoExactlyTwoParts() =>
+        Assert.Equal(2, WorkItemsText.Cost(new WorkCost(3, null), [Item(1, costUsd: 1), Item(2)])!.Split(" · ").Length);
+
+    [Fact]
     public void NoMeteredItemIsNoCostEvenWithAPublishedTotal() =>
         Assert.Null(WorkItemsText.Cost(new WorkCost(10, "Cursor agent usage"), [Item(1), Item(2)]));
 

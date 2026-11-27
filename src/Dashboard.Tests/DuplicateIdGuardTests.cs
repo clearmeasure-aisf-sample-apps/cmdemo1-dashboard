@@ -261,7 +261,7 @@ public class DuplicateIdGuardTests
     {
         var ids = new List<IdUse>();
 
-        foreach (var start in OpeningTags(text))
+        foreach (var start in MarkupScan.OpeningTags(text))
         {
             var tag = TagOf(text, start);
 
@@ -324,38 +324,6 @@ public class DuplicateIdGuardTests
     /// single file shows, which is half of why this rule is walked over the app rather than file by file.</summary>
     private static List<string> ReportsOf(string first, string second) =>
         ReportsOf([.. Scan("First.razor", first), .. Scan("Second.razor", second)]);
-
-    /// <summary>Where the text opens a tag - "&lt;" followed by a name, the "&lt;/" of a closing tag left out - in
-    /// the order the text writes them.</summary>
-    private static List<int> OpeningTags(string text)
-    {
-        var starts = new List<int>();
-
-        for (var at = NextTag(text, 0); at >= 0; at = NextTag(text, at + 1))
-        {
-            if (text[at + 1] != '/')
-            {
-                starts.Add(at);
-            }
-        }
-
-        return starts;
-    }
-
-    /// <summary>The next "&lt;" that opens or closes a tag at or after <paramref name="from"/>, or -1. A "&lt;" of
-    /// Razor - <c>@(count &lt; 1)</c> - is followed by a space or a digit and opens nothing.</summary>
-    private static int NextTag(string text, int from)
-    {
-        for (var at = text.IndexOf('<', from); at >= 0; at = text.IndexOf('<', at + 1))
-        {
-            if (at + 1 < text.Length && (text[at + 1] == '/' || char.IsLetter(text[at + 1])))
-            {
-                return at;
-            }
-        }
-
-        return -1;
-    }
 
     /// <summary>How the whole opening tag is read, from its "&lt;" to the "&gt;" that closes it - or to the end of
     /// the file when nothing does. An attribute value is run through rather than read to its first quote, because

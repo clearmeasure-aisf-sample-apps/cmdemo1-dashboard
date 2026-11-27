@@ -361,7 +361,7 @@ public class DocumentLanguageGuardTests
 
         for (var at = HtmlAt(text, 0); at >= 0; at = HtmlAt(text, at + 1))
         {
-            var tag = TagOf(text, at);
+            var tag = MarkupScan.TagOf(text, at);
             var element = NameOf(tag);
 
             if (element != HtmlTag)
@@ -471,7 +471,7 @@ public class DocumentLanguageGuardTests
 
         while (true)
         {
-            at = SkipSpace(tag, at);
+            at = MarkupScan.SkipSpace(tag, at);
 
             if (at >= tag.Length || tag[at] is '>' or '/')
             {
@@ -487,13 +487,13 @@ public class DocumentLanguageGuardTests
 
             var attributeName = tag[name..at];
 
-            at = SkipSpace(tag, at);
+            at = MarkupScan.SkipSpace(tag, at);
 
             string? value = null;
 
             if (at < tag.Length && tag[at] == '=')
             {
-                at = SkipSpace(tag, at + 1);
+                at = MarkupScan.SkipSpace(tag, at + 1);
                 value = ValueAt(tag, ref at);
             }
 
@@ -524,113 +524,11 @@ public class DocumentLanguageGuardTests
         }
 
         var open = at;
-        var close = EndOfValue(tag, open, quote);
+        var close = MarkupScan.EndOfValue(tag, open, quote);
 
         at = close < tag.Length ? close + 1 : close;
 
         return close <= open + 1 ? string.Empty : tag[(open + 1)..close];
-    }
-
-    private static int SkipSpace(string text, int at)
-    {
-        while (at < text.Length && char.IsWhiteSpace(text[at]))
-        {
-            at++;
-        }
-
-        return at;
-    }
-
-    /// <summary>How the whole opening tag is read, from its "&lt;" to the "&gt;" that closes it - or to the end of
-    /// the file when nothing does. An attribute value is run through rather than read to its first quote, because
-    /// Razor quotes inside it, and a class may hold a comparison of its own between them. The parentheses of an
-    /// expression outside any value are counted too, the way the other guards count them.</summary>
-    private static string TagOf(string text, int start)
-    {
-        var depth = 0;
-
-        for (var at = start; at < text.Length; at++)
-        {
-            var c = text[at];
-
-            if (c is '"' or '\'')
-            {
-                at = EndOfValue(text, at, c);
-                continue;
-            }
-
-            if (c == '(')
-            {
-                depth++;
-            }
-            else if (c == ')')
-            {
-                depth = Math.Max(0, depth - 1);
-            }
-            else if (c == '>' && depth == 0)
-            {
-                return text[start..(at + 1)];
-            }
-        }
-
-        return text[start..];
-    }
-
-    /// <summary>The quote that closes the value opened at <paramref name="open"/>, or the end of the text when
-    /// the value is never closed. A <c>@(</c> inside the value is read to the <c>)</c> that matches it, the
-    /// string literals of the expression and their quotes skipped over.</summary>
-    private static int EndOfValue(string text, int open, char quote)
-    {
-        for (var at = open + 1; at < text.Length; at++)
-        {
-            var c = text[at];
-
-            if (c == quote)
-            {
-                return at;
-            }
-
-            if (c == Razor && at + 1 < text.Length && text[at + 1] == '(')
-            {
-                at = EndOfExpression(text, at + 1);
-            }
-        }
-
-        return text.Length;
-    }
-
-    /// <summary>The <c>)</c> that closes the <c>(</c> at <paramref name="open"/>, or the end of the text. The
-    /// quotes of the expression's own string literals are run through, since a literal may hold anything a plain
-    /// read would stop at.</summary>
-    private static int EndOfExpression(string text, int open)
-    {
-        var depth = 0;
-
-        for (var at = open; at < text.Length; at++)
-        {
-            var c = text[at];
-
-            if (c is '"' or '\'')
-            {
-                var closing = text.IndexOf(c, at + 1);
-                at = closing < 0 ? text.Length : closing;
-            }
-            else if (c == '(')
-            {
-                depth++;
-            }
-            else if (c == ')')
-            {
-                depth--;
-
-                if (depth == 0)
-                {
-                    return at;
-                }
-            }
-        }
-
-        return text.Length;
     }
 
     private static int LineOf(string text, int at) => text.AsSpan(0, at).Count('\n') + 1;

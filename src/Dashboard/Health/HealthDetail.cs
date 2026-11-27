@@ -92,10 +92,30 @@ public static class HealthDetailText
     private const double MillisecondsPerSecond = 1000;
 
     /// <summary>
-    /// The smallest duration shown in digits: below this the one-decimal format rounds to 0.1, so these durations are
-    /// said as "under 0.1 ms" instead - half of 0.1, the tie to the format and the word in the text is explicit here.
+    /// The smallest duration shown in digits: below this <see cref="OneDecimalFormat" /> rounds to 0.1, so these
+    /// durations are said as <see cref="UnderSmallestShown" /> instead - half of 0.1, the tie to the format and the
+    /// word in the text is explicit here.
     /// </summary>
     private const double SmallestShown = 0.05;
+
+    /// <summary>
+    /// The format <see cref="OneDecimal" /> says a duration in: at most one decimal, none for a whole number.
+    /// <see cref="SmallestShown" /> is half of its last digit, and <see cref="UnderSmallestShown" /> says the
+    /// durations below it.
+    /// </summary>
+    private const string OneDecimalFormat = "0.#";
+
+    /// <summary>The word a duration under a second is said with: <c>42.1 ms</c>.</summary>
+    private const string MillisecondsUnit = "ms";
+
+    /// <summary>The word a duration from a second on is said with: <c>1.2 s</c>.</summary>
+    private const string SecondsUnit = "s";
+
+    /// <summary>
+    /// What <see cref="Duration" /> says below <see cref="SmallestShown" />: the floor phrase is built from
+    /// <see cref="MillisecondsUnit" />, so the words move together with the unit.
+    /// </summary>
+    private const string UnderSmallestShown = "under 0.1 " + MillisecondsUnit;
 
     /// <summary>How many characters of a failing entry's name the one-line summary holds.</summary>
     private const int NameLength = 20;
@@ -147,13 +167,13 @@ public static class HealthDetailText
 
     /// <summary><c>42.1 ms</c>; under a tenth of a millisecond <c>under 0.1 ms</c>; from a second on <c>1.2 s</c>.</summary>
     public static string Duration(double milliseconds) =>
-        milliseconds < SmallestShown ? "under 0.1 ms"
-        : milliseconds < MillisecondsPerSecond ? OneDecimal(milliseconds, "ms")
-        : OneDecimal(milliseconds / MillisecondsPerSecond, "s");
+        milliseconds < SmallestShown ? UnderSmallestShown
+        : milliseconds < MillisecondsPerSecond ? OneDecimal(milliseconds, MillisecondsUnit)
+        : OneDecimal(milliseconds / MillisecondsPerSecond, SecondsUnit);
 
     /// <summary>A number to one decimal place in the invariant culture, with its unit: <c>42.1 ms</c>, <c>1.5 s</c>.</summary>
     private static string OneDecimal(double value, string unit) =>
-        string.Create(CultureInfo.InvariantCulture, $"{value:0.#} {unit}");
+        value.ToString(OneDecimalFormat, CultureInfo.InvariantCulture) + " " + unit;
 
     /// <summary>
     /// One short line for all entries: <c>4 checks healthy</c>; the one that is not, by name, <c>DataAccess

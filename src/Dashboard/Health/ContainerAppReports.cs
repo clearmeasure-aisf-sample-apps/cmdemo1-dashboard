@@ -127,7 +127,8 @@ public static class HourlyCheckText
 
     /// <summary>
     /// <c>24 h: 23 of 24 · 7 d: 160 of 168</c>: of the reports that asked the app, those that found it healthy. A time
-    /// the file does not count is left out, and one without a report says "none"; null when neither is counted.
+    /// the file does not count is left out, and one without a report says <see cref="AvailabilityText.NoneCounted"/>;
+    /// null when neither is counted.
     /// </summary>
     public static string? Counts(ContainerAppReports? reports)
     {
@@ -157,7 +158,7 @@ public static class HourlyCheckText
         return string.Join(' ', words);
     }
 
-    private static string Count(HealthWindow window) => window.Reports == 0 ? "none" : AvailabilityText.Count(window);
+    private static string Count(HealthWindow window) => window.Reports == 0 ? AvailabilityText.NoneCounted : AvailabilityText.Count(window);
 
     /// <summary>The last 24 hours: <c>24 h</c> on the box, <c>24 hours</c> in the tooltip.</summary>
     private static readonly CountedWindow Day = new("24 h", "24 hours", reports => reports.Last24Hours);

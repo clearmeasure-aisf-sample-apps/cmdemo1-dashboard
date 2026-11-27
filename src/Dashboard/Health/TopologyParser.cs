@@ -57,6 +57,7 @@ public static class TopologyParser
 
     private static SystemInfo ReadSystem(JsonElement root, List<string> errors)
     {
+        const string Path = "system";
         var slug = string.Empty;
         string? name = null;
         Uri? repository = null;
@@ -64,14 +65,14 @@ public static class TopologyParser
         Uri? cost = null;
         Uri? deployments = null;
         DashboardInfo? dashboard = null;
-        if (root.TryGetProperty("system", out var system) && system.ValueKind == JsonValueKind.Object)
+        if (root.TryGetProperty(Path, out var system) && system.ValueKind == JsonValueKind.Object)
         {
             slug = JsonRead.Text(system, "slug") ?? string.Empty;
             name = JsonRead.Text(system, "name");
-            repository = ReadOptionalAddress(system, "repository", "system", errors);
-            delivery = ReadOptionalAddress(system, "deliveryUrl", "system", errors);
-            cost = ReadOptionalAddress(system, "costUrl", "system", errors);
-            deployments = ReadOptionalAddress(system, "deploymentsUrl", "system", errors);
+            repository = ReadOptionalAddress(system, "repository", Path, errors);
+            delivery = ReadOptionalAddress(system, "deliveryUrl", Path, errors);
+            cost = ReadOptionalAddress(system, "costUrl", Path, errors);
+            deployments = ReadOptionalAddress(system, "deploymentsUrl", Path, errors);
             dashboard = ReadDashboard(system);
         }
 

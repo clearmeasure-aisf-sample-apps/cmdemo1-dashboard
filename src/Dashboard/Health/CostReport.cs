@@ -160,9 +160,9 @@ public static class CostText
         }
 
         // An amount that rounds to nothing has no sign.
-        var rounded = Math.Round(Math.Abs(value), 2, MidpointRounding.AwayFromZero);
+        var rounded = Math.Round(Math.Abs(value), CentsDigits, MidpointRounding.AwayFromZero);
         var sign = value < 0 && rounded > 0 ? "-" : string.Empty;
-        var number = rounded.ToString("#,0.00", CultureInfo.InvariantCulture);
+        var number = rounded.ToString(MoneyFormat, CultureInfo.InvariantCulture);
         return currency switch
         {
             null => $"{sign}{number}",
@@ -239,6 +239,12 @@ public static class CostText
 
     /// <summary>The format of a month named for a viewer of a different year: <c>September 2025</c>.</summary>
     private const string MonthNameAndYear = "MMMM yyyy";
+
+    /// <summary>The digits after the point an amount is rounded to and said with: cents.</summary>
+    private const int CentsDigits = 2;
+
+    /// <summary>The format of an amount: thousands grouped, exactly <see cref="CentsDigits"/> digits after the point (<c>1,204.00</c>).</summary>
+    private const string MoneyFormat = "#,0.00";
 
     public static string Date(DateOnly day) => day.ToString(DayFormat, CultureInfo.InvariantCulture);
 

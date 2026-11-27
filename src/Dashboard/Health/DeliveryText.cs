@@ -58,6 +58,18 @@ public static class AvailabilityText
     /// </summary>
     private const string WeekWindow = "7 days";
 
+    /// <summary>
+    /// The separator of the parts of the line: <c> · </c>, the one <see cref="CostReport" /> and
+    /// <see cref="ResourceHealth" /> name the same.
+    /// </summary>
+    private const string PartSeparator = " · ";
+
+    /// <summary>The lead word of the last-failure part: the words before the moment, running straight into it.</summary>
+    private const string LastFailureLead = "last failure ";
+
+    /// <summary>The lead word of the all-healthy week part: the words before the window, beside it.</summary>
+    private const string NoFailureLead = "no failure in ";
+
     /// <summary>The tooltip: who counts, what a check is, and what the count misses.</summary>
     public static string Help(DateTimeOffset? changed, TimeZoneInfo zone)
     {
@@ -86,11 +98,11 @@ public static class AvailabilityText
 
         if (reports.LastFailure is { } failed)
         {
-            parts.Add(new AvailabilityPart("last failure ", TimeText.Ago(failed, now), string.Empty, When: failed));
+            parts.Add(new AvailabilityPart(LastFailureLead, TimeText.Ago(failed, now), string.Empty, When: failed));
         }
         else if (reports.Last7Days is { Reports: > 0, AllHealthy: true })
         {
-            parts.Add(new AvailabilityPart("no failure in ", WeekWindow, string.Empty));
+            parts.Add(new AvailabilityPart(NoFailureLead, WeekWindow, string.Empty));
         }
 
         return parts;
@@ -126,7 +138,7 @@ public static class AvailabilityText
 
     /// <summary>The whole line in one text, its parts joined with a dot.</summary>
     public static string Line(HealthReports reports, DateTimeOffset now) =>
-        string.Join(" · ", Parts(reports, now).Select(part => $"{part.Before}{part.Strong}{part.After}"));
+        string.Join(PartSeparator, Parts(reports, now).Select(part => $"{part.Before}{part.Strong}{part.After}"));
 
     /// <summary><c>23 of 24</c>.</summary>
     public static string Count(HealthWindow window)

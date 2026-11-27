@@ -36,9 +36,8 @@ public sealed class NodeProber(HttpClient http, TimeProvider time)
         {
             using var request = NewRequest(ProbeUrl.Combine(baseAddress, probePath));
             using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, linked.Token);
-            var latency = (int)Math.Round(time.GetElapsedTime(started).TotalMilliseconds);
             var status = (int)response.StatusCode;
-            result = new ProbeResult(HealthClassifier.FromStatusCode(status), status, latency, checkedAt);
+            result = new ProbeResult(HealthClassifier.FromStatusCode(status), status, Elapsed(started), checkedAt);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -66,6 +65,9 @@ public sealed class NodeProber(HttpClient http, TimeProvider time)
             return $"{char.ToUpperInvariant(clause[0])}{clause[1..]}.";
         }
     }
+
+    /// <summary>Whole milliseconds since <paramref name="started" />, rounded the way <see cref="Math.Round(double)" /> rounds.</summary>
+    private int Elapsed(long started) => (int)Math.Round(time.GetElapsedTime(started).TotalMilliseconds);
 
     private static ProbeResult Unreachable(DateTimeOffset checkedAt, string detail) =>
         new(HealthState.Unreachable, StatusCode: null, LatencyMs: null, checkedAt, Detail: detail);
@@ -127,8 +129,6 @@ public sealed class NodeProber(HttpClient http, TimeProvider time)
             return new ContainerAppAnswer(path, readsHealth, null, false, null, checkedAt, "The browser got no answer: the network failed, or nothing answers at the address.");
         }
     }
-
-    private int Elapsed(long started) => (int)Math.Round(time.GetElapsedTime(started).TotalMilliseconds);
 
     /// <summary>The version is a courtesy: when it cannot be read, the node has no version, not a failure.</summary>
     private async Task<string?> ReadVersionAsync(Uri address, CancellationToken cancellationToken)

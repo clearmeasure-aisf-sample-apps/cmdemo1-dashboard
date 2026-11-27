@@ -80,6 +80,12 @@ public static class LinkText
     public static string Portal(string what) => what + PortalSuffix;
 
     /// <summary>
+    /// The plain words naming a resource by its page in the Azure portal, with no suffix: <c>{subject} in the Azure
+    /// portal</c>.
+    /// </summary>
+    public static string InPortal(string subject) => $"{subject} in the Azure portal";
+
+    /// <summary>
     /// The one table of a key of <see cref="LinkSet"/> to the sentence its tooltip says of a subject. A new link is one
     /// row here; a key with no row - <see cref="LinkSet.Workloads"/> among them - is said from the key by
     /// <see cref="SaidFromTheKey"/>.

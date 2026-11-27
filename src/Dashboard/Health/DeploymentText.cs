@@ -107,7 +107,7 @@ public static class DeploymentText
             parts.Add($"started by {startedBy}");
         }
 
-        return parts.Count == 0 ? null : string.Join("; ", parts);
+        return TooltipClauses.Join(parts);
     }
 
     /// <summary>

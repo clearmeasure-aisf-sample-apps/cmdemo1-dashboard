@@ -261,6 +261,6 @@
 
     /// <summary>What the SQL number counts: the commands of the requests where the app tells them from the background ones.</summary>
     private static string SqlHelp(TelemetrySnapshot telemetry) => telemetry.SplitsSql
-        ? $"SQL commands while handling requests: what traffic causes. Another {Count(telemetry.SqlBackground!.Value)} a minute run in the background (mostly the message bus polling the database); {Count(telemetry.Sql)} in all."
+        ? $"SQL commands while handling requests: what traffic causes. Another {Count(telemetry.SqlBackground!.Value)} a minute run {RuntimePayloadBuilder.BackgroundSql}; {Count(telemetry.Sql)} in all."
         : "SQL commands the process ran, whatever caused them";
 }

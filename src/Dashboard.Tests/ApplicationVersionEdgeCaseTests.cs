@@ -10,7 +10,7 @@ namespace Dashboard.Tests;
 /// and nothing to ask.
 /// <para>
 /// What is pinned where it belongs is walked past here on purpose: <see cref="ApplicationViewTests" /> pins
-/// <see cref="ApplicationText.Version(IEnumerable{ValueTuple{string, string}}, string)" /> - which node's version the
+/// <see cref="ApplicationText.Version(IEnumerable{NodeReport}, string)" /> - which node's version the
 /// view shows, the primary's before the standby's, what is trimmed on the way in, and that nothing is known when
 /// neither the nodes nor the environment has a version - and pins the same decision through the boxes of a diagram
 /// and their environment; <see cref="RuntimeTextHelperTests" /> and <see cref="ApplicationViewTests" /> pin the two

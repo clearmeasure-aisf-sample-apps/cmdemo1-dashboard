@@ -11,7 +11,7 @@ namespace Dashboard.Tests;
 /// and the sixty-fifth, the nothing and the empty word - along with <see cref="ApplicationText.RefusedLine" />, the
 /// two titles of <see cref="ApplicationText.VersionTitle" /> and <see cref="ApplicationText.Package" /> (with its
 /// nothing version, its empty version and its refusal of no package at all);
-/// <see cref="ApplicationViewTests" /> pins which node's version <see cref="ApplicationText.Version(IEnumerable{ValueTuple{string, string}}, string)" />
+/// <see cref="ApplicationViewTests" /> pins which node's version <see cref="ApplicationText.Version(IEnumerable{NodeReport}, string)" />
 /// shows, the three lines of <see cref="ApplicationText.VersionLine" />, the reading of a file and the four branches
 /// of <see cref="ApplicationText.KindLine" /> that a file can reach, the two lines of
 /// <see cref="ApplicationText.ProblemLine" /> and its silence when the file was read, the asking of
@@ -346,7 +346,7 @@ public class ApplicationTextEdgeCaseTests
     [InlineData("  1.0.42-beta.1+build_7  ", "1.0.42-beta.1+build_7")]
     [InlineData("1.0.42", "1.0.42")]
     public void AReportedVersionIsSaidWithoutTheWhitespaceItArrivedWith(string reported, string shown) =>
-        Assert.Equal(new ApplicationVersion(shown, Runs: true), ApplicationText.Version([("primary", reported)], "9.9.9"));
+        Assert.Equal(new ApplicationVersion(shown, Runs: true), ApplicationText.Version([new("primary", reported)], "9.9.9"));
 
     /// <summary>One node reporting is enough to refuse the pin whatever the role that reported: the environment's
     /// word is not asked at all while any node has a version, so the standby's answer and the answer of a node whose
@@ -358,7 +358,7 @@ public class ApplicationTextEdgeCaseTests
     [InlineData("data")]
     [InlineData("primary")]
     public void OneReportIsEnoughToRefuseThePinWhateverTheRoleThatMadeIt(string? role) =>
-        Assert.Equal(new ApplicationVersion("1.0.41", Runs: true), ApplicationText.Version([(role, " 1.0.41 ")], "1.0.40"));
+        Assert.Equal(new ApplicationVersion("1.0.41", Runs: true), ApplicationText.Version([new(role, " 1.0.41 ")], "1.0.40"));
 
     /// <summary>The pin is trimmed as a report is - the whitespace it arrives with is no part of the version - and a
     /// pin of nothing but whitespace is no pin at all: the view answers with the nothing rather than with a version of
@@ -368,7 +368,7 @@ public class ApplicationTextEdgeCaseTests
     [InlineData("  1.0.40  ", "1.0.40")]
     [InlineData("1.0.40", "1.0.40")]
     public void APinIsTrimmedToItsWord(string pinned, string shown) =>
-        Assert.Equal(new ApplicationVersion(shown, Runs: false), ApplicationText.Version([("primary", null)], pinned));
+        Assert.Equal(new ApplicationVersion(shown, Runs: false), ApplicationText.Version([new("primary", null)], pinned));
 
     /// <summary>The first of several primaries is the one the view shows - the order of the nodes decides between two
     /// nodes that both claim the primary's role - and a role with whitespace about it is no primary at all: the role
@@ -377,17 +377,28 @@ public class ApplicationTextEdgeCaseTests
     [Fact]
     public void TheFirstOfSeveralPrimariesIsTheOneShownAndARoleOfSpacesIsNoPrimary()
     {
-        Assert.Equal("1.0.1", ApplicationText.Version([("primary", "1.0.1"), ("primary", "1.0.2")], null)!.Text);
-        Assert.Equal("1.0.2", ApplicationText.Version([("standby", "1.0.1"), ("primary", "1.0.2")], null)!.Text);
+        Assert.Equal("1.0.1", ApplicationText.Version([new NodeReport("primary", "1.0.1"), new("primary", "1.0.2")], null)!.Text);
+        Assert.Equal("1.0.2", ApplicationText.Version([new NodeReport("standby", "1.0.1"), new("primary", "1.0.2")], null)!.Text);
 
         // Neither of these roles is the primary's, so the first node that reported is shown.
-        Assert.Equal("1.0.1", ApplicationText.Version([(null, "1.0.1"), (" primary ", "1.0.2")], null)!.Text);
-        Assert.Equal("1.0.1", ApplicationText.Version([("PRIMARY ", "1.0.1"), ("primary\t", "1.0.2")], null)!.Text);
-        Assert.Equal("1.0.1", ApplicationText.Version([("standby", "1.0.1"), ("", "1.0.2")], null)!.Text);
+        Assert.Equal("1.0.1", ApplicationText.Version([new NodeReport(null, "1.0.1"), new(" primary ", "1.0.2")], null)!.Text);
+        Assert.Equal("1.0.1", ApplicationText.Version([new NodeReport("PRIMARY ", "1.0.1"), new("primary\t", "1.0.2")], null)!.Text);
+        Assert.Equal("1.0.1", ApplicationText.Version([new NodeReport("standby", "1.0.1"), new("", "1.0.2")], null)!.Text);
 
         // The primary that reported nothing is not a report: the node that did speak is shown, and its role does not matter.
-        Assert.Equal("1.0.2", ApplicationText.Version([("primary", null), ("primary", "1.0.2")], "1.0.9")!.Text);
-        Assert.Equal("1.0.2", ApplicationText.Version([("primary", "   "), ("standby", "1.0.2")], "1.0.9")!.Text);
+        Assert.Equal("1.0.2", ApplicationText.Version([new("primary", null), new("primary", "1.0.2")], "1.0.9")!.Text);
+        Assert.Equal("1.0.2", ApplicationText.Version([new("primary", "   "), new("standby", "1.0.2")], "1.0.9")!.Text);
+    }
+
+    /// <summary>A node report says itself whether it is a report and whether it is the primary's: a version of
+    /// whitespace is no report, the primary's role is known whatever its case, and a role with spaces about it is
+    /// compared as it stands, so it is no primary.</summary>
+    [Fact]
+    public void ANodeReportSaysWhetherItReportedAndWhetherItIsThePrimarys()
+    {
+        Assert.False(new NodeReport("primary", " ").Reported);
+        Assert.True(new NodeReport("Primary", "1.0.1").IsPrimary);
+        Assert.False(new NodeReport(" primary ", "1.0.1").IsPrimary);
     }
 
     /// <summary>Nothing reported and nothing pinned is nothing known - the empty sequence of nodes, the pin of nothing,
@@ -401,13 +412,13 @@ public class ApplicationTextEdgeCaseTests
     [InlineData("\n")]
     public void WithoutAReportAndWithoutAPinNothingIsKnown(string? pinned)
     {
-        IEnumerable<(string? Role, string? Version)> noNodes = [];
+        IEnumerable<NodeReport> noNodes = [];
 
         Assert.Null(ApplicationText.Version(noNodes, pinned));
-        Assert.Null(ApplicationText.Version([("primary", null)], pinned));
-        Assert.Null(ApplicationText.Version([("primary", " "), ("standby", "\t")], pinned));
-        Assert.Null(ApplicationText.Version([("primary", string.Empty)], pinned));
-        Assert.Null(ApplicationText.Version([("primary", "   ")], pinned));
+        Assert.Null(ApplicationText.Version([new("primary", null)], pinned));
+        Assert.Null(ApplicationText.Version([new("primary", " "), new("standby", "\t")], pinned));
+        Assert.Null(ApplicationText.Version([new("primary", string.Empty)], pinned));
+        Assert.Null(ApplicationText.Version([new("primary", "   ")], pinned));
     }
 
     /// <summary>Without nodes there is nothing to ask: the nothing of a sequence is refused by the name of the
@@ -416,7 +427,7 @@ public class ApplicationTextEdgeCaseTests
     [Fact]
     public void AVersionOfNoNodesAtAllIsRefused()
     {
-        IEnumerable<(string? Role, string? Version)>? none = null;
+        IEnumerable<NodeReport>? none = null;
 
         Assert.Equal("nodes", Assert.Throws<ArgumentNullException>(() => ApplicationText.Version(none!, "1.0.42")).ParamName);
     }

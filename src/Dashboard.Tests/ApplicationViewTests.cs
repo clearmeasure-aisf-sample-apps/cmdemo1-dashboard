@@ -178,24 +178,24 @@ public partial class ApplicationViewTests
     [Fact]
     public void TheVersionIsTheOneThatRunsBeforeThePinnedOne()
     {
-        Assert.Equal(new ApplicationVersion("1.0.42", Runs: true), ApplicationText.Version([("primary", "1.0.42")], "1.0.41"));
-        Assert.Equal(new ApplicationVersion("1.0.41", Runs: false), ApplicationText.Version([("primary", null)], "1.0.41"));
+        Assert.Equal(new ApplicationVersion("1.0.42", Runs: true), ApplicationText.Version([new("primary", "1.0.42")], "1.0.41"));
+        Assert.Equal(new ApplicationVersion("1.0.41", Runs: false), ApplicationText.Version([new("primary", null)], "1.0.41"));
         Assert.Equal(new ApplicationVersion("1.0.41", Runs: false), ApplicationText.Version([], " 1.0.41 "));
     }
 
     [Fact]
     public void WithoutARunningAndWithoutAPinnedVersionNoneIsKnown()
     {
-        Assert.Null(ApplicationText.Version([("primary", null), ("standby", " ")], null));
+        Assert.Null(ApplicationText.Version([new NodeReport("primary", null), new("standby", " ")], null));
         Assert.Null(ApplicationText.Version([], ""));
     }
 
     [Fact]
     public void NodesThatRunDifferentVersionsShowThePrimarysElseTheFirstKnown()
     {
-        Assert.Equal("1.0.42", ApplicationText.Version([("standby", "1.0.41"), ("Primary", "1.0.42")], null)!.Text);
-        Assert.Equal("1.0.41", ApplicationText.Version([("standby", "1.0.41"), ("primary", null)], "1.0.40")!.Text);
-        Assert.Equal("1.0.7", ApplicationText.Version([(null, null), (null, "1.0.7"), (null, "1.0.8")], null)!.Text);
+        Assert.Equal("1.0.42", ApplicationText.Version([new NodeReport("standby", "1.0.41"), new("Primary", "1.0.42")], null)!.Text);
+        Assert.Equal("1.0.41", ApplicationText.Version([new("standby", "1.0.41"), new("primary", null)], "1.0.40")!.Text);
+        Assert.Equal("1.0.7", ApplicationText.Version([new NodeReport(null, null), new(null, "1.0.7"), new(null, "1.0.8")], null)!.Text);
     }
 
     [Fact]

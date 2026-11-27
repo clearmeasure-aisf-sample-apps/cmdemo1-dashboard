@@ -58,4 +58,19 @@ public class TrendGeometryTests
         Assert.Equal("2.5,9.84 18.17,4.94 33.83,2.5 49.5,9.84", trend.Polyline(Width, Height, Inset));
         Assert.Equal((49.5, 9.84), trend.Last(Width, Height, Inset));
     }
+
+    [Fact]
+    public void AnXStepWithThreeDecimalsStillPrintsTwoAndTheDotStillMatchesTheLineEnd()
+    {
+        // Four points across width 52 with inset 2.5 give a step of 47/3 = 18.1666…, so the named coordinate
+        // constants, not the raw step, decide what is printed.
+        var trend = Trend.Of([0, 10, 40, 20], "x")!;
+
+        Assert.Equal("2.5,13.5 18.17,10.75 33.83,2.5 49.5,8", trend.Polyline(Width, Height, Inset));
+
+        var lastPair = trend.Polyline(Width, Height, Inset).Split(' ')[^1];
+        var (x, y) = trend.Last(Width, Height, Inset);
+        Assert.Equal(x, double.Parse(lastPair.Split(',')[0], CultureInfo.InvariantCulture));
+        Assert.Equal(y, double.Parse(lastPair.Split(',')[1], CultureInfo.InvariantCulture));
+    }
 }

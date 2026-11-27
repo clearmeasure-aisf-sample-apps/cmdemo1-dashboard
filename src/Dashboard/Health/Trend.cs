@@ -46,12 +46,12 @@ public sealed record Trend(IReadOnlyList<double> Points, string Title)
         var step = Points.Count > 1 ? (width - 2 * inset) / (Points.Count - 1) : 0;
         return string.Join(' ', Points.Select((point, index) => string.Create(
             CultureInfo.InvariantCulture,
-            $"{inset + index * step:0.##},{YOf(point, height, inset):0.##}")));
+            $"{Coordinate(inset + index * step)},{Coordinate(YOf(point, height, inset))}")));
     }
 
     /// <summary>Where the last reading is in that box: the dot that marks "now".</summary>
     public (double X, double Y) Last(double width, double height, double inset = 1) =>
-        (Math.Round(width - inset, 2), Math.Round(YOf(Points[^1], height, inset), 2));
+        (Math.Round(width - inset, CoordinateDigits), Math.Round(YOf(Points[^1], height, inset), CoordinateDigits));
 
     /// <summary>
     /// The SVG y of a point in a box of the given height: 0 is the bottom of the box and 1 the top, with the line kept
@@ -63,4 +63,17 @@ public sealed record Trend(IReadOnlyList<double> Points, string Title)
     private const string NumberFormat = "0.#";
 
     private static string Number(double value) => value.ToString(NumberFormat, CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// How many decimals an SVG coordinate keeps: the polyline and the dot must round alike, or the dot leaves the line.
+    /// </summary>
+    private const int CoordinateDigits = 2;
+
+    /// <summary>
+    /// Writes <see cref="CoordinateDigits"/> decimals at most (a whole or exact coordinate is written without trailing
+    /// zeros); must change with <see cref="CoordinateDigits"/>, or the polyline and the dot no longer agree.
+    /// </summary>
+    private const string CoordinateFormat = "0.##";
+
+    private static string Coordinate(double value) => value.ToString(CoordinateFormat, CultureInfo.InvariantCulture);
 }

@@ -26,4 +26,11 @@ internal static class FileProblems
 
     /// <summary>There was content and it is not JSON: cut off, mistyped, or not text at all.</summary>
     public const string Broken = "the file is not valid JSON";
+
+    /// <summary>
+    /// A required word of the file is absent, null, or blank at <paramref name="place"/> (a dotted path such as
+    /// <c>environments[0].name</c>). Unlike the three ends above, this is a whole refusal of a runtime reader: the place,
+    /// a colon, and the words ending with a full stop, the way those readers' refusals are worded.
+    /// </summary>
+    public static string MissingOrEmpty(string place) => $"{place}: missing or empty.";
 }

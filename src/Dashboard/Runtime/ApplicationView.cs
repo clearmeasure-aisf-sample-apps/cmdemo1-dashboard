@@ -36,6 +36,15 @@ public sealed record RuntimeApplicationChange(string Environment, string? Deploy
 /// <param name="Runs">A node reported it; false for the version the environment pins.</param>
 public sealed record ApplicationVersion(string Text, bool Runs);
 
+/// <summary>The role of a deployable's node and the version it last reported (null when it reported none).</summary>
+public sealed record NodeReport(string? Role, string? Version)
+{
+    /// <summary>True when the node reported a version that is more than whitespace.</summary>
+    public bool Reported => !string.IsNullOrWhiteSpace(Version);
+    /// <summary>True when the role is the primary's, by NodeRole.IsPrimary (role compared untrimmed).</summary>
+    public bool IsPrimary => NodeRole.IsPrimary(Role);
+}
+
 public enum ApplicationReadState
 {
     /// <summary>The file answered and is a JSON object.</summary>
@@ -192,13 +201,13 @@ public static class ApplicationText
     /// known), else the one the environment pins; null when neither is known.
     /// </summary>
     /// <param name="nodes">The deployable's nodes in their order: the role and the version each last reported.</param>
-    public static ApplicationVersion? Version(IEnumerable<(string? Role, string? Version)> nodes, string? pinned)
+    public static ApplicationVersion? Version(IEnumerable<NodeReport> nodes, string? pinned)
     {
         ArgumentNullException.ThrowIfNull(nodes);
-        var running = nodes.Where(node => !string.IsNullOrWhiteSpace(node.Version)).ToList();
+        var running = nodes.Where(node => node.Reported).ToList();
         if (running.Count > 0)
         {
-            var chosen = running.FirstOrDefault(node => NodeRole.IsPrimary(node.Role), running[0]);
+            var chosen = running.FirstOrDefault(node => node.IsPrimary, running[0]);
             return new ApplicationVersion(chosen.Version!.Trim(), Runs: true);
         }
 
@@ -220,7 +229,7 @@ public static class ApplicationText
             return null;
         }
 
-        var nodes = boxes.Select(box => (box.Role, CheckedNode(environment, box.Url)?.Version));
+        var nodes = boxes.Select(box => new NodeReport(box.Role, CheckedNode(environment, box.Url)?.Version));
         return Version(nodes, PinOf(environment, DeployableOf(boxes)));
     }
 

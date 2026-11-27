@@ -243,7 +243,7 @@ public static class DatabaseText
         }
 
         var portal = link.Title.EndsWith(Health.LinkText.PortalSuffix, StringComparison.Ordinal);
-        return [new ViewLink(portal ? Health.LinkText.OpenInPortal : $"Open {box.Name}", link.Href, link.Title)];
+        return [new ViewLink(portal ? Health.LinkText.OpenInPortal : Health.LinkText.Open(box.Name), link.Href, link.Title)];
     }
 
     /// <summary>

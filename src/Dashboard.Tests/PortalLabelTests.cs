@@ -50,4 +50,73 @@ public class PortalLabelTests
 
         Assert.Equal(OpenInPortal(), portal.Text);
     }
+
+    private static string OpenTheApp()
+    {
+        var field = typeof(LinkText).GetField("OpenTheApp", BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.NotNull(field);
+        Assert.True(field!.IsLiteral);
+        Assert.True(field.IsAssembly);
+        return (string)field.GetRawConstantValue()!;
+    }
+
+    private static string Open(string subject)
+    {
+        var method = typeof(LinkText).GetMethod("Open", BindingFlags.NonPublic | BindingFlags.Static, [typeof(string)]);
+
+        Assert.NotNull(method);
+        Assert.True(method.IsAssembly);
+        return (string)method.Invoke(null, [subject])!;
+    }
+
+    [Fact]
+    public void TheSiteLinkLabelSaysOpenTheApp()
+    {
+        Assert.Equal("Open the app", OpenTheApp());
+    }
+
+    [Fact]
+    public void TheBoxNamingLabelSaysOpenSubject()
+    {
+        Assert.Equal("Open demo-ui", Open("demo-ui"));
+    }
+
+    [Fact]
+    public void TheDatabaseViewNonPortalLinkReadsTheBoxNamingLabel()
+    {
+        // A database box whose only link is a site link (no portal suffix): the label names the box.
+        var box = new RuntimeNode("sqldb", RuntimeNodeKind.Sql, "sql-uat", Links: Links(RuntimeBoxLink.Site, "https://sql.example.io"));
+
+        var link = Assert.Single(DatabaseText.Links(box, null));
+
+        Assert.Equal("Open sql-uat", link.Text);
+    }
+
+    [Fact]
+    public void TheOneBoxApplicationViewSiteLinkReadsOpenTheApp()
+    {
+        var box = new RuntimeNode(
+            "ca_api", RuntimeNodeKind.ContainerApp, "ca-api", new Uri("https://ca-api.example.io"), "api");
+
+        var link = Assert.Single(ApplicationText.Links([box], null));
+
+        Assert.Equal("Open the app", link.Text);
+    }
+
+    [Fact]
+    public void TheMultiBoxApplicationViewSiteLinksNameEachBox()
+    {
+        var boxes = new[]
+        {
+            new RuntimeNode("ca_api", RuntimeNodeKind.ContainerApp, "ca-api", new Uri("https://ca-api.example.io"), "api"),
+            new RuntimeNode("ca_ui", RuntimeNodeKind.ContainerApp, "ca-ui", new Uri("https://ca-ui.example.io"), "api", "primary"),
+        };
+
+        var links = ApplicationText.Links(boxes, null);
+
+        Assert.Equal(
+            boxes.Select(box => $"Open {box.Name}"),
+            links.Select(link => link.Text));
+    }
 }

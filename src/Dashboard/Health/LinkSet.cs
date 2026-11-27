@@ -74,6 +74,16 @@ public static class LinkText
     /// box name.
     /// </summary>
     internal const string OpenInPortal = "Open in the Azure portal";
+
+    /// <summary>
+    /// The visible label of a heading-row link to an app's own address, used when the link needs no box name.
+    /// </summary>
+    internal const string OpenTheApp = "Open the app";
+
+    /// <summary>
+    /// The visible label of a heading-row link that names its box, <c>Open {subject}</c>.
+    /// </summary>
+    internal static string Open(string subject) => $"Open {subject}";
     public const string OctopusSuffix = " (opens in a new tab; Octopus Deploy asks you to sign in)";
     public const string GitHubSuffix = " (opens in a new tab)";
 

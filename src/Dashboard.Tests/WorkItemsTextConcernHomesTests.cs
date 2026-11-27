@@ -29,7 +29,7 @@ public class WorkItemsTextConcernHomesTests
     [InlineData("WorkBoard", new[] { "Active", "Entered", "RecentlyDone", "Wip" })]
     [InlineData("WorkMeasureText", new[] { "Duration", "Rework" })]
     [InlineData("WorkCostText", new[] { "Cost", "HasMeteredCost", "ItemCost" })]
-    [InlineData("WorkWeekCharts", new[] { "BarHeight", "Chart", "LatestWeek" })]
+    [InlineData("WorkWeekCharts", new[] { "BarHeight", "Chart", "LatestWeek", "MergedAndDeployed" })]
     public void EachConcernHasAnInternalStaticHomeWithItsOwnMembers(string name, string[] members)
     {
         var type = Home(name);

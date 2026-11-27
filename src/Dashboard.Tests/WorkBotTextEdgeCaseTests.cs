@@ -226,6 +226,22 @@ public class WorkBotTextEdgeCaseTests
     public void ARowThatIsNothingIsRefusedByTheNameOfTheArgument() =>
         Assert.Equal("row", Assert.Throws<ArgumentNullException>(() => WorkBotText.ThroughputLine(null!)).ParamName);
 
+    /// <summary>
+    /// Under fi-FI a negative count in ThroughputLine is written with the culture's minus sign (U+2212),
+    /// matching LatestWeek's behaviour: both use the current culture while the bar Title uses the invariant.
+    /// </summary>
+    [Fact]
+    public void UnderFiFiANegativeCountInThroughputLineUsesTheCulturesMinusSign()
+    {
+        const string FiMinus = "\u2212";
+        var row = new WorkThroughput("alpha", -1, int.MinValue);
+
+        var line = CultureScope.Says("fi-FI", () => WorkBotText.ThroughputLine(row));
+        Assert.Contains(FiMinus + "1 merged", line, StringComparison.Ordinal);
+        Assert.Contains(FiMinus + "2147483648 deployed", line, StringComparison.Ordinal);
+        Assert.DoesNotContain("-1 merged", line, StringComparison.Ordinal);
+    }
+
     // ---- NoteHeading ----
 
     /// <summary>The heading reads the kind of the note, and a note that is not there has no kind to read: the

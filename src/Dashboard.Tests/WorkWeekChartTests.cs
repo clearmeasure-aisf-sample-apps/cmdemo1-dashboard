@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.CompilerServices;
 
 namespace Dashboard.Tests;
@@ -183,6 +184,54 @@ public class WorkWeekChartTests
         var chart = WorkItemsText.Chart([new WorkWeek(Week1, 6, 2), new WorkWeek(Week3, 3, 4)])!;
 
         Assert.Equal("Week of 2026-11-09: 3 merged, 4 deployed to prod", WorkItemsText.LatestWeek(chart));
+    }
+
+    // ---- MergedAndDeployed helper (through the public facade) ----
+
+    /// <summary>
+    /// The bar Title sentence for plain counts: the helper's wording as the public facade says it, invariant culture.
+    /// </summary>
+    [Fact]
+    public void TheBarTitleSaysTheSentenceForPlainCounts()
+    {
+        var chart = WorkItemsText.Chart([new WorkWeek(Week1, 3, 2)])!;
+
+        Assert.Equal("Week of 2026-10-26: 3 merged, 2 deployed to prod", chart.Bars[0].Title);
+    }
+
+    /// <summary>
+    /// The bar Title sentence for an empty who: a week with no start and zero counts says "Week" as the who.
+    /// </summary>
+    [Fact]
+    public void TheBarTitleSaysTheSentenceForAnEmptyWeekLabel()
+    {
+        var chart = WorkItemsText.Chart([new WorkWeek(null, 1, 0)])!;
+
+        Assert.Equal("Week: 1 merged, 0 deployed to prod", chart.Bars[0].Title);
+    }
+
+    /// <summary>
+    /// Under fi-FI a negative count is written with the culture's minus sign (U+2212) in the current-culture
+    /// call sites (LatestWeek, ThroughputLine) but with the ASCII hyphen (U+002D) in the invariant-culture bar Title.
+    /// This characterizes today's split so a follow-up can change it on purpose.
+    /// </summary>
+    [Fact]
+    public void UnderFiFiANegativeCountUsesTheCulturesMinusSignInLatestWeekButAnAsciiHyphenInTheBarTitle()
+    {
+        const string FiMinus = "\u2212";
+        var chart = WorkItemsText.Chart([new WorkWeek(Week1, -1, int.MinValue)])!;
+
+        // The bar Title is built with the invariant culture: ASCII hyphen.
+        var barTitle = chart.Bars[0].Title;
+        Assert.Contains("-1 merged", barTitle, StringComparison.Ordinal);
+        Assert.Contains("-2147483648 deployed", barTitle, StringComparison.Ordinal);
+        Assert.DoesNotContain(FiMinus, barTitle, StringComparison.Ordinal);
+
+        // LatestWeek is built with the current culture: fi-FI's U+2212.
+        var latest = CultureScope.Says("fi-FI", () => WorkItemsText.LatestWeek(chart));
+        Assert.Contains(FiMinus + "1 merged", latest, StringComparison.Ordinal);
+        Assert.Contains(FiMinus + "2147483648 deployed", latest, StringComparison.Ordinal);
+        Assert.DoesNotContain("-1 merged", latest, StringComparison.Ordinal);
     }
 
     // ---- Comparison ----

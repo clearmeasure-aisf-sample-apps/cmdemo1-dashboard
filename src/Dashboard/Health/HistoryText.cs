@@ -57,6 +57,12 @@ public static class HistoryText
         return text;
     }
 
+    /// <summary>The HTTP status word of a probe answer: <c>HTTP 200</c>.</summary>
+    public static string Status(int code) => string.Create(CultureInfo.InvariantCulture, $"HTTP {code}");
+
+    /// <summary>The millisecond word of a probe answer: <c>85 ms</c>.</summary>
+    public static string Milliseconds(int ms) => string.Create(CultureInfo.InvariantCulture, $"{ms} ms");
+
     /// <summary>The HTTP status and latency parts of a check result, joined by <paramref name="separator"/>.
     /// Empty when neither is present.</summary>
     public static string ResultFacts(ProbeResult result, string separator)
@@ -64,12 +70,12 @@ public static class HistoryText
         var parts = new List<string>();
         if (result.StatusCode is { } status)
         {
-            parts.Add($"HTTP {status}");
+            parts.Add(Status(status));
         }
 
         if (result.LatencyMs is { } latency)
         {
-            parts.Add($"{latency} ms");
+            parts.Add(Milliseconds(latency));
         }
 
         return string.Join(separator, parts);

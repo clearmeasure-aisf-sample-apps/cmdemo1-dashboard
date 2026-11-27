@@ -32,7 +32,7 @@
         </div>
         <div>
             <dt>Latency</dt>
-            <dd>@(Target.Last?.LatencyMs is { } latency ? $"{latency} ms" : None)</dd>
+            <dd>@(Target.Last?.LatencyMs is { } latency ? HistoryText.Milliseconds(latency) : None)</dd>
         </div>
         <div>
             <dt>Version</dt>
@@ -78,7 +78,7 @@
                 </div>
                 <div>
                     <dt>p95</dt>
-                    <dd>@(telemetry.P95Ms is { } p95 ? $"{p95} ms" : None)</dd>
+                    <dd>@(telemetry.P95Ms is { } p95 ? HistoryText.Milliseconds(p95) : None)</dd>
                 </div>
                 <div class="@(telemetry.Errors > 0 ? "metrics__warn" : null)">
                     <dt>Errors</dt>

@@ -99,9 +99,9 @@ public sealed record ContainerAppAnswer(
     /// </summary>
     public string SaidShort(bool waking) => this switch
     {
-        { StatusCode: { } code, LatencyMs: { } ms } => string.Create(CultureInfo.InvariantCulture, $"HTTP {code} · {ms} ms"),
-        { StatusCode: { } code } => string.Create(CultureInfo.InvariantCulture, $"HTTP {code}"),
-        { Opaque: true, LatencyMs: { } ms } => string.Create(CultureInfo.InvariantCulture, $"answered · {ms} ms"),
+        { StatusCode: { } code, LatencyMs: { } ms } => $"{HistoryText.Status(code)} · {HistoryText.Milliseconds(ms)}",
+        { StatusCode: { } code } => HistoryText.Status(code),
+        { Opaque: true, LatencyMs: { } ms } => $"answered · {HistoryText.Milliseconds(ms)}",
         { Opaque: true } => "answered",
         _ when waking => "no answer yet",
         _ => "no answer",

@@ -269,7 +269,7 @@ public static class WorkItemsText
             .Distinct()
             .Order()
             .ToList();
-        return numbers.Count == 0 ? null : "carries " + string.Join(", ", numbers.Select(number => $"#{number.ToString(CultureInfo.InvariantCulture)}"));
+        return numbers.Count == 0 ? null : "carries " + string.Join(", ", numbers.Select(NumberMark));
     }
 
     /// <summary>An element id for a column heading: <c>work-col-in-progress</c>.</summary>
@@ -281,12 +281,12 @@ public static class WorkItemsText
     }
 
     public static string Number(WorkItem item) =>
-        item.Identity.Number is { } number ? "#" + number.ToString(CultureInfo.InvariantCulture) : "Item";
+        item.Identity.Number is { } number ? NumberMark(number) : "Item";
 
     public static string IssueTitle(WorkItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        var name = item.Identity.Number is { } number ? $"Work item #{number.ToString(CultureInfo.InvariantCulture)}" : "Work item";
+        var name = item.Identity.Number is { } number ? $"Work item {NumberMark(number)}" : "Work item";
         return item.Identity.State is { } state ? $"{name}, {state}{LinkText.GitHubSuffix}" : name + LinkText.GitHubSuffix;
     }
 
@@ -298,12 +298,12 @@ public static class WorkItemsText
         item.Assignee is { } who && !string.Equals(who, item.Agent, StringComparison.Ordinal) ? who : null;
 
     public static string PullLabel(WorkPullRequest pull) =>
-        pull.Number is { } number ? "#" + number.ToString(CultureInfo.InvariantCulture) : "Pull request";
+        pull.Number is { } number ? NumberMark(number) : "Pull request";
 
     public static string PullTitle(WorkPullRequest pull)
     {
         ArgumentNullException.ThrowIfNull(pull);
-        var name = pull.Number is { } number ? $"Pull request #{number.ToString(CultureInfo.InvariantCulture)}" : "Pull request";
+        var name = pull.Number is { } number ? $"Pull request {NumberMark(number)}" : "Pull request";
         var when = pull.MergedAt is { } merged ? $", merged {TimeText.Iso(merged)}" : string.Empty;
         return name + when + LinkText.GitHubSuffix;
     }
@@ -359,4 +359,7 @@ public static class WorkItemsText
         var path = url.AbsolutePath.Trim('/');
         return path.Length > 0 ? path : url.Host;
     }
+
+    /// <summary>A work item or pull request number the way the page shows it: <c>#</c> and the digits in the invariant culture.</summary>
+    private static string NumberMark(int number) => "#" + number.ToString(CultureInfo.InvariantCulture);
 }

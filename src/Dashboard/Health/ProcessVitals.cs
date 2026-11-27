@@ -120,6 +120,6 @@ public static class VitalsText
             parts.Add(string.Create(CultureInfo.InvariantCulture, $"{threads} threads"));
         }
 
-        return parts.Count == 0 ? null : string.Join("; ", parts);
+        return TooltipClauses.Join(parts);
     }
 }

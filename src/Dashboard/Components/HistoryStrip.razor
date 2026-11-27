@@ -8,7 +8,7 @@
         if (result is null)
         {
             <rect class="history__bar history__bar--empty" x="@x" y="@(Height - 2)" width="@BarWidth" height="2" rx="1">
-                <title>No check yet</title>
+                <title>@HistoryText.NoChecksYet</title>
             </rect>
         }
         else
@@ -37,10 +37,17 @@
 
     private int Width => History.Capacity * (BarWidth + Gap) - Gap;
 
+    /// <summary>
+    /// The bar height for a check state: full height is healthy, half is unhealthy, a stub is one of the
+    /// two ways a check is not healthy - not yet answered or no answer at all. Every state the enum names
+    /// has its own arm, so a new one cannot be absorbed by a catch-all.
+    /// </summary>
     private static int BarHeight(HealthState state) => state switch
     {
         HealthState.Healthy => Height,
         HealthState.Unhealthy => Height / 2,
-        _ => 5,
+        HealthState.Pending => 5,
+        HealthState.Unreachable => 5,
+        _ => throw new InvalidOperationException($"No bar height is defined for {state}."),
     };
 }

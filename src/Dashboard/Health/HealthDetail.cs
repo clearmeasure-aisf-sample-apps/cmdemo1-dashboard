@@ -36,6 +36,30 @@ public sealed record HealthCheckEntry(string Name, CheckState State, string? Des
 /// <param name="ReadAt">When the dashboard read it.</param>
 public sealed record HealthDetail(IReadOnlyList<HealthCheckEntry> Entries, DateTimeOffset ReadAt)
 {
+    /// <summary>The answer's word of the list of checks.</summary>
+    private const string EntriesField = "entries";
+
+    /// <summary>The word of an entry's name; an entry without it is left out.</summary>
+    private const string NameField = "name";
+
+    /// <summary>The word of an entry's status, matched against the <c>Said*</c> words.</summary>
+    private const string StatusField = "status";
+
+    /// <summary>The word of the check's own words.</summary>
+    private const string DescriptionField = "description";
+
+    /// <summary>The word of how long the check took, in milliseconds.</summary>
+    private const string DurationField = "durationMs";
+
+    /// <summary>The status ASP.NET Core writes for <see cref="CheckState.Healthy" />, compared after <c>ToLowerInvariant()</c>.</summary>
+    private const string SaidHealthy = "healthy";
+
+    /// <summary>The status ASP.NET Core writes for <see cref="CheckState.Degraded" />, compared after <c>ToLowerInvariant()</c>.</summary>
+    private const string SaidDegraded = "degraded";
+
+    /// <summary>The status ASP.NET Core writes for <see cref="CheckState.Unhealthy" />, compared after <c>ToLowerInvariant()</c>.</summary>
+    private const string SaidUnhealthy = "unhealthy";
+
     /// <summary>The entries that are not healthy, the worst first (unhealthy, degraded, unknown), then in the answer's order.</summary>
     public IReadOnlyList<HealthCheckEntry> NotHealthy =>
         [.. Entries.Where(entry => !entry.IsHealthy).OrderBy(entry => HealthDetailText.Severity(entry.State))];
@@ -59,14 +83,14 @@ public sealed record HealthDetail(IReadOnlyList<HealthCheckEntry> Entries, DateT
         try
         {
             using var document = JsonDocument.Parse(json);
-            var entries = JsonRead.Items(document.RootElement, "entries")
-                .Select(entry => (Name: JsonRead.Text(entry, "name"), Element: entry))
+            var entries = JsonRead.Items(document.RootElement, EntriesField)
+                .Select(entry => (Name: JsonRead.Text(entry, NameField), Element: entry))
                 .Where(entry => entry.Name is not null)
                 .Select(entry => new HealthCheckEntry(
                     entry.Name!,
-                    StateOf(JsonRead.Text(entry.Element, "status")),
-                    JsonRead.Text(entry.Element, "description"),
-                    JsonRead.Number(entry.Element, "durationMs")))
+                    StateOf(JsonRead.Text(entry.Element, StatusField)),
+                    JsonRead.Text(entry.Element, DescriptionField),
+                    JsonRead.Number(entry.Element, DurationField)))
                 .ToList();
             return entries.Count == 0 ? null : new HealthDetail(entries, readAt);
         }
@@ -78,9 +102,9 @@ public sealed record HealthDetail(IReadOnlyList<HealthCheckEntry> Entries, DateT
 
     private static CheckState StateOf(string? status) => status?.ToLowerInvariant() switch
     {
-        "healthy" => CheckState.Healthy,
-        "degraded" => CheckState.Degraded,
-        "unhealthy" => CheckState.Unhealthy,
+        SaidHealthy => CheckState.Healthy,
+        SaidDegraded => CheckState.Degraded,
+        SaidUnhealthy => CheckState.Unhealthy,
         _ => CheckState.Unknown,
     };
 }

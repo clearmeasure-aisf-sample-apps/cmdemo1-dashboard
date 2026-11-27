@@ -187,7 +187,7 @@ public static class TopologyParser
         var status = ReadOptionalAddress(cluster, "statusUrl", Path, errors);
         var service = ReadOptionalAddress(cluster, "serviceUrl", Path, errors);
         var found = new Dictionary<string, Uri>(StringComparer.Ordinal);
-        if (cluster.TryGetProperty("links", out var links) && links.ValueKind == JsonValueKind.Object)
+        if (JsonRead.Section(cluster, Links) is { } links)
         {
             foreach (var key in new[] { LinkSet.Portal, LinkSet.Workloads })
             {
@@ -287,7 +287,7 @@ public static class TopologyParser
     /// </summary>
     private static LinkSet? ReadLinks(JsonElement parent)
     {
-        if (!parent.TryGetProperty("links", out var links) || links.ValueKind != JsonValueKind.Object)
+        if (JsonRead.Section(parent, Links) is not { } links)
         {
             return null;
         }
@@ -327,6 +327,9 @@ public static class TopologyParser
             yield return (element, path, position);
         }
     }
+
+    /// <summary>The element word the links of a cluster, an environment, a deployable or a node live under.</summary>
+    private const string Links = "links";
 
     /// <summary>The sentences the page says a refused part of the file in; the tests pin them letter for letter.</summary>
     private static class Messages

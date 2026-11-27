@@ -12,8 +12,11 @@ public static class ClusterText
     /// <summary>The millicores in one core: the cluster reads CPU in millicores and says it in cores.</summary>
     internal const double MillicoresPerCore = 1000;
 
+    /// <summary>The format of a whole number: a count of MiB or KiB, a percentage.</summary>
+    private const string WholeFormat = "0";
+
     /// <summary>The format of a pod's CPU below one core: a whole number of millicores.</summary>
-    private const string MillicoreFormat = "0";
+    private const string MillicoreFormat = WholeFormat;
 
     /// <summary>The unit a number of millicores is said with: <c>14 m</c>.</summary>
     private const string MillicoreUnit = "m";
@@ -27,6 +30,21 @@ public static class ClusterText
     /// <summary>The word the quantity of exactly one core is said in: <c>1 core</c>.</summary>
     private const string CoreUnit = "core";
 
+    /// <summary>The format of a number of GiB: at most one digit after the point.</summary>
+    private const string GibibyteFormat = "0.#";
+
+    /// <summary>The unit a number of GiB is said with: <c>9.2 GiB</c>.</summary>
+    private const string GibibyteUnit = "GiB";
+
+    /// <summary>The unit a number of MiB is said with: <c>258 MiB</c>.</summary>
+    private const string MebibyteUnit = "MiB";
+
+    /// <summary>The unit a number of KiB is said with: <c>512 KiB</c>.</summary>
+    private const string KibibyteUnit = "KiB";
+
+    /// <summary>The suffix a percentage is said with: <c>63 %</c>.</summary>
+    private const string PercentSign = " %";
+
     private const double Kibibyte = 1024;
     private const double Mebibyte = Kibibyte * 1024;
 
@@ -39,9 +57,9 @@ public static class ClusterText
     /// </summary>
     private static readonly MemoryUnit[] MemoryUnits =
     [
-        new(Gibibyte, "0.#", "GiB"),
-        new(Mebibyte, "0", "MiB"),
-        new(Kibibyte, "0", "KiB"),
+        new(Gibibyte, GibibyteFormat, GibibyteUnit),
+        new(Mebibyte, WholeFormat, MebibyteUnit),
+        new(Kibibyte, WholeFormat, KibibyteUnit),
     ];
 
     /// <summary>Millicores as cores, without the unit: <c>0.81</c>, <c>3.86</c>, <c>12.5</c>.</summary>
@@ -124,7 +142,7 @@ public static class ClusterText
         part is { } value && whole is { } of && of > 0 ? Shares.Of(value, of) : null;
 
     /// <summary>A whole percentage: <c>63 %</c>.</summary>
-    public static string Percent(double percent) => string.Create(CultureInfo.InvariantCulture, $"{Math.Round(percent):0} %");
+    public static string Percent(double percent) => Math.Round(percent).ToString(WholeFormat, CultureInfo.InvariantCulture) + PercentSign;
 
     /// <summary>True from <see cref="HighPercent"/> on: the meter and its number are marked.</summary>
     public static bool IsHigh(double? percent) => percent >= HighPercent;

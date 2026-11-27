@@ -252,7 +252,7 @@ public static class DeliveryText
 
         if (behind.Versions == 0)
         {
-            return $"same as {first}";
+            return SameAs(first);
         }
 
         var parts = new List<string>();
@@ -261,14 +261,25 @@ public static class DeliveryText
             parts.Add(Plural.Of(versions, "version"));
         }
 
-        if (behind.Days is { } days && Math.Round(days) >= 1)
+        if (behind.Days is { } days)
         {
             var whole = (int)Math.Round(days);
-            parts.Add(Plural.Of(whole, "day"));
+            if (whole >= 1)
+            {
+                parts.Add(Plural.Of(whole, "day"));
+            }
         }
 
-        return parts.Count > 0 ? $"{string.Join(", ", parts)} behind {first}" : behind.Days is not null ? $"same as {first}" : null;
+        if (parts.Count > 0)
+        {
+            return $"{string.Join(", ", parts)} behind {first}";
+        }
+
+        return behind.Days is not null ? SameAs(first) : null;
     }
+
+    /// <summary>The one home of the answer "this environment is level with the first": <c>same as tdd</c>.</summary>
+    private static string SameAs(string first) => $"same as {first}";
 
     /// <summary><c>4 deployments, none failed</c>; null when the file does not count them.</summary>
     public static string? Frequency(DeliveryEntry entry)

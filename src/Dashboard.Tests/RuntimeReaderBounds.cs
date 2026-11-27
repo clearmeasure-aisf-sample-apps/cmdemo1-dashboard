@@ -39,6 +39,9 @@ internal static class RuntimeReaderBounds
         /// <summary>The longest text kept of an entry of <c>unplaced</c>.</summary>
         public const int LongestUnplacedText = RuntimeManifestParser.LongestUnplacedText;
 
+        /// <summary>The longest id kept of an entry of <c>unplaced</c>: twice the text's bound.</summary>
+        public const int LongestUnplacedId = 600;
+
         /// <summary>The most entries of <c>unplaced</c> that are kept.</summary>
         public const int MostUnplaced = RuntimeManifestParser.MostUnplaced;
 

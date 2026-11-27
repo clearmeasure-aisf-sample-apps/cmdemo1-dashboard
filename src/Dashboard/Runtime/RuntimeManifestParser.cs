@@ -350,6 +350,9 @@ public static class RuntimeManifestParser
     public const int MostUnplaced = 500;
     private const int LongestAddress = 2000;
 
+    /// <summary>The longest id kept of an entry of <c>unplaced</c>: twice the text's bound, written once.</summary>
+    private const int LongestUnplacedId = LongestUnplacedText * 2;
+
     /// <summary>
     /// The manifest's <c>unplaced</c>: the objects of the list that have a name, the first <see cref="MostUnplaced"/>.
     /// A text is cut at <see cref="LongestUnplacedText"/> characters; <c>links.portal</c>, <c>links.site</c> and
@@ -382,7 +385,7 @@ public static class RuntimeManifestParser
                 Cut(element, "type"),
                 Cut(element, "group"),
                 Cut(element, "words"),
-                Ids(element)?.Select(id => id.Length > LongestUnplacedText * 2 ? id[..(LongestUnplacedText * 2)] : id).ToList(),
+                Ids(element)?.Select(id => Clip.At(id, LongestUnplacedId)).ToList(),
                 links is { } portal ? Secure(portal, "portal") : null,
                 (links is { } site ? Secure(site, "site") : null) ?? Secure(element, Url)));
         }
@@ -393,7 +396,7 @@ public static class RuntimeManifestParser
     /// <summary>A text of an entry of <c>unplaced</c>, cut at <see cref="LongestUnplacedText"/> characters.</summary>
     private static string? Cut(JsonElement parent, string property) =>
         JsonRead.Text(parent, property) is { } text
-            ? text.Length > LongestUnplacedText ? text[..LongestUnplacedText] : text
+            ? Clip.At(text, LongestUnplacedText)
             : null;
 
     /// <summary>An absolute https address without a user name, of a sensible length; anything else is null.</summary>

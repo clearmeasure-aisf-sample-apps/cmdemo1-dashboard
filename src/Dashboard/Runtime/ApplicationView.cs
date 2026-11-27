@@ -130,9 +130,7 @@ public static class ApplicationParser
     }
 
     private static string? Text(JsonElement parent, string name) =>
-        JsonRead.Text(parent, name) is { } text ? Shorten(text) : null;
-
-    private static string Shorten(string text) => text.Length <= LongestText ? text : text[..LongestText];
+        JsonRead.Text(parent, name) is { } text ? Clip.At(text, LongestText) : null;
 
     private static ApplicationPackage? Package(JsonElement package) =>
         Text(package, NameField) is { } name ? new ApplicationPackage(name, Text(package, "version")) : null;
@@ -143,7 +141,7 @@ public static class ApplicationParser
             .Where(item => item.ValueKind == JsonValueKind.String)
             .Select(item => item.GetString()?.Trim())
             .Where(text => !string.IsNullOrEmpty(text))
-            .Select(text => Shorten(text!))
+            .Select(text => Clip.At(text!, LongestText))
             .Take(MostEntries),
     ];
 }

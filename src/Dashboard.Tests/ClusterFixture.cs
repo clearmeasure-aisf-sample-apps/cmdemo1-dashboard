@@ -19,7 +19,20 @@ internal static class ClusterFixture
     public static AksService SampleService => AksService.Parse(Sample("aks.json")).Value!;
 
     public static ClusterNode Node(string name = "aks-system-12148983-vmss000000", bool ready = true, params string[] pressures) =>
-        new(name, ready, pressures, false, "system", "Standard_D4as_v6", null, "v1.33.3", Generated.AddDays(-3), ResourceUses.Node(usage: 812, requests: 2450, allocatable: 3860, limits: 9100), ResourceUses.Node(usage: 9876543210, requests: 6200000000, allocatable: 13400000000, limits: 11800000000), 63, 110);
+        new(
+            Name: name,
+            Ready: ready,
+            Pressures: pressures,
+            Unschedulable: false,
+            Pool: "system",
+            Size: "Standard_D4as_v6",
+            Zone: null,
+            KubeletVersion: "v1.33.3",
+            CreatedAt: Generated.AddDays(-3),
+            Cpu: ResourceUses.Node(usage: 812, requests: 2450, allocatable: 3860, limits: 9100),
+            Memory: ResourceUses.Node(usage: 9876543210, requests: 6200000000, allocatable: 13400000000, limits: 11800000000),
+            Pods: 63,
+            PodCapacity: 110);
 
     /// <param name="age">How long before <see cref="Generated"/> the pod started; null for a pod that does not say.</param>
     public static ClusterPod Pod(
@@ -32,19 +45,19 @@ internal static class ClusterFixture
         string? name = null,
         bool started = true) =>
         new(
-            name ?? $"{workload}-0",
-            workload,
-            "Deployment",
-            "aks-system-12148983-vmss000000",
-            phase,
-            ready,
-            1,
-            ready ? 1 : 0,
-            restarts,
-            reason,
-            started ? Generated - (age ?? TimeSpan.FromHours(1)) : null,
-            ResourceUses.Pod(usage: 10, requests: 100, limit: 500),
-            ResourceUses.Pod(usage: 100 * 1024 * 1024, requests: 268435456, limit: 536870912));
+            Name: name ?? $"{workload}-0",
+            Workload: workload,
+            Kind: "Deployment",
+            Node: "aks-system-12148983-vmss000000",
+            Phase: phase,
+            Ready: ready,
+            Containers: 1,
+            ContainersReady: ready ? 1 : 0,
+            Restarts: restarts,
+            Reason: reason,
+            StartedAt: started ? Generated - (age ?? TimeSpan.FromHours(1)) : null,
+            Cpu: ResourceUses.Pod(usage: 10, requests: 100, limit: 500),
+            Memory: ResourceUses.Pod(usage: 100 * 1024 * 1024, requests: 268435456, limit: 536870912));
 
     /// <summary>
     /// One row of a namespace's table: the fixture's <see cref="Pod" />, on the state the test decides. The state is

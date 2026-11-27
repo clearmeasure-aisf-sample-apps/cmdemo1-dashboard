@@ -26,12 +26,20 @@ internal static class WorkWeekCharts
     internal static double BarHeight(int value, int scale) =>
         scale <= 0 || value <= 0 ? 0 : Math.Round(Height * value / scale, 2);
 
+    /// <summary>
+    /// The one sentence the bar tooltip, the line under the chart, and the bot throughput line all say: who, how
+    /// many merged, how many deployed to prod. The caller names the culture, so the split between invariant (the bar
+    /// tooltip) and current (the other two) is visible at each call site rather than hidden in which overload was used.
+    /// </summary>
+    internal static string MergedAndDeployed(IFormatProvider culture, string who, int merged, int deployed) =>
+        string.Create(culture, $"{who}: {merged} merged, {deployed} deployed to prod");
+
     /// <summary>The newest week, in words under the chart.</summary>
     internal static string LatestWeek(WorkWeekChart chart)
     {
         ArgumentNullException.ThrowIfNull(chart);
         var last = chart.Bars[^1];
-        return $"{last.Label}: {last.Merged} merged, {last.DeployedProd} deployed to prod";
+        return MergedAndDeployed(CultureInfo.CurrentCulture, last.Label, last.Merged, last.DeployedProd);
     }
 
     private static WorkWeekBar Bar(WorkWeek week)
@@ -45,6 +53,6 @@ internal static class WorkWeekCharts
             label,
             merged,
             deployed,
-            string.Create(CultureInfo.InvariantCulture, $"{label}: {merged} merged, {deployed} deployed to prod"));
+            MergedAndDeployed(CultureInfo.InvariantCulture, label, merged, deployed));
     }
 }

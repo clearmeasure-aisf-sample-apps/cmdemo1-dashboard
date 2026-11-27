@@ -107,7 +107,7 @@ public static class WorkBotText
 
         var merged = row.Merged ?? 0;
         var deployed = row.DeployedProd ?? 0;
-        return $"{row.Agent}: {merged} merged, {deployed} deployed to prod";
+        return WorkWeekCharts.MergedAndDeployed(CultureInfo.CurrentCulture, row.Agent, merged, deployed);
     }
 
     public static string NoteHeading(WorkNote note) =>

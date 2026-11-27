@@ -48,7 +48,7 @@ else
                             </th>
                             <td>@(pod.Kind ?? None)</td>
                             <td>
-                                <span title="@Containers(pod)">
+                                <span title="@ClusterText.PodContainers(pod)">
                                     <ClusterBadge State="StateOf(row.State)" Label="@ClusterText.PodWords(pod, row.State, AsOf)" Quiet="true" />
                                 </span>
                             </td>
@@ -108,11 +108,5 @@ else
         PodState.Starting => ClusterState.Checking,
         PodState.Unhealthy => ClusterState.Unhealthy,
         _ => ClusterState.Neutral,
-    };
-
-    private static string? Containers(ClusterPod pod) => (pod.ContainersReady, pod.Containers) switch
-    {
-        ({ } ready, { } all) => $"Phase {pod.Phase}; {ClusterText.Of(ready, all)} containers ready",
-        _ => $"Phase {pod.Phase}",
     };
 }

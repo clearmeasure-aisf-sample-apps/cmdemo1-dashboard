@@ -602,7 +602,7 @@ public sealed record ReleaseCandidate(string? Version, DateTimeOffset? CreatedAt
 {
     internal static ReleaseCandidate? Read(JsonElement? section)
     {
-        var candidate = new ReleaseCandidate(VersionText.Display(JsonRead.Text(section, "version")), JsonRead.Time(section, "createdAt"));
+        var candidate = new ReleaseCandidate(VersionText.Read(section), JsonRead.Time(section, "createdAt"));
         return ReadParts.Said(candidate.Version, candidate.CreatedAt) ? candidate : null;
     }
 }
@@ -640,7 +640,7 @@ public sealed record WorkItemEnvironments(WorkDeployment? Tdd, WorkDeployment? U
 public sealed record WorkDeployment(string? Version, DateTimeOffset? DeployedAt)
 {
     internal static WorkDeployment Read(JsonElement element) =>
-        new(VersionText.Display(JsonRead.Text(element, "version")), JsonRead.Time(element, "deployedAt"));
+        new(VersionText.Read(element), JsonRead.Time(element, "deployedAt"));
 }
 
 /// <summary>One Octopus release and the work items it carries.</summary>
@@ -669,7 +669,7 @@ public sealed record WorkRelease(string? Version, string? Sha, IReadOnlyList<int
             }
         }
 
-        var release = new WorkRelease(VersionText.Display(JsonRead.Text(element, "version")), JsonRead.Text(element, "sha"), items);
+        var release = new WorkRelease(VersionText.Read(element), JsonRead.Text(element, "sha"), items);
         return release.Version is null && items.Count == 0 ? null : release;
     }
 }

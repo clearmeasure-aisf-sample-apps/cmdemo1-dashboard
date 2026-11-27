@@ -43,6 +43,9 @@ namespace Dashboard.Tests;
 /// </summary>
 public class WorkItemsAvailabilityEdgeCaseTests
 {
+    /// <summary>The four words of the enum, as it declares and spells them.</summary>
+    private static readonly string[] Words = ["Loading", "NoAddress", "NotPublished", "Ready"];
+
     /// <summary>A file that was read: one item, in a column, with nothing else said.</summary>
     private static readonly WorkItemsReport Given = WorkItemsReport.Parse(
         """{ "generatedAt": "2026-11-09T22:00:00Z", "items": [ { "number": 7, "column": "Todo", "title": "One" } ] }""")!;
@@ -65,18 +68,18 @@ public class WorkItemsAvailabilityEdgeCaseTests
     [Fact]
     public void TheFourStatesAreTheWholeVocabularyInTheirDeclaredOrder()
     {
-        Assert.Equal(["Loading", "NoAddress", "NotPublished", "Ready"], Enum.GetNames<WorkItemsAvailability>());
+        Assert.Equal(Words, EnumVocabulary<WorkItemsAvailability>.Names);
         Assert.Equal([0, 1, 2, 3], States.Select(state => (int)state));
-        Assert.Equal(4, Enum.GetValues<WorkItemsAvailability>().Length);
+        Assert.Equal(4, EnumVocabulary<WorkItemsAvailability>.Count);
         Assert.Equal(States, Enum.GetValues<WorkItemsAvailability>());
-        Assert.Equal(typeof(int), Enum.GetUnderlyingType(typeof(WorkItemsAvailability)));
+        Assert.Equal(typeof(int), EnumVocabulary<WorkItemsAvailability>.UnderlyingType);
 
         var type = typeof(WorkItemsAvailability);
         Assert.True(type.IsEnum);
         Assert.True(type.IsValueType);
         Assert.True(type.IsSealed);
         Assert.False(type.IsPrimitive);
-        Assert.False(type.IsDefined(typeof(FlagsAttribute), false));
+        Assert.False(EnumVocabulary<WorkItemsAvailability>.IsFlags);
     }
 
     /// <summary>Each state on its own number and its own word, both ways round: the number is the one the name
@@ -105,7 +108,7 @@ public class WorkItemsAvailabilityEdgeCaseTests
     public void AStateNeverSetStandsOnLoadingAndIsSaidAsLoading()
     {
         Assert.Equal(WorkItemsAvailability.Loading, default);
-        Assert.Equal(WorkItemsAvailability.Loading, (WorkItemsAvailability)0);
+        Assert.Equal(WorkItemsAvailability.Loading, EnumVocabulary<WorkItemsAvailability>.Of(0));
         Assert.Equal(0, (int)default(WorkItemsAvailability));
 
         Assert.Equal(WorkItemsText.Loading, WorkItemsText.Unavailable(default));
@@ -123,7 +126,7 @@ public class WorkItemsAvailabilityEdgeCaseTests
     [InlineData(int.MaxValue, "2147483647", "7FFFFFFF")]
     public void NothingOutsideTheFourIsAState(int number, string digits, string hexadecimal)
     {
-        var state = (WorkItemsAvailability)number;
+        var state = EnumVocabulary<WorkItemsAvailability>.Of(number);
 
         Assert.False(Enum.IsDefined(state));
         Assert.Null(Enum.GetName(state));
@@ -532,15 +535,15 @@ public class WorkItemsAvailabilityEdgeCaseTests
     {
         var type = typeof(WorkItemsAvailability);
 
-        var instance = type.GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        var instance = EnumVocabulary<WorkItemsAvailability>.InstanceMembers;
         Assert.Single(instance);
         Assert.Equal("value__", instance[0].Name);
-        Assert.Equal(typeof(int), ((FieldInfo)instance[0]).FieldType);
+        Assert.Equal(typeof(int), Assert.IsAssignableFrom<FieldInfo>(instance[0]).FieldType);
 
-        var fields = type.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
+        var fields = EnumVocabulary<WorkItemsAvailability>.Literals;
 
-        Assert.Equal(["Loading", "NoAddress", "NotPublished", "Ready"], fields.Select(field => field.Name));
-        Assert.Equal([0, 1, 2, 3], fields.Select(field => (int)field.GetRawConstantValue()!));
+        Assert.Equal(Words, fields.Select(field => field.Name));
+        Assert.Equal([0, 1, 2, 3], EnumVocabulary<WorkItemsAvailability>.LiteralNumbers);
         Assert.All(fields, field =>
         {
             Assert.Equal(type, field.FieldType);
@@ -645,7 +648,7 @@ public class WorkItemsAvailabilityEdgeCaseTests
             refusal >= 0 && arms >= 0 && refusal < arms,
             "the refusal of a value that is no state has to come before the switch, or the switch has to answer for such a value itself");
 
-        foreach (var name in Enum.GetNames<WorkItemsAvailability>())
+        foreach (var name in EnumVocabulary<WorkItemsAvailability>.Names)
         {
             Assert.Contains($"WorkItemsAvailability.{name} =>", body, StringComparison.Ordinal);
         }

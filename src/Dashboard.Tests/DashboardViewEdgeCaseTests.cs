@@ -42,6 +42,9 @@ namespace Dashboard.Tests;
 /// </remarks>
 public class DashboardViewEdgeCaseTests
 {
+    /// <summary>The four words of the enum, as it declares and spells them.</summary>
+    private static readonly string[] Words = ["Health", "Runtime", "Cluster", "WorkItems"];
+
     // ------------------------------------------------------------------ the four views, as a vocabulary
 
     /// <summary>
@@ -52,11 +55,11 @@ public class DashboardViewEdgeCaseTests
     [Fact]
     public void TheFourViewsAreTheWholeVocabularyInTheirDeclaredOrder()
     {
-        Assert.Equal(["Health", "Runtime", "Cluster", "WorkItems"], Enum.GetNames<DashboardView>());
-        Assert.Equal([0, 1, 2, 3], Enum.GetValues<DashboardView>().Select(view => (int)view));
-        Assert.Equal(4, Enum.GetValues<DashboardView>().Length);
-        Assert.Equal(typeof(int), Enum.GetUnderlyingType(typeof(DashboardView)));
-        Assert.False(typeof(DashboardView).IsDefined(typeof(FlagsAttribute), false));
+        Assert.Equal(Words, EnumVocabulary<DashboardView>.Names);
+        Assert.Equal([0, 1, 2, 3], EnumVocabulary<DashboardView>.Numbers);
+        Assert.Equal(4, EnumVocabulary<DashboardView>.Count);
+        Assert.Equal(typeof(int), EnumVocabulary<DashboardView>.UnderlyingType);
+        Assert.False(EnumVocabulary<DashboardView>.IsFlags);
     }
 
     /// <summary>
@@ -96,22 +99,26 @@ public class DashboardViewEdgeCaseTests
     [Fact]
     public void TheUnsetViewIsHealthAndNothingOutsideTheFourIsAView()
     {
+        var outside = EnumVocabulary<DashboardView>.OutsideOf(4);
+
         Assert.Equal(DashboardView.Health, default);
-        Assert.Equal(DashboardView.Health, (DashboardView)0);
+        Assert.Equal(DashboardView.Health, EnumVocabulary<DashboardView>.Of(0));
         Assert.True(Enum.IsDefined(DashboardView.Health));
         Assert.True(Enum.IsDefined(DashboardView.WorkItems));
 
-        Assert.False(Enum.IsDefined((DashboardView)4));
-        Assert.False(Enum.IsDefined((DashboardView)(-1)));
-        Assert.False(Enum.IsDefined((DashboardView)int.MinValue));
-        Assert.False(Enum.IsDefined((DashboardView)int.MaxValue));
+        Assert.False(Enum.IsDefined(outside.Above));
+        Assert.False(Enum.IsDefined(outside.Below));
+        Assert.False(Enum.IsDefined(outside.Lowest));
+        Assert.False(Enum.IsDefined(outside.Highest));
 
-        Assert.Null(Enum.GetName((DashboardView)4));
-        Assert.Null(Enum.GetName((DashboardView)(-1)));
-        Assert.Equal("4", ((DashboardView)4).ToString());
-        Assert.Equal("-1", ((DashboardView)(-1)).ToString());
-        Assert.Equal("-2147483648", ((DashboardView)int.MinValue).ToString());
-        Assert.Equal("2147483647", ((DashboardView)int.MaxValue).ToString());
+        Assert.Null(Enum.GetName(outside.Above));
+        Assert.Null(Enum.GetName(outside.Below));
+        Assert.Null(Enum.GetName(outside.Lowest));
+        Assert.Null(Enum.GetName(outside.Highest));
+        Assert.Equal("4", outside.Above.ToString());
+        Assert.Equal("-1", outside.Below.ToString());
+        Assert.Equal("-2147483648", outside.Lowest.ToString());
+        Assert.Equal("2147483647", outside.Highest.ToString());
     }
 
     /// <summary>
@@ -252,17 +259,17 @@ public class DashboardViewEdgeCaseTests
         Assert.True(type.IsSealed);
         Assert.False(type.IsPrimitive);
         Assert.Equal(TypeCode.Int32, DashboardView.Health.GetTypeCode());
-        Assert.False(type.IsDefined(typeof(FlagsAttribute), false));
+        Assert.False(EnumVocabulary<DashboardView>.IsFlags);
 
-        var instance = type.GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        var instance = EnumVocabulary<DashboardView>.InstanceMembers;
         Assert.Single(instance);
         Assert.Equal("value__", instance[0].Name);
-        Assert.Equal(typeof(int), ((FieldInfo)instance[0]).FieldType);
+        Assert.Equal(typeof(int), Assert.IsAssignableFrom<FieldInfo>(instance[0]).FieldType);
 
-        var fields = type.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
+        var fields = EnumVocabulary<DashboardView>.Literals;
 
-        Assert.Equal(["Health", "Runtime", "Cluster", "WorkItems"], fields.Select(field => field.Name));
-        Assert.Equal([0, 1, 2, 3], fields.Select(field => (int)field.GetRawConstantValue()!));
+        Assert.Equal(Words, fields.Select(field => field.Name));
+        Assert.Equal([0, 1, 2, 3], EnumVocabulary<DashboardView>.LiteralNumbers);
         Assert.All(fields, field =>
         {
             Assert.Equal(type, field.FieldType);

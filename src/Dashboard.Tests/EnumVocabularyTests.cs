@@ -186,4 +186,53 @@ public class EnumVocabularyTests
         Assert.Equal("3", ((Three)3).ToString());
         Assert.Equal("-1", ((Three)(-1)).ToString());
     }
+
+    // ----- the readings an enum's own file asserts its words against -----
+
+    [Fact]
+    public void TheReadingsOfAVocabularyAreItsNamesNumbersCountAndType()
+    {
+        Assert.Equal(["First", "Second", "Third"], EnumVocabulary<Three>.Names);
+        Assert.Equal([0, 1, 2], EnumVocabulary<Three>.Numbers);
+        Assert.Equal(3, EnumVocabulary<Three>.Count);
+        Assert.Equal(typeof(int), EnumVocabulary<Three>.UnderlyingType);
+        Assert.False(EnumVocabulary<Three>.IsFlags);
+        Assert.Equal(Three.Third, EnumVocabulary<Three>.Of(2));
+    }
+
+    [Fact]
+    public void TheReadingsSayWhatABrokenVocabularyIs()
+    {
+        Assert.Equal([0, 2], EnumVocabulary<Gapped>.Numbers);
+        Assert.Equal([1, 2], EnumVocabulary<StartsAtOne>.Numbers);
+        Assert.True(EnumVocabulary<Set>.IsFlags);
+        Assert.Equal(typeof(long), EnumVocabulary<Wide>.UnderlyingType);
+    }
+
+    [Fact]
+    public void TheFourValuesOutsideAVocabularyStandOnMinusOneTheCountAndTheEndsOfInt()
+    {
+        var outside = EnumVocabulary<Three>.OutsideOf(3);
+
+        Assert.Equal((Three)(-1), outside.Below);
+        Assert.Equal((Three)3, outside.Above);
+        Assert.Equal((Three)int.MinValue, outside.Lowest);
+        Assert.Equal((Three)int.MaxValue, outside.Highest);
+    }
+
+    [Fact]
+    public void TheDeclaredMembersAreTheStorageFieldAndTheLiteralsInDeclaredOrder()
+    {
+        var instance = Assert.Single(EnumVocabulary<Gapped>.InstanceMembers);
+        Assert.Equal("value__", instance.Name);
+
+        Assert.Equal(["Low", "High"], EnumVocabulary<Gapped>.Literals.Select(literal => literal.Name));
+        Assert.Equal([0, 2], EnumVocabulary<Gapped>.LiteralNumbers);
+    }
+
+    [Fact]
+    public void ALiteralThatIsNoIntIsNotWidenedIntoOne()
+    {
+        Assert.Throws<InvalidCastException>(() => EnumVocabulary<Wide>.LiteralNumbers);
+    }
 }

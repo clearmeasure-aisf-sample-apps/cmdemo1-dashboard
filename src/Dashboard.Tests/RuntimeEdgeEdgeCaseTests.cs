@@ -208,11 +208,13 @@ public class RuntimeEdgeEdgeCaseTests
         Assert.Equal(
             ["Other", "Public", "Origin", "Sql", "Dashboard", "Dependency"],
             [.. Enum.GetValues<RuntimeEdgeKind>().Select(kind => kind.ToString())]);
-        Assert.Equal([0, 1, 2, 3, 4, 5], [.. Enum.GetValues<RuntimeEdgeKind>().Select(kind => (int)kind)]);
-        Assert.Equal(6, Enum.GetValues<RuntimeEdgeKind>().Length);
-        Assert.Equal(typeof(int), Enum.GetUnderlyingType(typeof(RuntimeEdgeKind)));
+        Assert.Equal(["Other", "Public", "Origin", "Sql", "Dashboard", "Dependency"], EnumVocabulary<RuntimeEdgeKind>.Names);
+        Assert.Equal([0, 1, 2, 3, 4, 5], EnumVocabulary<RuntimeEdgeKind>.Numbers);
+        Assert.Equal(6, EnumVocabulary<RuntimeEdgeKind>.Count);
+        Assert.Equal(typeof(int), EnumVocabulary<RuntimeEdgeKind>.UnderlyingType);
+        Assert.False(EnumVocabulary<RuntimeEdgeKind>.IsFlags);
         Assert.Equal(RuntimeEdgeKind.Other, default);
-        Assert.Equal(RuntimeEdgeKind.Other, (RuntimeEdgeKind)0);
+        Assert.Equal(RuntimeEdgeKind.Other, EnumVocabulary<RuntimeEdgeKind>.Of(0));
     }
 
     /// <summary>A kind outside the six is held as it is handed and said as the number it is, and the ends of an

@@ -48,9 +48,11 @@ public class PodStateEdgeCaseTests
     [Fact]
     public void TheFourStatesAreTheWholeVocabularyInTheirDeclaredOrder()
     {
-        Assert.Equal(["Ready", "Starting", "Unhealthy", "Finished"], Enum.GetNames<PodState>());
-        Assert.Equal([0, 1, 2, 3], Enum.GetValues<PodState>().Select(state => (int)state));
-        Assert.Equal(typeof(int), Enum.GetUnderlyingType(typeof(PodState)));
+        Assert.Equal(["Ready", "Starting", "Unhealthy", "Finished"], EnumVocabulary<PodState>.Names);
+        Assert.Equal([0, 1, 2, 3], EnumVocabulary<PodState>.Numbers);
+        Assert.Equal(4, EnumVocabulary<PodState>.Count);
+        Assert.Equal(typeof(int), EnumVocabulary<PodState>.UnderlyingType);
+        Assert.False(EnumVocabulary<PodState>.IsFlags);
     }
 
     /// <summary>Each state on its own number and on its own word, both ways round: the number is the one the name
@@ -77,21 +79,26 @@ public class PodStateEdgeCaseTests
     [Fact]
     public void AnUnsetStateIsTheFirstOneAndNothingOutsideTheFourIsAState()
     {
+        var outside = EnumVocabulary<PodState>.OutsideOf(4);
+
         Assert.Equal(PodState.Ready, default);
-        Assert.Equal(PodState.Ready, (PodState)0);
+        Assert.Equal(PodState.Ready, EnumVocabulary<PodState>.Of(0));
 
         Assert.True(Enum.IsDefined(PodState.Ready));
         Assert.True(Enum.IsDefined(PodState.Finished));
-        Assert.False(Enum.IsDefined((PodState)(-1)));
-        Assert.False(Enum.IsDefined((PodState)4));
-        Assert.False(Enum.IsDefined((PodState)int.MinValue));
-        Assert.False(Enum.IsDefined((PodState)int.MaxValue));
+        Assert.False(Enum.IsDefined(outside.Below));
+        Assert.False(Enum.IsDefined(outside.Above));
+        Assert.False(Enum.IsDefined(outside.Lowest));
+        Assert.False(Enum.IsDefined(outside.Highest));
 
-        Assert.Null(Enum.GetName((PodState)4));
-        Assert.Null(Enum.GetName((PodState)(-1)));
-        Assert.Null(Enum.GetName((PodState)int.MinValue));
-        Assert.Equal("4", ((PodState)4).ToString());
-        Assert.Equal("-2147483648", ((PodState)int.MinValue).ToString());
+        Assert.Null(Enum.GetName(outside.Above));
+        Assert.Null(Enum.GetName(outside.Below));
+        Assert.Null(Enum.GetName(outside.Lowest));
+        Assert.Null(Enum.GetName(outside.Highest));
+        Assert.Equal("4", outside.Above.ToString());
+        Assert.Equal("-1", outside.Below.ToString());
+        Assert.Equal("-2147483648", outside.Lowest.ToString());
+        Assert.Equal("2147483647", outside.Highest.ToString());
     }
 
     /// <summary>The four states apart from one another - each is the state of one pod alone, and each is equal to
@@ -129,7 +136,7 @@ public class PodStateEdgeCaseTests
     [Fact]
     public void TwoStatesCombinedAreAnotherStateRatherThanASet()
     {
-        Assert.False(typeof(PodState).IsDefined(typeof(FlagsAttribute), false));
+        Assert.False(EnumVocabulary<PodState>.IsFlags);
 
         Assert.Equal(PodState.Starting, PodState.Ready | PodState.Starting);
         Assert.Equal(PodState.Unhealthy, PodState.Unhealthy | PodState.Ready);

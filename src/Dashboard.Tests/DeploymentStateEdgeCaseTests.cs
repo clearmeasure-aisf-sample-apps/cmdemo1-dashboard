@@ -20,6 +20,9 @@ namespace Dashboard.Tests;
 /// </summary>
 public class DeploymentStateEdgeCaseTests
 {
+    /// <summary>The seven words of the enum, as it declares and spells them.</summary>
+    private static readonly string[] Words = ["Unknown", "Queued", "Executing", "Waiting", "Succeeded", "Failed", "Canceled"];
+
     // ----- the seven states, as the numbers they are
 
     /// <summary>The seven states in the order the enum declares them, on the numbers 0 to 6, of an
@@ -28,13 +31,11 @@ public class DeploymentStateEdgeCaseTests
     [Fact]
     public void TheSevenDeploymentStatesAreTheWholeVocabularyInTheirDeclaredOrder()
     {
-        Assert.Equal(
-            ["Unknown", "Queued", "Executing", "Waiting", "Succeeded", "Failed", "Canceled"],
-            Enum.GetNames<DeploymentState>());
-        Assert.Equal([0, 1, 2, 3, 4, 5, 6], Enum.GetValues<DeploymentState>().Select(state => (int)state));
-        Assert.Equal(7, Enum.GetValues<DeploymentState>().Length);
-        Assert.Equal(typeof(int), Enum.GetUnderlyingType(typeof(DeploymentState)));
-        Assert.False(typeof(DeploymentState).IsDefined(typeof(FlagsAttribute), false));
+        Assert.Equal(Words, EnumVocabulary<DeploymentState>.Names);
+        Assert.Equal([0, 1, 2, 3, 4, 5, 6], EnumVocabulary<DeploymentState>.Numbers);
+        Assert.Equal(7, EnumVocabulary<DeploymentState>.Count);
+        Assert.Equal(typeof(int), EnumVocabulary<DeploymentState>.UnderlyingType);
+        Assert.False(EnumVocabulary<DeploymentState>.IsFlags);
     }
 
     /// <summary>Each state on its own number and its own word, both ways round: the number is the one the name
@@ -64,22 +65,26 @@ public class DeploymentStateEdgeCaseTests
     [Fact]
     public void AnUnsetDeploymentStateIsUnknownAndNothingOutsideTheSevenIsAState()
     {
+        var outside = EnumVocabulary<DeploymentState>.OutsideOf(7);
+
         Assert.Equal(DeploymentState.Unknown, default);
-        Assert.Equal(DeploymentState.Unknown, (DeploymentState)0);
+        Assert.Equal(DeploymentState.Unknown, EnumVocabulary<DeploymentState>.Of(0));
 
         Assert.True(Enum.IsDefined(DeploymentState.Unknown));
         Assert.True(Enum.IsDefined(DeploymentState.Canceled));
-        Assert.False(Enum.IsDefined((DeploymentState)(-1)));
-        Assert.False(Enum.IsDefined((DeploymentState)7));
-        Assert.False(Enum.IsDefined((DeploymentState)int.MinValue));
-        Assert.False(Enum.IsDefined((DeploymentState)int.MaxValue));
+        Assert.False(Enum.IsDefined(outside.Below));
+        Assert.False(Enum.IsDefined(outside.Above));
+        Assert.False(Enum.IsDefined(outside.Lowest));
+        Assert.False(Enum.IsDefined(outside.Highest));
 
-        Assert.Null(Enum.GetName((DeploymentState)7));
-        Assert.Null(Enum.GetName((DeploymentState)(-1)));
-        Assert.Equal("7", ((DeploymentState)7).ToString());
-        Assert.Equal("-1", ((DeploymentState)(-1)).ToString());
-        Assert.Equal("-2147483648", ((DeploymentState)int.MinValue).ToString());
-        Assert.Equal("2147483647", ((DeploymentState)int.MaxValue).ToString());
+        Assert.Null(Enum.GetName(outside.Above));
+        Assert.Null(Enum.GetName(outside.Below));
+        Assert.Null(Enum.GetName(outside.Lowest));
+        Assert.Null(Enum.GetName(outside.Highest));
+        Assert.Equal("7", outside.Above.ToString());
+        Assert.Equal("-1", outside.Below.ToString());
+        Assert.Equal("-2147483648", outside.Lowest.ToString());
+        Assert.Equal("2147483647", outside.Highest.ToString());
     }
 
     /// <summary>The seven states are apart from one another and sort by their numbers, as the declaration orders
@@ -244,17 +249,15 @@ public class DeploymentStateEdgeCaseTests
 
         // The only instance member a state carries of its own is the storage the compiler gives every value type:
         // the <c>int</c> the enum is of, and nothing else.
-        var instance = type.GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        var instance = EnumVocabulary<DeploymentState>.InstanceMembers;
         Assert.Single(instance);
         Assert.Equal("value__", instance[0].Name);
-        Assert.Equal(typeof(int), ((FieldInfo)instance[0]).FieldType);
+        Assert.Equal(typeof(int), Assert.IsAssignableFrom<FieldInfo>(instance[0]).FieldType);
 
-        var fields = type.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
+        var fields = EnumVocabulary<DeploymentState>.Literals;
 
-        Assert.Equal(
-            ["Unknown", "Queued", "Executing", "Waiting", "Succeeded", "Failed", "Canceled"],
-            fields.Select(field => field.Name));
-        Assert.Equal([0, 1, 2, 3, 4, 5, 6], fields.Select(field => (int)field.GetRawConstantValue()!));
+        Assert.Equal(Words, fields.Select(field => field.Name));
+        Assert.Equal([0, 1, 2, 3, 4, 5, 6], EnumVocabulary<DeploymentState>.LiteralNumbers);
         Assert.All(fields, field =>
         {
             Assert.Equal(type, field.FieldType);

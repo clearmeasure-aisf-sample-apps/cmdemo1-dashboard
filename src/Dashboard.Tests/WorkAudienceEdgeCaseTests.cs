@@ -24,6 +24,9 @@ namespace Dashboard.Tests;
 /// </summary>
 public class WorkAudienceEdgeCaseTests
 {
+    /// <summary>The three words of the enum, as it declares and spells them.</summary>
+    private static readonly string[] Words = ["All", "Bot", "Team"];
+
     // ----- the three audiences, as the numbers they are
 
     /// <summary>The three audiences in the order the enum declares them, on the numbers 0 to 2, of an
@@ -32,11 +35,11 @@ public class WorkAudienceEdgeCaseTests
     [Fact]
     public void TheThreeAudiencesAreTheWholeVocabularyInTheirDeclaredOrder()
     {
-        Assert.Equal(["All", "Bot", "Team"], Enum.GetNames<WorkAudience>());
-        Assert.Equal([0, 1, 2], Enum.GetValues<WorkAudience>().Select(audience => (int)audience));
-        Assert.Equal(3, Enum.GetValues<WorkAudience>().Length);
-        Assert.Equal(typeof(int), Enum.GetUnderlyingType(typeof(WorkAudience)));
-        Assert.False(typeof(WorkAudience).IsDefined(typeof(FlagsAttribute), false));
+        Assert.Equal(Words, EnumVocabulary<WorkAudience>.Names);
+        Assert.Equal([0, 1, 2], EnumVocabulary<WorkAudience>.Numbers);
+        Assert.Equal(3, EnumVocabulary<WorkAudience>.Count);
+        Assert.Equal(typeof(int), EnumVocabulary<WorkAudience>.UnderlyingType);
+        Assert.False(EnumVocabulary<WorkAudience>.IsFlags);
     }
 
     /// <summary>Each audience on its own number and its own word, both ways round: the number is the one the name
@@ -62,22 +65,26 @@ public class WorkAudienceEdgeCaseTests
     [Fact]
     public void AnUnsetAudienceIsAllAndNothingOutsideTheThreeIsAnAudience()
     {
+        var outside = EnumVocabulary<WorkAudience>.OutsideOf(3);
+
         Assert.Equal(WorkAudience.All, default);
-        Assert.Equal(WorkAudience.All, (WorkAudience)0);
+        Assert.Equal(WorkAudience.All, EnumVocabulary<WorkAudience>.Of(0));
 
         Assert.True(Enum.IsDefined(WorkAudience.All));
         Assert.True(Enum.IsDefined(WorkAudience.Team));
-        Assert.False(Enum.IsDefined((WorkAudience)(-1)));
-        Assert.False(Enum.IsDefined((WorkAudience)3));
-        Assert.False(Enum.IsDefined((WorkAudience)int.MinValue));
-        Assert.False(Enum.IsDefined((WorkAudience)int.MaxValue));
+        Assert.False(Enum.IsDefined(outside.Below));
+        Assert.False(Enum.IsDefined(outside.Above));
+        Assert.False(Enum.IsDefined(outside.Lowest));
+        Assert.False(Enum.IsDefined(outside.Highest));
 
-        Assert.Null(Enum.GetName((WorkAudience)3));
-        Assert.Null(Enum.GetName((WorkAudience)(-1)));
-        Assert.Equal("3", ((WorkAudience)3).ToString());
-        Assert.Equal("-1", ((WorkAudience)(-1)).ToString());
-        Assert.Equal("-2147483648", ((WorkAudience)int.MinValue).ToString());
-        Assert.Equal("2147483647", ((WorkAudience)int.MaxValue).ToString());
+        Assert.Null(Enum.GetName(outside.Above));
+        Assert.Null(Enum.GetName(outside.Below));
+        Assert.Null(Enum.GetName(outside.Lowest));
+        Assert.Null(Enum.GetName(outside.Highest));
+        Assert.Equal("3", outside.Above.ToString());
+        Assert.Equal("-1", outside.Below.ToString());
+        Assert.Equal("-2147483648", outside.Lowest.ToString());
+        Assert.Equal("2147483647", outside.Highest.ToString());
     }
 
     /// <summary>The three audiences are apart from one another and sort by their numbers, as the declaration
@@ -230,15 +237,15 @@ public class WorkAudienceEdgeCaseTests
 
         // The only instance member an audience carries of its own is the storage the compiler gives every value
         // type: the <c>int</c> the enum is of, and nothing else.
-        var instance = type.GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        var instance = EnumVocabulary<WorkAudience>.InstanceMembers;
         Assert.Single(instance);
         Assert.Equal("value__", instance[0].Name);
-        Assert.Equal(typeof(int), ((FieldInfo)instance[0]).FieldType);
+        Assert.Equal(typeof(int), Assert.IsAssignableFrom<FieldInfo>(instance[0]).FieldType);
 
-        var fields = type.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
+        var fields = EnumVocabulary<WorkAudience>.Literals;
 
-        Assert.Equal(["All", "Bot", "Team"], fields.Select(field => field.Name));
-        Assert.Equal([0, 1, 2], fields.Select(field => (int)field.GetRawConstantValue()!));
+        Assert.Equal(Words, fields.Select(field => field.Name));
+        Assert.Equal([0, 1, 2], EnumVocabulary<WorkAudience>.LiteralNumbers);
         Assert.All(fields, field =>
         {
             Assert.Equal(type, field.FieldType);

@@ -22,11 +22,11 @@ public class EventLevelEdgeCaseTests
     [Fact]
     public void TheFourEventLevelsAreTheWholeVocabularyInTheirDeclaredOrder()
     {
-        Assert.Equal(["Info", "Good", "Warning", "Problem"], Enum.GetNames<EventLevel>());
-        Assert.Equal([0, 1, 2, 3], Enum.GetValues<EventLevel>().Select(level => (int)level));
-        Assert.Equal(4, Enum.GetValues<EventLevel>().Length);
-        Assert.Equal(typeof(int), Enum.GetUnderlyingType(typeof(EventLevel)));
-        Assert.False(typeof(EventLevel).IsDefined(typeof(FlagsAttribute), false));
+        Assert.Equal(["Info", "Good", "Warning", "Problem"], EnumVocabulary<EventLevel>.Names);
+        Assert.Equal([0, 1, 2, 3], EnumVocabulary<EventLevel>.Numbers);
+        Assert.Equal(4, EnumVocabulary<EventLevel>.Count);
+        Assert.Equal(typeof(int), EnumVocabulary<EventLevel>.UnderlyingType);
+        Assert.False(EnumVocabulary<EventLevel>.IsFlags);
     }
 
     /// <summary>Each level on its own number and its own word, both ways round.</summary>
@@ -49,21 +49,26 @@ public class EventLevelEdgeCaseTests
     [Fact]
     public void AnUnsetEventLevelIsInfoAndNothingOutsideTheFourIsALevel()
     {
+        var outside = EnumVocabulary<EventLevel>.OutsideOf(4);
+
         Assert.Equal(EventLevel.Info, default);
-        Assert.Equal(EventLevel.Info, (EventLevel)0);
+        Assert.Equal(EventLevel.Info, EnumVocabulary<EventLevel>.Of(0));
 
         Assert.True(Enum.IsDefined(EventLevel.Info));
         Assert.True(Enum.IsDefined(EventLevel.Problem));
-        Assert.False(Enum.IsDefined((EventLevel)(-1)));
-        Assert.False(Enum.IsDefined((EventLevel)4));
-        Assert.False(Enum.IsDefined((EventLevel)int.MinValue));
-        Assert.False(Enum.IsDefined((EventLevel)int.MaxValue));
+        Assert.False(Enum.IsDefined(outside.Below));
+        Assert.False(Enum.IsDefined(outside.Above));
+        Assert.False(Enum.IsDefined(outside.Lowest));
+        Assert.False(Enum.IsDefined(outside.Highest));
 
-        Assert.Null(Enum.GetName((EventLevel)4));
-        Assert.Null(Enum.GetName((EventLevel)(-1)));
-        Assert.Equal("4", ((EventLevel)4).ToString());
-        Assert.Equal("-1", ((EventLevel)(-1)).ToString());
-        Assert.Equal("2147483647", ((EventLevel)int.MaxValue).ToString());
+        Assert.Null(Enum.GetName(outside.Above));
+        Assert.Null(Enum.GetName(outside.Below));
+        Assert.Null(Enum.GetName(outside.Lowest));
+        Assert.Null(Enum.GetName(outside.Highest));
+        Assert.Equal("4", outside.Above.ToString());
+        Assert.Equal("-1", outside.Below.ToString());
+        Assert.Equal("-2147483648", outside.Lowest.ToString());
+        Assert.Equal("2147483647", outside.Highest.ToString());
     }
 
     /// <summary>The four levels are apart from one another and sort by their numbers, as the declaration orders

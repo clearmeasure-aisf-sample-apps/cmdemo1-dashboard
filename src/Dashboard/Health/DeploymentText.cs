@@ -50,10 +50,12 @@ public static class DeploymentText
     {
         if (span.TotalMinutes < MinutesBeforeHours)
         {
-            return TimeText.Whole(Math.Max(FewestMinutes, span.TotalMinutes), "min");
+            return TimeText.Whole(Math.Max(FewestMinutes, span.TotalMinutes), TimeText.MinutesUnit);
         }
 
-        return span.TotalHours < HoursBeforeDays ? TimeText.Whole(span.TotalHours, "h") : TimeText.Whole(span.TotalDays, "d");
+        return span.TotalHours < HoursBeforeDays
+            ? TimeText.Whole(span.TotalHours, TimeText.HoursUnit)
+            : TimeText.Whole(span.TotalDays, TimeText.DaysUnit);
     }
 
     /// <summary>An age that has ended: <c>5 min ago</c>.</summary>

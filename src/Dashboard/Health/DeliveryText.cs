@@ -171,9 +171,9 @@ public static class DeliveryText
     /// </summary>
     public static string LeadTime(double hours) => hours switch
     {
-        < OneHour => string.Create(CultureInfo.InvariantCulture, $"{Math.Round(hours * MinutesPerHour):0} min"),
-        < HoursBeforeDays => string.Create(CultureInfo.InvariantCulture, $"{hours:0.#} h"),
-        _ => string.Create(CultureInfo.InvariantCulture, $"{hours / HoursPerDay:0.#} d"),
+        < OneHour => string.Create(CultureInfo.InvariantCulture, $"{Math.Round(hours * MinutesPerHour):0} {TimeText.MinutesUnit}"),
+        < HoursBeforeDays => string.Create(CultureInfo.InvariantCulture, $"{hours:0.#} {TimeText.HoursUnit}"),
+        _ => string.Create(CultureInfo.InvariantCulture, $"{hours / HoursPerDay:0.#} {TimeText.DaysUnit}"),
     };
 
     /// <summary>Whose delivery a card shows: <c>ui in uat</c>; the system project by what it is.</summary>

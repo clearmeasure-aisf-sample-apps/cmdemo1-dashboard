@@ -28,10 +28,24 @@ public static class TimeText
     /// </summary>
     private const string IsoFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'";
 
+    /// <summary>The word a length in seconds is said in: <c>45 s</c>.</summary>
+    public const string SecondsUnit = "s";
+
+    /// <summary>The word a length in minutes is said in: <c>3 min</c>.</summary>
+    public const string MinutesUnit = "min";
+
+    /// <summary>The word a length in hours is said in: <c>2 h</c>, <c>5.2 h</c>.</summary>
+    public const string HoursUnit = "h";
+
+    /// <summary>The word a length in days is said in: <c>4 d</c>, <c>3.5 d</c>.</summary>
+    public const string DaysUnit = "d";
+
     /// <summary>
     /// A length in one whole unit, truncated and in the invariant culture: <c>45 s</c>, <c>3 min</c>, <c>2 h</c>,
     /// <c>4 d</c> (<c>5 h</c> for five and a half hours). The one home of how a count of whole units is said, for
-    /// <see cref="Span"/> and for <see cref="DeploymentText.Age"/>, each of which keeps its own unit boundaries.
+    /// <see cref="Span"/> and for <see cref="DeploymentText.Age"/>, each of which keeps its own unit boundaries. The
+    /// unit words themselves live here too (<see cref="SecondsUnit"/>, <see cref="MinutesUnit"/>,
+    /// <see cref="HoursUnit"/>, <see cref="DaysUnit"/>), shared with <see cref="DeliveryText.LeadTime"/>.
     /// </summary>
     internal static string Whole(double amount, string unit) =>
         string.Create(CultureInfo.InvariantCulture, $"{(int)amount} {unit}");
@@ -59,10 +73,10 @@ public static class TimeText
             span = TimeSpan.Zero;
         }
 
-        return span.TotalSeconds < SecondsUntilMinutes ? Whole(span.TotalSeconds, "s")
-            : span.TotalMinutes < MinutesUntilHours ? Whole(span.TotalMinutes, "min")
-            : span.TotalHours < HoursUntilDays ? Whole(span.TotalHours, "h")
-            : Whole(span.TotalDays, "d");
+        return span.TotalSeconds < SecondsUntilMinutes ? Whole(span.TotalSeconds, SecondsUnit)
+            : span.TotalMinutes < MinutesUntilHours ? Whole(span.TotalMinutes, MinutesUnit)
+            : span.TotalHours < HoursUntilDays ? Whole(span.TotalHours, HoursUnit)
+            : Whole(span.TotalDays, DaysUnit);
     }
 
     /// <summary>How long ago a moment was: <c>just now</c> within a minute (and for a moment ahead of the clock), then <c>3 min ago</c>.</summary>

@@ -138,7 +138,7 @@ public static class DatabaseParser
         using (document)
         {
             var root = document.RootElement;
-            if (!root.TryGetProperty(TablesField, out var array) || array.ValueKind != JsonValueKind.Array)
+            if (!JsonRead.HasArray(root, TablesField))
             {
                 return null;
             }

@@ -20,17 +20,13 @@ namespace Dashboard.Health;
 public sealed record ContainerAppReports(string Name, HourlyCheck? Last, HealthWindow? Last24Hours, HealthWindow? Last7Days)
 {
     /// <summary>The entries of <c>containerApps</c> of an environment's <c>health</c>; null without such an array.</summary>
-    internal static IReadOnlyList<ContainerAppReports>? ReadAll(JsonElement? health)
-    {
-        if (health is not { ValueKind: JsonValueKind.Object } section
-            || !section.TryGetProperty("containerApps", out var array)
-            || array.ValueKind != JsonValueKind.Array)
-        {
-            return null;
-        }
+    internal static IReadOnlyList<ContainerAppReports>? ReadAll(JsonElement? health) =>
+        JsonRead.HasArray(health, ContainerApps)
+            ? [.. JsonRead.Items(health, ContainerApps).Select(Read).OfType<ContainerAppReports>()]
+            : null;
 
-        return [.. array.EnumerateArray().Select(Read).OfType<ContainerAppReports>()];
-    }
+    /// <summary>The list of an environment's <c>health</c> that holds an entry per container app.</summary>
+    private const string ContainerApps = "containerApps";
 
     /// <summary>An entry; null without a name.</summary>
     private static ContainerAppReports? Read(JsonElement element) =>

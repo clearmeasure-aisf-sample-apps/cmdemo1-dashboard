@@ -48,6 +48,9 @@ public static class ClusterText
     /// <summary>The separator between the parts of one cluster line: <c>3 of 3 ready · 1 restart</c>.</summary>
     private const string PartSeparator = " · ";
 
+    /// <summary>The cell a cluster table shows when the cluster file does not give that fact.</summary>
+    public const string NotGiven = "—";
+
     private const double Kibibyte = 1024;
     private const double Mebibyte = Kibibyte * 1024;
 

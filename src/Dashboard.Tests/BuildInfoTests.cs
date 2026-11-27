@@ -160,11 +160,11 @@ public class BuildInfoTests
     [Fact]
     public void TheTopologyCarriesTheBuildPath()
     {
-        var topology = TopologyParser.Parse(Optics.Topology).Topology!;
+        var topology = TopologyReading.Valid(Optics.Topology);
 
         Assert.Equal("/_build", topology.Environments[0].Deployables[0].BuildPath);
         Assert.Equal("/_build", topology.Environments[1].Deployables[0].BuildPath);
-        Assert.Null(TopologyParser.Parse("""{ "environments": [ { "name": "tdd", "deployables": [ { "nodes": [] } ] } ] }""").Topology!.Environments[0].Deployables[0].BuildPath);
+        Assert.Null(TopologyReading.Valid("""{ "environments": [ { "name": "tdd", "deployables": [ { "nodes": [] } ] } ] }""").Environments[0].Deployables[0].BuildPath);
     }
 
     [Fact]

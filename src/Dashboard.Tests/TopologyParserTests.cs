@@ -1,24 +1,9 @@
+using static Dashboard.Tests.TopologyReading;
+
 namespace Dashboard.Tests;
 
 public class TopologyParserTests
 {
-    private static Topology Valid(string json)
-    {
-        var result = TopologyParser.Parse(json);
-        Assert.True(result.IsValid, string.Join(" | ", result.Errors));
-        Assert.Empty(result.Errors);
-        return result.Topology!;
-    }
-
-    private static IReadOnlyList<string> Invalid(string? json)
-    {
-        var result = TopologyParser.Parse(json);
-        Assert.False(result.IsValid);
-        Assert.Null(result.Topology);
-        Assert.NotEmpty(result.Errors);
-        return result.Errors;
-    }
-
     [Fact]
     public void TheSampleShippedWithTheAppIsRead()
     {
@@ -141,7 +126,7 @@ public class TopologyParserTests
     [Fact]
     public void AVersionOrLinkAddressThatIsNotAnAddressIsAnErrorWithItsPlace()
     {
-        var errors = Invalid("""
+        var errors = Errors("""
             { "system": { "slug": "demo", "repository": "example-org/demo-system" },
               "environments": [
                 { "name": "tdd", "versionsUrl": "environments/tdd/versions.json", "versionsHistoryUrl": 7,
@@ -191,7 +176,7 @@ public class TopologyParserTests
     [Fact]
     public void APinAddressThatIsNotAnAddressIsAnErrorWithItsPlace()
     {
-        var errors = Invalid("""
+        var errors = Errors("""
             { "environments": [ { "name": "tdd", "deployables": [
               { "name": "ui", "pinUrl": "gitops/environments/tdd/ui/kustomization.yaml", "pinHistoryUrl": "ftp://example.net/history" },
               { "name": "api", "pinUrl": 7, "pinHistoryUrl": "" } ] } ] }
@@ -350,32 +335,32 @@ public class TopologyParserTests
     [InlineData("")]
     [InlineData("   ")]
     public void AnEmptyFileIsAnError(string? json) =>
-        Assert.Equal("The file is empty.", Assert.Single(Invalid(json)));
+        Assert.Equal("The file is empty.", Assert.Single(Errors(json)));
 
     [Theory]
     [InlineData("<!DOCTYPE html><html></html>", "The file is not valid JSON (line 1, position 1).")]
     [InlineData("{ \"environments\": [\n  { \"name\": }\n] }", "The file is not valid JSON (line 2, position 13).")]
     public void MalformedJsonIsAnErrorWithThePlace(string json, string expected) =>
-        Assert.Equal(expected, Assert.Single(Invalid(json)));
+        Assert.Equal(expected, Assert.Single(Errors(json)));
 
     [Theory]
     [InlineData("[]")]
     [InlineData("42")]
     [InlineData("\"topology\"")]
     public void AnythingButAnObjectIsAnError(string json) =>
-        Assert.Equal("The file must contain a JSON object.", Assert.Single(Invalid(json)));
+        Assert.Equal("The file must contain a JSON object.", Assert.Single(Errors(json)));
 
     [Theory]
     [InlineData("""{ "system": { "slug": "demo" } }""")]
     [InlineData("""{ "environments": null }""")]
     [InlineData("""{ "environments": { "tdd": {} } }""")]
     public void EnvironmentsMustBeAnArray(string json) =>
-        Assert.Equal("environments: missing or not an array.", Assert.Single(Invalid(json)));
+        Assert.Equal("environments: missing or not an array.", Assert.Single(Errors(json)));
 
     [Fact]
     public void EveryProblemIsReportedWithItsPlace()
     {
-        var errors = Invalid("""
+        var errors = Errors("""
             { "environments": [
               { "tier": "nonprod" },
               "uat",
@@ -481,7 +466,7 @@ public class TopologyParserTests
     [InlineData("\"links\": { \"workloads\": false }", "cluster.links.workloads: not an absolute http or https address.")]
     public void AnAddressOfTheClusterThatIsNotOneIsAnError(string field, string error)
     {
-        var errors = Invalid($$"""{ "environments": [], "cluster": { {{field}} } }""");
+        var errors = Errors($$"""{ "environments": [], "cluster": { {{field}} } }""");
 
         Assert.Equal(error, Assert.Single(errors));
     }
@@ -489,6 +474,6 @@ public class TopologyParserTests
     [Fact]
     public void AClusterThatIsNotAnObjectIsAnError()
     {
-        Assert.Equal("cluster: not an object.", Assert.Single(Invalid("""{ "environments": [], "cluster": "aks-cmdemo3" }""")));
+        Assert.Equal("cluster: not an object.", Assert.Single(Errors("""{ "environments": [], "cluster": "aks-cmdemo3" }""")));
     }
 }

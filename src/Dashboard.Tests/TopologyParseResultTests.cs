@@ -106,7 +106,7 @@ public class TopologyParseResultTests
     [Fact]
     public void IsValidOnlyAsksForTheTopology()
     {
-        var topology = TopologyParser.Parse(Good).Topology!;
+        var topology = TopologyReading.Valid(Good);
 
         Assert.True(new TopologyParseResult(topology, []).IsValid);
         Assert.True(new TopologyParseResult(topology, ["A message the parser never gave."]).IsValid);

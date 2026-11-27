@@ -9,7 +9,7 @@ public class LinkTests
 
     private readonly SignallingTimeProvider _time = new();
 
-    private static readonly Topology Parsed = TopologyParser.Parse(Optics.Topology).Topology!;
+    private static readonly Topology Parsed = TopologyReading.Valid(Optics.Topology);
 
     private static readonly RuntimeManifest Manifest = Manifests.Of(
         "uat",
@@ -79,7 +79,7 @@ public class LinkTests
     [InlineData("""{ "environments": [ { "name": "tdd", "links": { }, "deployables": [ { "links": { "portal": 4 }, "nodes": [ { "url": "https://a.example.net", "links": { "portal": "ftp://a" } } ] } ] } ] }""")]
     public void LinksOfAnotherShapeAreNoLinks(string json)
     {
-        var environment = TopologyParser.Parse(json).Topology!.Environments[0];
+        var environment = TopologyReading.Valid(json).Environments[0];
 
         Assert.Null(environment.Links);
         Assert.Null(environment.Deployables[0].Links);
@@ -95,7 +95,7 @@ public class LinkTests
     [Fact]
     public void TheLinksOfTheSampleTopologyKeepTheirPortalAddresses()
     {
-        var topology = TopologyParser.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "topology.sample.json"))).Topology!;
+        var topology = TopologyReading.Valid(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "topology.sample.json")));
         var uat = topology.Environments.Single(environment => environment.Name == "uat");
         const string Group = "https://portal.azure.com/#@00000000-0000-0000-0000-000000000000/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cmdemo1-nonprod";
 

@@ -76,11 +76,11 @@ public class WorkItemsTests
     [Fact]
     public void TheWorkItemsFileIsReadFromBesideTheDeliveryFacts()
     {
-        var system = TopologyParser.Parse(Optics.Topology).Topology!.System;
+        var system = TopologyReading.Valid(Optics.Topology).System;
 
         Assert.Equal("https://raw.example.net/org/demo-system/status/workitems.json", system.WorkItemsUrl!.AbsoluteUri);
         Assert.EndsWith(WorkItemsReport.FileName, system.WorkItemsUrl.AbsoluteUri, StringComparison.Ordinal);
-        Assert.Null(TopologyParser.Parse("""{ "system": { }, "environments": [] }""").Topology!.System.WorkItemsUrl);
+        Assert.Null(TopologyReading.Valid("""{ "system": { }, "environments": [] }""").System.WorkItemsUrl);
     }
 
     [Theory]

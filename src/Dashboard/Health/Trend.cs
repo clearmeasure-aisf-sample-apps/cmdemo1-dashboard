@@ -33,7 +33,7 @@ public sealed record Trend(IReadOnlyList<double> Points, string Title)
         }
 
         var max = values.Max();
-        var points = values.Select(value => max > 0 ? Math.Round(Math.Clamp(value / max, 0, 1), 3) : 0).ToList();
+        var points = values.Select(value => Height(value, max)).ToList();
         var title = string.Create(
             CultureInfo.InvariantCulture,
             $"{what}, last {values.Count} checks: {Number(values.Min())} to {Number(max)}{unit}, now {Number(values[^1])}{unit}");
@@ -58,6 +58,18 @@ public sealed record Trend(IReadOnlyList<double> Points, string Title)
     /// <paramref name="inset"/> away from both edges.
     /// </summary>
     private static double YOf(double point, double height, double inset) => height - inset - point * (height - 2 * inset);
+
+    /// <summary>
+    /// The 0 to 1 height of one reading: the reading over the largest, clamped to the box; 0 when there is no
+    /// largest to divide by (every reading is zero).
+    /// </summary>
+    private static double Height(double value, double max) => max > 0 ? Math.Round(Math.Clamp(value / max, 0, 1), HeightDigits) : 0;
+
+    /// <summary>
+    /// How many decimals a point's 0 to 1 height keeps: finer than <see cref="CoordinateDigits"/>, so the SVG
+    /// coordinates do the final rounding.
+    /// </summary>
+    private const int HeightDigits = 3;
 
     /// <summary>At most one decimal; a whole reading is written without one.</summary>
     private const string NumberFormat = "0.#";

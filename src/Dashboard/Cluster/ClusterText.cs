@@ -278,6 +278,20 @@ public static class ClusterText
         return string.Join(PartSeparator, volumes.Select(Volume));
     }
 
+    /// <summary>
+    /// Azure's power and provisioning states of a node pool, power first: <c>Running, Succeeded</c>; null when Azure
+    /// names neither.
+    /// </summary>
+    public static string? PoolState(AksPool pool)
+    {
+        ArgumentNullException.ThrowIfNull(pool);
+        if (pool.PowerState is null && pool.ProvisioningState is null)
+        {
+            return null;
+        }
+        return string.Join(", ", new[] { pool.PowerState, pool.ProvisioningState }.OfType<string>());
+    }
+
     /// <summary>A node pool as Azure describes it: <c>1 × Standard_D4as_v6</c>; null when Azure names neither.</summary>
     public static string? PoolSize(AksPool pool)
     {

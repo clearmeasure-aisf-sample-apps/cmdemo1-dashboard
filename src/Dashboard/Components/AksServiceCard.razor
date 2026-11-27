@@ -96,9 +96,9 @@
                                     {
                                         <span>@disk GB OS disk</span>
                                     }
-                                    @if ((pool.PowerState ?? pool.ProvisioningState) is not null)
+                                    @if (ClusterText.PoolState(pool) is { } state)
                                     {
-                                        <span class="pools__state">@string.Join(", ", new[] { pool.PowerState, pool.ProvisioningState }.OfType<string>())</span>
+                                        <span class="pools__state">@state</span>
                                     }
                                 </li>
                             }

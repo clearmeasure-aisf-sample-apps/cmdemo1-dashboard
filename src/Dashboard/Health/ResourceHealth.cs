@@ -170,6 +170,13 @@ public static class ResourceHealthText
     private const string NotKnown = HealthDetailText.NotKnown;
     private const string Provisioned = "Provisioned";
     private const string Available = "Available";
+
+    // The words containers.json says, matched exactly: the reading of the file lowers them, so a match on these
+    // letters is a match on what the file wrote.
+    private const string SaidAvailable = "available";
+    private const string SaidDegraded = "degraded";
+    private const string SaidUnavailable = "unavailable";
+    private const string SaidSucceeded = "succeeded";
     private const int MostNamed = 8;
 
     /// <summary>The words of a box of these resources; null for a box without ids (a manifest from before them).</summary>
@@ -199,8 +206,10 @@ public static class ResourceHealthText
     /// <summary>The badge's word for one reading: <c>Available</c>, <c>Provisioned</c>, <c>Failed</c>, <c>Not known</c>.</summary>
     public static string Label(ResourceHealthReading? reading) => reading switch
     {
-        { Source: ResourceHealthReading.FromResourceHealth, Status: "available" or "degraded" or "unavailable" } => Capitalized(reading.Status),
-        { Source: ResourceHealthReading.FromProvisioningState, Status: "succeeded" } => Provisioned,
+        { Source: ResourceHealthReading.FromResourceHealth, Status: SaidAvailable } => Available,
+        { Source: ResourceHealthReading.FromResourceHealth, Status: SaidDegraded } => Degraded,
+        { Source: ResourceHealthReading.FromResourceHealth, Status: SaidUnavailable } => Unavailable,
+        { Source: ResourceHealthReading.FromProvisioningState, Status: SaidSucceeded } => Provisioned,
         { Source: ResourceHealthReading.FromProvisioningState } => Capitalized(reading.Status),
         _ => NotKnown,
     };

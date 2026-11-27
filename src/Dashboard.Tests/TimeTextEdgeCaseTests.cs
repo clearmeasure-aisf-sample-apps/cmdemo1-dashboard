@@ -331,7 +331,12 @@ public class TimeTextEdgeCaseTests
         Assert.True(type.IsAbstract && type.IsSealed, "TimeText is a static holder: nothing of it is created");
         Assert.Empty(type.GetConstructors(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic));
         Assert.Empty(type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static));
-        Assert.Empty(type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static));
+        var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
+        string[] unitWords = [nameof(TimeText.SecondsUnit), nameof(TimeText.MinutesUnit), nameof(TimeText.HoursUnit), nameof(TimeText.DaysUnit)];
+        Assert.Equal(
+            unitWords.Order(StringComparer.Ordinal),
+            fields.Select(field => field.Name).Order(StringComparer.Ordinal));
+        Assert.All(fields, field => Assert.True(field.IsLiteral && field.FieldType == typeof(string), $"{field.Name} is a const unit word"));
         Assert.Empty(type.GetEvents(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static));
         Assert.Empty(type.GetNestedTypes(BindingFlags.Public));
         Assert.Empty(type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly));

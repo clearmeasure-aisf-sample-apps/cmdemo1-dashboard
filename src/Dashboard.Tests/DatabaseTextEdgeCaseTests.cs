@@ -233,4 +233,18 @@ public sealed class DatabaseTextEdgeCaseTests
     [InlineData(long.MinValue, "-9,223,372,036,854,775,808")]
     public void ANumberAtTheEndsIsGroupedInThousands(long number, string text) =>
         Assert.Equal(text, DatabaseText.Number(number));
+
+    [Fact]
+    public void NotSaidIsTheEnDashAndNotAHyphen()
+    {
+        Assert.Equal("\u2013", DatabaseText.NotSaid);
+        Assert.NotEqual("-", DatabaseText.NotSaid);
+    }
+
+    [Fact]
+    public void NullableAndNumberAgreeOnNotSaid()
+    {
+        Assert.Equal(DatabaseText.NotSaid, DatabaseText.Nullable(null));
+        Assert.Equal(DatabaseText.NotSaid, DatabaseText.Number(null));
+    }
 }

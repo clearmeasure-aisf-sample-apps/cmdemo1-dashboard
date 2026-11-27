@@ -169,6 +169,12 @@ public static class DatabaseParser
 /// <summary>The words of the database view, and what it decides: which count a table shows, whether the schema changed.</summary>
 public static class DatabaseText
 {
+    /// <summary>
+    /// The database list's word for a value the live file does not give: a nullable nobody stated, a count nobody
+    /// counted. U+2013 (EN DASH), not a hyphen.
+    /// </summary>
+    public const string NotSaid = "\u2013";
+
     /// <summary>The line the view shows when the live file's tables are not the diagram's.</summary>
     public const string SchemaChanged = "The schema changed since this diagram was drawn: deploy the dashboard again.";
 
@@ -313,17 +319,17 @@ public static class DatabaseText
         }));
     }
 
-    /// <summary>Whether a column takes null, in a word; a dash where the live file does not say.</summary>
+    /// <summary>Whether a column takes null, in a word; <see cref="NotSaid" /> where the live file does not say.</summary>
     public static string Nullable(bool? nullable) => nullable switch
     {
         true => "yes",
         false => "no",
-        null => "–",
+        null => NotSaid,
     };
 
-    /// <summary>A count for the list: <c>1,234</c>; a dash for one nobody counted.</summary>
+    /// <summary>A count for the list: <c>1,234</c>; <see cref="NotSaid" /> for one nobody counted.</summary>
     public static string Number(long? number) =>
-        number is { } value ? value.ToString("#,0", CultureInfo.InvariantCulture) : "–";
+        number is { } value ? value.ToString("#,0", CultureInfo.InvariantCulture) : NotSaid;
 
     private static Dictionary<string, DatabaseLiveTable> LiveByAlias(DatabaseLive? live)
     {

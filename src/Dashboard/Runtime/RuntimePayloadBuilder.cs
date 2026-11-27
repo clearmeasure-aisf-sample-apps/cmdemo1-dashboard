@@ -44,13 +44,14 @@ public static class RuntimePayloadBuilder
     // The rest of this page's tile-label vocabulary, one name per word (#1672): a word is one word here, so a typo
     // at a call site cannot silently split the page's vocabulary. "Not known" (the checks say nothing about it) and
     // "Not confirmed" (an entry speaks well of it, but nothing vouches for the speaker) are different words and keep
-    // separate names. Two labels the vocabulary might have needed are not literals of this file at all: "Degraded"
-    // comes from the detailed health check's own words (HealthDetailText.Label) and "Available" from Resource Health
-    // (ResourceHealthText.Label), each named in its own file. The lowercase words of a region mark (Region) and the
-    // state words at the JSON boundary (RuntimeStateWords) are other vocabularies still, deliberately kept apart.
+    // separate names. Three labels the vocabulary might have needed are not literals of this file at all: "Degraded"
+    // comes from the detailed health check's own words (HealthDetailText.Label), "Not known" is owned by
+    // HealthDetailText (#2055) just like "Degraded", and "Available" from Resource Health (ResourceHealthText.Label),
+    // each named in its own file. The lowercase words of a region mark (Region) and the state words at the JSON
+    // boundary (RuntimeStateWords) are other vocabularies still, deliberately kept apart.
 
-    /// <summary>The label of a neutral tile whose state the detailed health checks of the apps that use it do not tell: no entry of that name, no answer, or an entry that knows nothing.</summary>
-    private const string NotKnown = "Not known";
+    /// <summary>The label of a neutral tile whose state the detailed health checks of the apps that use it do not tell: no entry of that name, no answer, or an entry that knows nothing. Owned by <see cref="Dashboard.Health.HealthDetailText.NotKnown" /> so this page and the health-check words cannot drift (#2055).</summary>
+    private const string NotKnown = HealthDetailText.NotKnown;
 
     /// <summary>The label of a neutral tile that no passing health check confirms: the entry may be healthy while every app that reports it fails its own check, so neither side is called the cause.</summary>
     private const string NotConfirmed = "Not confirmed";

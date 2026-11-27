@@ -72,10 +72,16 @@ public class RuntimePayloadLabelVocabularyTests
     /// <summary>The tile of one node of the payload.</summary>
     private static RuntimeTile Tile(RuntimePayload payload, string alias) => payload.Nodes.Single(tile => tile.Alias == alias);
 
-    /// <summary>The line that names one label word: the one <c>private const</c> holding it.</summary>
+    /// <summary>
+    /// The line that names one label word: the one <c>private const</c> holding it, either as a quoted literal
+    /// (<c>= "Not probed";</c>) or, for <c>Not known</c>, as an init from the owner's const
+    /// (<c>= HealthDetailText.NotKnown;</c>, #2055). The owner-init form is only valid for the word the owner holds,
+    /// so the check is word-specific.
+    /// </summary>
     private static bool IsDeclaration(string line, string word) =>
         !IsComment(line) && line.TrimStart().StartsWith("private const string", StringComparison.Ordinal)
-        && line.Contains($"= \"{word}\";", StringComparison.Ordinal);
+        && (line.Contains($"= \"{word}\";", StringComparison.Ordinal)
+            || (word == "Not known" && line.Contains("NotKnown = HealthDetailText.NotKnown;", StringComparison.Ordinal)));
 
     /// <summary>A line that says nothing to the compiler: it is allowed to quote a label word while it explains it.</summary>
     private static bool IsComment(string line) => line.TrimStart().StartsWith("//", StringComparison.Ordinal);

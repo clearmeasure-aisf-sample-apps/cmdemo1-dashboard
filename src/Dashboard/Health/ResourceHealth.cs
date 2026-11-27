@@ -167,7 +167,7 @@ public static class ResourceHealthText
 
     private const string Unavailable = "Unavailable";
     private const string Degraded = "Degraded";
-    private const string NotKnown = "Not known";
+    private const string NotKnown = HealthDetailText.NotKnown;
     private const string Provisioned = "Provisioned";
     private const string Available = "Available";
     private const int MostNamed = 8;

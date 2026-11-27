@@ -120,13 +120,29 @@ public static class HealthDetailText
     /// <summary>How many characters of a failing entry's name the one-line summary holds.</summary>
     private const int NameLength = 20;
 
+    /// <summary>
+    /// The word for a state the checks say nothing about: <c>CheckState.Unknown</c> and any status the dashboard
+    /// does not know. Owned by <see cref="HealthDetailText" /> so that <c>ResourceHealthText</c> and
+    /// <c>RuntimePayloadBuilder</c> read it from here instead of writing their own copy (#2055).
+    /// </summary>
+    internal const string NotKnown = "Not known";
+
+    /// <summary>The word for <see cref="CheckState.Healthy" />.</summary>
+    private const string HealthyWord = "Healthy";
+
+    /// <summary>The word for <see cref="CheckState.Degraded" />.</summary>
+    private const string DegradedWord = "Degraded";
+
+    /// <summary>The word for <see cref="CheckState.Unhealthy" />.</summary>
+    private const string UnhealthyWord = "Unhealthy";
+
     /// <summary>The state's word: a mark is never colour alone.</summary>
     public static string Label(CheckState state) => state switch
     {
-        CheckState.Healthy => "Healthy",
-        CheckState.Degraded => "Degraded",
-        CheckState.Unhealthy => "Unhealthy",
-        _ => "Not known",
+        CheckState.Healthy => HealthyWord,
+        CheckState.Degraded => DegradedWord,
+        CheckState.Unhealthy => UnhealthyWord,
+        _ => NotKnown,
     };
 
     /// <summary>The order of the states, the worst first: unhealthy, degraded, not known, healthy.</summary>

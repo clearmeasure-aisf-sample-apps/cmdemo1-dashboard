@@ -38,7 +38,7 @@ public static class DatabaseTableReader
     {
         var tables = new List<DatabaseTable>();
         var index = 0;
-        foreach (var element in JsonRead.Items(root, "tables").Take(DatabaseParser.MostTables))
+        foreach (var element in JsonRead.Items(root, DatabaseParser.TablesField).Take(DatabaseParser.MostTables))
         {
             var (table, error) = Read(element, index++);
             if (table is not null)

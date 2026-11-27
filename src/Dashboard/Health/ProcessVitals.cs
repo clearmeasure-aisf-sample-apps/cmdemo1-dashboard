@@ -64,17 +64,26 @@ public static class VitalsText
     /// <summary>The megabytes in one gigabyte: <see cref="Memory" /> switches from MB to GB at this point and divides by it.</summary>
     private const double MegabytesPerGigabyte = 1024;
 
+    /// <summary>The digits the tile keeps for the one decimal it says below <see cref="OneDecimalBelow" />: <see cref="OneDecimalFormat" /> keeps the same count.</summary>
+    private const int OneDecimalDigits = 1;
+
+    /// <summary>The digits of a number the tile says to one decimal, <c>3.2</c>: the one decimal of <see cref="OneDecimalDigits" />.</summary>
+    private const string OneDecimalFormat = "0.0";
+
+    /// <summary>The digits of a number the tile says whole, <c>3</c>, <c>412</c>: no decimal.</summary>
+    private const string WholeFormat = "0";
+
     /// <summary><c>3 %</c>; one decimal below <see cref="OneDecimalBelow" />.</summary>
     public static string Cpu(double percent) =>
-        percent < OneDecimalBelow && Math.Round(percent, 1) != Math.Round(percent)
-            ? string.Create(CultureInfo.InvariantCulture, $"{percent:0.0} %")
-            : string.Create(CultureInfo.InvariantCulture, $"{percent:0} %");
+        percent < OneDecimalBelow && Math.Round(percent, OneDecimalDigits) != Math.Round(percent)
+            ? percent.ToString(OneDecimalFormat, CultureInfo.InvariantCulture) + " %"
+            : percent.ToString(WholeFormat, CultureInfo.InvariantCulture) + " %";
 
     /// <summary><c>412 MB</c>, and from <see cref="MegabytesPerGigabyte" /> MB on <c>1.4 GB</c>.</summary>
     public static string Memory(double megabytes) =>
         megabytes >= MegabytesPerGigabyte
-            ? string.Create(CultureInfo.InvariantCulture, $"{megabytes / MegabytesPerGigabyte:0.0} GB")
-            : string.Create(CultureInfo.InvariantCulture, $"{megabytes:0} MB");
+            ? (megabytes / MegabytesPerGigabyte).ToString(OneDecimalFormat, CultureInfo.InvariantCulture) + " GB"
+            : megabytes.ToString(WholeFormat, CultureInfo.InvariantCulture) + " MB";
 
     /// <summary><c>up 2 h</c>; below <see cref="ProcessVitals.RecentRestart" /> <c>restarted 3 min ago</c>.</summary>
     public static string Uptime(long seconds)

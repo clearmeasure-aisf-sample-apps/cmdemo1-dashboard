@@ -172,6 +172,12 @@ public static class DatabaseText
     /// <summary>The line the view shows when the live file's tables are not the diagram's.</summary>
     public const string SchemaChanged = "The schema changed since this diagram was drawn: deploy the dashboard again.";
 
+    /// <summary>The database list's placeholder where the live file does not say: an en dash (U+2013), never a hyphen.</summary>
+    public const string NoValue = "\u2013";
+
+    /// <summary>The format of a count in the list: <c>1,234</c>; thousands grouped, no decimals, invariant culture.</summary>
+    private const string CountFormat = "#,0";
+
     /// <summary>
     /// A row count as the diagram writes it: <c>1,234 rows</c>, <c>1 row</c>. (In the SVG the space is a no-break
     /// space, which <c>js/database.js</c> reads and writes.)
@@ -313,17 +319,17 @@ public static class DatabaseText
         }));
     }
 
-    /// <summary>Whether a column takes null, in a word; a dash where the live file does not say.</summary>
+    /// <summary>Whether a column takes null, in a word; <see cref="NoValue"/> where the live file does not say.</summary>
     public static string Nullable(bool? nullable) => nullable switch
     {
         true => "yes",
         false => "no",
-        null => "–",
+        null => NoValue,
     };
 
-    /// <summary>A count for the list: <c>1,234</c>; a dash for one nobody counted.</summary>
+    /// <summary>A count for the list as <see cref="CountFormat"/>; <see cref="NoValue"/> for one nobody counted.</summary>
     public static string Number(long? number) =>
-        number is { } value ? value.ToString("#,0", CultureInfo.InvariantCulture) : "–";
+        number is { } value ? value.ToString(CountFormat, CultureInfo.InvariantCulture) : NoValue;
 
     private static Dictionary<string, DatabaseLiveTable> LiveByAlias(DatabaseLive? live)
     {

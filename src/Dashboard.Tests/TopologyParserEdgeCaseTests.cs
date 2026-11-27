@@ -591,6 +591,35 @@ public class TopologyParserEdgeCaseTests
         Assert.True(result.IsValid);
     }
 
+    // ----- section words of the three readers, pinned together -----
+
+    /// <summary>
+    /// The three section words the reader refuses by - <c>environments</c>, <c>deployables</c> and <c>nodes</c> -
+    /// each stands in exactly one place in the file and is named once in the method that reads it. A file that
+    /// omits <c>environments</c> altogether refuses the first word; a file whose <c>deployables</c> is no array
+    /// refuses the second; a node whose <c>url</c> is no address refuses the third. All three refusal paths come
+    /// out the words the page prints, pinned here together so the section word of each reader is checked in one
+    /// place rather than scattered across three test files.
+    /// </summary>
+    [Fact]
+    public void TheThreeSectionWordsAreRefusedByTheirOwnReadersAndPinnedTogether()
+    {
+        // No environments at all: the first reader refuses its section word.
+        Assert.Equal(
+            ["environments: missing or not an array."],
+            Errors("{ \"system\": {} }"));
+
+        // A deployables that is no array: the second reader refuses its section word.
+        Assert.Equal(
+            ["environments[0].deployables: not an array."],
+            Errors("""{ "environments": [ { "name": "tdd", "deployables": {} } ] }"""));
+
+        // A node whose url is no address: the third reader refuses its section word.
+        Assert.Equal(
+            ["environments[0].deployables[0].nodes[0].url: missing or not an absolute http or https address."],
+            InvalidDeployable("{ \"nodes\": [ { \"url\": \"not-a-url\" } ] }"));
+    }
+
     // ----- the surface of the two types -----
 
     /// <summary>The parser has exactly one way in, and it is the one that needs neither a network nor a clock: a

@@ -105,14 +105,15 @@ public static class TopologyParser
 
     private static List<EnvironmentInfo> ReadEnvironments(JsonElement root, List<string> errors)
     {
+        const string Section = "environments";
         var environments = new List<EnvironmentInfo>();
-        if (!root.TryGetProperty("environments", out var array) || array.ValueKind != JsonValueKind.Array)
+        if (!root.TryGetProperty(Section, out var array) || array.ValueKind != JsonValueKind.Array)
         {
-            errors.Add("environments: missing or not an array.");
+            errors.Add($"{Section}: missing or not an array.");
             return environments;
         }
 
-        foreach (var (element, path, _) in Objects(array, "environments", errors))
+        foreach (var (element, path, _) in Objects(array, Section, errors))
         {
             var name = JsonRead.Text(element, "name");
             if (name is null)
@@ -202,13 +203,14 @@ public static class TopologyParser
 
     private static List<DeployableInfo> ReadDeployables(JsonElement environment, string environmentPath, List<string> errors)
     {
+        const string Section = "deployables";
         var deployables = new List<DeployableInfo>();
-        if (!TryReadOptionalArray(environment, "deployables", environmentPath, errors, out var array))
+        if (!TryReadOptionalArray(environment, Section, environmentPath, errors, out var array))
         {
             return deployables;
         }
 
-        foreach (var (element, path, _) in Objects(array, $"{environmentPath}.deployables", errors))
+        foreach (var (element, path, _) in Objects(array, $"{environmentPath}.{Section}", errors))
         {
             var project = ReadOptionalAddress(element, "projectUrl", path, errors);
             var frontDoor = ReadOptionalAddress(element, "frontDoor", path, errors);
@@ -254,13 +256,14 @@ public static class TopologyParser
 
     private static List<NodeInfo> ReadNodes(JsonElement deployable, string deployablePath, List<string> errors)
     {
+        const string Section = "nodes";
         var nodes = new List<NodeInfo>();
-        if (!TryReadOptionalArray(deployable, "nodes", deployablePath, errors, out var array))
+        if (!TryReadOptionalArray(deployable, Section, deployablePath, errors, out var array))
         {
             return nodes;
         }
 
-        foreach (var (element, path, _) in Objects(array, $"{deployablePath}.nodes", errors))
+        foreach (var (element, path, _) in Objects(array, $"{deployablePath}.{Section}", errors))
         {
             var url = element.TryGetProperty("url", out var value) ? JsonRead.Address(value) : null;
             if (url is null)

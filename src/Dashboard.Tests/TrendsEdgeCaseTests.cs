@@ -174,6 +174,25 @@ public class TrendsEdgeCaseTests
     }
 
     /// <summary>
+    /// The unit the CPU trend says after its numbers is the same word the tile says after the same reading:
+    /// the trend's title ends in the sign <see cref="VitalsText.Cpu" /> prints, which the trend takes from the
+    /// named <see cref="VitalsText.PercentSign" /> rather than a second copy of the sign the tile writes - the
+    /// two agree because they say the one const, not because two literals happen to match.
+    /// </summary>
+    [Fact]
+    public void TheCpuTrendSaysTheUnitTheTileSaysAfterTheSameReading()
+    {
+        var node = Targets.NodeWithTelemetry(Sample(4, cpu: 3), Sample(8, cpu: 9));
+
+        var trend = Trends.Cpu(node)!;
+
+        // The words the tile prints after the same reading end in the sign the trend's title ends in: the tile and
+        // the trend say the one unit, so they agree rather than by two literals happening to match.
+        Assert.EndsWith(" %", VitalsText.Cpu(9), StringComparison.Ordinal);
+        Assert.EndsWith(" %", trend.Title, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// A process that is there in every reading and says no CPU share in any of them is no line, and a share that
     /// is not a number is no share: the line is drawn over the numbers the process said, and it said none.
     /// </summary>

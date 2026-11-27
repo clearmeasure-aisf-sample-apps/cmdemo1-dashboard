@@ -164,7 +164,7 @@ public static class RuntimePayloadBuilder
             .Select(node => node.RegionAlias)
             .ToHashSet(StringComparer.Ordinal);
         var regions = manifest.Regions
-            .Select(region => Region(region, index, reachable.Contains(region.Alias)) with { NameLink = RuntimeBoxLink.Of(region) })
+            .Select(region => RuntimeRegionMarks.Region(region, index, reachable.Contains(region.Alias)) with { NameLink = RuntimeBoxLink.Of(region) })
             .ToList();
         var edges = manifest.Edges.Select(edge => RuntimeEdgeMarks.Edge(edge, index, probed)).ToList();
         return new RuntimePayload(tiles, regions, edges, Names(manifest));
@@ -1043,35 +1043,4 @@ public static class RuntimePayloadBuilder
         };
     }
 
-    private static RuntimeRegionMark Region(RuntimeRegion region, RuntimeDiagramIndex<Entry> index, bool databaseReachable)
-    {
-        var apps = index.WebAppsIn(region.Alias)
-            .Select(node => index.Entry(node.Alias))
-            .ToList();
-        if (apps.Count == 0)
-        {
-            return new RuntimeRegionMark(region.Alias, RegionState.Neutral.Word(), RuntimeRegionRole.Unprobed(region.Roles, databaseReachable));
-        }
-
-        // A web app the topology does not have is left out; a region with none the topology has is not checked.
-        var known = apps.OfType<Entry>().ToList();
-        return known.Count == 0 ? new RuntimeRegionMark(region.Alias, RegionState.Neutral.Word(), "not checked") : Region(region.Alias, known);
-    }
-
-    private static RuntimeRegionMark Region(string alias, List<Entry> apps)
-    {
-        if (apps.Any(entry => entry.Serves))
-        {
-            return new RuntimeRegionMark(alias, RegionState.Serving.Word(), "serving traffic");
-        }
-
-        if (apps.All(entry => entry.Target.State == HealthState.Healthy))
-        {
-            return new RuntimeRegionMark(alias, RegionState.Standby.Word(), "standby: ready");
-        }
-
-        return apps.Any(entry => entry.Target.State == HealthState.Pending)
-            ? new RuntimeRegionMark(alias, RegionState.Checking.Word(), "checking")
-            : new RuntimeRegionMark(alias, RegionState.Down.Word(), "not serving");
-    }
 }

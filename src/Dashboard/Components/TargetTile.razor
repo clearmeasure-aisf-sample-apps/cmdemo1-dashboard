@@ -234,9 +234,9 @@
     private string Title => IsFrontDoor ? "Front Door" : Target.Region ?? Target.Name;
 
     /// <summary>The web app's name; for Front Door the endpoint's name, the first label of its host.</summary>
-    private string ResourceName => IsFrontDoor ? Target.Url.Host.Split('.')[0] : Target.Name;
+    private string ResourceName => Target.ResourceName;
 
-    private string Subtitle => IsFrontDoor ? "public address" : Target.Role ?? "node";
+    private string Subtitle => Target.Chip;
 
     /// <summary>Why this node serves; a deployable's only node without a Front Door endpoint has no order to explain.</summary>
     private string ServesHelp => Deployable is { HasFrontDoor: false, Nodes.Count: 1 }

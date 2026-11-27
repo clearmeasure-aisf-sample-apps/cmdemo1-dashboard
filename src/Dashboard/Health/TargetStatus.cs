@@ -51,8 +51,20 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
 
     public bool IsPrimary => NodeRole.IsPrimary(Role);
 
+    private const string PublicAddressWord = "public address";
+    private const string NodeWord = "node";
+
     /// <summary>What the tile and its events call it: <see cref="FrontDoorName"/> for the endpoint, a node's region or else its name.</summary>
     public string Label => Behavior.LabelFor(Name, Region);
+
+    /// <summary>The web app's name; for the Front Door endpoint, the first label of its host.</summary>
+    public string ResourceName => Kind is TargetKind.FrontDoor ? Url.Host.Split('.')[0] : Name;
+
+    /// <summary>
+    /// The word in the tile's chip: <c>public address</c> for the Front Door endpoint, the node's role or else
+    /// <c>node</c>. A role that is the empty word is the empty word: <c>??</c> replaces only null.
+    /// </summary>
+    public string Chip => Kind is TargetKind.FrontDoor ? PublicAddressWord : Role ?? NodeWord;
 
     /// <summary>The word a node answers to: the region the topology wrote, or the node's own name when it wrote none.</summary>
     public static string NodeLabel(string name, string? region) => region ?? name;

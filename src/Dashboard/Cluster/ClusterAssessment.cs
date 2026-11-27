@@ -114,6 +114,20 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
     /// <summary>How many problems a headline names before it counts the rest.</summary>
     public const int NamedProblems = 3;
 
+    // The headline words this file says twice, named once each (#2048): a word is one word here, so a typo at a call
+    // site cannot silently split the page's vocabulary. The cluster card and the AKS service card sit side by side
+    // on the cluster view, and both say these words; the const name carries the suffix because the private methods
+    // that build the other copy of each word keep the plain name (Unreadable, Stopped).
+
+    /// <summary>The headline the cluster card and the AKS service card both say while their reading is still pending.</summary>
+    private const string CheckingHeadline = "Checking";
+
+    /// <summary>The headline the cluster card says when the status file is unreadable and the AKS service card says when its facts are malformed.</summary>
+    private const string UnreadableHeadline = "Unreadable";
+
+    /// <summary>The headline the cluster card says when the file is silent and Azure says stopped, and the AKS service card says when Azure reports the service stopped.</summary>
+    private const string StoppedHeadline = "Stopped";
+
     /// <summary>Whether the cluster's own status reaches the page, at the page's clock.</summary>
     public static ClusterLiveness LivenessOf(SourceReading<ClusterStatus> reading, DateTimeOffset now)
     {
@@ -141,7 +155,7 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
         switch (LivenessOf(reading, now))
         {
             case ClusterLiveness.Pending:
-                return new ClusterAssessment(ClusterState.Checking, "Checking", "Reading the cluster's status file");
+                return new ClusterAssessment(ClusterState.Checking, CheckingHeadline, "Reading the cluster's status file");
             case ClusterLiveness.Unreadable:
                 return Unreadable(reading, service, now, zone);
             case ClusterLiveness.Silent when service is { State: SourceState.Read, Value: { IsStopped: true } stopped }:
@@ -164,7 +178,7 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
     {
         return new ClusterAssessment(
             ClusterState.Unhealthy,
-            "Unreadable",
+            UnreadableHeadline,
             "The cluster's status file could not be read",
             AzureAndUs(Sentence(reading.Detail), service, now, zone));
     }
@@ -174,7 +188,7 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
     {
         return new ClusterAssessment(
             ClusterState.Neutral,
-            "Stopped",
+            StoppedHeadline,
             "The cluster is stopped",
             Join(
                 "The pods and the pages served from inside the cluster do not run while it is stopped.",
@@ -244,13 +258,13 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
         const string Again = "The page reads them again with every check.";
         return reading.State switch
         {
-            SourceState.Pending => new ClusterAssessment(ClusterState.Checking, "Checking", "Reading Azure's facts about the AKS service"),
+            SourceState.Pending => new ClusterAssessment(ClusterState.Checking, CheckingHeadline, "Reading Azure's facts about the AKS service"),
             SourceState.Missing => new ClusterAssessment(
                 ClusterState.Neutral,
                 "Not published",
                 "Azure's facts about the AKS service are not published yet",
                 $"A scheduled workflow publishes them several times an hour; until its first run the address answers HTTP 404. {Again}"),
-            SourceState.Malformed => new ClusterAssessment(ClusterState.Warning, "Unreadable", NotRead, Sentence(reading.Detail)),
+            SourceState.Malformed => new ClusterAssessment(ClusterState.Warning, UnreadableHeadline, NotRead, Sentence(reading.Detail)),
             SourceState.Read when reading.Value is { } service => Reported(service),
             _ => new ClusterAssessment(ClusterState.Neutral, "Not known", NotRead, Join(Sentence(reading.Detail), Again)),
         };
@@ -263,7 +277,7 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
         var summary = service.Availability?.Summary;
         if (service.IsStopped)
         {
-            return new ClusterAssessment(ClusterState.Neutral, "Stopped", "The AKS service is stopped", summary);
+            return new ClusterAssessment(ClusterState.Neutral, StoppedHeadline, "The AKS service is stopped", summary);
         }
 
         if (verdict.Is(AksAvailability.Unavailable))

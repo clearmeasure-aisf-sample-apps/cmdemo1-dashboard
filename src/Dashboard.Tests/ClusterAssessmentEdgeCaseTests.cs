@@ -300,4 +300,41 @@ public class ClusterAssessmentEdgeCaseTests
             "new in apps: Pending for 90 min",
             ClusterAssessment.PodProblem(ClusterFixture.Pod("new", ClusterPod.Pending, ready: true, age: TimeSpan.FromMinutes(90)), "apps", Generated));
     }
+
+    // ----- The shared headline words of the cluster card and the AKS service card (#2048) -----
+
+    /// <summary>
+    /// The cluster card and the AKS service card sit side by side on the cluster view and say the same word for
+    /// their shared states: both say <c>Checking</c> while their reading is still pending, both say <c>Unreadable</c>
+    /// when the cluster's status file is unreadable and Azure's facts are malformed, and both say <c>Stopped</c>
+    /// when the file is silent and Azure says stopped and when Azure reports the service stopped. The words the two
+    /// cards share are the words this test pins, so a typo in one copy of a word cannot split the page's vocabulary.
+    /// </summary>
+    [Fact]
+    public void TheClusterCardAndTheServiceCardSayTheSameWordForTheirSharedStates()
+    {
+        // Pending on both: the cluster file not read yet, and the AKS facts not read yet.
+        Assert.Equal(
+            "Checking",
+            ClusterAssessment.Live(new SourceReading<ClusterStatus>(SourceState.Pending), null, Now, Utc).Label);
+        Assert.Equal(
+            "Checking",
+            ClusterAssessment.Service(new SourceReading<AksService>(SourceState.Pending)).Label);
+
+        // Unreadable on both: the cluster's status file unreadable, and the AKS facts malformed.
+        Assert.Equal(
+            "Unreadable",
+            ClusterAssessment.Live(Silent(SourceState.Malformed), null, Now, Utc).Label);
+        Assert.Equal(
+            "Unreadable",
+            ClusterAssessment.Service(new SourceReading<AksService>(SourceState.Malformed, Detail: "no answer within 10 s")).Label);
+
+        // Stopped on both: the file is silent and Azure says stopped, and Azure reports the service stopped.
+        Assert.Equal(
+            "Stopped",
+            ClusterAssessment.Live(Silent(), Read(ClusterFixture.SampleService with { PowerState = AksService.Stopped }), Now, Utc).Label);
+        Assert.Equal(
+            "Stopped",
+            Service(ClusterFixture.SampleService with { PowerState = AksService.Stopped }).Label);
+    }
 }

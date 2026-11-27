@@ -39,6 +39,8 @@ public sealed record ViewAddress(DashboardView View, string? Environment = null,
     private const string DatabaseName = "database";
     private const string ApplicationName = "app";
 
+    private static readonly ViewAddress PlainRuntime = new(DashboardView.Runtime);
+
     public static ViewAddress Health { get; } = new(DashboardView.Health);
 
     public static ViewAddress Cluster { get; } = new(DashboardView.Cluster);
@@ -88,7 +90,7 @@ public sealed record ViewAddress(DashboardView View, string? Environment = null,
         // A trimmed tail has no slash at either end.
         if (string.IsNullOrWhiteSpace(tail))
         {
-            return new ViewAddress(DashboardView.Runtime);
+            return PlainRuntime;
         }
 
         var last = tail.LastIndexOf('/');
@@ -106,9 +108,7 @@ public sealed record ViewAddress(DashboardView View, string? Environment = null,
         {
             // Strip the "app" word; TrimEnd handles the edge case of consecutive slashes.
             var environment = beforeLastSlash[..^ApplicationName.Length].TrimEnd('/');
-            return string.IsNullOrWhiteSpace(environment)
-                ? new ViewAddress(DashboardView.Runtime)
-                : new ViewAddress(DashboardView.Runtime, environment, Application: ApplicationText.IsName(lastSegment) ? lastSegment : null);
+            return ZoomedOr(environment, env => new ViewAddress(DashboardView.Runtime, env, Application: ApplicationText.IsName(lastSegment) ? lastSegment : null));
         }
 
         // Database zoom: the last segment is the whole word "database".
@@ -116,14 +116,16 @@ public sealed record ViewAddress(DashboardView View, string? Environment = null,
         {
             // TrimEnd handles the edge case of consecutive slashes ("uat//database" → "uat/").
             var environment = beforeLastSlash.TrimEnd('/');
-            return string.IsNullOrWhiteSpace(environment)
-                ? new ViewAddress(DashboardView.Runtime)
-                : new ViewAddress(DashboardView.Runtime, environment, Database: true);
+            return ZoomedOr(environment, env => new ViewAddress(DashboardView.Runtime, env, Database: true));
         }
 
         // No zoom: the whole tail is the environment's name.
         return new ViewAddress(DashboardView.Runtime, tail);
     }
+
+    /// <summary>A zoomed address for <paramref name="environment" />, or <see cref="PlainRuntime" /> when the environment is blank.</summary>
+    private static ViewAddress ZoomedOr(string environment, Func<string, ViewAddress> zoom) =>
+        string.IsNullOrWhiteSpace(environment) ? PlainRuntime : zoom(environment);
 
     /// <summary>The hash for this view, without <c>#</c>: empty for the health view.</summary>
     public string ToHash() => View switch

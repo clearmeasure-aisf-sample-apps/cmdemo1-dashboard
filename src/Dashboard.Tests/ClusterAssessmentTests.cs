@@ -148,6 +148,31 @@ public class ClusterAssessmentTests
         Assert.Equal(new ClusterAssessment(ClusterState.Checking, "Starting", "2 pods are starting: ui in apps; db in apps"), Live(two));
     }
 
+    [Fact]
+    public void ThreeStartingPodsAreNamedWithoutATail()
+    {
+        var status = ClusterFixture.Status(
+            null,
+            ClusterFixture.Space(
+                "apps",
+                ClusterFixture.Pod("a", ready: false, age: TimeSpan.FromSeconds(40)),
+                ClusterFixture.Pod("b", ready: false, age: TimeSpan.FromSeconds(40)),
+                ClusterFixture.Pod("c", ready: false, age: TimeSpan.FromSeconds(40))));
+
+        Assert.Equal(new ClusterAssessment(ClusterState.Checking, "Starting", "3 pods are starting: a in apps; b in apps; c in apps"), Live(status));
+    }
+
+    [Fact]
+    public void OneStartingPodInAnotherNamespaceIsSaidSingularlyWithTheCheckingState()
+    {
+        var status = ClusterFixture.Status(null, ClusterFixture.Space("batch", ClusterFixture.Pod("ui", ready: false, age: TimeSpan.FromSeconds(40))));
+
+        var assessment = Live(status);
+
+        Assert.Equal(ClusterState.Checking, assessment.State);
+        Assert.Equal(new ClusterAssessment(ClusterState.Checking, "Starting", "1 pod is starting: ui in batch"), assessment);
+    }
+
     [Theory]
     [InlineData(15, 60, false)]
     [InlineData(15, 61, true)]

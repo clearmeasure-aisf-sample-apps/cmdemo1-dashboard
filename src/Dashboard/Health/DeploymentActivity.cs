@@ -87,11 +87,14 @@ public sealed record RecentDeployment(
             ? state
             : DeploymentState.Unknown;
 
+    /// <summary>The word of the result of the deployment, in the file's own word.</summary>
+    private const string ResultWord = "result";
+
     /// <summary>An entry without a project, an environment, a release, a result or a time it ended at is left out.</summary>
     internal static RecentDeployment? Read(JsonElement element) =>
-        JsonRead.Text(element, "project") is { } project && JsonRead.Text(element, "environment") is { } environment
-            && JsonRead.Text(element, "release") is { } release && JsonRead.Text(element, "result") is { } result
-            && JsonRead.Time(element, "finished") is { } finished
+        JsonRead.Text(element, Deployment.ProjectWord) is { } project && JsonRead.Text(element, Deployment.EnvironmentWord) is { } environment
+            && JsonRead.Text(element, Deployment.ReleaseWord) is { } release && JsonRead.Text(element, ResultWord) is { } result
+            && JsonRead.Time(element, Deployment.FinishedWord) is { } finished
             ? new RecentDeployment(
                 project,
                 environment,
@@ -99,8 +102,8 @@ public sealed record RecentDeployment(
                 ResultOf(result),
                 result,
                 finished,
-                JsonRead.Text(element, "startedBy"),
-                JsonRead.Address(element, "url"))
+                JsonRead.Text(element, Deployment.StartedByWord),
+                JsonRead.Address(element, Deployment.UrlWord))
             : null;
 }
 

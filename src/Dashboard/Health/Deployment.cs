@@ -25,6 +25,36 @@ public sealed record Deployment(
     string? StartedBy = null,
     DeploymentWait? WaitsFor = null)
 {
+    // The entry words of the deployments file, named once so a rename in the contract cannot silently read
+    // null in one list while the true word sits untyped in the other. The six shared words are read by
+    // <see cref="DeploymentActivity"/>'s <c>RecentDeployment</c> too; the three private ones are <c>Deployment</c>'s own.
+
+    /// <summary>The word of the Octopus project the deployment is to.</summary>
+    internal const string ProjectWord = "project";
+
+    /// <summary>The word of the environment the deployment is to.</summary>
+    internal const string EnvironmentWord = "environment";
+
+    /// <summary>The word of the release the deployment carries.</summary>
+    internal const string ReleaseWord = "release";
+
+    /// <summary>The word of the moment the deployment ended.</summary>
+    internal const string FinishedWord = "finished";
+
+    /// <summary>The word of the account that started the deployment.</summary>
+    internal const string StartedByWord = "startedBy";
+
+    /// <summary>The word of the address of the task in Octopus Deploy.</summary>
+    internal const string UrlWord = "url";
+
+    /// <summary>The word of the state of the deployment, in the file's own word.</summary>
+    private const string StateWord = "state";
+
+    /// <summary>The word of the moment the deployment started, or was queued.</summary>
+    private const string SinceWord = "since";
+
+    /// <summary>The word of what the deployment waits for while it is waiting.</summary>
+    private const string WaitsForWord = "waitsFor";
     /// <summary>
     /// True while it has not ended: queued, executing or waiting. A state the page does not know counts while the
     /// file gives it no end.
@@ -53,8 +83,8 @@ public sealed record Deployment(
 
     /// <summary>An entry without a project, an environment, a release or a state is left out.</summary>
     internal static Deployment? Read(JsonElement element) =>
-        JsonRead.Text(element, "project") is { } project && JsonRead.Text(element, "environment") is { } environment
-            && JsonRead.Text(element, "release") is { } release && JsonRead.Text(element, "state") is { } state
+        JsonRead.Text(element, ProjectWord) is { } project && JsonRead.Text(element, EnvironmentWord) is { } environment
+            && JsonRead.Text(element, ReleaseWord) is { } release && JsonRead.Text(element, StateWord) is { } state
             && Of(state) is var meant
             ? new Deployment(
                 project,
@@ -62,11 +92,11 @@ public sealed record Deployment(
                 release,
                 meant,
                 state,
-                JsonRead.Time(element, "since"),
-                JsonRead.Time(element, "finished"),
-                JsonRead.Address(element, "url"),
-                JsonRead.Text(element, "startedBy"),
-                meant == DeploymentState.Waiting ? DeploymentWait.Read(JsonRead.Section(element, "waitsFor")) : null)
+                JsonRead.Time(element, SinceWord),
+                JsonRead.Time(element, FinishedWord),
+                JsonRead.Address(element, UrlWord),
+                JsonRead.Text(element, StartedByWord),
+                meant == DeploymentState.Waiting ? DeploymentWait.Read(JsonRead.Section(element, WaitsForWord)) : null)
             : null;
 
     /// <summary>The state a word of the file means; <see cref="DeploymentState.Unknown"/> for one the page does not know.</summary>

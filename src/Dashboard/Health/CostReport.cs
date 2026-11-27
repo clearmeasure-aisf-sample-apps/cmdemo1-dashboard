@@ -209,7 +209,7 @@ public static class CostText
         return
         [
             new CostPart(Money(amounts.Yesterday, currency), Day(asOf, now)),
-            new CostPart(Money(amounts.Last7Days, currency), "in 7 days"),
+            new CostPart(Money(amounts.Last7Days, currency), LastSevenDays()),
             new CostPart(Money(amounts.MonthToDate, currency), Month(asOf, now)),
         ];
     }
@@ -219,7 +219,7 @@ public static class CostText
     {
         ArgumentNullException.ThrowIfNull(report);
         var parts = Parts(amounts, report.Currency, report.AsOf, now).Select(part => $"{part.Amount} {part.Period}");
-        return string.Join(" · ", AsOf(report.AsOf) is { } asOf ? parts.Append(asOf) : parts);
+        return string.Join(PartSeparator, AsOf(report.AsOf) is { } asOf ? parts.Append(asOf) : parts);
     }
 
     /// <summary>
@@ -233,6 +233,9 @@ public static class CostText
 
     /// <summary>The format of every day of a cost: the <c>asOf</c> of the file, and every date the page prints.</summary>
     public const string DayFormat = "yyyy-MM-dd";
+
+    /// <summary>The separator of the parts of a cost line: <c> · </c>, the one <see cref="Work.WorkMeasureText" /> names the same.</summary>
+    private const string PartSeparator = " · ";
 
     /// <summary>The format of a month named for a viewer of a different month: <c>September</c>.</summary>
     private const string MonthName = "MMMM";
@@ -261,6 +264,9 @@ public static class CostText
 
     /// <summary>The word of the one day that is the UTC day before the rendering.</summary>
     private static string Yesterday() => "yesterday";
+
+    /// <summary>The word of the middle amount: the seven days the file's <c>last7Days</c> sum covers, whatever day the rendering stands on.</summary>
+    private static string LastSevenDays() => "in 7 days";
 
     /// <summary>The date a day is said by when it is not the UTC day before the rendering.</summary>
     private static string OnDay(DateOnly day) => $"on {Date(day)}";

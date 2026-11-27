@@ -22,6 +22,9 @@ namespace Dashboard.Tests;
 /// </summary>
 public class CheckStateEdgeCaseTests
 {
+    /// <summary>The four words of the enum, as it declares and spells them.</summary>
+    private static readonly string[] Words = ["Healthy", "Degraded", "Unhealthy", "Unknown"];
+
     // ----- the four states, as the numbers they are
 
     /// <summary>The four states in the order the enum declares them, on the numbers 0 to 3, of an <see cref="int" />
@@ -30,11 +33,11 @@ public class CheckStateEdgeCaseTests
     [Fact]
     public void TheFourCheckStatesAreTheWholeVocabularyInTheirDeclaredOrder()
     {
-        Assert.Equal(["Healthy", "Degraded", "Unhealthy", "Unknown"], Enum.GetNames<CheckState>());
-        Assert.Equal([0, 1, 2, 3], Enum.GetValues<CheckState>().Select(state => (int)state));
-        Assert.Equal(4, Enum.GetValues<CheckState>().Length);
-        Assert.Equal(typeof(int), Enum.GetUnderlyingType(typeof(CheckState)));
-        Assert.False(typeof(CheckState).IsDefined(typeof(FlagsAttribute), false));
+        Assert.Equal(Words, EnumVocabulary<CheckState>.Names);
+        Assert.Equal([0, 1, 2, 3], EnumVocabulary<CheckState>.Numbers);
+        Assert.Equal(4, EnumVocabulary<CheckState>.Count);
+        Assert.Equal(typeof(int), EnumVocabulary<CheckState>.UnderlyingType);
+        Assert.False(EnumVocabulary<CheckState>.IsFlags);
     }
 
     /// <summary>Each state on its own number and its own word, both ways round: the number is the one the name
@@ -62,22 +65,26 @@ public class CheckStateEdgeCaseTests
     [Fact]
     public void AnUnsetCheckStateIsHealthyAndNothingOutsideTheFourIsAState()
     {
+        var outside = EnumVocabulary<CheckState>.OutsideOf(4);
+
         Assert.Equal(CheckState.Healthy, default);
-        Assert.Equal(CheckState.Healthy, (CheckState)0);
+        Assert.Equal(CheckState.Healthy, EnumVocabulary<CheckState>.Of(0));
 
         Assert.True(Enum.IsDefined(CheckState.Healthy));
         Assert.True(Enum.IsDefined(CheckState.Unknown));
-        Assert.False(Enum.IsDefined((CheckState)(-1)));
-        Assert.False(Enum.IsDefined((CheckState)4));
-        Assert.False(Enum.IsDefined((CheckState)int.MinValue));
-        Assert.False(Enum.IsDefined((CheckState)int.MaxValue));
+        Assert.False(Enum.IsDefined(outside.Below));
+        Assert.False(Enum.IsDefined(outside.Above));
+        Assert.False(Enum.IsDefined(outside.Lowest));
+        Assert.False(Enum.IsDefined(outside.Highest));
 
-        Assert.Null(Enum.GetName((CheckState)4));
-        Assert.Null(Enum.GetName((CheckState)(-1)));
-        Assert.Equal("4", ((CheckState)4).ToString());
-        Assert.Equal("-1", ((CheckState)(-1)).ToString());
-        Assert.Equal("-2147483648", ((CheckState)int.MinValue).ToString());
-        Assert.Equal("2147483647", ((CheckState)int.MaxValue).ToString());
+        Assert.Null(Enum.GetName(outside.Above));
+        Assert.Null(Enum.GetName(outside.Below));
+        Assert.Null(Enum.GetName(outside.Lowest));
+        Assert.Null(Enum.GetName(outside.Highest));
+        Assert.Equal("4", outside.Above.ToString());
+        Assert.Equal("-1", outside.Below.ToString());
+        Assert.Equal("-2147483648", outside.Lowest.ToString());
+        Assert.Equal("2147483647", outside.Highest.ToString());
     }
 
     /// <summary>The four states are apart from one another and sort by their numbers, as the declaration orders
@@ -112,7 +119,7 @@ public class CheckStateEdgeCaseTests
     [Fact]
     public void TwoCheckStatesCombinedAreAnotherStateOrNoStateAtAll()
     {
-        Assert.False(typeof(CheckState).IsDefined(typeof(FlagsAttribute), false));
+        Assert.False(EnumVocabulary<CheckState>.IsFlags);
 
         Assert.Equal(CheckState.Degraded, CheckState.Healthy | CheckState.Degraded);
         Assert.Equal(CheckState.Unknown, CheckState.Degraded | CheckState.Unhealthy);
@@ -237,15 +244,15 @@ public class CheckStateEdgeCaseTests
 
         // The only instance member a state carries of its own is the storage the compiler gives every value type:
         // the <c>int</c> the enum is of, and nothing else.
-        var instance = type.GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        var instance = EnumVocabulary<CheckState>.InstanceMembers;
         Assert.Single(instance);
         Assert.Equal("value__", instance[0].Name);
-        Assert.Equal(typeof(int), ((FieldInfo)instance[0]).FieldType);
+        Assert.Equal(typeof(int), Assert.IsAssignableFrom<FieldInfo>(instance[0]).FieldType);
 
-        var fields = type.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
+        var fields = EnumVocabulary<CheckState>.Literals;
 
-        Assert.Equal(["Healthy", "Degraded", "Unhealthy", "Unknown"], fields.Select(field => field.Name));
-        Assert.Equal([0, 1, 2, 3], fields.Select(field => (int)field.GetRawConstantValue()!));
+        Assert.Equal(Words, fields.Select(field => field.Name));
+        Assert.Equal([0, 1, 2, 3], EnumVocabulary<CheckState>.LiteralNumbers);
         Assert.All(fields, field =>
         {
             Assert.Equal(type, field.FieldType);

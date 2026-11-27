@@ -24,11 +24,11 @@ public class EventKindEdgeCaseTests
     {
         Assert.Equal(
             ["Health", "HealthCheck", "Restart", "Version", "Serving", "Pinned", "Traffic", "Cluster"],
-            Enum.GetNames<EventKind>());
-        Assert.Equal([0, 1, 2, 3, 4, 5, 6, 7], Enum.GetValues<EventKind>().Select(kind => (int)kind));
-        Assert.Equal(8, Enum.GetValues<EventKind>().Length);
-        Assert.Equal(typeof(int), Enum.GetUnderlyingType(typeof(EventKind)));
-        Assert.False(typeof(EventKind).IsDefined(typeof(FlagsAttribute), false));
+            EnumVocabulary<EventKind>.Names);
+        Assert.Equal([0, 1, 2, 3, 4, 5, 6, 7], EnumVocabulary<EventKind>.Numbers);
+        Assert.Equal(8, EnumVocabulary<EventKind>.Count);
+        Assert.Equal(typeof(int), EnumVocabulary<EventKind>.UnderlyingType);
+        Assert.False(EnumVocabulary<EventKind>.IsFlags);
     }
 
     /// <summary>Each kind on its own number and its own word, both ways round.</summary>
@@ -55,21 +55,26 @@ public class EventKindEdgeCaseTests
     [Fact]
     public void AnUnsetEventKindIsHealthAndNothingOutsideTheEightIsAKind()
     {
+        var outside = EnumVocabulary<EventKind>.OutsideOf(8);
+
         Assert.Equal(EventKind.Health, default);
-        Assert.Equal(EventKind.Health, (EventKind)0);
+        Assert.Equal(EventKind.Health, EnumVocabulary<EventKind>.Of(0));
 
         Assert.True(Enum.IsDefined(EventKind.Health));
         Assert.True(Enum.IsDefined(EventKind.Cluster));
-        Assert.False(Enum.IsDefined((EventKind)(-1)));
-        Assert.False(Enum.IsDefined((EventKind)8));
-        Assert.False(Enum.IsDefined((EventKind)int.MinValue));
-        Assert.False(Enum.IsDefined((EventKind)int.MaxValue));
+        Assert.False(Enum.IsDefined(outside.Below));
+        Assert.False(Enum.IsDefined(outside.Above));
+        Assert.False(Enum.IsDefined(outside.Lowest));
+        Assert.False(Enum.IsDefined(outside.Highest));
 
-        Assert.Null(Enum.GetName((EventKind)8));
-        Assert.Null(Enum.GetName((EventKind)(-1)));
-        Assert.Equal("8", ((EventKind)8).ToString());
-        Assert.Equal("-1", ((EventKind)(-1)).ToString());
-        Assert.Equal("2147483647", ((EventKind)int.MaxValue).ToString());
+        Assert.Null(Enum.GetName(outside.Above));
+        Assert.Null(Enum.GetName(outside.Below));
+        Assert.Null(Enum.GetName(outside.Lowest));
+        Assert.Null(Enum.GetName(outside.Highest));
+        Assert.Equal("8", outside.Above.ToString());
+        Assert.Equal("-1", outside.Below.ToString());
+        Assert.Equal("-2147483648", outside.Lowest.ToString());
+        Assert.Equal("2147483647", outside.Highest.ToString());
     }
 
     /// <summary>The eight kinds are apart from one another and sort by their numbers, as the declaration orders

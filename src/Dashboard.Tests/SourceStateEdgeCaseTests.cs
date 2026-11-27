@@ -60,10 +60,11 @@ public class SourceStateEdgeCaseTests
     [Fact]
     public void TheFiveSourceStatesAreTheWholeVocabularyInTheirDeclaredOrder()
     {
-        Assert.Equal(["Pending", "Read", "Missing", "Unavailable", "Malformed"], Enum.GetNames<SourceState>());
-        Assert.Equal([0, 1, 2, 3, 4], Enum.GetValues<SourceState>().Select(state => (int)state));
-        Assert.Equal(5, Enum.GetValues<SourceState>().Length);
-        Assert.Equal(typeof(int), Enum.GetUnderlyingType(typeof(SourceState)));
+        Assert.Equal(["Pending", "Read", "Missing", "Unavailable", "Malformed"], EnumVocabulary<SourceState>.Names);
+        Assert.Equal([0, 1, 2, 3, 4], EnumVocabulary<SourceState>.Numbers);
+        Assert.Equal(5, EnumVocabulary<SourceState>.Count);
+        Assert.Equal(typeof(int), EnumVocabulary<SourceState>.UnderlyingType);
+        Assert.False(EnumVocabulary<SourceState>.IsFlags);
     }
 
     /// <summary>Each state on its own number and on its own word, both ways round: the number is the one the name
@@ -91,20 +92,26 @@ public class SourceStateEdgeCaseTests
     [Fact]
     public void AnUnsetSourceStateIsTheFirstOneAndNothingOutsideTheFiveIsAState()
     {
+        var outside = EnumVocabulary<SourceState>.OutsideOf(5);
+
         Assert.Equal(SourceState.Pending, default);
-        Assert.Equal(SourceState.Pending, (SourceState)0);
+        Assert.Equal(SourceState.Pending, EnumVocabulary<SourceState>.Of(0));
 
         Assert.True(Enum.IsDefined(SourceState.Pending));
         Assert.True(Enum.IsDefined(SourceState.Malformed));
-        Assert.False(Enum.IsDefined((SourceState)(-1)));
-        Assert.False(Enum.IsDefined((SourceState)5));
-        Assert.False(Enum.IsDefined((SourceState)int.MinValue));
-        Assert.False(Enum.IsDefined((SourceState)int.MaxValue));
+        Assert.False(Enum.IsDefined(outside.Below));
+        Assert.False(Enum.IsDefined(outside.Above));
+        Assert.False(Enum.IsDefined(outside.Lowest));
+        Assert.False(Enum.IsDefined(outside.Highest));
 
-        Assert.Null(Enum.GetName((SourceState)5));
-        Assert.Null(Enum.GetName((SourceState)(-1)));
-        Assert.Equal("5", ((SourceState)5).ToString());
-        Assert.Equal("-2147483648", ((SourceState)int.MinValue).ToString());
+        Assert.Null(Enum.GetName(outside.Above));
+        Assert.Null(Enum.GetName(outside.Below));
+        Assert.Null(Enum.GetName(outside.Lowest));
+        Assert.Null(Enum.GetName(outside.Highest));
+        Assert.Equal("5", outside.Above.ToString());
+        Assert.Equal("-1", outside.Below.ToString());
+        Assert.Equal("-2147483648", outside.Lowest.ToString());
+        Assert.Equal("2147483647", outside.Highest.ToString());
     }
 
     /// <summary>The five states apart from one another and compared by the numbers they stand on: each is its own
@@ -147,7 +154,7 @@ public class SourceStateEdgeCaseTests
     [Fact]
     public void TwoSourceStatesCombinedAreAnotherStateOrNoStateAtAll()
     {
-        Assert.False(typeof(SourceState).IsDefined(typeof(FlagsAttribute), false));
+        Assert.False(EnumVocabulary<SourceState>.IsFlags);
 
         Assert.Equal(SourceState.Unavailable, SourceState.Read | SourceState.Missing);
         Assert.Equal(SourceState.Unavailable, SourceState.Missing | SourceState.Read);

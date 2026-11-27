@@ -86,10 +86,11 @@ public class ContainerAppStateEdgeCaseTests
     {
         Assert.Equal(
             ["Probing", "Waking", "Responding", "Healthy", "Unhealthy", "NotResponding"],
-            Enum.GetNames<ContainerAppState>());
-        Assert.Equal([0, 1, 2, 3, 4, 5], Enum.GetValues<ContainerAppState>().Select(state => (int)state));
-        Assert.Equal(6, Enum.GetValues<ContainerAppState>().Length);
-        Assert.Equal(typeof(int), Enum.GetUnderlyingType(typeof(ContainerAppState)));
+            EnumVocabulary<ContainerAppState>.Names);
+        Assert.Equal([0, 1, 2, 3, 4, 5], EnumVocabulary<ContainerAppState>.Numbers);
+        Assert.Equal(6, EnumVocabulary<ContainerAppState>.Count);
+        Assert.Equal(typeof(int), EnumVocabulary<ContainerAppState>.UnderlyingType);
+        Assert.False(EnumVocabulary<ContainerAppState>.IsFlags);
     }
 
     /// <summary>Each of the six states on its own number and on its own name, both ways round: the number is the one
@@ -120,21 +121,26 @@ public class ContainerAppStateEdgeCaseTests
     [Fact]
     public void AnUnsetStateIsTheFirstOneAndNothingOutsideTheSixIsAState()
     {
+        var outside = EnumVocabulary<ContainerAppState>.OutsideOf(6);
+
         Assert.Equal(ContainerAppState.Probing, default);
-        Assert.Equal(ContainerAppState.Probing, (ContainerAppState)0);
+        Assert.Equal(ContainerAppState.Probing, EnumVocabulary<ContainerAppState>.Of(0));
 
         Assert.True(Enum.IsDefined(ContainerAppState.Probing));
         Assert.True(Enum.IsDefined(ContainerAppState.NotResponding));
-        Assert.False(Enum.IsDefined((ContainerAppState)(-1)));
-        Assert.False(Enum.IsDefined((ContainerAppState)6));
-        Assert.False(Enum.IsDefined((ContainerAppState)int.MinValue));
-        Assert.False(Enum.IsDefined((ContainerAppState)int.MaxValue));
+        Assert.False(Enum.IsDefined(outside.Below));
+        Assert.False(Enum.IsDefined(outside.Above));
+        Assert.False(Enum.IsDefined(outside.Lowest));
+        Assert.False(Enum.IsDefined(outside.Highest));
 
-        Assert.Null(Enum.GetName((ContainerAppState)6));
-        Assert.Null(Enum.GetName((ContainerAppState)(-1)));
-        Assert.Null(Enum.GetName((ContainerAppState)int.MaxValue));
-        Assert.Equal("6", ((ContainerAppState)6).ToString());
-        Assert.Equal("-2147483648", ((ContainerAppState)int.MinValue).ToString());
+        Assert.Null(Enum.GetName(outside.Above));
+        Assert.Null(Enum.GetName(outside.Below));
+        Assert.Null(Enum.GetName(outside.Lowest));
+        Assert.Null(Enum.GetName(outside.Highest));
+        Assert.Equal("6", outside.Above.ToString());
+        Assert.Equal("-1", outside.Below.ToString());
+        Assert.Equal("-2147483648", outside.Lowest.ToString());
+        Assert.Equal("2147483647", outside.Highest.ToString());
     }
 
     /// <summary>The six states apart from one another and compared by the numbers they stand on: each is its own
@@ -180,7 +186,7 @@ public class ContainerAppStateEdgeCaseTests
     [Fact]
     public void TwoStatesCombinedAreAnotherStateOrNoStateAtAll()
     {
-        Assert.False(typeof(ContainerAppState).IsDefined(typeof(FlagsAttribute), false));
+        Assert.False(EnumVocabulary<ContainerAppState>.IsFlags);
 
         Assert.Equal(ContainerAppState.Healthy, ContainerAppState.Waking | ContainerAppState.Responding);
         Assert.Equal(ContainerAppState.Healthy, ContainerAppState.Responding | ContainerAppState.Waking);

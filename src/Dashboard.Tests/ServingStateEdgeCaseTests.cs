@@ -43,11 +43,11 @@ public class ServingStateEdgeCaseTests
     [Fact]
     public void TheFiveServingStatesAreTheWholeVocabularyInTheirDeclaredOrder()
     {
-        Assert.Equal(Names, Enum.GetNames<ServingState>());
-        Assert.Equal([0, 1, 2, 3, 4], Enum.GetValues<ServingState>().Select(state => (int)state));
-        Assert.Equal(5, Enum.GetValues<ServingState>().Length);
-        Assert.Equal(typeof(int), Enum.GetUnderlyingType(typeof(ServingState)));
-        Assert.False(typeof(ServingState).IsDefined(typeof(FlagsAttribute), false));
+        Assert.Equal(Names, EnumVocabulary<ServingState>.Names);
+        Assert.Equal([0, 1, 2, 3, 4], EnumVocabulary<ServingState>.Numbers);
+        Assert.Equal(5, EnumVocabulary<ServingState>.Count);
+        Assert.Equal(typeof(int), EnumVocabulary<ServingState>.UnderlyingType);
+        Assert.False(EnumVocabulary<ServingState>.IsFlags);
 
         // The list of the values is a fresh array each time it is asked for, and the same five states in it.
         Assert.NotSame(Enum.GetValues<ServingState>(), Enum.GetValues<ServingState>());
@@ -80,22 +80,26 @@ public class ServingStateEdgeCaseTests
     [Fact]
     public void AnUnsetServingStateIsNoNodesAndNothingOutsideTheFiveIsAState()
     {
+        var outside = EnumVocabulary<ServingState>.OutsideOf(5);
+
         Assert.Equal(ServingState.NoNodes, default);
-        Assert.Equal(ServingState.NoNodes, (ServingState)0);
+        Assert.Equal(ServingState.NoNodes, EnumVocabulary<ServingState>.Of(0));
 
         Assert.True(Enum.IsDefined(ServingState.NoNodes));
         Assert.True(Enum.IsDefined(ServingState.Down));
-        Assert.False(Enum.IsDefined((ServingState)(-1)));
-        Assert.False(Enum.IsDefined((ServingState)5));
-        Assert.False(Enum.IsDefined((ServingState)int.MinValue));
-        Assert.False(Enum.IsDefined((ServingState)int.MaxValue));
+        Assert.False(Enum.IsDefined(outside.Below));
+        Assert.False(Enum.IsDefined(outside.Above));
+        Assert.False(Enum.IsDefined(outside.Lowest));
+        Assert.False(Enum.IsDefined(outside.Highest));
 
-        Assert.Null(Enum.GetName((ServingState)5));
-        Assert.Null(Enum.GetName((ServingState)(-1)));
-        Assert.Equal("5", ((ServingState)5).ToString());
-        Assert.Equal("-1", ((ServingState)(-1)).ToString());
-        Assert.Equal("-2147483648", ((ServingState)int.MinValue).ToString());
-        Assert.Equal("2147483647", ((ServingState)int.MaxValue).ToString());
+        Assert.Null(Enum.GetName(outside.Above));
+        Assert.Null(Enum.GetName(outside.Below));
+        Assert.Null(Enum.GetName(outside.Lowest));
+        Assert.Null(Enum.GetName(outside.Highest));
+        Assert.Equal("5", outside.Above.ToString());
+        Assert.Equal("-1", outside.Below.ToString());
+        Assert.Equal("-2147483648", outside.Lowest.ToString());
+        Assert.Equal("2147483647", outside.Highest.ToString());
     }
 
     /// <summary>The five states are apart from one another and sort by their numbers, as the declaration orders
@@ -293,16 +297,16 @@ public class ServingStateEdgeCaseTests
 
         // The only instance member a state carries of its own is the storage the compiler gives every value type: the
         // <c>int</c> the enum is of, and nothing else.
-        var instance = type.GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        var instance = EnumVocabulary<ServingState>.InstanceMembers;
 
         Assert.Single(instance);
         Assert.Equal("value__", instance[0].Name);
-        Assert.Equal(typeof(int), ((FieldInfo)instance[0]).FieldType);
+        Assert.Equal(typeof(int), Assert.IsAssignableFrom<FieldInfo>(instance[0]).FieldType);
 
-        var fields = type.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
+        var fields = EnumVocabulary<ServingState>.Literals;
 
         Assert.Equal(Names, fields.Select(field => field.Name));
-        Assert.Equal([0, 1, 2, 3, 4], fields.Select(field => (int)field.GetRawConstantValue()!));
+        Assert.Equal([0, 1, 2, 3, 4], EnumVocabulary<ServingState>.LiteralNumbers);
         Assert.All(fields, field =>
         {
             Assert.Equal(type, field.FieldType);

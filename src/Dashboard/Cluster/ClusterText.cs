@@ -27,6 +27,18 @@ public static class ClusterText
     /// <summary>The word the quantity of exactly one core is said in: <c>1 core</c>.</summary>
     private const string CoreUnit = "core";
 
+    /// <summary>The format of memory from a GiB on: at most one digit after the point, <c>9.2</c> in <c>9.2 GiB</c>.</summary>
+    private const string GibibyteFormat = "0.#";
+
+    /// <summary>The format of memory in MiB and KiB: a whole number, <c>258</c> in <c>258 MiB</c>, <c>512</c> in <c>512 KiB</c>.</summary>
+    private const string WholeMemoryFormat = "0";
+
+    /// <summary>The format of a percentage: a whole number, <c>63</c> in <c>63 %</c>.</summary>
+    private const string PercentFormat = "0";
+
+    /// <summary>The word a percentage is said with: <c>63 %</c>.</summary>
+    private const string PercentSuffix = " %";
+
     private const double Kibibyte = 1024;
     private const double Mebibyte = Kibibyte * 1024;
 
@@ -39,9 +51,9 @@ public static class ClusterText
     /// </summary>
     private static readonly MemoryUnit[] MemoryUnits =
     [
-        new(Gibibyte, "0.#", "GiB"),
-        new(Mebibyte, "0", "MiB"),
-        new(Kibibyte, "0", "KiB"),
+        new(Gibibyte, GibibyteFormat, "GiB"),
+        new(Mebibyte, WholeMemoryFormat, "MiB"),
+        new(Kibibyte, WholeMemoryFormat, "KiB"),
     ];
 
     /// <summary>Millicores as cores, without the unit: <c>0.81</c>, <c>3.86</c>, <c>12.5</c>.</summary>
@@ -124,7 +136,7 @@ public static class ClusterText
         part is { } value && whole is { } of && of > 0 ? Shares.Of(value, of) : null;
 
     /// <summary>A whole percentage: <c>63 %</c>.</summary>
-    public static string Percent(double percent) => string.Create(CultureInfo.InvariantCulture, $"{Math.Round(percent):0} %");
+    public static string Percent(double percent) => Math.Round(percent).ToString(PercentFormat, CultureInfo.InvariantCulture) + PercentSuffix;
 
     /// <summary>True from <see cref="HighPercent"/> on: the meter and its number are marked.</summary>
     public static bool IsHigh(double? percent) => percent >= HighPercent;

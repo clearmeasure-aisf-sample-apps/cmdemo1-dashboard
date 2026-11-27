@@ -140,4 +140,17 @@ public class CostReportTests
         Assert.Null(report.Find("shared"));
         Assert.Empty(report.Others(["tdd", "uat"]));
     }
+
+    [Fact]
+    public void AnEntryAndItsServiceEachReadTheirMonthToDateFromTheSameWord()
+    {
+        var report = CostReport.Parse(
+            """
+            { "environments": [ { "name": "uat", "monthToDate": 11.02, "topServices": [ { "name": "SQL Database", "monthToDate": 6.10 } ] } ] }
+            """)!;
+
+        var entry = report.Find("uat")!;
+        Assert.Equal(11.02, entry.Amounts.MonthToDate);
+        Assert.Equal(6.10, entry.TopServices[0].MonthToDate);
+    }
 }

@@ -74,7 +74,7 @@ public class TargetTileClusterCardEnvironmentDeliveryTests
             StringComparison.Ordinal);
         Assert.Contains("""<StateBadge State="Target.State" />""", text, StringComparison.Ordinal);
         Assert.Contains("private string Title => IsFrontDoor ? \"Front Door\" : Target.Region ?? Target.Name;", text, StringComparison.Ordinal);
-        Assert.Contains("private string Subtitle => IsFrontDoor ? \"public address\" : Target.Role ?? \"node\";", text, StringComparison.Ordinal);
+        Assert.Contains("private string Subtitle => Target.Chip;", text, StringComparison.Ordinal);
         Assert.Contains("private Uri? StateLink => IsFrontDoor ? null : Target.Links[LinkSet.LiveMetrics];", text, StringComparison.Ordinal);
         Assert.Contains("private Uri? NameLink => Target.Links[IsFrontDoor ? LinkSet.FrontDoor : LinkSet.Portal];", text, StringComparison.Ordinal);
 
@@ -120,7 +120,7 @@ public class TargetTileClusterCardEnvironmentDeliveryTests
             """<a href="@Target.Url.AbsoluteUri" rel="noopener noreferrer">@Target.Url.Host</a>""",
             text,
             StringComparison.Ordinal);
-        Assert.Contains("private string ResourceName => IsFrontDoor ? Target.Url.Host.Split('.')[0] : Target.Name;", text, StringComparison.Ordinal);
+        Assert.Contains("private string ResourceName => Target.ResourceName;", text, StringComparison.Ordinal);
         Assert.Equal("app-westus3", Node().Name);
         Assert.Equal("https://app-westus3.example.net/", Node().Url.AbsoluteUri);
     }

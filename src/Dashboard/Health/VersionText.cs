@@ -6,6 +6,15 @@ namespace Dashboard.Health;
 /// <summary>Versions as the dashboard shows them: <c>2.4.21+abc123</c> becomes <c>2.4.21</c>.</summary>
 public static class VersionText
 {
+    /// <summary>The SemVer build-metadata mark that cuts the version: the <c>+</c> in <c>2.4.21+abc123</c>.</summary>
+    private const char BuildMetadataMark = '+';
+
+    /// <summary>The word the version endpoint answers with its version: the property name in <c>{"version":"2.4.21"}</c>.</summary>
+    private const string VersionProperty = "version";
+
+    /// <summary>The word the header says when the dashboard's build carries no version.</summary>
+    private const string Unknown = "unknown";
+
     /// <summary>The part of a version before the build metadata (<c>+</c>); null when nothing is left.</summary>
     public static string? Display(string? version)
     {
@@ -14,7 +23,7 @@ public static class VersionText
             return null;
         }
 
-        var plus = version.IndexOf('+', StringComparison.Ordinal);
+        var plus = version.IndexOf(BuildMetadataMark, StringComparison.Ordinal);
         var text = (plus >= 0 ? version[..plus] : version).Trim();
         return text.Length == 0 ? null : text;
     }
@@ -35,7 +44,7 @@ public static class VersionText
             {
                 foreach (var property in root.EnumerateObject())
                 {
-                    if (string.Equals(property.Name, "version", StringComparison.OrdinalIgnoreCase)
+                    if (string.Equals(property.Name, VersionProperty, StringComparison.OrdinalIgnoreCase)
                         && property.Value.ValueKind == JsonValueKind.String)
                     {
                         return Display(property.Value.GetString());
@@ -56,6 +65,6 @@ public static class VersionText
     {
         ArgumentNullException.ThrowIfNull(assembly);
         var informational = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-        return Display(informational) ?? "unknown";
+        return Display(informational) ?? Unknown;
     }
 }

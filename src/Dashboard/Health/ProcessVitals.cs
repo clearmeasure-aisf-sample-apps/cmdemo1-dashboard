@@ -82,6 +82,12 @@ public static class VitalsText
     /// <summary>The unit the tile says after the megabytes of <see cref="Memory" />, <c> MB</c>: the word the memory says below <see cref="MegabytesPerGigabyte" /> MB.</summary>
     private const string MegabyteUnit = " MB";
 
+    /// <summary>The words <see cref="Uptime" /> says before the length of a young process, <c>restarted </c>: below <see cref="ProcessVitals.RecentRestart" />.</summary>
+    private const string RestartedLead = "restarted ";
+
+    /// <summary>The word <see cref="Uptime" /> says before the length of a settled process, <c>up </c>: from <see cref="ProcessVitals.RecentRestart" /> on.</summary>
+    private const string UpLead = "up ";
+
     /// <summary><c>3 %</c>; one decimal below <see cref="OneDecimalBelow" />.</summary>
     public static string Cpu(double percent) =>
         percent.ToString(percent < OneDecimalBelow && Math.Round(percent, OneDecimalDigits) != Math.Round(percent)
@@ -98,7 +104,8 @@ public static class VitalsText
     public static string Uptime(long seconds)
     {
         var span = TimeSpan.FromSeconds(seconds);
-        return ProcessVitals.IsRecentRestart(span.TotalSeconds) ?$"restarted {TimeText.Span(span)} ago" : $"up {TimeText.Span(span)}";
+        var length = TimeText.Span(span);
+        return ProcessVitals.IsRecentRestart(span.TotalSeconds) ? RestartedLead + TimeText.Before(length) : UpLead + length;
     }
 
     /// <summary>The memory in full, for the tooltip: <c>Working set 412 MB, of which managed heap 96 MB; 41 threads</c>.</summary>

@@ -59,7 +59,7 @@ public static class DeploymentText
     }
 
     /// <summary>An age that has ended: <c>5 min ago</c>.</summary>
-    public static string Ago(TimeSpan span) => $"{Age(span)} ago";
+    public static string Ago(TimeSpan span) => TimeText.Before(Age(span));
 
     /// <summary>An age still running, for a deployment in flight: <c>3 min so far</c>.</summary>
     public static string SoFar(int minutes) => $"{Age(TimeSpan.FromMinutes(minutes))} so far";

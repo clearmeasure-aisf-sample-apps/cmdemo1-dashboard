@@ -42,7 +42,7 @@ public sealed record PinnedVersions(PinnedVersionsState State, IReadOnlyDictiona
     /// <summary>What a Kustomize file is called when its address names no file.</summary>
     public const string KustomizationFileName = "kustomization.yaml";
 
-    private static readonly Dictionary<string, string> None = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, string> None = NewVersions();
 
     public static PinnedVersions NotTracked { get; } = new(PinnedVersionsState.NotTracked, None);
 
@@ -51,6 +51,12 @@ public sealed record PinnedVersions(PinnedVersionsState State, IReadOnlyDictiona
     public static PinnedVersions Missing { get; } = new(PinnedVersionsState.Missing, None);
 
     public static PinnedVersions Unavailable(string detail) => new(PinnedVersionsState.Unavailable, None, detail);
+
+    /// <summary>The file was read and pins these versions.</summary>
+    private static PinnedVersions ReadOf(IReadOnlyDictionary<string, string> versions) => new(PinnedVersionsState.Read, versions);
+
+    /// <summary>An empty version map: a deployable's name is matched exactly, case and all.</summary>
+    private static Dictionary<string, string> NewVersions() => new(StringComparer.Ordinal);
 
     /// <summary>The version pinned for a deployable; null when the file was not read or has no entry for it.</summary>
     public string? Of(string deployable) => Versions.GetValueOrDefault(deployable);
@@ -75,7 +81,7 @@ public sealed record PinnedVersions(PinnedVersionsState State, IReadOnlyDictiona
                 return Unavailable(FileProblems.NotAnObject);
             }
 
-            var versions = new Dictionary<string, string>(StringComparer.Ordinal);
+            var versions = NewVersions();
             foreach (var property in root.EnumerateObject())
             {
                 if (property.Value.ValueKind == JsonValueKind.String
@@ -85,7 +91,7 @@ public sealed record PinnedVersions(PinnedVersionsState State, IReadOnlyDictiona
                 }
             }
 
-            return new PinnedVersions(PinnedVersionsState.Read, versions);
+            return ReadOf(versions);
         }
         catch (JsonException)
         {
@@ -111,9 +117,14 @@ public sealed record PinnedVersions(PinnedVersionsState State, IReadOnlyDictiona
         {
             if (KustomizationPinLine.Of(line) is { } value)
             {
-                return VersionText.Display(value) is { } version
-                    ? new PinnedVersions(PinnedVersionsState.Read, new Dictionary<string, string>(StringComparer.Ordinal) { [deployable] = version })
-                    : Unavailable($"the first {KustomizationPinLine.Key} entry of the file has no value");
+                if (VersionText.Display(value) is not { } version)
+                {
+                    return Unavailable($"the first {KustomizationPinLine.Key} entry of the file has no value");
+                }
+
+                var versions = NewVersions();
+                versions[deployable] = version;
+                return ReadOf(versions);
             }
         }
 

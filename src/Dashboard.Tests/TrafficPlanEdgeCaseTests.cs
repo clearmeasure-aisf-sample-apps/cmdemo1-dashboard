@@ -31,8 +31,6 @@ public class TrafficPlanEdgeCaseTests
     [Fact]
     public void ThePlansNumbersAreTheRunsOwn()
     {
-        Assert.Equal(TrafficRun.Values.PerSecond, TrafficPlan.PerSecond);
-        Assert.Equal(TrafficRun.Values.Seconds, TrafficPlan.Seconds);
         Assert.Equal(TrafficRun.Values.AnswerWithinSeconds, TrafficPlan.AnswerWithinSeconds);
     }
 

@@ -9,13 +9,30 @@ namespace Dashboard.Health;
 /// somewhere else: carrying them as one named value is what keeps a press from sending for as long as a single
 /// request was meant to wait, which three bare ints in a row could not (#1742). How often the page checks while
 /// traffic runs is not part of a run and stays <see cref="TrafficPlan.CheckEvery"/>: a run is what the browser is
-/// asked to send, not what the page does while it sends.
+/// asked to send, not what the page does while it sends. The constructor is private, so <see cref="Default"/> is the
+/// only run.
 /// </summary>
-/// <param name="PerSecond">Requests a second while the run lasts.</param>
-/// <param name="Seconds">How long one press sends.</param>
-/// <param name="AnswerWithinSeconds">How long one request waits for its answer before the browser gives it up.</param>
-public sealed record TrafficRun(int PerSecond, int Seconds, int AnswerWithinSeconds)
+public sealed record TrafficRun
 {
+    /// <summary>Requests a second while the run lasts.</summary>
+    public int PerSecond { get; }
+
+    /// <summary>How long one press sends.</summary>
+    public int Seconds { get; }
+
+    /// <summary>How long one request waits for its answer before the browser gives it up.</summary>
+    public int AnswerWithinSeconds { get; }
+
+    /// <summary>
+    /// The private constructor the run's numbers pass through: the run is written where it is declared, from its
+    /// own <see cref="Values"/>, so no caller outside the run can write one.
+    /// </summary>
+    private TrafficRun(int perSecond, int seconds, int answerWithinSeconds)
+    {
+        PerSecond = perSecond;
+        Seconds = seconds;
+        AnswerWithinSeconds = answerWithinSeconds;
+    }
     /// <summary>
     /// The three numbers of a press, declared on the run itself (#1777): how many requests a second, for how long,
     /// and how long each request waits for its answer. Consts, so no caller keeps a copy of the numbers; the const

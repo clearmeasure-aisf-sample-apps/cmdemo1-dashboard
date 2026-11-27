@@ -51,7 +51,9 @@ public static class RuntimePayloadBuilder
     // comes from the detailed health check's own words (HealthDetailText.Label), "Not known" is owned by
     // HealthDetailText (#2055) just like "Degraded", and "Available" from Resource Health (ResourceHealthText.Label),
     // each named in its own file. The lowercase words of a region mark (Region) and the state words at the JSON
-    // boundary (RuntimeStateWords) are other vocabularies still, deliberately kept apart.
+    // boundary (RuntimeStateWords) are other vocabularies still, deliberately kept apart. The check-mark words a
+// detailed health check's entry carries (MarkOf) now live on RuntimeStateWords too, beside the tile, edge and region
+// words.
 
     /// <summary>The label of a neutral tile whose state the detailed health checks of the apps that use it do not tell: no entry of that name, no answer, or an entry that knows nothing. Owned by <see cref="Dashboard.Health.HealthDetailText.NotKnown" /> so this page and the health-check words cannot drift (#2055).</summary>
     private const string NotKnown = HealthDetailText.NotKnown;
@@ -850,13 +852,13 @@ public static class RuntimePayloadBuilder
             Marks: [.. shown.Select(entry => new RuntimeCheckMark(MarkOf(entry.State), HealthDetailText.Title(entry)))]);
     }
 
-    /// <summary>The state word of a mark, as the payload carries it.</summary>
+    /// <summary>The state word of a mark, as the payload carries it: <see cref="Healthy"/> and the check-mark words of <see cref="RuntimeStateWords"/> (<see cref="RuntimeStateWords.Degraded"/>, <see cref="RuntimeStateWords.Failed"/>, <see cref="RuntimeStateWords.Unknown"/>).</summary>
     public static string MarkOf(CheckState state) => state switch
     {
-        CheckState.Healthy => "healthy",
-        CheckState.Degraded => "degraded",
-        CheckState.Unhealthy => "failed",
-        _ => "unknown",
+        CheckState.Healthy => Healthy,
+        CheckState.Degraded => RuntimeStateWords.Degraded,
+        CheckState.Unhealthy => RuntimeStateWords.Failed,
+        _ => RuntimeStateWords.Unknown,
     };
 
     /// <summary>A node's role and whether the deployable's traffic goes through it.</summary>

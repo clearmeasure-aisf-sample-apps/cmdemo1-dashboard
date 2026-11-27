@@ -58,6 +58,24 @@ public static class AvailabilityText
     /// </summary>
     private const string WeekWindow = "7 days";
 
+    /// <summary>The words between the parts of the line, the dot the parts hang on: <c>·</c>.</summary>
+    private const string PartSeparator = " · ";
+
+    /// <summary>The lead word of the last failure's part, the words the age of the failure hangs after.</summary>
+    private const string LastFailureLead = "last failure ";
+
+    /// <summary>The lead word of the healthy week's part: a week that held reports and no failure.</summary>
+    private const string NoFailureLead = "no failure in ";
+
+    /// <summary>The lead word of a window's counted part, the words the healthy count hangs after.</summary>
+    private const string HealthyLead = "Healthy in ";
+
+    /// <summary>The lead word of a window that held no ended report at all.</summary>
+    private const string NoCheckEndedLead = "No hourly check ended in ";
+
+    /// <summary>The tail of a part that says its number in a window, the words the window word hangs after.</summary>
+    private static string InWindow(string window) => $" in {window}";
+
     /// <summary>The tooltip: who counts, what a check is, and what the count misses.</summary>
     public static string Help(DateTimeOffset? changed, TimeZoneInfo zone)
     {
@@ -86,11 +104,11 @@ public static class AvailabilityText
 
         if (reports.LastFailure is { } failed)
         {
-            parts.Add(new AvailabilityPart("last failure ", TimeText.Ago(failed, now), string.Empty, When: failed));
+            parts.Add(new AvailabilityPart(LastFailureLead, TimeText.Ago(failed, now), string.Empty, When: failed));
         }
         else if (reports.Last7Days is { Reports: > 0, AllHealthy: true })
         {
-            parts.Add(new AvailabilityPart("no failure in ", WeekWindow, string.Empty));
+            parts.Add(new AvailabilityPart(NoFailureLead, WeekWindow, string.Empty));
         }
 
         return parts;
@@ -106,8 +124,8 @@ public static class AvailabilityText
         if (afterTheDay)
         {
             return noneEnded
-                ? new AvailabilityPart(string.Empty, NoneCounted, $" in {WeekWindow}")
-                : new AvailabilityPart(string.Empty, Count(week), $" in {WeekWindow}", $"{Percent(week)} of the hourly checks of the last {WeekWindow}");
+                ? new AvailabilityPart(string.Empty, NoneCounted, InWindow(WeekWindow))
+                : new AvailabilityPart(string.Empty, Count(week), InWindow(WeekWindow), $"{Percent(week)} of the hourly checks of the last {WeekWindow}");
         }
 
         return noneEnded ? NoCheckEnded(WeekWindow) : Hourly(week, WeekWindow);
@@ -119,14 +137,14 @@ public static class AvailabilityText
     /// <see cref="Plural.Noun(int, string, string?)" />'s, so the line carries no second copy of the agreement.
     /// </summary>
     private static AvailabilityPart Hourly(HealthWindow window, string inWhat) =>
-        new("Healthy in ", Count(window), $" hourly {Plural.Noun(window.Reports, "check")} ({Percent(window)}) in {inWhat}");
+        new(HealthyLead, Count(window), $" hourly {Plural.Noun(window.Reports, "check")} ({Percent(window)}) in {inWhat}");
 
     /// <summary><c>No hourly check ended in 7 days</c>.</summary>
-    private static AvailabilityPart NoCheckEnded(string inWhat) => new("No hourly check ended in ", inWhat, string.Empty);
+    private static AvailabilityPart NoCheckEnded(string inWhat) => new(NoCheckEndedLead, inWhat, string.Empty);
 
     /// <summary>The whole line in one text, its parts joined with a dot.</summary>
     public static string Line(HealthReports reports, DateTimeOffset now) =>
-        string.Join(" · ", Parts(reports, now).Select(part => $"{part.Before}{part.Strong}{part.After}"));
+        string.Join(PartSeparator, Parts(reports, now).Select(part => $"{part.Before}{part.Strong}{part.After}"));
 
     /// <summary><c>23 of 24</c>.</summary>
     public static string Count(HealthWindow window)

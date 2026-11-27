@@ -25,11 +25,14 @@ internal static class WorkCostText
         }
 
         var total = cost?.TotalUsd ?? items.Sum(item => item.CostUsd ?? 0);
-        var amount = CostText.Money(total, "USD");
-        var text = $"{CostText.Money(total / items.Count, "USD")} per item · {amount} total";
+        var amount = Dollars(total);
+        var text = $"{Dollars(total / items.Count)} per item · {amount} total";
         return cost?.TotalUsd is not null && cost.Note is { } why ? $"{text} · {why}" : text;
     }
 
     /// <summary>What an item's own cost cell says: the amount, or <see cref="WorkItemsText.NotMetered"/>.</summary>
-    internal static string ItemCost(double? costUsd) => costUsd is { } cost ? CostText.Money(cost, "USD") : WorkItemsText.NotMetered;
+    internal static string ItemCost(double? costUsd) => costUsd is { } cost ? Dollars(cost) : WorkItemsText.NotMetered;
+
+    /// <summary>A dollar amount in words: <c>$2.00</c>, never <c>2.00 USD</c> - the work page bills in dollars.</summary>
+    private static string Dollars(double? amount) => CostText.Money(amount, CostText.Dollars);
 }

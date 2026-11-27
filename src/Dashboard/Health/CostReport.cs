@@ -145,6 +145,9 @@ public static class CostText
     /// <summary>What stands for a number Azure did not give.</summary>
     public const string NoNumber = "—";
 
+    /// <summary>The currency code said with a leading $ instead of after the number.</summary>
+    public const string Dollars = "USD";
+
     /// <summary>
     /// <c>$1.52</c>, <c>$1,204.00</c>, <c>-$0.30</c>; another currency by its code (<c>1.52 EUR</c>); a dash for no
     /// number.
@@ -163,7 +166,7 @@ public static class CostText
         return currency switch
         {
             null => $"{sign}{number}",
-            _ when string.Equals(currency, "USD", StringComparison.OrdinalIgnoreCase) => $"{sign}${number}",
+            _ when string.Equals(currency, Dollars, StringComparison.OrdinalIgnoreCase) => $"{sign}${number}",
             _ => $"{sign}{number} {currency}",
         };
     }

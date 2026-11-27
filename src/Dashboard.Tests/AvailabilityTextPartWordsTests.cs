@@ -46,4 +46,28 @@ public class AvailabilityTextPartWordsTests
 
         Assert.Equal(new AvailabilityPart("No hourly check ended in ", "24 hours", string.Empty), AvailabilityText.Parts(reports, Now).Single());
     }
+
+    [Fact]
+    public void TheLastFailurePartNamesItsMomentWithoutATitle()
+    {
+        var failed = Now.AddHours(-9);
+        var reports = new HealthReports(new HealthWindow(24, 23), new HealthWindow(166, 164), failed);
+
+        var parts = AvailabilityText.Parts(reports, Now);
+        var part = parts[^1];
+
+        Assert.Equal("last failure ", part.Before);
+        Assert.Equal(failed, part.When);
+        Assert.Null(part.Title);
+    }
+
+    [Fact]
+    public void ASinglePartGivesALineWithNoSeparator()
+    {
+        var reports = new HealthReports(new HealthWindow(0, 0), null, null);
+
+        var line = AvailabilityText.Line(reports, Now);
+
+        Assert.DoesNotContain(" · ", line);
+    }
 }

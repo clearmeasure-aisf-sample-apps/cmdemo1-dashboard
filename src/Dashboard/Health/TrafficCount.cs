@@ -29,29 +29,13 @@ public sealed record TrafficCount(int Sent, int Answered, int Failed, int Unansw
     /// The numbers, which add up to the first: <c>119 sent, 99 answered, 20 on their way</c>. What is zero is left
     /// out, except the answered.
     /// </summary>
-    public string Counts
-    {
-        get
-        {
-            var parts = new List<string> { Part(Sent, "sent"), Part(Answered, "answered") };
-            if (Failed > 0)
-            {
-                parts.Add(Part(Failed, "failed"));
-            }
-
-            if (Unanswered > 0)
-            {
-                parts.Add(Part(Unanswered, "with " + ProbeDefaults.NoAnswerWithin(TrafficPlan.AnswerWithin)));
-            }
-
-            if (OnTheirWay > 0)
-            {
-                parts.Add(Part(OnTheirWay, Plural.Agreement(OnTheirWay, "on its way", "on their way")));
-            }
-
-            return string.Join(", ", parts);
-        }
-    }
+    public string Counts => new CardParts()
+        .Add(Part(Sent, "sent"))
+        .Add(Part(Answered, "answered"))
+        .Add(Failed > 0 ? Part(Failed, "failed") : null)
+        .Add(Unanswered > 0 ? Part(Unanswered, "with " + ProbeDefaults.NoAnswerWithin(TrafficPlan.AnswerWithin)) : null)
+        .Add(OnTheirWay > 0 ? Part(OnTheirWay, Plural.Agreement(OnTheirWay, "on its way", "on their way")) : null)
+        .Join();
 
     /// <summary>One number of <see cref="Counts" /> and its words, the number in the invariant culture: <c>119 sent</c>.</summary>
     private static string Part(int count, string words) =>

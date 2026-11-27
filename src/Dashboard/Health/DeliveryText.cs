@@ -303,18 +303,10 @@ public static class DeliveryText
     public static string Failover(FailoverTest test, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(test);
-        var parts = new List<string>();
-        if (test.Environment is { } environment)
-        {
-            parts.Add(environment);
-        }
-
-        if (test.At is { } at)
-        {
-            parts.Add(TimeText.Ago(at, now));
-        }
-
-        var text = string.Join(", ", parts);
+        var parts = new CardParts()
+            .Add(test.Environment)
+            .Add(test.At is { } at ? TimeText.Ago(at, now) : null);
+        var text = parts.Join();
         if (test.Seconds is { } seconds)
         {
             var took = $"the standby answered after {Tenth(seconds)} {TimeText.SecondsUnit}";

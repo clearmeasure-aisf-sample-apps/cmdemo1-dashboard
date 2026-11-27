@@ -3,7 +3,8 @@ namespace Dashboard.Health;
 /// <summary>
 /// The parts of one line of a card, collected in the order they are said: a part the build did not measure is given
 /// as null and is left out, so the line says only what was measured. The parts are joined with <c>", "</c>, once,
-/// here: <c>81.2 % of lines, 70.1 % of branches</c>.
+/// here: <c>81.2 % of lines, 70.1 % of branches</c>. It serves the Code card's lines as well as the Delivery card's
+/// failover line and the Traffic panel's count line.
 /// </summary>
 public sealed class CardParts
 {

@@ -67,6 +67,12 @@ public static class DatabaseParser
     internal const int MostTables = 2000;
     private const int MostColumns = 1000;
 
+    /// <summary>The file word of the list of tables, in the manifest and in the live file.</summary>
+    internal const string TablesField = "tables";
+
+    /// <summary>The file word of the flag that the database has more tables than are listed.</summary>
+    private const string TruncatedField = "truncated";
+
     /// <summary>The manifest: its shape checked here, its names, its tables and the rest each read in their own step.</summary>
     public static RuntimeParseResult<DatabaseManifest> ParseManifest(string? json)
     {
@@ -80,9 +86,9 @@ public static class DatabaseParser
             var root = document.RootElement;
             var errors = new List<string>();
             var names = ReadManifestFields(root, errors);
-            if (root.TryGetProperty("tables", out var array) && array.ValueKind is not (JsonValueKind.Array or JsonValueKind.Null))
+            if (root.TryGetProperty(TablesField, out var array) && array.ValueKind is not (JsonValueKind.Array or JsonValueKind.Null))
             {
-                errors.Add("tables: not an array.");
+                errors.Add($"{TablesField}: not an array.");
             }
 
             var tables = DatabaseTableReader.ReadAll(root, errors);
@@ -115,7 +121,7 @@ public static class DatabaseParser
             names.Database,
             JsonRead.Time(root, "readAt"),
             Source(root),
-            JsonRead.Flag(root, "truncated") ?? false,
+            JsonRead.Flag(root, TruncatedField) ?? false,
             tables,
             JsonRead.Count(root, "drawn") ?? tables.Count);
 
@@ -132,13 +138,13 @@ public static class DatabaseParser
         using (document)
         {
             var root = document.RootElement;
-            if (!root.TryGetProperty("tables", out var array) || array.ValueKind != JsonValueKind.Array)
+            if (!root.TryGetProperty(TablesField, out var array) || array.ValueKind != JsonValueKind.Array)
             {
                 return null;
             }
 
             var tables = new List<DatabaseLiveTable>();
-            foreach (var element in JsonRead.Items(root, "tables").Take(MostTables))
+            foreach (var element in JsonRead.Items(root, TablesField).Take(MostTables))
             {
                 if (JsonRead.Text(element, "name") is not { } name)
                 {
@@ -147,19 +153,25 @@ public static class DatabaseParser
 
                 var columns = JsonRead.Items(element, "columns")
                     .Take(MostColumns)
-                    .Where(column => JsonRead.Text(column, "name") is not null)
-                    .Select(column => new DatabaseColumn(
-                        JsonRead.Text(column, "name")!,
-                        JsonRead.Text(column, "type") ?? string.Empty,
-                        JsonRead.Flag(column, "nullable"),
-                        JsonRead.Text(column, "key")?.ToLowerInvariant() ?? string.Empty))
+                    .Select(ReadColumn)
+                    .OfType<DatabaseColumn>()
                     .ToList();
                 tables.Add(new DatabaseLiveTable(JsonRead.Text(element, "schema") ?? string.Empty, name, JsonRead.Long(element, "rows"), columns));
             }
 
-            return new DatabaseLive(JsonRead.Time(root, "generated"), tables, JsonRead.Flag(root, "truncated") ?? false);
+            return new DatabaseLive(JsonRead.Time(root, "generated"), tables, JsonRead.Flag(root, TruncatedField) ?? false);
         }
     }
+
+    /// <summary>A column of the live file; null for one without a name, which is left out.</summary>
+    private static DatabaseColumn? ReadColumn(JsonElement column) =>
+        JsonRead.Text(column, "name") is { } name
+            ? new DatabaseColumn(
+                name,
+                JsonRead.Text(column, "type") ?? string.Empty,
+                JsonRead.Flag(column, "nullable"),
+                JsonRead.Text(column, "key")?.ToLowerInvariant() ?? string.Empty)
+            : null;
 
     /// <summary>The live file is fetched by the page itself: only an absolute https address is kept.</summary>
     private static Uri? Source(JsonElement root) =>

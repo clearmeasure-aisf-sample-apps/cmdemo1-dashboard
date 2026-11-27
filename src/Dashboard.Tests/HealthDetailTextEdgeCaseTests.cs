@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 
 namespace Dashboard.Tests;
@@ -470,6 +471,45 @@ public class HealthDetailTextEdgeCaseTests
         Assert.DoesNotContain("h (", failed!, StringComparison.Ordinal);
         Assert.Equal(3, failed!.Split(',', StringSplitOptions.None).Length);
         Assert.Equal("a (Unhealthy), d (Degraded: D), c (Not known: C)", failed![(failed!.IndexOf(':') + 2)..]);
+    }
+
+    // ---------------------------------------------------------- the words under another thread culture
+
+    /// <summary>The words of a length of checking are written with the invariant culture, so the thread culture the
+    /// page reads them in says the same text: the same millisecond is the same word under Finnish, under Russian and
+    /// under the invariant culture the page runs in - the decimal sign, the number and the unit word are all the
+    /// same, and the floor phrase is a word of this class, not of a culture.</summary>
+    [Theory]
+    [InlineData(42.14)]
+    [InlineData(999.96)]
+    [InlineData(1500)]
+    public void ALengthOfCheckingIsSaidTheSameUnderAnotherThreadCulture(double milliseconds)
+    {
+        var invariant = CultureInfo.CurrentCulture;
+        try
+        {
+            var expected = HealthDetailText.Duration(milliseconds);
+
+            CultureInfo.CurrentCulture = new CultureInfo("fi-FI");
+            Assert.Equal(expected, HealthDetailText.Duration(milliseconds));
+
+            CultureInfo.CurrentCulture = new CultureInfo("ru-RU");
+            Assert.Equal(expected, HealthDetailText.Duration(milliseconds));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = invariant;
+        }
+    }
+
+    /// <summary>The two ends of the rounding these words do, pinned at the values themselves: the smallest shown -
+    /// half of the tenth a number rounds to - is said as the tenth, and the last millisecond under the carry that
+    /// makes a thousand is said as nine hundred and ninety-nine point nine, never as a thousand.</summary>
+    [Fact]
+    public void TheSmallestShownIsSaidAsTheTenthAndTheLastMillisecondUnderACarryAsNineNineNineNine()
+    {
+        Assert.Equal("0.1 ms", HealthDetailText.Duration(0.05));
+        Assert.Equal("999.9 ms", HealthDetailText.Duration(999.94));
     }
 
     // ---------------------------------------------------------------------- what the class declares itself

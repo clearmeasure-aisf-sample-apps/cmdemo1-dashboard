@@ -50,6 +50,22 @@ public class TrendTests
     }
 
     [Fact]
+    public void AHeightIsKeptToThreeDecimalsWhileTheCoordinatePrintsTwo()
+    {
+        var trend = Trend.Of([1, 7], "x")!;
+
+        // 1 / 7 = 0.14285… keeps three decimals; the coordinate still writes at most two.
+        Assert.Equal([0.143, 1], trend.Points);
+
+        var firstPair = trend.Polyline(52, 16, 2.5).Split(' ')[0];
+        var printedY = firstPair.Split(',')[1];
+
+        // The coordinate written for the 0.143 height has at most two decimals.
+        var decimals = printedY.Contains('.') ? printedY.Split('.')[1].Length : 0;
+        Assert.InRange(decimals, 0, 2);
+    }
+
+    [Fact]
     public void TheLineIsDrawnInsideItsBoxWithTheLastReadingAtTheRight()
     {
         var trend = Trend.Of([0, 5, 10], "x")!;

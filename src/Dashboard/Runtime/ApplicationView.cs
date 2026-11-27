@@ -344,8 +344,8 @@ public static class ApplicationText
     /// <summary>
     /// The links of the view's heading row: where the names of the deployable's boxes led before the boxes zoomed.
     /// Per box its own address (<c>links.site</c>, else <c>url</c>) and, where it has one, its page in the Azure
-    /// portal (<c>links.portal</c> of its node in the topology, else of the manifest). One box: "Open the app" and
-    /// <see cref="LinkText.OpenInPortal"/>; several: each link names its box.
+    /// portal (<c>links.portal</c> of its node in the topology, else of the manifest). One box: <see cref="LinkText.OpenTheApp"/> and
+    /// <see cref="LinkText.OpenInPortal"/>; several: each link names its box by <see cref="LinkText.Open(string)"/>.
     /// </summary>
     /// <param name="boxes">The deployable's boxes, as <see cref="Boxes(RuntimeManifest, string?)"/> orders them.</param>
     /// <param name="environment">The monitor's environment of the diagram; null when the topology has none.</param>
@@ -372,13 +372,14 @@ public static class ApplicationText
 
     /// <summary>
     /// The link to where a box's app is: <c>links.site</c>, else the node's <c>url</c> - and only when that one is
-    /// https. Named "Open the app" when the box is <paramref name="alone" /> in its row, else after the box.
+    /// https. Named <see cref="LinkText.OpenTheApp"/> when the box is <paramref name="alone" /> in its row, else by
+    /// <see cref="LinkText.Open(string)"/>.
     /// </summary>
     private static ViewLink? SiteOf(RuntimeNode box, bool alone) =>
         (box.Links?[RuntimeBoxLink.Site] ?? box.Url) is { } site && site.Scheme == Uri.UriSchemeHttps
             ? ViewLink.To(
                 site,
-                alone ? "Open the app" : $"Open {box.Name}",
+                alone ? LinkText.OpenTheApp : LinkText.Open(box.Name),
                 $"{box.Name}: {site.Host}, as a browser opens it{RuntimeBoxLink.NewTabSuffix}")
             : null;
 

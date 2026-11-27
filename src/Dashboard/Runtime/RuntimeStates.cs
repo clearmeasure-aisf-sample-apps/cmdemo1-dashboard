@@ -54,6 +54,15 @@ public static class RuntimeStateWords
     public const string Serving = "serving";
     public const string Standby = "standby";
 
+    /// <summary>The word of a check mark that is not healthy but works: a warning triangle.</summary>
+    public const string Degraded = "degraded";
+
+    /// <summary>The word of a check mark that failed: a cross.</summary>
+    public const string Failed = "failed";
+
+    /// <summary>The word of a check mark the dashboard does not know: dots.</summary>
+    public const string Unknown = "unknown";
+
     /// <summary>The word of a tile's state, as the payload carries it.</summary>
     public static string Word(this TileState state) => state switch
     {

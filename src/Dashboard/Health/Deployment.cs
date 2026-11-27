@@ -110,6 +110,10 @@ public sealed record Deployment(
         "canceled" => DeploymentState.Canceled,
         _ => DeploymentState.Unknown,
     };
+
+    /// <summary>True for the three ways a deployment ends: succeeded, failed or canceled. The single source of truth for that rule.</summary>
+    internal static bool Ended(DeploymentState state) =>
+        state is DeploymentState.Succeeded or DeploymentState.Failed or DeploymentState.Canceled;
 }
 
 public enum DeploymentState

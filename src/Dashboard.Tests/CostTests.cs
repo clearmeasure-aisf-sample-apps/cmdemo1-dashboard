@@ -180,12 +180,12 @@ public class CostTests
     [Fact]
     public void TheTopologyCarriesTheCostAddressAndRefusesOneThatIsNoAddress()
     {
-        Assert.Equal("https://raw.example.net/org/demo-system/status/cost.json", TopologyParser.Parse(Optics.TopologyWithCost).Topology!.System.CostUrl?.AbsoluteUri);
-        Assert.Null(TopologyParser.Parse(Optics.Topology).Topology!.System.CostUrl);
-        Assert.Null(TopologyParser.Parse("""{ "system": { "costUrl": null }, "environments": [] }""").Topology!.System.CostUrl);
+        Assert.Equal("https://raw.example.net/org/demo-system/status/cost.json", TopologyReading.Valid(Optics.TopologyWithCost).System.CostUrl?.AbsoluteUri);
+        Assert.Null(TopologyReading.Valid(Optics.Topology).System.CostUrl);
+        Assert.Null(TopologyReading.Valid("""{ "system": { "costUrl": null }, "environments": [] }""").System.CostUrl);
         Assert.Equal(
             ["system.costUrl: not an absolute http or https address."],
-            TopologyParser.Parse("""{ "system": { "costUrl": "cost.json" }, "environments": [] }""").Errors);
+            TopologyReading.Errors("""{ "system": { "costUrl": "cost.json" }, "environments": [] }"""));
     }
 
     [Fact]

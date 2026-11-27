@@ -274,15 +274,15 @@ public class DeploymentsTests
     [Fact]
     public void TheTopologyCarriesTheDeploymentsAddressAndRefusesOneThatIsNoAddress()
     {
-        Assert.Equal($"https://raw.example.net{DeploymentsPath}", TopologyParser.Parse(TopologyWithDeployments).Topology!.System.DeploymentsUrl?.AbsoluteUri);
-        Assert.Null(TopologyParser.Parse(Optics.Topology).Topology!.System.DeploymentsUrl);
-        Assert.Null(TopologyParser.Parse("""{ "system": { "deploymentsUrl": null }, "environments": [] }""").Topology!.System.DeploymentsUrl);
+        Assert.Equal($"https://raw.example.net{DeploymentsPath}", TopologyReading.Valid(TopologyWithDeployments).System.DeploymentsUrl?.AbsoluteUri);
+        Assert.Null(TopologyReading.Valid(Optics.Topology).System.DeploymentsUrl);
+        Assert.Null(TopologyReading.Valid("""{ "system": { "deploymentsUrl": null }, "environments": [] }""").System.DeploymentsUrl);
         Assert.Equal(
             ["system.deploymentsUrl: not an absolute http or https address."],
-            TopologyParser.Parse("""{ "system": { "deploymentsUrl": "deployments.json" }, "environments": [] }""").Errors);
+            TopologyReading.Errors("""{ "system": { "deploymentsUrl": "deployments.json" }, "environments": [] }"""));
         Assert.Equal(
             ["system.deploymentsUrl: not an absolute http or https address."],
-            TopologyParser.Parse("""{ "system": { "deploymentsUrl": "ftp://raw.example.net/deployments.json" }, "environments": [] }""").Errors);
+            TopologyReading.Errors("""{ "system": { "deploymentsUrl": "ftp://raw.example.net/deployments.json" }, "environments": [] }"""));
     }
 
     [Fact]

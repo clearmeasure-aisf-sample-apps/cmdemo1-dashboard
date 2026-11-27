@@ -1,4 +1,5 @@
 using System.Reflection;
+using static Dashboard.Tests.TopologyReading;
 
 namespace Dashboard.Tests;
 
@@ -537,7 +538,7 @@ public class TopologyParserEdgeCaseTests
 
     [Fact]
     public void TheNameOfTheClusterIsReadWithoutItsSpaces() =>
-        Assert.Equal("aks-cmdemo1", Cluster("""{ "name": "  aks-cmdemo1  " }""")!.Name);
+        Assert.Equal("aks-cmdemo1", TopologyReading.Cluster("""{ "name": "  aks-cmdemo1  " }""")!.Name);
 
     // ----- the result itself -----
 
@@ -661,45 +662,4 @@ public class TopologyParserEdgeCaseTests
         Assert.Equal("errors", errors.Name);
         Assert.True(errors.IsDefined(typeof(ParamArrayAttribute), false));
     }
-
-    // -------------------------------------------------------- the way in, for the cases above
-
-    private static Topology Valid(string json)
-    {
-        var result = TopologyParser.Parse(json);
-
-        Assert.True(result.IsValid, string.Join(" | ", result.Errors));
-        Assert.Empty(result.Errors);
-        return result.Topology!;
-    }
-
-    private static IReadOnlyList<string> Errors(string? json)
-    {
-        var result = TopologyParser.Parse(json);
-
-        Assert.False(result.IsValid);
-        Assert.Null(result.Topology);
-        Assert.NotEmpty(result.Errors);
-        return result.Errors;
-    }
-
-    private static DateTimeOffset? Generated(string generated) =>
-        Valid($$"""{ "generated": {{generated}}, "environments": [] }""").Generated;
-
-    private static EnvironmentInfo Environment(string environment) =>
-        Valid($$"""{ "environments": [ {{environment}} ] }""").Environments[0];
-
-    private static DeployableInfo Deployable(string deployable) =>
-        Environment($$"""{ "name": "tdd", "deployables": [ {{deployable}} ] }""").Deployables[0];
-
-    private static IReadOnlyList<string> InvalidDeployable(string deployable) =>
-        Errors($$"""{ "environments": [ { "name": "tdd", "deployables": [ {{deployable}} ] } ] }""");
-
-    private static NodeInfo Node(string node) => Deployable($$"""{ "nodes": [ {{node}} ] }""").Nodes[0];
-
-    private static IReadOnlyList<PageLink>? Pages(string pages) =>
-        Environment($$"""{ "name": "tdd", "pages": {{pages}} }""").Pages;
-
-    private static ClusterInfo? Cluster(string cluster) =>
-        Valid($$"""{ "environments": [], "cluster": {{cluster}} }""").Cluster;
 }

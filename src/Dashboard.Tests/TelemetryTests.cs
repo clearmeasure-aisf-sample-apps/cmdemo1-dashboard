@@ -70,7 +70,7 @@ public class TelemetryTests
     [Fact]
     public void TheTopologyCarriesTheTelemetryPathAndTheTrafficPaths()
     {
-        var topology = TopologyParser.Parse(WithTelemetry).Topology!;
+        var topology = TopologyReading.Valid(WithTelemetry);
 
         var ui = topology.Environments[0].Deployables[0];
         Assert.Equal("/_telemetry", ui.TelemetryPath);
@@ -82,15 +82,15 @@ public class TelemetryTests
     [Fact]
     public void ATrafficPathThatIsNotTextIsAnError()
     {
-        var result = TopologyParser.Parse(WithTelemetry.Replace("\"api/workorders/summary\"", "42", StringComparison.Ordinal));
+        var errors = TopologyReading.Errors(WithTelemetry.Replace("\"api/workorders/summary\"", "42", StringComparison.Ordinal));
 
-        Assert.Contains(result.Errors, error => error.Contains("trafficPaths", StringComparison.Ordinal));
+        Assert.Contains(errors, error => error.Contains("trafficPaths", StringComparison.Ordinal));
     }
 
     [Fact]
     public void TrafficGoesToTheFrontDoorAddressOrElseThePrimaryWebApp()
     {
-        var topology = TopologyParser.Parse(WithTelemetry).Topology!;
+        var topology = TopologyReading.Valid(WithTelemetry);
 
         var uat = TrafficPlan.For(topology.Environments[0])!;
         var dev = TrafficPlan.For(topology.Environments[1])!;
@@ -142,7 +142,7 @@ public class TelemetryTests
     [Fact]
     public void ADeployableWithAnEmptyListOfTrafficPathsTakesNoGeneratedTraffic()
     {
-        var topology = TopologyParser.Parse("""
+        var topology = TopologyReading.Valid("""
             { "environments": [ { "name": "uat", "deployables": [
                 { "name": "ui", "frontDoor": null, "nodes": [ { "name": "uat/ui", "role": "primary", "url": "https://ui.uat.example.net" } ] },
                 { "name": "dashboard", "frontDoor": null, "healthPath": "/", "trafficPaths": [],
@@ -150,7 +150,7 @@ public class TelemetryTests
               { "name": "prod", "deployables": [
                 { "name": "dashboard", "frontDoor": null, "healthPath": "/", "trafficPaths": [],
                   "nodes": [ { "name": "prod/dashboard", "role": "primary", "url": "https://dashboard.prod.example.net" } ] } ] } ] }
-            """).Topology!;
+            """);
 
         var uat = TrafficPlan.For(topology.Environments[0])!;
 
@@ -170,7 +170,7 @@ public class TelemetryTests
             _ => StubHandler.Answer(HttpStatusCode.OK, "Healthy"),
         });
         var http = new HttpClient(handler);
-        var monitor = new DashboardMonitor(TopologyParser.Parse(WithTelemetry).Topology!, new NodeProber(http, time), new PinnedVersionsReader(http, time), time, pageAddress: new Uri(Optics.Page));
+        var monitor = new DashboardMonitor(TopologyReading.Valid(WithTelemetry), new NodeProber(http, time), new PinnedVersionsReader(http, time), time, pageAddress: new Uri(Optics.Page));
 
         await monitor.CheckAllAsync(ProbeKind.Health, CancellationToken.None);
 
@@ -187,7 +187,7 @@ public class TelemetryTests
 
     private static EnvironmentStatus Uat(TelemetrySnapshot? primary, TelemetrySnapshot? standby)
     {
-        var topology = TopologyParser.Parse(WebAppDiagram.Topology).Topology!;
+        var topology = TopologyReading.Valid(WebAppDiagram.Topology);
         var uat = new EnvironmentStatus(topology.Environments.Single(environment => environment.Name == "uat"));
         var ui = uat.Deployables[0];
         ui.FrontDoor!.Record(new ProbeResult(HealthState.Healthy, 200, 40, Now, "2.4.21"));

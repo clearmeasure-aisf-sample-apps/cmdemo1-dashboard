@@ -172,11 +172,11 @@ public class HealthDetailTests
     [Fact]
     public void TheTopologyCarriesThePathAndATopologyWithoutItHasNone()
     {
-        var topology = TopologyParser.Parse(Topology).Topology!;
+        var topology = TopologyReading.Valid(Topology);
 
         Assert.Equal(DetailPath, topology.Environments[0].Deployables[0].HealthDetailPath);
         Assert.Null(topology.Environments[1].Deployables[0].HealthDetailPath);
-        Assert.Null(TopologyParser.Parse("""{ "environments": [ { "name": "uat", "deployables": [ { "healthDetailPath": null, "nodes": [] } ] } ] }""").Topology!.Environments[0].Deployables[0].HealthDetailPath);
+        Assert.Null(TopologyReading.Valid("""{ "environments": [ { "name": "uat", "deployables": [ { "healthDetailPath": null, "nodes": [] } ] } ] }""").Environments[0].Deployables[0].HealthDetailPath);
     }
 
     [Fact]

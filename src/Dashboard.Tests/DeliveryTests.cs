@@ -201,11 +201,11 @@ public class DeliveryTests
     [Fact]
     public void TheTopologyCarriesTheDeliveryAddressAndRefusesOneThatIsNoAddress()
     {
-        Assert.Equal("https://raw.example.net/org/demo-system/status/delivery.json", TopologyParser.Parse(Optics.Topology).Topology!.System.DeliveryUrl?.AbsoluteUri);
-        Assert.Null(TopologyParser.Parse("""{ "system": { "deliveryUrl": null }, "environments": [] }""").Topology!.System.DeliveryUrl);
+        Assert.Equal("https://raw.example.net/org/demo-system/status/delivery.json", TopologyReading.Valid(Optics.Topology).System.DeliveryUrl?.AbsoluteUri);
+        Assert.Null(TopologyReading.Valid("""{ "system": { "deliveryUrl": null }, "environments": [] }""").System.DeliveryUrl);
         Assert.Equal(
             ["system.deliveryUrl: not an absolute http or https address."],
-            TopologyParser.Parse("""{ "system": { "deliveryUrl": "delivery.json" }, "environments": [] }""").Errors);
+            TopologyReading.Errors("""{ "system": { "deliveryUrl": "delivery.json" }, "environments": [] }"""));
     }
 
     [Fact]

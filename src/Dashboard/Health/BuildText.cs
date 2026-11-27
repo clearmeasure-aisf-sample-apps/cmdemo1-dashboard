@@ -51,6 +51,12 @@ public static class BuildText
     /// <summary>The format of the whole percentage <see cref="SharePercent" /> writes after rounding: <c>73</c>.</summary>
     private const string WholeFormat = "0";
 
+    /// <summary>The noun <see cref="Problems(int)" /> counts with: <c>1 problem</c>, <c>2 problems</c>.</summary>
+    private const string ProblemNoun = "problem";
+
+    /// <summary>The noun <see cref="CrapOver" /> counts with: <c>1 method</c>, <c>2 methods</c>.</summary>
+    private const string MethodNoun = "method";
+
     /// <summary>What every percent word ends with: a space and the sign, <c>81.2 %</c>.</summary>
     private const string PercentSign = " %";
 
@@ -189,8 +195,7 @@ public static class BuildText
         {
             null => null,
             0 => $"none {limit}",
-            1 => $"1 method {limit}",
-            { } over => $"{Count(over)} methods {limit}",
+            { } over => $"{Plural.Of((long)over, MethodNoun)} {limit}",
         };
     }
 
@@ -205,7 +210,6 @@ public static class BuildText
     public static string Problems(int problems) => problems switch
     {
         0 => "no problems",
-        1 => "1 problem",
-        _ => $"{Count(problems)} problems",
+        _ => Plural.Of((long)problems, ProblemNoun),
     };
 }

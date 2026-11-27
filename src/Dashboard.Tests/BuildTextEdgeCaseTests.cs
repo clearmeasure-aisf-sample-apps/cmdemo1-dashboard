@@ -562,6 +562,72 @@ public class BuildTextEdgeCaseTests
         Assert.Equal("commit", Assert.Throws<ArgumentNullException>(() => BuildText.ShortCommit(null!)).ParamName);
     }
 
+    // ----- Plural: the singular/plural choice now owned by Plural.Of
+
+    /// <summary>Problems routes through <see cref="Plural.Of(long, string)" />: only exactly one takes the
+    /// singular, every other count - zero excluded by its own sentence, two and more and the ends of the integer -
+    /// takes the plural with its grouping. The count keeps its thousands separators from the <c>long</c> overload.</summary>
+    [Theory]
+    [InlineData(0, "no problems")]
+    [InlineData(1, "1 problem")]
+    [InlineData(2, "2 problems")]
+    [InlineData(1_000, "1,000 problems")]
+    [InlineData(int.MaxValue, "2,147,483,647 problems")]
+    public void ProblemsChoosesSingularAndPluralThroughPlural(int problems, string expected) =>
+        Assert.Equal(expected, BuildText.Problems(problems));
+
+    /// <summary>The CRAP count routes through <see cref="Plural.Of(long, string)" />: only exactly one says
+    /// <c>1 method</c>, every other count says the plural with its grouping - with and without a threshold, and
+    /// at the ends of the integer the count is held in.</summary>
+    [Theory]
+    [InlineData(0, null, "worst 41, none over the threshold")]
+    [InlineData(1, null, "worst 41, 1 method over the threshold")]
+    [InlineData(2, null, "worst 41, 2 methods over the threshold")]
+    [InlineData(1_000, null, "worst 41, 1,000 methods over the threshold")]
+    [InlineData(int.MaxValue, null, "worst 41, 2,147,483,647 methods over the threshold")]
+    [InlineData(0, 30d, "worst 41, none over 30")]
+    [InlineData(1, 30d, "worst 41, 1 method over 30")]
+    [InlineData(2, 30d, "worst 41, 2 methods over 30")]
+    [InlineData(1_000, 30d, "worst 41, 1,000 methods over 30")]
+    [InlineData(int.MaxValue, 30d, "worst 41, 2,147,483,647 methods over 30")]
+    public void CrapOverChoosesSingularAndPluralThroughPlural(int? over, double? threshold, string expected) =>
+        Assert.Equal(expected, BuildText.Crap(new CrapFacts(41, threshold, over)));
+
+    /// <summary>A negative count is not one: it takes the plural and its sign, in both sentences. Exactly one is
+    /// singular and nothing else is - the rule <see cref="Plural" /> owns, said once.</summary>
+    [Fact]
+    public void ANegativeCountIsPluralInBothSentences()
+    {
+        Assert.Equal("-1 problems", BuildText.Problems(-1));
+        Assert.Equal("worst 41, -1 methods over 30", BuildText.Crap(new CrapFacts(41, 30, -1)));
+    }
+
+    /// <summary>The words of <see cref="BuildText.Problems(int)" /> and <see cref="BuildText.Crap" />'s CRAP count
+    /// follow the invariant culture and not the viewer: a reader of Finnish, whose culture writes thousands with a
+    /// period, is told the same words the build published them in - the comma of <c>1,000</c> and the singular of
+    /// exactly one, in both sentences.</summary>
+    [Fact]
+    public void ThePluralWordsFollowTheDashboardAndNotTheViewer() =>
+        CultureScope.Runs("fi-FI", () =>
+        {
+            Assert.Equal("no problems", BuildText.Problems(0));
+            Assert.Equal("1 problem", BuildText.Problems(1));
+            Assert.Equal("2 problems", BuildText.Problems(2));
+            Assert.Equal("1,000 problems", BuildText.Problems(1_000));
+            Assert.Equal("2,147,483,647 problems", BuildText.Problems(int.MaxValue));
+            Assert.Equal("-1 problems", BuildText.Problems(-1));
+
+            Assert.Equal("worst 41, none over 30", BuildText.Crap(new CrapFacts(41, 30, 0)));
+            Assert.Equal("worst 41, 1 method over 30", BuildText.Crap(new CrapFacts(41, 30, 1)));
+            Assert.Equal("worst 41, 2 methods over 30", BuildText.Crap(new CrapFacts(41, 30, 2)));
+            Assert.Equal("worst 41, 1,000 methods over 30", BuildText.Crap(new CrapFacts(41, 30, 1_000)));
+            Assert.Equal("worst 41, 2,147,483,647 methods over 30", BuildText.Crap(new CrapFacts(41, 30, int.MaxValue)));
+            Assert.Equal("worst 41, -1 methods over 30", BuildText.Crap(new CrapFacts(41, 30, -1)));
+
+            Assert.Equal("worst 41, 1 method over the threshold", BuildText.Crap(new CrapFacts(41, null, 1)));
+            Assert.Equal("worst 41, 3 methods over the threshold", BuildText.Crap(new CrapFacts(41, null, 3)));
+        });
+
     // ----- the fixture
 
     /// <summary>A code size whose bar is the languages it is given, in the order they are given in, of no lines of

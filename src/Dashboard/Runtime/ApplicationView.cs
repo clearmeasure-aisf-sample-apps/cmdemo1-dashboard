@@ -382,13 +382,16 @@ public static class ApplicationText
     /// topology, else of the box. Named <see cref="LinkText.OpenInPortal"/> when the box is <paramref name="alone" /> in its
     /// row, else after the box.
     /// </summary>
-    private static ViewLink? PortalOf(RuntimeNode box, TargetStatus? node, bool alone) =>
-        (node?.Links[LinkSet.Portal] ?? box.Links?[LinkSet.Portal]) is { } portal
-            ? ViewLink.To(
-                portal,
-                alone ? LinkText.OpenInPortal : $"{box.Name} in the Azure portal",
-                LinkText.Portal($"{box.Name} in the Azure portal"))
-            : null;
+    private static ViewLink? PortalOf(RuntimeNode box, TargetStatus? node, bool alone)
+    {
+        if ((node?.Links[LinkSet.Portal] ?? box.Links?[LinkSet.Portal]) is not { } portal)
+        {
+            return null;
+        }
+
+        var named = LinkText.InPortal(box.Name);
+        return ViewLink.To(portal, alone ? LinkText.OpenInPortal : named, LinkText.Portal(named));
+    }
 
     /// <summary>
     /// The node of the environment a box stands for, found by its address as its tile is - the first such node, in

@@ -73,7 +73,7 @@ public static class RuntimeBoxLink
             {
                 return RuntimeLink.To(address, key switch
                 {
-                    LinkSet.Portal => LinkText.Portal($"{resource} in the Azure portal"),
+                    LinkSet.Portal => LinkText.Portal(LinkText.InPortal(resource)),
                     Resources => LinkText.Portal($"The resources in {name}, a query in Azure Resource Graph Explorer"),
                     Namespaces => LinkText.Portal($"The namespaces of the cluster in the Azure portal: {name} is one of them"),
                     LinkSet.Workloads => LinkText.Portal($"The workloads of the cluster in the Azure portal: {name} is one of them"),

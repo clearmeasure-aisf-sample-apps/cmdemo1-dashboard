@@ -318,7 +318,7 @@ public static class RuntimeManifestParser
     /// </summary>
     private static Health.LinkSet? Links(JsonElement parent)
     {
-        if (!parent.TryGetProperty("links", out var links) || links.ValueKind != JsonValueKind.Object)
+        if (JsonRead.Section(parent, LinksWord) is not { } links)
         {
             return null;
         }
@@ -344,6 +344,7 @@ public static class RuntimeManifestParser
     private const string Kind = "kind";
     private const string Url = "url";
     private const string Environments = "environments";
+    private const string LinksWord = "links";
 
     /// <summary>The longest text kept of an entry of <c>unplaced</c>, and the most entries.</summary>
     public const int LongestUnplacedText = 300;
@@ -376,7 +377,7 @@ public static class RuntimeManifestParser
                 continue;
             }
 
-            var links = element.TryGetProperty("links", out var map) && map.ValueKind == JsonValueKind.Object ? map : (JsonElement?)null;
+            var links = JsonRead.Section(element, LinksWord);
             found.Add(new RuntimeUnplaced(
                 name,
                 Cut(element, "type"),

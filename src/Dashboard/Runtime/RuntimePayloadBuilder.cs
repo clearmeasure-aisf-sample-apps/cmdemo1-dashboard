@@ -73,6 +73,12 @@ public static class RuntimePayloadBuilder
     /// <summary>The label of a tile a passing health check reached; the browser itself calls neither the database nor a dependency.</summary>
     private const string Reachable = "Reachable";
 
+    /// <summary>The line of a checked node the deployable's serving decision sends traffic through; <see cref="RoleLine"/> says it with the node's role, <see cref="SingleNodeLine"/> bare.</summary>
+    private const string ServesTraffic = "serves traffic";
+
+    /// <summary>The line of a checked node the serving decision does not send traffic through, in its failed or unreachable state; the healthy-but-unrouted node says "ready, no traffic" instead.</summary>
+    private const string NotServing = "not serving";
+
     // The nouns naming which apps a tile waits for or was reached through (#1708): WaitingTile and PassedLine say the
     // same pair in two sentences, so each noun has one name here and a typo cannot split them. The database's
     // unconfirmed sentence names the same two sources in singular (#1790); its words keep their names here with the
@@ -869,12 +875,12 @@ public static class RuntimePayloadBuilder
     {
         var role = target.Role ?? NodeInfo.StandbyRole;
         return serves
-            ? new RuntimeTileLine($"{role}: serves traffic", RuntimeLineTone.Serving)
+            ? new RuntimeTileLine($"{role}: {ServesTraffic}", RuntimeLineTone.Serving)
             : target.State switch
             {
                 HealthState.Healthy => new RuntimeTileLine($"{role}: ready, no traffic", RuntimeLineTone.Muted),
                 HealthState.Pending => new RuntimeTileLine(role, RuntimeLineTone.Muted),
-                _ => new RuntimeTileLine($"{role}: not serving", RuntimeLineTone.Plain),
+                _ => new RuntimeTileLine($"{role}: {NotServing}", RuntimeLineTone.Plain),
             };
     }
 
@@ -882,9 +888,9 @@ public static class RuntimePayloadBuilder
     /// The same line for the only node of a deployable without a Front Door endpoint: no role, since nothing stands by.
     /// </summary>
     private static RuntimeTileLine SingleNodeLine(TargetStatus target, bool serves) =>
-        serves ? new RuntimeTileLine("serves traffic", RuntimeLineTone.Serving)
-        : target.State == HealthState.Pending ? new RuntimeTileLine("checking", RuntimeLineTone.Muted)
-        : new RuntimeTileLine("not serving", RuntimeLineTone.Plain);
+        serves ? new RuntimeTileLine(ServesTraffic, RuntimeLineTone.Serving)
+        : target.State == HealthState.Pending ? new RuntimeTileLine(Checking, RuntimeLineTone.Muted)
+        : new RuntimeTileLine(NotServing, RuntimeLineTone.Plain);
 
     /// <summary>
     /// A web app's own numbers: its traffic of the last minute with the trend of the requests, what failed, and its

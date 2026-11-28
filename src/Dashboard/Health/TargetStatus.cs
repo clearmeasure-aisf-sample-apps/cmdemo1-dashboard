@@ -6,6 +6,13 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
     public const int HistoryLength = 30;
 
     /// <summary>
+    /// The tile's word for a cell with no value: the same em-dash the tile has always rendered in markup, owned here
+    /// once so the rule for "what the tile shows for its last answer, or the dash when there is none" lives in tested
+    /// C# rather than in untested markup.
+    /// </summary>
+    public const string NotGiven = "—";
+
+    /// <summary>
     /// How many readings of the node's telemetry <see cref="Samples"/> keeps: half an hour at the default interval.
     /// It is the length of a drawn <see cref="Trend"/> today, named here so the readings kept and the line drawn are
     /// two facts even while their value is one.
@@ -65,6 +72,18 @@ public sealed class TargetStatus(TargetKind kind, string name, Uri url, string? 
     /// <c>node</c>. A role that is the empty word is the empty word: <c>??</c> replaces only null.
     /// </summary>
     public string Chip => Kind is TargetKind.FrontDoor ? PublicAddressWord : Role ?? NodeWord;
+
+    /// <summary>
+    /// The tile's HTTP status cell: the last check's status code in invariant culture, or <see cref="NotGiven" />
+    /// when there is no check or the check got no answer.
+    /// </summary>
+    public string StatusCell => Last?.StatusCode?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? NotGiven;
+
+    /// <summary>
+    /// The tile's latency cell: <see cref="HistoryText.Milliseconds(int)" /> of the last check's latency, or
+    /// <see cref="NotGiven" /> when there is no check or the check got no answer.
+    /// </summary>
+    public string LatencyCell => Last?.LatencyMs is { } latency ? HistoryText.Milliseconds(latency) : NotGiven;
 
     /// <summary>The word a node answers to: the region the topology wrote, or the node's own name when it wrote none.</summary>
     public static string NodeLabel(string name, string? region) => region ?? name;

@@ -28,11 +28,11 @@
     <dl class="metrics">
         <div>
             <dt>HTTP status</dt>
-            <dd>@(Target.Last?.StatusCode?.ToString(CultureInfo.InvariantCulture) ?? None)</dd>
+            <dd>@Target.StatusCell</dd>
         </div>
         <div>
             <dt>Latency</dt>
-            <dd>@(Target.Last?.LatencyMs is { } latency ? HistoryText.Milliseconds(latency) : None)</dd>
+            <dd>@Target.LatencyCell</dd>
         </div>
         <div>
             <dt>Version</dt>
@@ -198,7 +198,7 @@
 </article>
 
 @code {
-    private const string None = "—";
+    private const string None = TargetStatus.NotGiven;
 
     [Parameter, EditorRequired]
     public TargetStatus Target { get; set; } = default!;

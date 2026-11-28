@@ -102,13 +102,20 @@ public static class WorkBotText
         ArgumentNullException.ThrowIfNull(row);
         if (row.Done is { } done && row.Merged is null && row.DeployedProd is null)
         {
-            return $"{row.Agent}: {Plural.Of(done, "done", "done")}";
+            return DoneLine(row.Agent, done);
         }
 
         var merged = row.Merged ?? 0;
         var deployed = row.DeployedProd ?? 0;
         return WorkWeekCharts.MergedAndDeployed(CultureInfo.CurrentCulture, row.Agent, merged, deployed);
     }
+
+    /// <summary>The line a throughput row gets when the file gives only a done count.</summary>
+    public static string DoneLine(string agent, int done) =>
+        string.Create(CultureInfo.InvariantCulture, $"{agent}: {done} {DoneWord}");
+
+    /// <summary>The word the done-only throughput line uses.</summary>
+    private const string DoneWord = "done";
 
     public static string NoteHeading(WorkNote note) =>
         string.Equals(note.Kind, WorkNote.BlockerKind, StringComparison.OrdinalIgnoreCase) ? WorkNote.BlockerHeading : WorkNote.StatusHeading;

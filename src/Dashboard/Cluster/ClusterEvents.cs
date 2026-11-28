@@ -21,6 +21,21 @@ public static class ClusterEventDetector
     /// </summary>
     public const int NamedPods = 10;
 
+    /// <summary>The arrow between what was and what is now in a change of the AKS service: <c>Available → Degraded</c>.</summary>
+    private const string Arrow = " → ";
+
+    /// <summary>The words the change of the AKS service starts with: <c>the AKS service: </c>.</summary>
+    private const string ServiceLead = "the AKS service: ";
+
+    /// <summary>The words a node or a pod is said with when it is ready again after not being: <c> is ready again</c>.</summary>
+    private const string ReadyAgain = " is ready again";
+
+    /// <summary>The words a running pod is said in when it is not ready and names no reason: <c>not ready</c>.</summary>
+    private const string NotReady = "not ready";
+
+    /// <summary>The words a liveness of the cluster's status file starts with: <c>The cluster's status file</c>.</summary>
+    private const string StatusFile = "The cluster's status file";
+
     /// <summary>
     /// The cluster's status file stopped answering or answers again, or the collector stopped writing or writes
     /// again. Null when nothing changed, and at the first reading.
@@ -36,11 +51,11 @@ public static class ClusterEventDetector
         var reason = ClusterText.Reason(detail);
         var notice = after switch
         {
-            ClusterLiveness.Silent => new ClusterNotice(EventLevel.Problem, $"The cluster's status file stopped answering{reason}"),
-            ClusterLiveness.Unreadable => new ClusterNotice(EventLevel.Problem, $"The cluster's status file could not be read{reason}"),
+            ClusterLiveness.Silent => new ClusterNotice(EventLevel.Problem, $"{StatusFile} stopped answering{reason}"),
+            ClusterLiveness.Unreadable => new ClusterNotice(EventLevel.Problem, $"{StatusFile} could not be read{reason}"),
             ClusterLiveness.Stale => new ClusterNotice(EventLevel.Problem, "The collector in the cluster stopped writing: the status file is stale"),
             _ when before == ClusterLiveness.Stale => new ClusterNotice(EventLevel.Good, "The collector in the cluster writes again"),
-            _ => new ClusterNotice(EventLevel.Good, "The cluster's status file answers again"),
+            _ => new ClusterNotice(EventLevel.Good, $"{StatusFile} answers again"),
         };
         return ClusterEvent(at, notice);
     }
@@ -80,9 +95,10 @@ public static class ClusterEventDetector
         {
             if (nodes.TryGetValue(node.Name, out var known) && known.Ready != node.Ready)
             {
+                var shortName = ClusterText.ShortNode(node.Name);
                 yield return node.Ready
-                    ? ClusterEvent(at, new ClusterNotice(EventLevel.Good, $"Node {ClusterText.ShortNode(node.Name)} is ready again"))
-                    : ClusterEvent(at, new ClusterNotice(EventLevel.Problem, $"Node {ClusterText.ShortNode(node.Name)} is not ready"));
+                    ? ClusterEvent(at, new ClusterNotice(EventLevel.Good, $"Node {shortName}{ReadyAgain}"))
+                    : ClusterEvent(at, new ClusterNotice(EventLevel.Problem, $"Node {shortName} is {NotReady}"));
             }
         }
     }
@@ -143,12 +159,12 @@ public static class ClusterEventDetector
                 _ when now.Is(AksAvailability.Unavailable) => EventLevel.Problem,
                 _ => EventLevel.Info,
             };
-            events.Add(ServiceEvent(at, new ClusterNotice(level, $"Azure's verdict on the AKS service: {verdict} → {now}")));
+            events.Add(ServiceEvent(at, new ClusterNotice(level, $"Azure's verdict on {ServiceLead}{verdict}{Arrow}{now}")));
         }
 
         if (new AzureState(before.PowerState) is { IsMissing: false } power && new AzureState(after.PowerState) is { IsMissing: false } current && !power.IsSameAs(current))
         {
-            events.Add(ServiceEvent(at, new ClusterNotice(after.IsRunning ? EventLevel.Good : EventLevel.Info, $"The power state of the AKS service: {power} → {current}")));
+            events.Add(ServiceEvent(at, new ClusterNotice(after.IsRunning ? EventLevel.Good : EventLevel.Info, $"The power state of {ServiceLead}{power}{Arrow}{current}")));
         }
 
         return events;
@@ -175,9 +191,9 @@ public static class ClusterEventDetector
         if (now == PodState.Unhealthy && was != PodState.Unhealthy)
         {
             var words = ClusterText.PodWords(after, now, asOf);
-            return new ClusterNotice(EventLevel.Warning, $"{name} is unhealthy: {(new PodPhase(after.Phase).Is(PodPhaseKind.Running) && after.Reason is null ? "not ready" : words)}");
+            return new ClusterNotice(EventLevel.Warning, $"{name} is unhealthy: {(new PodPhase(after.Phase).Is(PodPhaseKind.Running) && after.Reason is null ? NotReady : words)}");
         }
 
-        return was == PodState.Unhealthy && now == PodState.Ready ? new ClusterNotice(EventLevel.Good, $"{name} is ready again") : null;
+        return was == PodState.Unhealthy && now == PodState.Ready ? new ClusterNotice(EventLevel.Good, $"{name}{ReadyAgain}") : null;
     }
 }

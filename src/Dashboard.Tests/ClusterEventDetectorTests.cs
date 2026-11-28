@@ -177,4 +177,52 @@ public class ClusterEventDetectorTests
         Assert.Empty(ClusterEventDetector.Service(available, available with { Availability = null, PowerState = null }, Now));
         Assert.Empty(ClusterEventDetector.Service(available with { Availability = null, PowerState = null }, available, Now));
     }
+
+    [Fact]
+    public void TheNodeNotReadySentenceIsPinned()
+    {
+        var ready = ClusterFixture.Status([ClusterFixture.Node()]);
+        var notReady = ClusterFixture.Status([ClusterFixture.Node(ready: false)]);
+
+        Assert.Equal([Event(EventLevel.Problem, null, "Node aks-…000000 is not ready")], Between(ready, notReady));
+    }
+
+    [Fact]
+    public void ThePodReadyAgainSentenceIsPinned()
+    {
+        var failing = With(ClusterFixture.Pod("ui", ready: false, reason: "CrashLoopBackOff"));
+        var ready = With(ClusterFixture.Pod("ui"));
+
+        Assert.Equal([Event(EventLevel.Good, "tdd", "ui in cmdemo3-tdd is ready again")], Between(failing, ready));
+    }
+
+    [Fact]
+    public void ThePodUnhealthyNotReadyFallbackIsPinned()
+    {
+        var ready = With(ClusterFixture.Pod("ui"));
+        var quiet = With(ClusterFixture.Pod("ui", ready: false));
+
+        Assert.Equal([Event(EventLevel.Warning, "tdd", "ui in cmdemo3-tdd is unhealthy: not ready")], Between(ready, quiet));
+    }
+
+    [Fact]
+    public void TheSilentAndUnreadableLivenessLeadsArePinned()
+    {
+        var silent = ClusterEventDetector.Liveness(ClusterLiveness.Live, ClusterLiveness.Silent, null, Now);
+        var unreadable = ClusterEventDetector.Liveness(ClusterLiveness.Live, ClusterLiveness.Unreadable, null, Now);
+
+        Assert.Equal(Event(EventLevel.Problem, null, "The cluster's status file stopped answering"), silent);
+        Assert.Equal(Event(EventLevel.Problem, null, "The cluster's status file could not be read"), unreadable);
+    }
+
+    [Fact]
+    public void TheAzureVerdictChangeSentenceWithArrowIsPinned()
+    {
+        var available = ClusterFixture.SampleService;
+        var degraded = available with { Availability = new AksAvailability("Degraded", null, null, null) };
+
+        Assert.Equal(
+            [Event(EventLevel.Warning, null, "Azure's verdict on the AKS service: Available → Degraded", "AKS")],
+            ClusterEventDetector.Service(available, degraded, Now));
+    }
 }

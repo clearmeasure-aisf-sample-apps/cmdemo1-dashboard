@@ -40,17 +40,17 @@
             @if (shares.Count > 0)
             {
                 @* The bar is the picture; the list under it says the same in words, so no colour has to be told apart. *@
-                <div class="langbar" role="img" aria-label="@($"Lines of code by language: {BuildText.Describe(shares)}")">
+                <div class="langbar" role="img" aria-label="@BuildText.BarLabel(shares)">
                     @foreach (var share in shares)
                     {
                         <span class="langbar__part langbar__part--@share.Slot" style="flex-grow: @share.Lines.ToString(CultureInfo.InvariantCulture)"
-                              title="@($"{share.Name}: {BuildText.Count(share.Lines)} lines, {BuildText.SharePercent(share.Percent)}")"></span>
+                              title="@BuildText.ShareTitle(share)"></span>
                     }
                 </div>
                 <ul class="langbar__legend">
                     @foreach (var share in shares)
                     {
-                        <li title="@($"{BuildText.Count(share.Lines)} lines")">
+                        <li title="@BuildText.LinesTitle(share)">
                             <span class="langbar__swatch langbar__part--@share.Slot" aria-hidden="true"></span>
                             <span>@share.Name</span>
                             <span class="langbar__percent">@BuildText.SharePercent(share.Percent)</span>

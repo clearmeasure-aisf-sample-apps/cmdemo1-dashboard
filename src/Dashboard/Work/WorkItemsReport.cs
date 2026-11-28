@@ -77,28 +77,22 @@ public sealed record WorkItemsReport(
 /// <param name="Rules">How a bot may take an item, in the file's own words; null when it does not say.</param>
 public sealed record WorkItemsScope(string? Repo, int? Project, string? Rules)
 {
+    /// <summary>The file's word for the rules of the board.</summary>
+    private const string RulesWord = "rules";
+
     internal static WorkItemsScope? Read(JsonElement? section)
     {
         var scope = new WorkItemsScope(JsonRead.Text(section, "repo"), JsonRead.Count(section, "project"), ReadRules(section));
         return ReadParts.Said(scope.Repo, scope.Project, scope.Rules) ? scope : null;
     }
 
-    /// <summary>A string, or the sentences of an array joined. The feed publishes an array.</summary>
-    private static string? ReadRules(JsonElement? section)
-    {
-        if (JsonRead.Text(section, "rules") is { } text)
-        {
-            return text;
-        }
-
-        var lines = JsonRead.Items(section, "rules")
-            .Where(item => item.ValueKind == JsonValueKind.String)
-            .Select(item => item.GetString()?.Trim())
-            .Where(line => !string.IsNullOrEmpty(line))
-            .Cast<string>()
-            .ToList();
-        return lines.Count == 0 ? null : string.Join(" ", lines);
-    }
+    /// <summary>
+    /// A string, or the sentences of an array joined by the array rule of <see cref="JsonRead.Strings" />. The feed
+    /// publishes an array.
+    /// </summary>
+    private static string? ReadRules(JsonElement? section) =>
+        JsonRead.Text(section, RulesWord)
+        ?? (JsonRead.Strings(section, RulesWord) is { } lines ? string.Join(" ", lines) : null);
 }
 
 /// <summary>The counts the file gives for the whole board. Each part is null when the file does not give it.</summary>

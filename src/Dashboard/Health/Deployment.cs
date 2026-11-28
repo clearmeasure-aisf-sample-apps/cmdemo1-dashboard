@@ -57,8 +57,9 @@ public sealed record Deployment(
     private const string WaitsForWord = "waitsFor";
 
     // The values of <c>state</c>, named once beside the entry words: what the file says a deployment is doing, as
-    // opposed to the entry's own name. <c>DeploymentText.Shape</c> and <c>ActivityKind</c> carry the same letters as
-    // dot-shape classes and line kinds; these are the file's words, and the only ones <see cref="Of"/> matches.
+    // opposed to the entry's own name. <c>DeploymentText.Shape</c> (its <c>ExecutingShape</c> to <c>EndedShape</c>)
+    // and <c>ActivityKind</c> carry the same letters as dot-shape classes and line kinds; these are the file's words,
+    // and the only ones <see cref="Of"/> matches.
 
     /// <summary>The value of <c>state</c> for a deployment waiting behind another task.</summary>
     private const string QueuedState = "queued";

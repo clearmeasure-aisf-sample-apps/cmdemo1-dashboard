@@ -126,17 +126,30 @@ public static class DeploymentText
         return TooltipClauses.Join(parts);
     }
 
+    /// <summary>The shape of a mark's dot that is executing: filled, and pulsing where motion is welcome.</summary>
+    public const string ExecutingShape = "executing";
+
+    /// <summary>The shape of a mark's dot that is queued: hollow.</summary>
+    public const string QueuedShape = "queued";
+
+    /// <summary>The shape of a mark's dot that is waiting for a person: a dot in a ring.</summary>
+    public const string WaitingShape = "waiting";
+
     /// <summary>
-    /// The shape of a mark's dot, as the word its class and the runtime payload carry: <c>executing</c> (filled, and
-    /// pulsing where motion is welcome), <c>queued</c> (hollow), <c>waiting</c> (a dot in a ring: a person has to
-    /// act) and <c>ended</c> (small and still), which is also the shape of a state the page does not know.
+    /// The shape of a mark's dot that ended: small and still; also the shape of a state the page does not know.
+    /// </summary>
+    public const string EndedShape = "ended";
+
+    /// <summary>
+    /// The shape of a mark's dot, as the word its class and the runtime payload carry: <see cref="ExecutingShape"/>,
+    /// <see cref="QueuedShape"/>, <see cref="WaitingShape"/> and <see cref="EndedShape"/>.
     /// </summary>
     public static string Shape(DeploymentState state) => state switch
     {
-        DeploymentState.Executing => "executing",
-        DeploymentState.Queued => "queued",
-        DeploymentState.Waiting => "waiting",
-        _ => "ended",
+        DeploymentState.Executing => ExecutingShape,
+        DeploymentState.Queued => QueuedShape,
+        DeploymentState.Waiting => WaitingShape,
+        _ => EndedShape,
     };
 
     /// <summary>What the marks are and how old, for the tooltip of a list of them.</summary>

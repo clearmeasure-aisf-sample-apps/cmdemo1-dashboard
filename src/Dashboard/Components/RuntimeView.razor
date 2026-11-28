@@ -115,11 +115,9 @@
             <div class="runtime__svg" @ref="_host"></div>
         </div>
 
-        @if (_missing.Count > 0 && !Zoomed)
+        @if (!Zoomed && RuntimeDiagram.Lacks(_missing) is { } lacks)
         {
-            <p class="runtime__missing" role="status">
-                The diagram lacks @string.Join(", ", _missing): the manifest and the SVG of this deployment do not match.
-            </p>
+            <p class="runtime__missing" role="status">@lacks</p>
         }
 
         @* Directly under the picture: the resources in no environment, as a list of one line until it is opened. A

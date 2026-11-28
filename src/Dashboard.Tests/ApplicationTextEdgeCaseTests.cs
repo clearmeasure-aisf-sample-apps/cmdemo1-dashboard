@@ -731,6 +731,47 @@ public class ApplicationTextEdgeCaseTests
     public void TheAlternativeTextSaysTheNamesItWasGiven(string deployable, string version, string alt) =>
         Assert.Equal(alt, ApplicationText.AltText(deployable, version, Architecture(1)));
 
+    /// <summary>A word of whitespace is still a word the file named, so the tail is said of it as of any other word -
+    /// the nothing alone is what is refused a tail. The process and the entry each keep their word for it, and the
+    /// blank word comes out as the empty place after it, character for character as before the lead and the tail were
+    /// split apart.</summary>
+    [Theory]
+    [InlineData(" ", "Architecture of ui 1.0.42: no assemblies, process  ")]
+    [InlineData("\t", "Architecture of ui 1.0.42: no assemblies, process \t")]
+    [InlineData("", "Architecture of ui 1.0.42: no assemblies, process ")]
+    [InlineData("   ", "Architecture of ui 1.0.42: no assemblies, process    ")]
+    public void ABlankProcessIsStillASaidProcess(string process, string alt) =>
+        Assert.Equal(alt, ApplicationText.AltText("ui", "1.0.42", Architecture(0, process: process)));
+
+    /// <summary>The entry is asked the same question as the process: the blank word is an entry the file named, and is
+    /// said as the empty place after its word for it, whatever whitespace about it.</summary>
+    [Theory]
+    [InlineData(" ", "Assemblies of ui 1.0.42: 3 assemblies, entry  ")]
+    [InlineData("\n", "Assemblies of ui 1.0.42: 3 assemblies, entry \n")]
+    [InlineData("", "Assemblies of ui 1.0.42: 3 assemblies, entry ")]
+    [InlineData("  ", "Assemblies of ui 1.0.42: 3 assemblies, entry   ")]
+    public void ABlankEntryIsStillASaidEntry(string entry, string alt) =>
+        Assert.Equal(alt, ApplicationText.AltText("ui", "1.0.42", Architecture(3, entry)));
+
+    /// <summary>One assembly is counted in the singular: the one assembly is the word one assembly is, and the entry
+    /// beside it is said after its word for it - the same decision the two-and-a-thousand cases make, at the count of
+    /// one.</summary>
+    [Fact]
+    public void OneAssemblyIsCountedInTheSingular() =>
+        Assert.Equal("Assemblies of ui 1.0.42: 1 assembly, entry Ui.Server", ApplicationText.AltText("ui", "1.0.42", Architecture(1, "Ui.Server")));
+
+    /// <summary>The deployable and the version are the page's own words, not a file's, and are interpolated as written:
+    /// a name or a version that carries the marks of an interpolation is said with them, and nothing is escaped, trimmed
+    /// or shortened to make it fit.</summary>
+    [Theory]
+    [InlineData("ui{0}", "1.0.42", "Assemblies of ui{0} 1.0.42: 1 assembly")]
+    [InlineData("ui", "1.0{1}", "Assemblies of ui 1.0{1}: 1 assembly")]
+    [InlineData("ui{0}", "1.0{1}", "Assemblies of ui{0} 1.0{1}: 1 assembly")]
+    [InlineData("{ui}", "{v}", "Assemblies of {ui} {v}: 1 assembly")]
+    [InlineData("{0}", "{0}", "Assemblies of {0} {0}: 1 assembly")]
+    public void NamesAndVersionsThatCarryInterpolationMarksComeOutAsWritten(string deployable, string version, string alt) =>
+        Assert.Equal(alt, ApplicationText.AltText(deployable, version, Architecture(1)));
+
     /// <summary>Without a diagram there is no alternative text: the count, the entry and the process are all of a file
     /// that has to be there, and the refusal says which argument was wanted.</summary>
     [Fact]

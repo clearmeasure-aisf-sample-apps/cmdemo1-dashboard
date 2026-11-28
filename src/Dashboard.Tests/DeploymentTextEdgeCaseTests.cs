@@ -250,6 +250,16 @@ public class DeploymentTextEdgeCaseTests
     }
 
     /// <summary>
+    /// A question the file says nothing about is no detail at all: a waiting deployment whose question has no title
+    /// that says more than the kind does, no desk, no age of the ask and no account that started it says nothing -
+    /// the null rule the title that says nothing more than the kind does carries, and the nothing at all it is when
+    /// it says none of it.
+    /// </summary>
+    [Fact]
+    public void AWaitingDeploymentThatSaysNothingIsNoDetail() =>
+        Assert.Null(DeploymentText.Detail(Waiting(new DeploymentWait(DeploymentWait.SignOff, null, null, null), null), ActivityLines.Now));
+
+    /// <summary>
     /// A title that only says the kind is the kind, and is not quoted for saying it: the guided failure titled
     /// <c>Guided Failure</c>, in the letters the kind wears, and <c>guided-failure</c>, in the letters the file
     /// writes it with its dash, are titles that say nothing more, and the sign-off titled <c>SIGN-OFF</c> is its

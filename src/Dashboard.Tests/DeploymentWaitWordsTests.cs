@@ -34,6 +34,19 @@ public class DeploymentWaitWordsTests
         Assert.Equal("a 1 waits for a sign-off in uat", DeploymentWait.Asks(null, "a 1", "uat"));
     }
 
+    [Theory]
+    [InlineData(DeploymentWait.GuidedFailure, "Guided-Failure", true)]
+    [InlineData(DeploymentWait.GuidedFailure, "guided-failure", true)]
+    [InlineData(DeploymentWait.SignOff, "Sign off", true)]
+    [InlineData(DeploymentWait.SignOff, "SIGN-OFF", true)]
+    [InlineData(DeploymentWait.SignOff, "Approve prod", false)]
+    public void TheTitleIsTheKindWhenItSaysNothingMoreThanTheKind(string kind, string title, bool isTheKind) =>
+        Assert.Equal(isTheKind, new DeploymentWait(kind, title, null, null).TitleIsTheKind);
+
+    [Fact]
+    public void TheTitleIsTheKindWithNoTitle() =>
+        Assert.True(new DeploymentWait(DeploymentWait.SignOff, null, null, null).TitleIsTheKind);
+
     [Fact]
     public void TheLineSaysTheKindAndWhoDecides()
     {

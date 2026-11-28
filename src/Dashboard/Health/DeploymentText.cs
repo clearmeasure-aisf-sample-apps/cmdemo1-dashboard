@@ -107,7 +107,7 @@ public static class DeploymentText
             {
                 parts.Add($"{wait.Question()} is with {responsible}");
             }
-            else if (wait.Title is not null && !wait.TitleIsTheKind)
+            else if (!wait.TitleIsTheKind)
             {
                 parts.Add(wait.Question());
             }

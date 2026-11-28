@@ -20,6 +20,8 @@ public sealed record VersionAssessment(
     private const string NotComparedWord = "Not compared";
     private const string NoPinnedVersion = "No pinned version";
     private const string NodeSeparator = ", ";
+    private const string WordLead = ": ";
+    private const string ClauseSeparator = "; ";
 
     public bool Differs => State == VersionState.Differs;
 
@@ -110,11 +112,11 @@ public sealed record VersionAssessment(
         var known = state switch
         {
             // A node in Differing always has a non-null Running: Tally only puts a node there when Running is non-null.
-            VersionState.Differs => $"{DiffersWord}: {Nodes(differing.Select(node => Runs(node.Label, node.Running!)))}",
-            VersionState.InSync when matching.Count == 1 => $"{InSyncWord}: {Runs(matching[0].Label, version)}",
-            VersionState.InSync when matching.Count == total => $"{InSyncWord}: all {total} nodes run {version}",
-            VersionState.InSync => $"{InSyncWord}: {matching.Count} of {total} nodes run {version}",
-            _ when total == 0 => $"{NotComparedWord}: the deployable has no nodes",
+            VersionState.Differs => $"{DiffersWord}{WordLead}{Nodes(differing.Select(node => Runs(node.Label, node.Running!)))}",
+            VersionState.InSync when matching.Count == 1 => $"{InSyncWord}{WordLead}{Runs(matching[0].Label, version)}",
+            VersionState.InSync when matching.Count == total => $"{InSyncWord}{WordLead}all {total} nodes run {version}",
+            VersionState.InSync => $"{InSyncWord}{WordLead}{matching.Count} of {total} nodes run {version}",
+            _ when total == 0 => $"{NotComparedWord}{WordLead}the deployable has no nodes",
             _ => NotComparedWord,
         };
         if (unknown.Count == 0)
@@ -122,8 +124,8 @@ public sealed record VersionAssessment(
             return $"{known}.";
         }
 
-        var separator = state == VersionState.NodesUnknown ? ": " : "; ";
-        return $"{known}{separator}{Nodes(unknown.Select(node => $"{node.Label} {node.UnknownReason}"))}.";
+        var separator = state == VersionState.NodesUnknown ? WordLead : ClauseSeparator;
+        return $"{known}{separator}{Nodes(unknown.Select(node => node.UnknownClause))}.";
     }
 
     /// <summary>

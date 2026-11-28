@@ -392,6 +392,18 @@ public sealed record WorkThroughput(string Agent, int? Merged, int? DeployedProd
 /// <param name="Kind"><c>status</c> or <c>blocker</c> when the feed says which. Null for an older note.</param>
 public sealed record WorkNote(string? Text, Uri? Url, DateTimeOffset? At, string? Kind = null)
 {
+    /// <summary>The feed's kind word for a note that says what blocked the item.</summary>
+    internal const string BlockerKind = "blocker";
+
+    /// <summary>The feed's kind word for a note that gives the bot's latest status.</summary>
+    internal const string StatusKind = "status";
+
+    /// <summary>The heading shown over a blocker note.</summary>
+    internal const string BlockerHeading = "Blocker";
+
+    /// <summary>The heading shown over a status note, and over a note of any other kind.</summary>
+    internal const string StatusHeading = "Status";
+
     internal static WorkNote? Read(JsonElement? section)
     {
         var text = JsonRead.Text(section, "text") ?? JsonRead.Text(section, "comment") ?? JsonRead.Text(section, "summary");
@@ -514,15 +526,15 @@ public sealed record WorkItem(
         var url = JsonRead.Address(section, "url");
         var at = JsonRead.Time(section, "at");
         var text = JsonRead.Text(section, "text");
-        if (kind is null && url is null && at is null && text is null)
+        if (!ReadParts.Said(kind, url, at, text))
         {
             return null;
         }
 
         var label = kind?.ToLowerInvariant() switch
         {
-            "blocker" => "Blocker",
-            "status" => "Status",
+            WorkNote.BlockerKind => WorkNote.BlockerHeading,
+            WorkNote.StatusKind => WorkNote.StatusHeading,
             null => text,
             _ => kind,
         };

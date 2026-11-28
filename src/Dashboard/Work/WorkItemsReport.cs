@@ -186,7 +186,7 @@ public sealed record WorkItemsStats(
             CycleTimeHours: Duration(section, "cycleTimeHours"),
             LeadTimeHours: Duration(section, "leadTimeHours"),
             PerWeek: [.. JsonRead.Items(section, "perWeek").Select(WorkWeek.Read).OfType<WorkWeek>()],
-            Rework: WorkRework.Read(JsonRead.Section(section, "rework")),
+            Rework: WorkRework.Read(JsonRead.Section(section, WorkRework.SectionWord)),
             Cost: WorkCost.Read(JsonRead.Section(section, "cost")),
             TimePerColumnHours: ColumnTimes(section),
             Throughput: ReadThroughput(section),
@@ -318,9 +318,21 @@ public sealed record WorkWeek(DateTimeOffset? WeekStart, int? Merged, int? Deplo
 /// <param name="Rate">The share of finished items that were either, as a fraction from 0 to 1. A number above 1 is kept as the file gave it.</param>
 public sealed record WorkRework(int? FtFailures, int? Reverts, double? Rate)
 {
+    /// <summary>The word the work-items file uses for the functional-test failure count.</summary>
+    internal const string FtFailuresWord = "ftFailures";
+
+    /// <summary>The word the work-items file uses for the revert count.</summary>
+    internal const string RevertsWord = "reverts";
+
+    /// <summary>The word the work-items file uses for the rework section.</summary>
+    internal const string SectionWord = "rework";
+
+    /// <summary>The word the work-items file uses for the rework rate.</summary>
+    private const string RateWord = "rate";
+
     internal static WorkRework? Read(JsonElement? section)
     {
-        var rework = new WorkRework(JsonRead.Count(section, "ftFailures"), JsonRead.Count(section, "reverts"), JsonRead.Number(section, "rate"));
+        var rework = new WorkRework(JsonRead.Count(section, FtFailuresWord), JsonRead.Count(section, RevertsWord), JsonRead.Number(section, RateWord));
         return ReadParts.Said(rework.FtFailures, rework.Reverts, rework.Rate) ? rework : null;
     }
 }
@@ -509,14 +521,14 @@ public sealed record WorkItem(
 
     private static WorkWorker ReadWorker(JsonElement element) => WorkAudienceWords.WorkerOf(JsonRead.Text(element, "worker"));
 
-    /// <summary><c>ftFailures</c> and <c>reverts</c> on the item. The older <c>rework</c> object is used when those are absent.</summary>
+    /// <summary><see cref="WorkRework.FtFailuresWord"/> and <see cref="WorkRework.RevertsWord"/> on the item. The older <see cref="WorkRework.SectionWord"/> object is used when those are absent.</summary>
     private static WorkRework? ItemRework(JsonElement element)
     {
-        var failures = JsonRead.Count(element, "ftFailures");
-        var reverts = JsonRead.Count(element, "reverts");
+        var failures = JsonRead.Count(element, WorkRework.FtFailuresWord);
+        var reverts = JsonRead.Count(element, WorkRework.RevertsWord);
         return failures is not null || reverts is not null
             ? new WorkRework(failures, reverts, null)
-            : WorkRework.Read(JsonRead.Section(element, "rework"));
+            : WorkRework.Read(JsonRead.Section(element, WorkRework.SectionWord));
     }
 
     /// <summary>The first note found, in order: <c>latestStatusComment</c>, <c>blocker</c>, <c>comment</c>, then <c>status</c> with <c>statusUrl</c> and <c>statusAt</c>.</summary>

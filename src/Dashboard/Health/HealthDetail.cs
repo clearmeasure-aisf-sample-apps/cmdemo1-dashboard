@@ -151,21 +151,15 @@ public static class HealthDetailText
     /// </summary>
     internal const string NotKnown = "Not known";
 
-    /// <summary>The word for <see cref="CheckState.Healthy" />.</summary>
-    private const string HealthyWord = "Healthy";
-
     /// <summary>The word for <see cref="CheckState.Degraded" />.</summary>
     private const string DegradedWord = "Degraded";
-
-    /// <summary>The word for <see cref="CheckState.Unhealthy" />.</summary>
-    private const string UnhealthyWord = "Unhealthy";
 
     /// <summary>The state's word: a mark is never colour alone.</summary>
     public static string Label(CheckState state) => state switch
     {
-        CheckState.Healthy => HealthyWord,
+        CheckState.Healthy => HealthClassifier.HealthyWord,
         CheckState.Degraded => DegradedWord,
-        CheckState.Unhealthy => UnhealthyWord,
+        CheckState.Unhealthy => HealthClassifier.UnhealthyWord,
         _ => NotKnown,
     };
 

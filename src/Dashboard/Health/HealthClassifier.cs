@@ -7,11 +7,11 @@ public static class HealthClassifier
     /// <summary>The word for <see cref="HealthState.Pending" /> on a badge.</summary>
     private const string CheckingWord = "Checking";
 
-    /// <summary>The word for <see cref="HealthState.Healthy" />.</summary>
-    private const string HealthyWord = "Healthy";
+    /// <summary>The dashboard's badge word for <see cref="HealthState.Healthy" />: the single copy; the detailed-health and container-app badges read it from here.</summary>
+    internal const string HealthyWord = "Healthy";
 
-    /// <summary>The word for <see cref="HealthState.Unhealthy" />.</summary>
-    private const string UnhealthyWord = "Unhealthy";
+    /// <summary>The dashboard's badge word for <see cref="HealthState.Unhealthy" />: the single copy; the detailed-health and container-app badges read it from here.</summary>
+    internal const string UnhealthyWord = "Unhealthy";
 
     /// <summary>The word for <see cref="HealthState.Unreachable" />.</summary>
     private const string UnreachableWord = "Unreachable";

@@ -300,7 +300,7 @@ public static class ContainerAppText
         ContainerAppState.Waking => "Waking",
         ContainerAppState.Responding => "Responding",
         ContainerAppState.Healthy => ContainerAppProbe.HealthyWord,
-        ContainerAppState.Unhealthy => "Unhealthy",
+        ContainerAppState.Unhealthy => HealthClassifier.UnhealthyWord,
         ContainerAppState.NotResponding => "Not responding",
         _ => "Probing",
     };

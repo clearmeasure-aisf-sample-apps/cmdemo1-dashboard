@@ -68,7 +68,7 @@ public static class TopologyParser
         if (root.TryGetProperty(Path, out var system) && system.ValueKind == JsonValueKind.Object)
         {
             slug = JsonRead.Text(system, "slug") ?? string.Empty;
-            name = JsonRead.Text(system, "name");
+            name = JsonRead.Text(system, NameField);
             repository = ReadOptionalAddress(system, "repository", Path, errors);
             delivery = ReadOptionalAddress(system, "deliveryUrl", Path, errors);
             cost = ReadOptionalAddress(system, "costUrl", Path, errors);
@@ -99,7 +99,7 @@ public static class TopologyParser
         }
 
         return ReadOptionalPath(dashboard, "buildPath") is { } build
-            ? new DashboardInfo(JsonRead.Text(dashboard, "name") ?? DashboardInfo.DefaultName, build)
+            ? new DashboardInfo(JsonRead.Text(dashboard, NameField) ?? DashboardInfo.DefaultName, build)
             : null;
     }
 
@@ -115,7 +115,7 @@ public static class TopologyParser
 
         foreach (var (element, path, _) in Objects(array, Section, errors))
         {
-            var name = JsonRead.Text(element, "name");
+            var name = JsonRead.Text(element, NameField);
             if (name is null)
             {
                 errors.Add($"{path}.name: missing or empty.");
@@ -156,8 +156,8 @@ public static class TopologyParser
         foreach (var page in JsonRead.Items(parent, Pages))
         {
             if (page.ValueKind == JsonValueKind.Object
-                && JsonRead.Text(page, "name") is { } name
-                && JsonRead.Address(page, "url") is { } address)
+                && JsonRead.Text(page, NameField) is { } name
+                && JsonRead.Address(page, UrlField) is { } address)
             {
                 found.Add(new PageLink(name, address, JsonRead.Text(page, "deployable")));
             }
@@ -199,7 +199,7 @@ public static class TopologyParser
             }
         }
 
-        return new ClusterInfo(JsonRead.Text(cluster, "name"), status, service, found.Count == 0 ? null : new LinkSet(found));
+        return new ClusterInfo(JsonRead.Text(cluster, NameField), status, service, found.Count == 0 ? null : new LinkSet(found));
     }
 
     private static List<DeployableInfo> ReadDeployables(JsonElement environment, string environmentPath, List<string> errors)
@@ -219,7 +219,7 @@ public static class TopologyParser
             var pinHistory = ReadOptionalAddress(element, "pinHistoryUrl", path, errors);
             var nodes = ReadNodes(element, path, errors);
             deployables.Add(new DeployableInfo(
-                Name: JsonRead.Text(element, "name") ?? "app",
+                Name: JsonRead.Text(element, NameField) ?? "app",
                 FrontDoor: frontDoor,
                 HealthPath: ReadPath(element, "healthPath", HealthPaths.DefaultHealthPath),
                 AlivePath: ReadPath(element, "alivePath", DeployableInfo.DefaultAlivePath),
@@ -266,16 +266,16 @@ public static class TopologyParser
 
         foreach (var (element, path, _) in Objects(array, $"{deployablePath}.{Section}", errors))
         {
-            var url = element.TryGetProperty("url", out var value) ? JsonRead.Address(value) : null;
+            var url = element.TryGetProperty(UrlField, out var value) ? JsonRead.Address(value) : null;
             if (url is null)
             {
-                errors.Add(Messages.Address(path, "url", required: true));
+                errors.Add(Messages.Address(path, UrlField, required: true));
                 continue;
             }
 
             // Without a role, the order of the nodes read decides: the first node read is the primary.
             var role = JsonRead.Text(element, "role")?.ToLowerInvariant() ?? NodeRole.Default(nodes.Count);
-            nodes.Add(new NodeInfo(JsonRead.Text(element, "name") ?? url.Host, JsonRead.Text(element, "region"), role, url, ReadLinks(element)));
+            nodes.Add(new NodeInfo(JsonRead.Text(element, NameField) ?? url.Host, JsonRead.Text(element, "region"), role, url, ReadLinks(element)));
         }
 
         return nodes;
@@ -331,6 +331,12 @@ public static class TopologyParser
 
     /// <summary>The element word the links of a cluster, an environment, a deployable or a node live under.</summary>
     private const string Links = "links";
+
+    /// <summary>The element word that names a system, an environment, a page, a cluster, a deployable or a node.</summary>
+    private const string NameField = "name";
+
+    /// <summary>The element word of the address a node or a page is called at.</summary>
+    private const string UrlField = "url";
 
     /// <summary>The sentences the page says a refused part of the file in; the tests pin them letter for letter.</summary>
     private static class Messages

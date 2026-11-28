@@ -339,10 +339,10 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
             problems.Add("The status file lists no node");
         }
 
-        problems.AddRange(status.Nodes.Where(node => !node.Ready).Select(node => $"Node {ClusterText.ShortNode(node.Name)} is not ready"));
+        problems.AddRange(status.Nodes.Where(node => !node.Ready).Select(node => $"{ClusterText.NodeIn(node.Name)} is not ready"));
         problems.AddRange(status.Nodes
             .Where(node => node.Ready && node.Pressures.Count > 0)
-            .Select(node => $"Node {ClusterText.ShortNode(node.Name)}: {string.Join(", ", node.Pressures.Select(ClusterText.Pressure))}"));
+            .Select(node => $"{ClusterText.NodeIn(node.Name)}: {string.Join(", ", node.Pressures.Select(ClusterText.Pressure))}"));
         problems.AddRange(status.Pods
             .Where(entry => PodRules.StateOf(entry.Pod, asOf) == PodState.Unhealthy)
             .OrderBy(entry => Severity(entry.Pod))

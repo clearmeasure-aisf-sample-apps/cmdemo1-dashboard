@@ -95,10 +95,10 @@ public static class ClusterEventDetector
         {
             if (nodes.TryGetValue(node.Name, out var known) && known.Ready != node.Ready)
             {
-                var shortName = ClusterText.ShortNode(node.Name);
+                var named = ClusterText.NodeIn(node.Name);
                 yield return node.Ready
-                    ? ClusterEvent(at, new ClusterNotice(EventLevel.Good, $"Node {shortName}{ReadyAgain}"))
-                    : ClusterEvent(at, new ClusterNotice(EventLevel.Problem, $"Node {shortName} is {NotReady}"));
+                    ? ClusterEvent(at, new ClusterNotice(EventLevel.Good, $"{named}{ReadyAgain}"))
+                    : ClusterEvent(at, new ClusterNotice(EventLevel.Problem, $"{named} is {NotReady}"));
             }
         }
     }

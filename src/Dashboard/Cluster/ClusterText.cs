@@ -211,6 +211,9 @@ public static class ClusterText
         return dash > 0 && name.Length > dash + 1 + Tail + 1 ? $"{name[..(dash + 1)]}…{name[^Tail..]}" : name;
     }
 
+    /// <summary>A node as a sentence names it: <c>Node aks-…000000</c>.</summary>
+    public static string NodeIn(string name) => $"Node {ShortNode(name)}";
+
     /// <summary>A node condition in words: <c>memory pressure</c> for MemoryPressure.</summary>
     public static string Pressure(string condition) => condition switch
     {

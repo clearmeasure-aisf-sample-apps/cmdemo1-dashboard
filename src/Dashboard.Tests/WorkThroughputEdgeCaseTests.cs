@@ -536,6 +536,24 @@ public class WorkThroughputEdgeCaseTests
         ViewerCulture.German(() => Assert.Equal(row.GetHashCode(), new WorkThroughput("cm-ai-ops-bot", 4, 2, 7).GetHashCode()));
     }
 
+    // -------------------------------------------------------------- the fallback name
+
+    /// <summary>
+    /// The word a row is shown under when nothing names the bot: <see cref="WorkThroughput.Unnamed"/> is the one
+    /// place the word is written, and it is the word the page has always shown for an anonymous bot.
+    /// </summary>
+    [Fact]
+    public void UnnamedIsTheWordTheRowFallsBackTo()
+    {
+        Assert.Equal("unnamed", WorkThroughput.Unnamed);
+
+        // The constant is a const, not a property: it is inlined at the call site and has no storage of its own.
+        var field = typeof(WorkThroughput).GetField("Unnamed", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+        Assert.NotNull(field);
+        Assert.True(field!.IsLiteral);
+        Assert.Equal("unnamed", field.GetRawConstantValue());
+    }
+
     // --------------------------------------------------------------------------- the machinery
 
     /// <summary>The public members the row declares itself: its four properties and the methods that are not the get

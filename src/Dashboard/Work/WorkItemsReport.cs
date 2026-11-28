@@ -307,7 +307,7 @@ public sealed record WorkWeek(DateTimeOffset? WeekStart, int? Merged, int? Deplo
             return null;
         }
 
-        var week = new WorkWeek(JsonRead.Time(element, "weekStart"), JsonRead.Count(element, "merged"), JsonRead.Count(element, "deployedProd"));
+        var week = new WorkWeek(JsonRead.Time(element, "weekStart"), JsonRead.Count(element, WorkThroughput.MergedWord), JsonRead.Count(element, WorkThroughput.DeployedProdWord));
         return ReadParts.Said(week.WeekStart, week.Merged, week.DeployedProd) ? week : null;
     }
 }
@@ -368,12 +368,21 @@ public enum WorkAudience
 }
 
 /// <summary>How much one bot identity finished.</summary>
-/// <param name="Agent">The bot's name. <c>unnamed</c> when the file counts the work and does not name the bot.</param>
+/// <param name="Agent">The bot's name. <see cref="Unnamed"/> when the file counts the work and does not name the bot.</param>
 /// <param name="Merged">Pull requests that merged.</param>
 /// <param name="DeployedProd">Items that reached production.</param>
 /// <param name="Done">Items that reached Done, from <c>throughputByAgent</c>. Null for the older merged and deployed counts.</param>
 public sealed record WorkThroughput(string Agent, int? Merged, int? DeployedProd, int? Done = null)
 {
+    /// <summary>The agent name a row is shown under when nothing names the bot.</summary>
+    public const string Unnamed = "unnamed";
+
+    /// <summary>The word the work-items file uses for the merged count.</summary>
+    internal const string MergedWord = "merged";
+
+    /// <summary>The word the work-items file uses for the count of items that reached production.</summary>
+    internal const string DeployedProdWord = "deployedProd";
+
     internal static WorkThroughput? Read(JsonElement element)
     {
         if (element.ValueKind != JsonValueKind.Object)
@@ -382,9 +391,9 @@ public sealed record WorkThroughput(string Agent, int? Merged, int? DeployedProd
         }
 
         var name = JsonRead.Text(element, "agent") ?? JsonRead.Text(element, "name") ?? JsonRead.Text(element, "identity");
-        var merged = JsonRead.Count(element, "merged");
-        var deployed = JsonRead.Count(element, "deployedProd");
-        return ReadParts.Said(name, merged, deployed) ? new WorkThroughput(name ?? "unnamed", merged, deployed) : null;
+        var merged = JsonRead.Count(element, MergedWord);
+        var deployed = JsonRead.Count(element, DeployedProdWord);
+        return ReadParts.Said(name, merged, deployed) ? new WorkThroughput(name ?? Unnamed, merged, deployed) : null;
     }
 }
 

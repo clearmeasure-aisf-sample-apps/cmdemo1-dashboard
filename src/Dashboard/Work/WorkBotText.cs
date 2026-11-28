@@ -87,7 +87,7 @@ public static class WorkBotText
 
         return
         [
-            .. items.GroupBy(item => item.Agent ?? "unnamed", StringComparer.OrdinalIgnoreCase)
+            .. items.GroupBy(item => item.Agent ?? WorkThroughput.Unnamed, StringComparer.OrdinalIgnoreCase)
                 .Select(group => new WorkThroughput(
                     group.Key,
                     group.Count(item => item.PullRequests.Any(Merged)),

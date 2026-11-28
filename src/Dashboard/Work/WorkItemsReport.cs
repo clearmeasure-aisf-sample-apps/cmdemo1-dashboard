@@ -574,10 +574,18 @@ public sealed record ColumnVisit(string? Column, DateTimeOffset? EnteredAt, Date
 
 /// <summary>A pull request opened for a work item.</summary>
 /// <remarks>A pull request is kept when it says any of <c>Number</c>, <c>Url</c>, <c>State</c>, <c>Checks</c> or <c>ChecksUrl</c>. One that says only <c>MergedAt</c> and/or <c>MergeSha</c> is left out.</remarks>
-/// <param name="Checks">What the pull request's checks concluded: <c>passed</c>, <c>failed</c>, <c>pending</c>, or the file's own word.</param>
+/// <param name="Checks">What the pull request's checks concluded: <see cref="PassedChecks"/>, <see cref="FailedChecks"/>, <see cref="PendingChecks"/>, or the file's own word.</param>
 /// <param name="ChecksUrl">The checks page, when the file gives one.</param>
 public sealed record WorkPullRequest(int? Number, Uri? Url, string? State, DateTimeOffset? MergedAt, string? MergeSha, string? Checks = null, Uri? ChecksUrl = null)
 {
+    /// <summary>The word the page shows when the checks passed.</summary>
+    public const string PassedChecks = "passed";
+
+    /// <summary>The word the page shows when the checks failed.</summary>
+    public const string FailedChecks = "failed";
+
+    /// <summary>The word the page shows when the checks are still pending.</summary>
+    public const string PendingChecks = "pending";
     internal static WorkPullRequest? Read(JsonElement element)
     {
         if (element.ValueKind != JsonValueKind.Object)
@@ -597,23 +605,26 @@ public sealed record WorkPullRequest(int? Number, Uri? Url, string? State, DateT
         return ReadParts.Said(pull.Number, pull.Url, pull.State, checks, checksUrl) ? pull : null;
     }
 
+    /// <summary>The field the file uses for the checks object or flat word.</summary>
+    private const string ChecksField = "checks";
+
     private static (string? Result, Uri? Url) ChecksOf(JsonElement element)
     {
-        if (JsonRead.Section(element, "checks") is { } section)
+        if (JsonRead.Section(element, ChecksField) is { } section)
         {
             var word = JsonRead.Text(section, "result") ?? JsonRead.Text(section, "state") ?? JsonRead.Text(section, "conclusion");
             return (CheckWord(word), JsonRead.Address(section, "url"));
         }
 
-        return (CheckWord(JsonRead.Text(element, "checks") ?? JsonRead.Text(element, "checksResult")), JsonRead.Address(element, "checksUrl"));
+        return (CheckWord(JsonRead.Text(element, ChecksField) ?? JsonRead.Text(element, "checksResult")), JsonRead.Address(element, "checksUrl"));
     }
 
     private static string? CheckWord(string? word) => word?.ToLowerInvariant() switch
     {
         null => null,
-        "success" or "succeeded" or "pass" or "passed" => "passed",
-        "failure" or "failed" or "fail" => "failed",
-        "pending" or "queued" or "in_progress" or "in progress" => "pending",
+        "success" or "succeeded" or "pass" or "passed" => PassedChecks,
+        "failure" or "failed" or "fail" => FailedChecks,
+        "pending" or "queued" or "in_progress" or "in progress" => PendingChecks,
         _ => word!.Trim(),
     };
 }

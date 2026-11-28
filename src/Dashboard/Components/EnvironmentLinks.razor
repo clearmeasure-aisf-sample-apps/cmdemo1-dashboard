@@ -47,10 +47,5 @@
 
     private bool HasPages => Pages is { Count: > 0 };
 
-    private string Label => (HasLinks, HasPages) switch
-    {
-        (true, true) => $"Resources of {Environment} in the Azure portal, and pages of the system there",
-        (false, true) => $"Pages of the system in {Environment}",
-        _ => $"Resources of {Environment} in the Azure portal",
-    };
+    private string Label => LinkText.Group(Environment, HasLinks, HasPages);
 }

@@ -357,6 +357,22 @@ public class RuntimePayloadEdgeRegionTests
         Assert.Contains("15 SQL commands while handling requests", mark.Title);
     }
 
+    /// <summary>A SQL edge whose title names the p95 latency of the web app's SQL commands.</summary>
+    [Fact]
+    public void SqlEdgeTitleContainsP95Latency()
+    {
+        var uat = Environment("uat");
+        uat.Deployables[0].FrontDoor!.Record(Answer(200));
+        uat.Deployables[0].Nodes[0].Record(Answer(200));
+        uat.Deployables[0].Nodes[0].RecordTelemetry(TelemetrySnapshots.WithSql(10, 20, Now) with { SqlP95Ms = 40 });
+        uat.Deployables[0].Nodes[1].Record(Answer(200, "2.4.20"));
+
+        var payload = Build(uat);
+        var mark = EdgeMark(payload, "app_ui_primary-to-sqldb");
+
+        Assert.Contains(", p95 40 ms", mark.Title, StringComparison.Ordinal);
+    }
+
     /// <summary>A SQL edge when the web app is down (idle, not the database's fault).</summary>
     [Fact]
     public void SqlEdgeWithDownWebAppIsIdle()

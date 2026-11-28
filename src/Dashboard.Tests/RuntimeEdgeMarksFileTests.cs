@@ -69,7 +69,7 @@ public class RuntimeEdgeMarksFileTests
             .Select(match => match.Groups[1].Value)
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal);
-        Assert.Equal(["BackgroundSql", "CallsUnit", "Entry", "NoNumber"], reaches);
+        Assert.Equal(["BackgroundSql", "CallsUnit", "Entry", "NoNumber", "PartSeparator"], reaches);
         Assert.Equal("–", RuntimePayloadBuilder.NoNumber);
         Assert.Equal("calls/min", RuntimePayloadBuilder.CallsUnit);
         Assert.Equal("in the background (mostly the message bus polling the database)", RuntimePayloadBuilder.BackgroundSql);

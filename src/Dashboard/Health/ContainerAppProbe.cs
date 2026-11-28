@@ -290,26 +290,43 @@ public sealed class ContainerAppProbe(ContainerAppTarget target)
 /// <summary>A container app's probe in words: the badge, the facts next to it and the tooltip.</summary>
 public static class ContainerAppText
 {
+    /// <summary>The badge's word for the state the app has not answered yet, and the page has asked it.</summary>
+    private const string ProbingWord = "Probing";
+
+    /// <summary>The badge's word for the app that has not answered yet, within the grace of its first probe.</summary>
+    private const string WakingWord = "Waking";
+
+    /// <summary>The badge's word for the app that answered without letting the page read the answer.</summary>
+    private const string RespondingWord = "Responding";
+
+    /// <summary>The badge's word for the app that is gone or unavailable, or that never answered after the grace.</summary>
+    private const string NotRespondingWord = "Not responding";
+
+    /// <summary>The word for a status with no probe at all: nothing has asked the app yet.</summary>
+    private const string NotProbedYet = "not probed yet";
+
     /// <summary>
     /// The badge's word for each state. The healthy arm reads <see cref="ContainerAppProbe.HealthyWord" />: the
     /// app is healthy exactly when the health-check body says the word, so the badge says the word the body said,
-    /// and the two stand or fall together; a change to the server's word changes the badge with it.
+    /// and the two stand or fall together; a change to the server's word changes the badge with it. The other
+    /// words are the consts beside this switch, so the badge and the sentence about the badge
+    /// (<see cref="WakeCost" />) read one word by construction rather than by agreement.
     /// </summary>
     public static string Label(ContainerAppState state) => state switch
     {
-        ContainerAppState.Waking => "Waking",
-        ContainerAppState.Responding => "Responding",
+        ContainerAppState.Waking => WakingWord,
+        ContainerAppState.Responding => RespondingWord,
         ContainerAppState.Healthy => ContainerAppProbe.HealthyWord,
         ContainerAppState.Unhealthy => HealthClassifier.UnhealthyWord,
-        ContainerAppState.NotResponding => "Not responding",
-        _ => "Probing",
+        ContainerAppState.NotResponding => NotRespondingWord,
+        _ => ProbingWord,
     };
 
     /// <summary>Next to the badge: <c>HTTP 200 · 85 ms</c>, <c>answered · 85 ms</c>, or why there is no answer.</summary>
     public static string Facts(ContainerAppStatus status)
     {
         ArgumentNullException.ThrowIfNull(status);
-        return status.Last?.SaidShort(status.State == ContainerAppState.Waking) ?? "not probed yet";
+        return status.Last?.SaidShort(status.State == ContainerAppState.Waking) ?? NotProbedYet;
     }
 
     /// <summary>
@@ -332,12 +349,16 @@ public static class ContainerAppText
         return string.Join(' ', words.OfType<string>());
     }
 
+    /// <summary>
+    /// The sentence about the asking: how often the page asks, and that nothing asks from here while no page is
+    /// open, so the app can scale to zero.
+    /// </summary>
     private const string AskedSentence =
         "This page asks it once a minute while it shows this diagram, and not while it is paused or hidden; nothing asks it from here while no page is open, so it can scale to zero.";
 
     /// <summary>The grace an app that scaled to zero gets, while it has not answered yet; null once it has.</summary>
     private static string? WakeCost(ContainerAppState state) =>
         state is ContainerAppState.Probing or ContainerAppState.Waking
-            ? $"An app that scaled to zero starts on the first request: the page waits up to {ContainerAppProbe.Grace.TotalSeconds:0} seconds for its first answer before it says Not responding."
+            ? $"An app that scaled to zero starts on the first request: the page waits up to {ContainerAppProbe.Grace.TotalSeconds:0} seconds for its first answer before it says {NotRespondingWord}."
             : null;
 }

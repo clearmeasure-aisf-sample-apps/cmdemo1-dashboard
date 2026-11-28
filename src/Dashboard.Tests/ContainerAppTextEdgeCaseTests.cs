@@ -236,4 +236,48 @@ public class ContainerAppTextEdgeCaseTests
         Assert.Contains("Last probe 00:00:00: /_healthcheck, no answer.", first, StringComparison.Ordinal);
         Assert.Contains("Last probe 23:59:59: /_healthcheck, no answer.", last, StringComparison.Ordinal);
     }
+
+    // ----- the agreement of the badge's word in the tooltip and beside it
+
+    /// <summary>
+    /// The tooltip names the badge the viewer will see: for the states the app has not answered yet (waking and
+    /// probing), the sentence about what a scale-to-zero costs ends with the badge's word as the page says it,
+    /// read from the one place the badge gets its word.
+    /// </summary>
+    [Theory]
+    [InlineData(ContainerAppState.Waking)]
+    [InlineData(ContainerAppState.Probing)]
+    public void TheTooltipNamesTheBadgeItWillShowForTheStatesWithoutAnAnswer(ContainerAppState state)
+    {
+        var title = ContainerAppText.Title("ui", Declared, new ContainerAppStatus(state), Utc);
+
+        Assert.EndsWith($"before it says {ContainerAppText.Label(ContainerAppState.NotResponding)}.", title, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The sentence about the cost of a scale-to-zero is said only while the app has not answered yet: for the
+    /// states the app has answered (responding, healthy, unhealthy) or is gone (not responding), the tooltip
+    /// carries no sentence about the wait at all.
+    /// </summary>
+    [Theory]
+    [InlineData(ContainerAppState.Responding)]
+    [InlineData(ContainerAppState.Healthy)]
+    [InlineData(ContainerAppState.Unhealthy)]
+    [InlineData(ContainerAppState.NotResponding)]
+    public void TheTooltipSaysNoWaitForTheStatesThatHaveAnsweredOrAreGone(ContainerAppState state)
+    {
+        var title = ContainerAppText.Title("ui", Declared, new ContainerAppStatus(state, Heard(200, Opened)), Utc);
+
+        Assert.DoesNotContain("before it says", title, StringComparison.Ordinal);
+        Assert.DoesNotContain("scaled to zero starts", title, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The number line of a status the page has never asked is the word for that: nothing has been probed yet.
+    /// </summary>
+    [Fact]
+    public void TheFactsOfAStatusNeverAskedAreTheWordForNothingAsked()
+    {
+        Assert.Equal("not probed yet", ContainerAppText.Facts(ContainerAppStatus.NotYet));
+    }
 }

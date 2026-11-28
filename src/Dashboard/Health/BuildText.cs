@@ -39,6 +39,12 @@ public static class BuildText
     /// </summary>
     private const double SmallShareBound = 1d;
 
+    /// <summary>
+    /// The mark <see cref="SharePercent" /> says instead of the number for a share above zero and below the
+    /// <see cref="SmallShareBound" />: the language is there and small, <c>&lt;1 %</c>.
+    /// </summary>
+    private const string BelowOneMark = "<1";
+
     /// <summary>The format of a count: a whole number with group separators, <c>84,210</c>.</summary>
     private const string CountFormat = "N0";
 
@@ -74,6 +80,12 @@ public static class BuildText
 
     /// <summary>What every percent word ends with: a space and the sign, <c>81.2 %</c>.</summary>
     private const string PercentSign = " %";
+
+    /// <summary>
+    /// The separator between the shares of the bar in words, <see cref="Describe" />, and between a share's parts in
+    /// its hover text, <see cref="ShareTitle" />: a comma and a space, <c>C# 73 %, Razor 12 %</c>.
+    /// </summary>
+    private const string ListSeparator = ", ";
 
     /// <summary>What the page calls itself next to the dashboard's name: the chip of its heading.</summary>
     public const string ThisPage = "this page";
@@ -153,12 +165,19 @@ public static class BuildText
 
     /// <summary>The bar in words: <c>C# 73 %, Razor 12 %, Other 15 %</c>.</summary>
     public static string Describe(IEnumerable<LanguageShare> shares) =>
-        string.Join(", ", shares.Select(share => $"{share.Name} {SharePercent(share.Percent)}"));
+        string.Join(ListSeparator, shares.Select(ShareWords));
+
+    /// <summary>A share in words, its name and its percent, <c>C# 73 %</c>.</summary>
+    public static string ShareWords(LanguageShare share)
+    {
+        ArgumentNullException.ThrowIfNull(share);
+        return $"{share.Name} {SharePercent(share.Percent)}";
+    }
 
     /// <summary>A share as a whole percentage; a share above zero and below the <see cref="SmallShareBound" /> as <c>&lt;1 %</c>.</summary>
     public static string SharePercent(double percent) =>
         percent is > 0 and < SmallShareBound
-            ? "<1" + PercentSign
+            ? BelowOneMark + PercentSign
             : Math.Round(percent).ToString(WholeFormat, CultureInfo.InvariantCulture) + PercentSign;
 
     /// <summary>
@@ -178,7 +197,7 @@ public static class BuildText
     public static string ShareTitle(LanguageShare share)
     {
         ArgumentNullException.ThrowIfNull(share);
-        return $"{share.Name}: {LinesTitle(share)}, {SharePercent(share.Percent)}";
+        return $"{share.Name}: {LinesTitle(share)}{ListSeparator}{SharePercent(share.Percent)}";
     }
 
     /// <summary>

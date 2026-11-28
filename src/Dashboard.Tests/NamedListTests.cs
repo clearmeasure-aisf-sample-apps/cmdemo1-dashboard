@@ -47,6 +47,14 @@ public class NamedListTests
         Assert.Equal(expected, NamedList.More(count, most));
 
     [Fact]
+    public void TwoNamesJoinWithTheAndLeadAndNoComma() =>
+        Assert.Equal("a and b", NamedList.Join(["a", "b"]));
+
+    [Fact]
+    public void ThreeNamesPutTheCommaOnlyBetweenTheLeadingNames() =>
+        Assert.DoesNotContain(", and", NamedList.Join(["a", "b", "c"]));
+
+    [Fact]
     public void ThreeNamesJoinWithTheCommaSeparatorAndTheAndLead() =>
         Assert.Equal("a, b and c", NamedList.Join(["a", "b", "c"]));
 

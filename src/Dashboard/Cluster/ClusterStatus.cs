@@ -28,6 +28,18 @@ public sealed record ClusterStatus(
     /// <summary>The cluster file's top-level list word for its namespaces.</summary>
     private const string NamespacesWord = "namespaces";
 
+    /// <summary>A node's Ready condition and a pod's all-containers-ready flag.</summary>
+    internal const string ReadyWord = "ready";
+
+    /// <summary>A node's pod-count object and a namespace's pod list.</summary>
+    internal const string PodsWord = "pods";
+
+    /// <summary>A pod's phase and a volume claim's phase.</summary>
+    internal const string PhaseWord = "phase";
+
+    /// <summary>A node's pod capacity and a volume claim's size in bytes.</summary>
+    internal const string CapacityWord = "capacity";
+
     /// <summary>A file is stale when it is older than this many of the collector's intervals.</summary>
     public const int StaleIntervals = 4;
 
@@ -151,10 +163,10 @@ public sealed record ClusterNode(
 
     internal static ClusterNode Read(string name, JsonElement element)
     {
-        var pods = JsonRead.Section(element, "pods");
+        var pods = JsonRead.Section(element, ClusterStatus.PodsWord);
         return new ClusterNode(
             name,
-            JsonRead.Flag(element, "ready") ?? false,
+            JsonRead.Flag(element, ClusterStatus.ReadyWord) ?? false,
             [.. JsonRead.Items(element, "pressures")
                 .Where(pressure => pressure.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(pressure.GetString()))
                 .Select(pressure => pressure.GetString()!.Trim())],
@@ -167,7 +179,7 @@ public sealed record ClusterNode(
             ResourceUse.Of(element, ResourceUse.CpuWord),
             ResourceUse.Of(element, ResourceUse.MemoryWord),
             JsonRead.Count(pods, "count"),
-            JsonRead.Count(pods, "capacity"));
+            JsonRead.Count(pods, ClusterStatus.CapacityWord));
     }
 }
 
@@ -184,7 +196,7 @@ public sealed record ClusterNamespace(string Name, IReadOnlyList<ClusterPod> Pod
     internal static ClusterNamespace Read(string name, JsonElement element) =>
         new(
             name,
-            JsonRead.Named(element, "pods", ClusterPod.Read),
+            JsonRead.Named(element, ClusterStatus.PodsWord, ClusterPod.Read),
             JsonRead.Named(element, "volumes", ClusterVolume.Read));
 }
 
@@ -230,8 +242,8 @@ public sealed record ClusterPod(
             Workload: JsonRead.Text(element, "workload"),
             Kind: JsonRead.Text(element, "kind"),
             Node: JsonRead.Text(element, "node"),
-            Phase: JsonRead.Text(element, "phase") ?? Unknown,
-            Ready: JsonRead.Flag(element, "ready") ?? false,
+            Phase: JsonRead.Text(element, ClusterStatus.PhaseWord) ?? Unknown,
+            Ready: JsonRead.Flag(element, ClusterStatus.ReadyWord) ?? false,
             Containers: JsonRead.Count(element, "containers"),
             ContainersReady: JsonRead.Count(element, "containersReady"),
             Restarts: JsonRead.Count(element, "restarts") ?? 0,
@@ -247,7 +259,7 @@ public sealed record ClusterPod(
 public sealed record ClusterVolume(string Name, double? Capacity, string? Phase)
 {
     internal static ClusterVolume Read(string name, JsonElement element) =>
-        new(name, JsonRead.Number(element, "capacity"), JsonRead.Text(element, "phase"));
+        new(name, JsonRead.Number(element, ClusterStatus.CapacityWord), JsonRead.Text(element, ClusterStatus.PhaseWord));
 }
 
 /// <summary>The pod phases of Kubernetes the page tells apart; <see cref="Other"/> for any other word.</summary>

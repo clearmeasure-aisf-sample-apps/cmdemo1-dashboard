@@ -1,3 +1,4 @@
+using System.Globalization;
 using static Dashboard.Tests.ClusterFixture;
 
 namespace Dashboard.Tests;
@@ -126,6 +127,46 @@ public class ClusterAssessmentTests
         Assert.Equal("a; b; c", ClusterAssessment.Named(["a", "b", "c"]));
         Assert.Equal("a; b; c; and 1 more", ClusterAssessment.Named(["a", "b", "c", "d"]));
         Assert.Equal("a", ClusterAssessment.Named(["a"]));
+    }
+
+    [Fact]
+    public void AnEmptyListIsNamedAsAnEmptyString()
+    {
+        Assert.Equal(string.Empty, ClusterAssessment.Named(Array.Empty<string>()));
+    }
+
+    [Fact]
+    public void ExactlyNamedProblemsItemsGiveNoMoreClause()
+    {
+        Assert.Equal("a; b; c", ClusterAssessment.Named(["a", "b", "c"]));
+        Assert.Equal("a; b; c; and 2 more", ClusterAssessment.Named(["a", "b", "c", "d", "e"]));
+    }
+
+    [Fact]
+    public void ACountOfExtraItemsHasNoGroupSeparatorUnderANonInvariantThreadCulture()
+    {
+        var culture = CultureInfo.GetCultureInfo("fi-FI");
+        var previous = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = culture;
+            var items = Enumerable.Range(0, ClusterAssessment.NamedProblems + 1000).Select(i => $"p{i}").ToList();
+            var result = ClusterAssessment.Named(items);
+            // The count must use invariant digits: fi-FI would group 1000 with a non-breaking space (U+00A0); the plain form must stand.
+            Assert.EndsWith($"; and {1000} more", result);
+            Assert.DoesNotContain("\u00a0", result);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
+
+    [Fact]
+    public void ANullListThrowsArgumentNullExceptionWithParamNameItems()
+    {
+        var error = Assert.Throws<ArgumentNullException>(() => ClusterAssessment.Named(null!));
+        Assert.Equal("items", error.ParamName);
     }
 
     [Fact]

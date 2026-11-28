@@ -1,4 +1,3 @@
-using System.Globalization;
 using Dashboard.Health;
 
 namespace Dashboard.Cluster;
@@ -365,9 +364,9 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
     public static string Named(IReadOnlyList<string> items)
     {
         ArgumentNullException.ThrowIfNull(items);
-        var named = string.Join("; ", items.Take(NamedProblems));
-        return items.Count > NamedProblems
-            ? string.Create(CultureInfo.InvariantCulture, $"{named}; and {items.Count - NamedProblems} more")
+        var named = string.Join("; ", NamedList.Named(items, NamedProblems));
+        return NamedList.More(items.Count, NamedProblems) is { } more
+            ? $"{named}; and {more}"
             : named;
     }
 

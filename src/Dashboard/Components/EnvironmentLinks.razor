@@ -47,5 +47,5 @@
 
     private bool HasPages => Pages is { Count: > 0 };
 
-    private string Label => LinkText.Group(Environment, HasLinks, HasPages);
+    private string Label => LinkText.EnvironmentGroup(Environment, HasLinks, HasPages);
 }

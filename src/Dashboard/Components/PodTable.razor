@@ -49,7 +49,7 @@ else
                             <td>@(pod.Kind ?? None)</td>
                             <td>
                                 <span title="@ClusterText.PodContainers(pod)">
-                                    <ClusterBadge State="StateOf(row.State)" Label="@ClusterText.PodWords(pod, row.State, AsOf)" Quiet="true" />
+                                    <ClusterBadge State="ClusterText.PodBadge(row.State)" Label="@ClusterText.PodWords(pod, row.State, AsOf)" Quiet="true" />
                                 </span>
                             </td>
                             <td class="grid__number @(pod.Restarts > 0 && row.State == PodState.Unhealthy ? "grid__warn" : null)">@BuildText.Count(pod.Restarts)</td>
@@ -101,12 +101,4 @@ else
 
     [Parameter, EditorRequired]
     public TimeZoneInfo Zone { get; set; } = default!;
-
-    private static ClusterState StateOf(PodState state) => state switch
-    {
-        PodState.Ready => ClusterState.Healthy,
-        PodState.Starting => ClusterState.Checking,
-        PodState.Unhealthy => ClusterState.Unhealthy,
-        _ => ClusterState.Neutral,
-    };
 }

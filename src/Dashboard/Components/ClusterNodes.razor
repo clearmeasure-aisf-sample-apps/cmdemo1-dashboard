@@ -30,7 +30,7 @@
                             <th scope="row" class="grid__name">@node.Name</th>
                             <td>
                                 <span class="grid__chips">
-                                    <ClusterBadge State="@(node.Ready ? ClusterState.Healthy : ClusterState.Unreachable)" Label="@(node.Ready ? "Ready" : "NotReady")" Quiet="true" />
+                                    <ClusterBadge State="@ClusterText.NodeBadge(node)" Label="@ClusterText.NodeWords(node)" Quiet="true" />
                                     @foreach (var pressure in node.Pressures)
                                     {
                                         <span class="chip chip--warn" title="@($"The node reports the condition {pressure}")">

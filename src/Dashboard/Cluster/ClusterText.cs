@@ -245,6 +245,12 @@ public static class ClusterText
         return $"{pod.Label} in {space}";
     }
 
+    /// <summary>The word the badge says when a pod is ready and the word a ready node's badge says.</summary>
+    private const string ReadyWord = "Ready";
+
+    /// <summary>The Kubernetes condition word the badge says when a node is not ready.</summary>
+    private const string NotReadyWord = "NotReady";
+
     /// <summary>
     /// A pod's state in the words of its row: <c>Ready</c>, <c>Finished</c>, <c>Starting</c>, and for an unhealthy one
     /// its reason, or what its phase says (<c>CrashLoopBackOff</c>, <c>Pending for 12 min</c>, <c>Not ready</c>).
@@ -255,7 +261,7 @@ public static class ClusterText
         var phase = new PodPhase(pod.Phase);
         return state switch
         {
-            PodState.Ready => "Ready",
+            PodState.Ready => ReadyWord,
             PodState.Finished => "Finished",
             PodState.Starting => $"Starting{Reason(pod.Reason)}",
             _ when phase.Is(PodPhaseKind.Pending) => Age(pod.StartedAt, asOf) is { } age
@@ -264,6 +270,32 @@ public static class ClusterText
             _ when phase.Is(PodPhaseKind.Running) => TextReason.Said(pod.Reason) ?? "Not ready",
             _ => TextReason.Said(pod.Reason) ?? pod.Phase,
         };
+    }
+
+    /// <summary>
+    /// The state of a pod's badge: healthy when ready, checking while starting, unhealthy otherwise - and neutral
+    /// for a finished job, which is no problem.
+    /// </summary>
+    public static ClusterState PodBadge(PodState state) => state switch
+    {
+        PodState.Ready => ClusterState.Healthy,
+        PodState.Starting => ClusterState.Checking,
+        PodState.Unhealthy => ClusterState.Unhealthy,
+        _ => ClusterState.Neutral,
+    };
+
+    /// <summary>The state of a node's badge: healthy when the node is ready, unreachable when it is not.</summary>
+    public static ClusterState NodeBadge(ClusterNode node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        return node.Ready ? ClusterState.Healthy : ClusterState.Unreachable;
+    }
+
+    /// <summary>The word of a node's badge: <c>Ready</c> or the Kubernetes condition word <c>NotReady</c>.</summary>
+    public static string NodeWords(ClusterNode node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        return node.Ready ? ReadyWord : NotReadyWord;
     }
 
     /// <summary>

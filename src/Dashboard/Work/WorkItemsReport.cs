@@ -509,7 +509,7 @@ public sealed record WorkItem(
             [.. JsonRead.Items(element, "columnHistory").Select(ColumnVisit.Read).OfType<ColumnVisit>()],
             JsonRead.Text(element, "assignee"),
             JsonRead.Text(element, "agent"),
-            Addresses(element, "cursorSessions"),
+            JsonRead.Addresses(element, "cursorSessions"),
             [.. JsonRead.Items(element, "prs").Select(WorkPullRequest.Read).OfType<WorkPullRequest>()],
             ReleaseCandidate.Read(JsonRead.Section(element, "releaseCandidate")),
             WorkItemEnvironments.Read(JsonRead.Section(element, "environments")),
@@ -518,20 +518,6 @@ public sealed record WorkItem(
             ItemRework(element),
             Note(element));
         return ReadParts.Said(item.Identity.Number, item.Identity.Title, item.Identity.Url, item.Identity.Column) ? item : null;
-    }
-
-    private static List<Uri> Addresses(JsonElement parent, string name)
-    {
-        var addresses = new List<Uri>();
-        foreach (var item in JsonRead.Items(parent, name))
-        {
-            if (item.ValueKind == JsonValueKind.String && JsonRead.Address(item.GetString()) is { } address)
-            {
-                addresses.Add(address);
-            }
-        }
-
-        return addresses;
     }
 
     private static WorkWorker ReadWorker(JsonElement element) => WorkAudienceWords.WorkerOf(JsonRead.Text(element, "worker"));

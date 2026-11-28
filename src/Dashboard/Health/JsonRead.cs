@@ -78,7 +78,19 @@ internal static class JsonRead
     public static List<string> Names(JsonElement? parent, string name) =>
         [.. Items(parent, name).Where(item => item.ValueKind == JsonValueKind.String).Select(item => item.GetString()!).Where(text => text.Length > 0)];
 
+    /// <summary>
+    /// The absolute http or https addresses of the list under <paramref name="name"/>, in the order written: a string
+    /// entry that is no such address - a relative one, a scripted one, an empty one - is left out, as is an entry that
+    /// is not a string. An empty list without the array, or when it holds no address: the list is the reading, as in
+    /// <see cref="Names" />. The entries are not trimmed - <see cref="Address(string?)" /> asks <see cref="Uri.TryCreate(Uri?, UriKind)" />
+    /// for it, and <see cref="Uri" /> strips only its own set of whitespace - so a padded entry is kept or left out as
+    /// <see cref="Address(JsonElement)" /> would not: that one trims first, through <see cref="Word" />.
+    /// </summary>
+    public static List<Uri> Addresses(JsonElement? parent, string name) =>
+        [.. Items(parent, name).Where(item => item.ValueKind == JsonValueKind.String).Select(item => Address(item.GetString())).Where(address => address is not null).Select(address => address!)];
+
     /// <summary>A number that is not negative; null for anything else.</summary>
+
     public static double? Number(JsonElement? parent, string name) =>
         Signed(parent, name) is { } real and >= 0 ? real : null;
 

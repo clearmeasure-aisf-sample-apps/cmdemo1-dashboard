@@ -471,6 +471,78 @@ public class JsonReadTests
     public void NamesOnANullParentIsEmpty() =>
         Assert.Empty(JsonRead.Names(null, "environments"));
 
+    // ----- The addresses of a list -----
+
+    /// <summary>
+    /// The addresses of the list: the absolute http or https entries, in the order written; a non-string entry, a
+    /// relative address, a scripted one, and the empty word are left out. Unlike <see cref="JsonRead.Strings"/>, the
+    /// reading is the list, not a word of it: without an array, or when it holds no address, the answer is an empty
+    /// list the record keeps, not a <c>null</c>. The entries are not trimmed before <see cref="JsonRead.Address(string?)" />
+    /// asks <see cref="Uri.TryCreate(Uri?, UriKind)" /> for them: <see cref="Uri" /> strips only its own set of whitespace,
+    /// and a padded entry is kept as the address it is, not refused.
+    /// </summary>
+    [Fact]
+    public void TheAddressesOfAListAreItsHttpOrHttpsEntriesInTheOrderWritten()
+    {
+        var addresses = JsonRead.Addresses(Root("""{ "links": [ "https://a.example/", "http://b.example/x", "/relative", "javascript:alert(1)", "", 7, null, true, {}, [], "https://c.example/" ] }"""), "links");
+
+        Assert.Equal(["https://a.example/", "http://b.example/x", "https://c.example/"], addresses.Select(uri => uri.AbsoluteUri));
+    }
+
+    /// <summary>
+    /// A string entry padded with ASCII spaces is kept: <see cref="Uri.TryCreate(Uri?, UriKind)" /> strips the spaces
+    /// itself, and the address it makes is the one the file meant. The padding is not trimmed away by the reader -
+    /// <see cref="JsonRead.Address(JsonElement)" /> would refuse it through <c>Word</c> - but <see cref="JsonRead.Address(string?)" />
+    /// asks <see cref="Uri.TryCreate(Uri?, UriKind)" /> for the entry as written.
+    /// </summary>
+    [Fact]
+    public void AnAddressPaddedWithAsciiSpacesIsKeptBecauseUriStripsItsOwnWhitespace()
+    {
+        var addresses = JsonRead.Addresses(Root("""{ "links": [ "  https://a.example/  " ] }"""), "links");
+
+        Assert.Single(addresses);
+        Assert.Equal("https://a.example/", addresses[0].AbsoluteUri);
+    }
+
+    /// <summary>
+    /// A string entry padded with a non-breaking space (U+00A0) is left out: <see cref="Uri.TryCreate(Uri?, UriKind)" />
+    /// does not strip it, so the entry is no address as written. This is the one the reader does not fix -
+    /// <see cref="JsonRead.Address(JsonElement)" /> would trim it and keep the address, but the list's reading hands
+    /// the entry to <see cref="JsonRead.Address(string?)" /> untrimmed, and the address it is not is left out.
+    /// </summary>
+    [Fact]
+    public void AnAddressPaddedWithANonBreakingSpaceIsLeftOutBecauseUriDoesNotStripIt()
+    {
+        var addresses = JsonRead.Addresses(Root("""{ "links": [ "\u00A0https://a.example/\u00A0" ] }"""), "links");
+
+        Assert.Empty(addresses);
+    }
+
+    /// <summary>
+    /// The answer of the reading is a list, empty when the field is not an array or holds no address - never a
+    /// <c>null</c>, which is what the record that keeps it expects, as in <see cref="JsonRead.Names" />.
+    /// </summary>
+    [Theory]
+    [InlineData("""{ }""")] // no such name
+    [InlineData("""{ "links": [] }""")] // an array with nothing in it
+    [InlineData("""{ "links": [ "" ] }""")] // the empty word only
+    [InlineData("""{ "links": [ "   " ] }""")] // spaces only
+    [InlineData("""{ "links": [ "/relative" ] }""")] // a path, not an address
+    [InlineData("""{ "links": [ "javascript:alert(1)" ] }""")] // a scripted one
+    [InlineData("""{ "links": [ "ftp://a.example/" ] }""")] // another scheme
+    [InlineData("""{ "links": [ 7, null, true, {}, [] ] }""")] // nothing that is a string
+    [InlineData("""{ "links": { "a": 1 } }""")] // an object, not an array
+    [InlineData("""{ "links": "https://a.example/" }""")] // text, not an array
+    [InlineData("""{ "links": 7 }""")] // a number, not an array
+    [InlineData("""{ "links": null }""")]
+    public void AnythingElseIsNoAddresses(string json) =>
+        Assert.Empty(JsonRead.Addresses(Root(json), "links"));
+
+    /// <summary>A null parent is no object, and its reading is an empty list, as the record that keeps it expects.</summary>
+    [Fact]
+    public void AddressesOnANullParentIsEmpty() =>
+        Assert.Empty(JsonRead.Addresses(null, "links"));
+
     // ----- Root: the object a file's text stands as -----
 
     private sealed record Rooted(string? Answer);

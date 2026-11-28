@@ -34,8 +34,8 @@ public sealed record ContainerAppReports(string Name, HourlyCheck? Last, HealthW
             ? new ContainerAppReports(
                 name,
                 HourlyCheck.Read(JsonRead.Section(element, "last")),
-                HealthWindow.Read(JsonRead.Section(element, "last24Hours")),
-                HealthWindow.Read(JsonRead.Section(element, "last7Days")))
+                HealthWindow.Read(JsonRead.Section(element, HealthWindow.DayWord)),
+                HealthWindow.Read(JsonRead.Section(element, HealthWindow.WeekWord)))
             : null;
 }
 

@@ -425,11 +425,23 @@ public sealed record WorkNote(string? Text, Uri? Url, DateTimeOffset? At, string
     /// <summary>The heading shown over a status note, and over a note of any other kind.</summary>
     internal const string StatusHeading = "Status";
 
+    /// <summary>The feed's word for the note's words.</summary>
+    internal const string TextWord = "text";
+
+    /// <summary>The feed's word for the note's page. The note is not a board item, so it names its own page rather than <see cref="WorkItemIdentity.UrlWord" />.</summary>
+    internal const string UrlWord = "url";
+
+    /// <summary>The feed's word for when the note was written.</summary>
+    internal const string AtWord = "at";
+
+    /// <summary>The feed's word for whether the note is a status or a blocker.</summary>
+    internal const string KindWord = "kind";
+
     internal static WorkNote? Read(JsonElement? section)
     {
-        var text = JsonRead.Text(section, "text") ?? JsonRead.Text(section, "comment") ?? JsonRead.Text(section, "summary");
-        var url = JsonRead.Address(section, "url");
-        var at = JsonRead.Time(section, "at");
+        var text = JsonRead.Text(section, TextWord) ?? JsonRead.Text(section, "comment") ?? JsonRead.Text(section, "summary");
+        var url = JsonRead.Address(section, UrlWord);
+        var at = JsonRead.Time(section, AtWord);
         return ReadParts.Said(text, url, at) ? new WorkNote(text, url, at) : null;
     }
 }
@@ -552,10 +564,10 @@ public sealed record WorkItem(
     /// <summary><c>latestStatusComment</c>: a link, when it was written, and whether it is a status or a blocker.</summary>
     private static WorkNote? StatusComment(JsonElement? section)
     {
-        var kind = JsonRead.Text(section, "kind");
-        var url = JsonRead.Address(section, "url");
-        var at = JsonRead.Time(section, "at");
-        var text = JsonRead.Text(section, "text");
+        var kind = JsonRead.Text(section, WorkNote.KindWord);
+        var url = JsonRead.Address(section, WorkNote.UrlWord);
+        var at = JsonRead.Time(section, WorkNote.AtWord);
+        var text = JsonRead.Text(section, WorkNote.TextWord);
         if (!ReadParts.Said(kind, url, at, text))
         {
             return null;

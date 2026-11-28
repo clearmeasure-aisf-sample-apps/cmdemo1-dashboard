@@ -23,6 +23,9 @@ public static class RuntimeBoxLink
 
     public const string NewTabSuffix = " (opens in a new tab)";
 
+    /// <summary>The title of a link to an address a browser opens: <c>ca-web: ca-web.example.io, as a browser opens it (opens in a new tab)</c>.</summary>
+    public static string SiteTitle(string name, Uri address) => $"{name}: {address.Host}, as a browser opens it{NewTabSuffix}";
+
     /// <summary>The keys, the most specific place first: a box with several links leads to the first it has.</summary>
     private static readonly string[] Order = [LinkSet.Portal, Resources, Namespaces, LinkSet.Workloads, Project, Site];
 
@@ -78,7 +81,7 @@ public static class RuntimeBoxLink
                     Namespaces => LinkText.Portal($"The namespaces of the cluster in the Azure portal: {name} is one of them"),
                     LinkSet.Workloads => LinkText.Portal($"The workloads of the cluster in the Azure portal: {name} is one of them"),
                     Project => $"The project that deploys {name} in Octopus Deploy{LinkText.OctopusSuffix}",
-                    _ => $"{name}: {address.Host}, as a browser opens it{NewTabSuffix}",
+                    _ => SiteTitle(name, address),
                 });
             }
         }

@@ -404,7 +404,7 @@ public static class ApplicationText
             ? ViewLink.To(
                 site,
                 alone ? LinkText.OpenTheApp : LinkText.Open(box.Name),
-                $"{box.Name}: {site.Host}, as a browser opens it{RuntimeBoxLink.NewTabSuffix}")
+                RuntimeBoxLink.SiteTitle(box.Name, site))
             : null;
 
     /// <summary>

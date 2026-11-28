@@ -55,11 +55,11 @@ else
                             <td class="grid__number @(pod.Restarts > 0 && row.State == PodState.Unhealthy ? "grid__warn" : null)">@BuildText.Count(pod.Restarts)</td>
                             <td>
                                 <UseCell Value="@ClusterText.CpuUse(pod.Cpu)" Percent="ClusterText.Share(pod.Cpu.Usage, pod.Cpu.Limits)"
-                                         Label="@($"CPU of {pod.Name} against its limit")" />
+                                         Label="@ClusterText.PodCpuLabel(pod)" />
                             </td>
                             <td>
                                 <UseCell Value="@ClusterText.MemoryUse(pod.Memory)" Percent="ClusterText.Share(pod.Memory.Usage, pod.Memory.Limits)"
-                                         Label="@($"Memory of {pod.Name} against its limit")" />
+                                         Label="@ClusterText.PodMemoryLabel(pod)" />
                             </td>
                             <td>
                                 @if (pod.StartedAt is { } started)

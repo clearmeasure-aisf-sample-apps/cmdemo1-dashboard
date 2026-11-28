@@ -330,19 +330,26 @@ public static class ApplicationText
     public static string? ProblemLine(string deployable, string version, ApplicationRead read) => read switch
     {
         { State: ApplicationReadState.Failed, Problems.Count: > 0 } =>
-            $"The architecture diagram of {deployable} {version} could not be read: {string.Join("; ", read.Problems)}",
-        { State: ApplicationReadState.Failed } => $"The architecture diagram of {deployable} {version} could not be read.",
-        { State: ApplicationReadState.Missing } => $"No architecture diagram of {deployable} {version} yet: its repository publishes one with each release.",
+            $"{NotReadLead(deployable, version)}: {string.Join("; ", read.Problems)}",
+        { } => ProblemLine(deployable, version, read.State),
         _ => null,
     };
 
     /// <summary>The line of a version whose file did not answer, by its state alone; null for one that was read.</summary>
     public static string? ProblemLine(string deployable, string version, ApplicationReadState state) => state switch
     {
-        ApplicationReadState.Missing => $"No architecture diagram of {deployable} {version} yet: its repository publishes one with each release.",
-        ApplicationReadState.Failed => $"The architecture diagram of {deployable} {version} could not be read.",
+        ApplicationReadState.Missing => NotYetLine(deployable, version),
+        ApplicationReadState.Failed => $"{NotReadLead(deployable, version)}.",
         _ => null,
     };
+
+    /// <summary>The lead of the Failed line: <c>The architecture diagram of ui 1.0.42 could not be read</c>.</summary>
+    private static string NotReadLead(string deployable, string version) =>
+        $"The architecture diagram of {deployable} {version} could not be read";
+
+    /// <summary>The Missing line: <c>No architecture diagram of ui 1.0.42 yet: its repository publishes one with each release.</c></summary>
+    private static string NotYetLine(string deployable, string version) =>
+        $"No architecture diagram of {deployable} {version} yet: its repository publishes one with each release.";
 
     /// <summary>The line of a version the page asks no file for.</summary>
     public static string RefusedLine(string deployable) => $"The version of {deployable} names no file: no diagram is asked for.";

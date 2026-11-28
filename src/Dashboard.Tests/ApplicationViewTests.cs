@@ -476,6 +476,35 @@ public partial class ApplicationViewTests
         Assert.Null(ApplicationText.ProblemLine("ui", "1.0.42", ApplicationRead.Read(ApplicationParser.Parse("{ }")!)));
     }
 
+    [Theory]
+    [InlineData(ApplicationReadState.Read)]
+    [InlineData(ApplicationReadState.Missing)]
+    [InlineData(ApplicationReadState.Failed)]
+    public void TheReadOverloadAndTheStateOverloadSayTheSameForEveryState(ApplicationReadState state)
+    {
+        Assert.Equal(
+            ApplicationText.ProblemLine("ui", "1.0.42", state),
+            ApplicationText.ProblemLine("ui", "1.0.42", new ApplicationRead(state, null, [])));
+    }
+
+    [Fact]
+    public void AMissingReadThatCarriesProblemsStillSaysTheMissingSentence()
+    {
+        var read = new ApplicationRead(ApplicationReadState.Missing, null, ["a", "b"]);
+        Assert.Equal(
+            "No architecture diagram of ui 1.0.42 yet: its repository publishes one with each release.",
+            ApplicationText.ProblemLine("ui", "1.0.42", read));
+    }
+
+    [Fact]
+    public void AFailedReadWithProblemsStartsWithTheFailedLeadAndJoinsWithSemicolon()
+    {
+        var read = ApplicationRead.Failed("first problem", "second problem");
+        var line = ApplicationText.ProblemLine("ui", "1.0.42", read);
+        Assert.StartsWith("The architecture diagram of ui 1.0.42 could not be read: ", line);
+        Assert.EndsWith("first problem; second problem", line);
+    }
+
     [Fact]
     public void TheFileOfAVersionIsAskedForOnceAndAgainOnlyForAnotherVersion()
     {

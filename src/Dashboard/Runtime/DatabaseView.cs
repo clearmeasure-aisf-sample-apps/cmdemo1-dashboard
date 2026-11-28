@@ -73,6 +73,24 @@ public static class DatabaseParser
     /// <summary>The file word of the flag that the database has more tables than are listed.</summary>
     private const string TruncatedField = "truncated";
 
+    /// <summary>The file word of the environment's name, required in the manifest.</summary>
+    private const string EnvironmentField = "environment";
+
+    /// <summary>The file word of the database's name, required in the manifest.</summary>
+    private const string DatabaseField = "database";
+
+    /// <summary>The file word of when the deployment read the schema.</summary>
+    private const string ReadAtField = "readAt";
+
+    /// <summary>The file word of how many tables the diagram draws.</summary>
+    private const string DrawnField = "drawn";
+
+    /// <summary>The file word of the live file's address.</summary>
+    private const string SourceField = "source";
+
+    /// <summary>The file word of when the live file was written.</summary>
+    private const string GeneratedField = "generated";
+
     /// <summary>The manifest: its shape checked here, its names, its tables and the rest each read in their own step.</summary>
     public static RuntimeParseResult<DatabaseManifest> ParseManifest(string? json)
     {
@@ -99,16 +117,16 @@ public static class DatabaseParser
     /// <summary>The manifest's two required names; null, with a problem for each one missing, when either is.</summary>
     private static ManifestNames? ReadManifestFields(JsonElement root, List<string> errors)
     {
-        var environment = JsonRead.Text(root, "environment");
-        var database = JsonRead.Text(root, "database");
+        var environment = JsonRead.Text(root, EnvironmentField);
+        var database = JsonRead.Text(root, DatabaseField);
         if (environment is null)
         {
-            errors.Add(FileProblems.MissingOrEmpty("environment"));
+            errors.Add(FileProblems.MissingOrEmpty(EnvironmentField));
         }
 
         if (database is null)
         {
-            errors.Add(FileProblems.MissingOrEmpty("database"));
+            errors.Add(FileProblems.MissingOrEmpty(DatabaseField));
         }
 
         return environment is null || database is null ? null : new ManifestNames(environment, database);
@@ -119,11 +137,11 @@ public static class DatabaseParser
         new(
             names.Environment,
             names.Database,
-            JsonRead.Time(root, "readAt"),
+            JsonRead.Time(root, ReadAtField),
             Source(root),
             JsonRead.Flag(root, TruncatedField) ?? false,
             tables,
-            JsonRead.Count(root, "drawn") ?? tables.Count);
+            JsonRead.Count(root, DrawnField) ?? tables.Count);
 
     private readonly record struct ManifestNames(string Environment, string Database);
 
@@ -159,7 +177,7 @@ public static class DatabaseParser
                 tables.Add(new DatabaseLiveTable(JsonRead.Text(element, "schema") ?? string.Empty, name, JsonRead.Long(element, "rows"), columns));
             }
 
-            return new DatabaseLive(JsonRead.Time(root, "generated"), tables, JsonRead.Flag(root, TruncatedField) ?? false);
+            return new DatabaseLive(JsonRead.Time(root, GeneratedField), tables, JsonRead.Flag(root, TruncatedField) ?? false);
         }
     }
 
@@ -175,7 +193,7 @@ public static class DatabaseParser
 
     /// <summary>The live file is fetched by the page itself: only an absolute https address is kept.</summary>
     private static Uri? Source(JsonElement root) =>
-        JsonRead.Address(root, "source") is { } address && address.Scheme == Uri.UriSchemeHttps ? address : null;
+        JsonRead.Address(root, SourceField) is { } address && address.Scheme == Uri.UriSchemeHttps ? address : null;
 }
 
 /// <summary>The words of the database view, and what it decides: which count a table shows, whether the schema changed.</summary>

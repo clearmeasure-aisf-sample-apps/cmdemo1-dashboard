@@ -308,7 +308,7 @@ public static class DeploymentActivity
         var last = report.Recent.FirstOrDefault(recent => string.Equals(recent.Environment, environment, StringComparison.OrdinalIgnoreCase));
         if (last is not null && !marks.Any(mark => !mark.InFlight && string.Equals(mark.Project, last.Project, StringComparison.OrdinalIgnoreCase) && mark.Release == last.Release))
         {
-            lines.Add(Last(last, now, zone, $"last: {Sentence(last, now)}{By(last.StartedBy, ", started by ")}"));
+            lines.Add(Last(last, now, zone, $"last: {Sentence(last, now)}{By(last.StartedBy, StartedByLead)}"));
         }
 
         return lines;
@@ -332,7 +332,7 @@ public static class DeploymentActivity
                 return OfWait(deployment, now, age, title);
 
             case DeploymentState.Executing:
-                return new ActivityLine(ActivityKind.Deploying, $"deploying {deployment.Release}{After(age)}{By(deployment.StartedBy, ", by ")}", title, deployment.Url);
+                return new ActivityLine(ActivityKind.Deploying, $"deploying {deployment.Release}{After(age)}{By(deployment.StartedBy, ByLead)}", title, deployment.Url);
 
             case DeploymentState.Queued:
                 return new ActivityLine(ActivityKind.Queued, $"{deployment.Release} queued{After(age)}", title, deployment.Url);
@@ -360,7 +360,7 @@ public static class DeploymentActivity
         new(
             ActivityKind.OfResult(last.Result),
             words,
-            $"The last deployment of {last.Project} to {last.Environment} that ended: {Sentence(last, now)} ({TimeText.DateAndTime(last.Finished, zone)}){By(last.StartedBy, ", started by ")}.",
+            $"The last deployment of {last.Project} to {last.Environment} that ended: {Sentence(last, now)} ({TimeText.DateAndTime(last.Finished, zone)}){By(last.StartedBy, StartedByLead)}.",
             last.Url);
 
     /// <summary>
@@ -371,12 +371,22 @@ public static class DeploymentActivity
     private static string Brief(RecentDeployment last, DateTimeOffset now)
     {
         var result = Deployment.Ended(last.Result) ? ActivityKind.OfResult(last.Result) : last.ResultText;
-        return $"{last.Release} {result} {DeploymentText.Ago(now - last.Finished)}{By(last.StartedBy, " by ")}";
+        return $"{last.Release} {result} {DeploymentText.Ago(now - last.Finished)}{By(last.StartedBy, BriefByLead)}";
     }
 
+    /// <summary>The lead to who started a deployment, on the last ended deployment's line and its tooltip (<c>, started by ai-ops</c>).</summary>
+    private const string StartedByLead = ", started by ";
+
+    /// <summary>The lead to who started a deployment, on the line of a deployment that is executing (<c>, by ai-ops</c>).</summary>
+    private const string ByLead = ", by ";
+
+    /// <summary>The lead to who started a deployment, on a mark's brief words (<c> by ai-ops</c>).</summary>
+    private const string BriefByLead = " by ";
+
     /// <summary>
-    /// Who started a deployment, after the <paramref name="words"/> that lead to the name (<c>, by ai-ops</c>,
-    /// <c>, started by ai-ops</c>, <c> by ai-ops</c>); nothing when the file does not say.
+    /// Who started a deployment, after the <paramref name="words"/> that lead to the name
+    /// (<see cref="StartedByLead"/>, <see cref="ByLead"/>, <see cref="BriefByLead"/>; <c>, started by ai-ops</c>);
+    /// nothing when the file does not say.
     /// </summary>
     private static string By(string? startedBy, string words) => startedBy is { } who ? $"{words}{who}" : string.Empty;
 

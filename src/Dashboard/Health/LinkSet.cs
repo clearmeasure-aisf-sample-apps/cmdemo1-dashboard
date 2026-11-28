@@ -96,6 +96,29 @@ public static class LinkText
     public static string InPortal(string subject) => $"{subject} in the Azure portal";
 
     /// <summary>
+    /// The accessible name of the <c>resource-links</c> group of an environment: its resources in the Azure portal
+    /// and, when the topology names pages of the system for the environment, those pages too.
+    /// <para>
+    /// <c>Resources of tdd in the Azure portal, and pages of the system there</c> (links and pages),
+    /// <c>Pages of the system in tdd</c> (pages only),
+    /// <c>Resources of tdd in the Azure portal</c> (links only, or neither).
+    /// </para>
+    /// </summary>
+    /// <param name="environment">The name of the environment.</param>
+    /// <param name="hasLinks">Whether the topology names portal links the component will render.</param>
+    /// <param name="hasPages">Whether the topology names pages of the system for the environment.</param>
+    public static string EnvironmentGroup(string environment, bool hasLinks, bool hasPages)
+    {
+        ArgumentNullException.ThrowIfNull(environment);
+        return (hasLinks, hasPages) switch
+        {
+            (true, true) => $"{InPortal($"Resources of {environment}")}, and pages of the system there",
+            (false, true) => $"Pages of the system in {environment}",
+            _ => InPortal($"Resources of {environment}"),
+        };
+    }
+
+    /// <summary>
     /// The one table of a key of <see cref="LinkSet"/> to the sentence its tooltip says of a subject. A new link is one
     /// row here; a key with no row - <see cref="LinkSet.Workloads"/> among them - is said from the key by
     /// <see cref="SaidFromTheKey"/>.

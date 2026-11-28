@@ -93,6 +93,13 @@ public static class ApplicationParser
     private const int LongestText = 300;
     private const string NameField = "name";
     private const string EntryField = "entry";
+    private const string AssembliesField = "assemblies";
+    private const string PackagesField = "packages";
+    private const string ReferencesField = "references";
+    private const string KindField = "kind";
+    private const string ProcessField = "process";
+    private const string TruncatedField = "truncated";
+    private const string VersionField = "version";
 
     public static ApplicationArchitecture? Parse(string? json)
     {
@@ -105,27 +112,13 @@ public static class ApplicationParser
         {
             var root = document.RootElement;
             var entry = Text(root, EntryField);
-            var assemblies = new List<ApplicationAssembly>();
-            foreach (var element in JsonRead.Items(root, "assemblies").Take(MostAssemblies))
-            {
-                if (Text(element, NameField) is not { } name)
-                {
-                    continue;
-                }
+            var assemblies = JsonRead.Items(root, AssembliesField)
+                .Take(MostAssemblies)
+                .Select(element => Assembly(element, entry))
+                .OfType<ApplicationAssembly>()
+                .ToList();
 
-                var packages = JsonRead.Items(element, "packages")
-                    .Take(MostEntries)
-                    .Select(Package)
-                    .OfType<ApplicationPackage>()
-                    .ToList();
-                assemblies.Add(new ApplicationAssembly(
-                    name,
-                    JsonRead.Flag(element, EntryField) ?? string.Equals(name, entry, StringComparison.Ordinal),
-                    Strings(element, "references"),
-                    packages));
-            }
-
-            return new ApplicationArchitecture(Text(root, "kind"), Text(root, "process"), entry, assemblies, JsonRead.Flag(root, "truncated") ?? false);
+            return new ApplicationArchitecture(Text(root, KindField), Text(root, ProcessField), entry, assemblies, JsonRead.Flag(root, TruncatedField) ?? false);
         }
     }
 
@@ -135,7 +128,20 @@ public static class ApplicationParser
     private static string Shorten(string text) => Clip.At(text, LongestText);
 
     private static ApplicationPackage? Package(JsonElement package) =>
-        Text(package, NameField) is { } name ? new ApplicationPackage(name, Text(package, "version")) : null;
+        Text(package, NameField) is { } name ? new ApplicationPackage(name, Text(package, VersionField)) : null;
+
+    private static ApplicationAssembly? Assembly(JsonElement element, string? entry) =>
+        Text(element, NameField) is { } name
+            ? new ApplicationAssembly(
+                name,
+                JsonRead.Flag(element, EntryField) ?? string.Equals(name, entry, StringComparison.Ordinal),
+                Strings(element, ReferencesField),
+                JsonRead.Items(element, PackagesField)
+                    .Take(MostEntries)
+                    .Select(Package)
+                    .OfType<ApplicationPackage>()
+                    .ToList())
+            : null;
 
     private static List<string> Strings(JsonElement parent, string name) =>
     [

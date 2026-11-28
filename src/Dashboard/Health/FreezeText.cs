@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace Dashboard.Health;
 
 /// <summary>
@@ -28,12 +26,12 @@ public static class FreezeText
     /// frozen until Mon 00:00, and 1 more</c>, <c>... frozen from Sat 19:00 until Sun 19:00</c>.
     /// </summary>
     /// <param name="freeze">The first freeze to say: the one in force before the one that comes.</param>
-    /// <param name="count">How many freezes cover the environment; more than one is said as <c>, and N more</c>.</param>
+    /// <param name="count">How many freezes cover the environment; the rest after the one named are said as <c>, and N more</c> by <see cref="NamedList.More(int, int)"/>.</param>
     public static string Sentence(DeploymentFreeze freeze, int count, DateTimeOffset now, TimeZoneInfo zone)
     {
         ArgumentNullException.ThrowIfNull(freeze);
         ArgumentNullException.ThrowIfNull(zone);
-        var more = count > 1 ? string.Create(CultureInfo.InvariantCulture, $", and {count - 1} more") : string.Empty;
+        var more = NamedList.More(count, NamedFreezes) is { } rest ? $", and {rest}" : string.Empty;
         var from = freeze.InForceAt(now) ? string.Empty : $" from {DeploymentActivity.When(Begins(freeze), now, zone)}";
         return $"deployment freeze {freeze.Name}: {Words(freeze.Projects)} frozen{from} until {DeploymentActivity.When(freeze.To, now, zone)}{more}";
     }
@@ -68,4 +66,9 @@ public static class FreezeText
     /// that names no projects covers the system as a whole.
     /// </summary>
     private static string Words(IReadOnlyList<string> names) => names.Count == 0 ? "the system" : string.Join(", ", names);
+
+    /// <summary>
+    /// How many freezes the sentence names one by one: it says the first, then counts the rest with <see cref="NamedList.More(int, int)"/>.
+    /// </summary>
+    private const int NamedFreezes = 1;
 }

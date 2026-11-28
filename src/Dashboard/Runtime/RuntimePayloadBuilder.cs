@@ -109,7 +109,7 @@ public static class RuntimePayloadBuilder
     private const int CheckNameLength = 14;
 
     /// <summary>The mark between the parts of one tile line: `120 req/min · p95 40 ms`.</summary>
-    private const string PartSeparator = " · ";
+    internal const string PartSeparator = " · ";
 
     /// <summary>The mark between the app names a reachable title speaks: `app1, app2`.</summary>
     private const string NameSeparator = ", ";

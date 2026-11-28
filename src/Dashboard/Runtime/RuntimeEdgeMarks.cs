@@ -37,7 +37,7 @@ internal static class RuntimeEdgeMarks
             : "when priority 1 is down";
         var state = to is null ? EdgeState.Neutral : Carries(to);
         var telemetry = to?.Target.Telemetry;
-        var text = telemetry is { FrontDoorProbes: > 0 } ? string.Create(CultureInfo.InvariantCulture, $"{role} · {telemetry.FrontDoorProbes} probes") : role;
+        var text = telemetry is { FrontDoorProbes: > 0 } ? string.Create(CultureInfo.InvariantCulture, $"{role}{RuntimePayloadBuilder.PartSeparator}{telemetry.FrontDoorProbes} probes") : role;
         var counted = Counted(CallsWord, telemetry is null
             ? null
             : string.Create(CultureInfo.InvariantCulture, $"{telemetry.FromFrontDoor} requests forwarded by Front Door, {telemetry.FrontDoorProbes} Front Door health probes"));
@@ -62,7 +62,7 @@ internal static class RuntimeEdgeMarks
 
         var state = CallerState(from);
         var telemetry = from?.Target.Telemetry;
-        var latency = telemetry?.SqlP95Ms is { } p95 ? string.Create(CultureInfo.InvariantCulture, $", p95 {p95} ms") : string.Empty;
+        var latency = telemetry?.SqlP95Ms is { } p95 ? string.Create(CultureInfo.InvariantCulture, $", p95 {HistoryText.Milliseconds(p95)}") : string.Empty;
         var counted = Counted(QueriesWord, telemetry switch
         {
             null => null,
@@ -76,7 +76,7 @@ internal static class RuntimeEdgeMarks
             State: state.Word(),
             Number: Number(telemetry?.SqlOfTraffic),
             Unit: RuntimePayloadBuilder.CallsUnit,
-            Text: telemetry is { SplitsSql: true } ? string.Create(CultureInfo.InvariantCulture, $"{Queries} · {telemetry.SqlBackground} background") : Queries,
+            Text: telemetry is { SplitsSql: true } ? string.Create(CultureInfo.InvariantCulture, $"{Queries}{RuntimePayloadBuilder.PartSeparator}{telemetry.SqlBackground} background") : Queries,
             Title: $"{edge.From} to the database. {state.Sentence()} {counted}",
             Link: from is null || telemetry is null ? null : RuntimeTargetLink.To(from.Target, LinkSet.Dependencies, from.Target.Name),
             Trend: from is null ? null : RuntimeTrend.Of(Trends.Sql(from.Target)));

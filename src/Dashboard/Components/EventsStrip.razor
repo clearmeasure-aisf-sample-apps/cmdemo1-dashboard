@@ -33,24 +33,10 @@
                 {
                     <li class="event event--@entry.Level.ToString().ToLowerInvariant()">
                         <time class="event__time" datetime="@TimeText.Iso(entry.At)">@TimeText.Clock(entry.At, Zone)</time>
-                        <span class="event__mark" title="@LevelWord(entry.Level)">
-                            @switch (entry.Level)
-                            {
-                                case EventLevel.Good:
-                                    <StateIcon State="HealthState.Healthy" />
-                                    break;
-                                case EventLevel.Warning:
-                                    <StateIcon State="HealthState.Unhealthy" />
-                                    break;
-                                case EventLevel.Problem:
-                                    <StateIcon State="HealthState.Unreachable" />
-                                    break;
-                                default:
-                                    <StateIcon State="HealthState.Pending" />
-                                    break;
-                            }
+                        <span class="event__mark" title="@EventText.LevelWord(entry.Level)">
+                            <StateIcon State="@EventText.Icon(entry.Level)" />
                         </span>
-                        <span class="event__where">@Where(entry)</span>
+                        <span class="event__where">@EventText.Where(entry)</span>
                         <span class="event__text">@entry.Text</span>
                     </li>
                 }
@@ -80,20 +66,4 @@
     /// <summary>True when a deployable answers a detailed health check: its entries are then among what the page observes.</summary>
     private bool HasHealthChecks =>
         Monitor.Topology.Environments.Any(environment => environment.Deployables.Any(deployable => deployable.HealthDetailPath is not null));
-
-    private static string Where(DashboardEvent entry) => (entry.Environment, entry.Node) switch
-    {
-        ({ } environment, { } node) => $"{environment} · {node}",
-        ({ } environment, null) => environment,
-        (null, { } node) => node,
-        _ => "page",
-    };
-
-    private static string LevelWord(EventLevel level) => level switch
-    {
-        EventLevel.Good => "Good news",
-        EventLevel.Warning => "Worth a look",
-        EventLevel.Problem => "A problem",
-        _ => "For information",
-    };
 }

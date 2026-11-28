@@ -101,6 +101,12 @@ public sealed record ResourceUse(double? Usage, double? Requests, double? Limits
 {
     public static ResourceUse None { get; } = new(null, null, null);
 
+    /// <summary>The word a node or a pod element uses for its CPU resource object.</summary>
+    internal const string CpuWord = "cpu";
+
+    /// <summary>The word a node or a pod element uses for its memory resource object.</summary>
+    internal const string MemoryWord = "memory";
+
     internal static ResourceUse Read(JsonElement? section) =>
         section is null
             ? None
@@ -109,6 +115,9 @@ public sealed record ResourceUse(double? Usage, double? Requests, double? Limits
                 Requests: JsonRead.Number(section, "requests"),
                 Limits: JsonRead.Number(section, "limits"),
                 Allocatable: JsonRead.Number(section, "allocatable"));
+
+    /// <summary>The resource of <paramref name="word" /> under <paramref name="element" />; <see cref="None" /> when the element does not say it.</summary>
+    internal static ResourceUse Of(JsonElement element, string word) => Read(JsonRead.Section(element, word));
 }
 
 /// <summary>One node of the cluster.</summary>
@@ -155,8 +164,8 @@ public sealed record ClusterNode(
             JsonRead.Text(element, "zone"),
             JsonRead.Text(element, "kubeletVersion"),
             JsonRead.Time(element, "createdAt"),
-            ResourceUse.Read(JsonRead.Section(element, "cpu")),
-            ResourceUse.Read(JsonRead.Section(element, "memory")),
+            ResourceUse.Of(element, ResourceUse.CpuWord),
+            ResourceUse.Of(element, ResourceUse.MemoryWord),
             JsonRead.Count(pods, "count"),
             JsonRead.Count(pods, "capacity"));
     }
@@ -228,8 +237,8 @@ public sealed record ClusterPod(
             Restarts: JsonRead.Count(element, "restarts") ?? 0,
             Reason: JsonRead.Text(element, "reason"),
             StartedAt: JsonRead.Time(element, "startedAt"),
-            Cpu: ResourceUse.Read(JsonRead.Section(element, "cpu")),
-            Memory: ResourceUse.Read(JsonRead.Section(element, "memory")));
+            Cpu: ResourceUse.Of(element, ResourceUse.CpuWord),
+            Memory: ResourceUse.Of(element, ResourceUse.MemoryWord));
 }
 
 /// <summary>One volume claim of a namespace.</summary>

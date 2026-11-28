@@ -60,6 +60,18 @@ public sealed record TrafficPlan(string Environment, IReadOnlyList<Uri> Addresse
     /// <summary>The rate words of the start sentence: <c>requests a second</c>.</summary>
     private const string PerSecondWords = "requests a second";
 
+    /// <summary>The length lead of the start sentence, before the run's seconds: <c> for </c>.</summary>
+    private const string ForWords = " for ";
+
+    /// <summary>The target lead of the start sentence, before the targets it calls: <c> to </c>.</summary>
+    private const string ToWords = " to ";
+
+    /// <summary>The separator the start sentence joins its targets with: <c>, </c>.</summary>
+    private const string TargetSeparator = ", ";
+
+    /// <summary>The words of a target between the deployable and its public host: <c> at </c>.</summary>
+    private const string AtWords = " at ";
+
     /// <summary>
     /// The event a press of the traffic button writes at its start: the rate and the length the run sends, then the
     /// targets it calls, joined the way a list is said: <c>Traffic started: 2 requests a second for 60 s to web at
@@ -68,7 +80,15 @@ public sealed record TrafficPlan(string Environment, IReadOnlyList<Uri> Addresse
     /// </summary>
     /// <param name="run">The press that started: its <see cref="TrafficRun.PerSecond"/> and <see cref="TrafficRun.Seconds"/> are the numbers said.</param>
     public string Started(TrafficRun run) =>
-        string.Create(CultureInfo.InvariantCulture, $"{StartedLead}{run.PerSecond} {PerSecondWords} for {run.Seconds} {TimeText.SecondsUnit} to {string.Join(", ", Targets)}");
+        string.Create(CultureInfo.InvariantCulture, $"{StartedLead}{run.PerSecond} {PerSecondWords}{ForWords}{run.Seconds} {TimeText.SecondsUnit}{ToWords}{string.Join(TargetSeparator, Targets)}");
+
+    /// <summary>
+    /// How the plan names one target it calls: the deployable at its public host, <c>ui at uat.example.net</c>. The one
+    /// home of the phrase <see cref="For"/> lists in <see cref="Targets"/>.
+    /// </summary>
+    /// <param name="deployable">The deployable's name.</param>
+    /// <param name="host">The host of its public address.</param>
+    public static string Target(string deployable, string host) => $"{deployable}{AtWords}{host}";
 
     /// <summary>
     /// The environment the panel's choice shows, among those that have something to call. The viewer's own choice
@@ -114,7 +134,7 @@ public sealed record TrafficPlan(string Environment, IReadOnlyList<Uri> Addresse
                 continue;
             }
 
-            targets.Add($"{deployable.Name} at {publicAddress.Host}");
+            targets.Add(Target(deployable.Name, publicAddress.Host));
             addresses.AddRange(paths.Select(path => ProbeUrl.Combine(publicAddress, path)));
         }
 

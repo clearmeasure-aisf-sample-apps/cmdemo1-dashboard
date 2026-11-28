@@ -5,10 +5,17 @@ namespace Dashboard.Health;
 /// <summary>
 /// The defaults every probe of the dashboard shares: a node's check (<see cref="NodeProber" />), the pinned versions
 /// (<see cref="PinnedVersionsReader" />) and the cluster reading (<see cref="Cluster.ClusterReader" />) all wait as long,
-/// and all say the same words when that wait ends with no answer (<see cref="NoAnswerWithin" />).
+/// all say the same words when that wait ends with no answer (<see cref="NoAnswerWithin" />) and the same words when
+/// the browser could not read an answer at all (<see cref="NotReadable" />).
 /// </summary>
 internal static class ProbeDefaults
 {
+    /// <summary>
+    /// The clause a reader reports when its request throws <c>HttpRequestException</c>: a network failure, or an origin
+    /// that CORS refuses. The pinned versions and the cluster reading say it, and it is the one that keeps the version
+    /// card and the cluster card describing the same failure in the same words.
+    /// </summary>
+    public const string NotReadable = "the browser could not read an answer (network or CORS)";
     /// <summary>
     /// The shared probe wait in its whole-second form: ten, the number <see cref="DefaultTimeout" /> is made of. A
     /// caller that cannot hold a <see cref="TimeSpan" /> reads the wait here - the words that say it

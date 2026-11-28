@@ -78,7 +78,7 @@ public sealed class ClusterReader(HttpClient http, TimeProvider time)
         }
         catch (HttpRequestException)
         {
-            return new SourceReading<T>(SourceState.Unavailable, Detail: "the browser could not read an answer (network or CORS)");
+            return new SourceReading<T>(SourceState.Unavailable, Detail: ProbeDefaults.NotReadable);
         }
     }
 }

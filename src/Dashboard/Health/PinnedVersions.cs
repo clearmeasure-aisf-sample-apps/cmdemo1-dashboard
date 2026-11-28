@@ -188,7 +188,7 @@ public sealed class PinnedVersionsReader(HttpClient http, TimeProvider time)
         }
         catch (HttpRequestException)
         {
-            return PinnedVersions.Unavailable("the browser could not read an answer (network or CORS)");
+            return PinnedVersions.Unavailable(ProbeDefaults.NotReadable);
         }
     }
 }

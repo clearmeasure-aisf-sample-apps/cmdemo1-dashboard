@@ -24,13 +24,13 @@ public static class DatabaseTableReader
     {
         var alias = JsonRead.Text(element, "alias");
         var qualifiedName = JsonRead.Text(element, "qualifiedName");
-        var name = JsonRead.Text(element, "name");
+        var name = JsonRead.Text(element, DatabaseParser.TableNameField);
         if (alias is null || qualifiedName is null || name is null)
         {
             return (null, $"{Path(index)}: {RequiredFields}");
         }
 
-        return (new DatabaseTable(alias, qualifiedName, JsonRead.Text(element, "schema") ?? string.Empty, name, JsonRead.Long(element, "rows"), JsonRead.Count(element, "columns")), null);
+        return (new DatabaseTable(alias, qualifiedName, JsonRead.Text(element, DatabaseParser.SchemaField) ?? string.Empty, name, JsonRead.Long(element, DatabaseParser.RowsField), JsonRead.Count(element, DatabaseParser.ColumnsField)), null);
     }
 
     /// <summary>The tables of the manifest's list, in its order; the problem of every refused one goes to <paramref name="errors"/>.</summary>

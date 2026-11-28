@@ -276,6 +276,9 @@ public static class CostText
     /// <summary>The separator of the parts of a cost line: <c> · </c>, the one <see cref="Work.WorkMeasureText" /> names the same.</summary>
     private const string PartSeparator = " · ";
 
+    /// <summary>The separator of the services of a cost's <see cref="Services"/>: <c>SQL Database $0.97, Azure Container Apps $0.62</c>.</summary>
+    private const string ServiceSeparator = ", ";
+
     /// <summary>The format of a month named for a viewer of a different month: <c>September</c>.</summary>
     private const string MonthName = "MMMM";
 
@@ -332,9 +335,13 @@ public static class CostText
     {
         ArgumentNullException.ThrowIfNull(report);
         return services is { Count: > 0 }
-            ? $"Most {Month(report.AsOf, now)}: {string.Join(", ", services.Select(service => $"{service.Name} {Money(service.MonthToDate, report.Currency)}"))}"
+            ? $"Most {Month(report.AsOf, now)}: {string.Join(ServiceSeparator, services.Select(service => ServiceAmount(service, report.Currency)))}"
             : null;
     }
+
+    /// <summary>One service of <see cref="Services"/>: its name and its month-to-date amount, <c>SQL Database $0.97</c>, a dash when it has no amount.</summary>
+    private static string ServiceAmount(CostService service, string? currency) =>
+        $"{service.Name} {Money(service.MonthToDate, currency)}";
 
     /// <summary>
     /// <c>plus about $2.69 this month of what the environments share (20 % of what all pods request)</c>; null when

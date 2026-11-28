@@ -154,6 +154,26 @@ public static class HealthDetailText
     /// <summary>The word for <see cref="CheckState.Degraded" />.</summary>
     private const string DegradedWord = "Degraded";
 
+    /// <summary>
+    /// The word <see cref="Failed" /> opens its list with: the one lead every failing entry is said after, so the
+    /// page never has to learn it from the string.
+    /// </summary>
+    private const string NotHealthyLead = "Not healthy: ";
+
+    /// <summary>
+    /// The join <see cref="Failed" /> puts between the words of two failing entries: a comma and a space, and no
+    /// word is ever added before the last entry - <c>NamedList.Join</c>'s "and" would change the line.
+    /// </summary>
+    private const string EntrySeparator = ", ";
+
+    /// <summary>
+    /// One failing entry in the words <see cref="Failed" /> says it: the name, its state's word and the check's own
+    /// words in brackets - <c>DataAccess (Unhealthy: Login failed)</c>, or <c>Queue (Not known)</c> when the entry
+    /// says nothing of its own.
+    /// </summary>
+    private static string EntryWords(HealthCheckEntry entry) =>
+        $"{entry.Name} ({Label(entry.State)}{TextReason.Reason(entry.Description)})";
+
     /// <summary>The state's word: a mark is never colour alone.</summary>
     public static string Label(CheckState state) => state switch
     {
@@ -248,6 +268,6 @@ public static class HealthDetailText
             return null;
         }
 
-        return $"Not healthy: {string.Join(", ", failing.Select(entry => $"{entry.Name} ({Label(entry.State)}{TextReason.Reason(entry.Description)})"))}";
+        return NotHealthyLead + string.Join(EntrySeparator, failing.Select(EntryWords));
     }
 }

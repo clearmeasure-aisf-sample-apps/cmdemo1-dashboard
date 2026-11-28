@@ -473,6 +473,58 @@ public class HealthDetailTextEdgeCaseTests
         Assert.Equal("a (Unhealthy), d (Degraded: D), c (Not known: C)", failed![(failed!.IndexOf(':') + 2)..]);
     }
 
+    /// <summary>Two or more failing entries are said after one and only one lead, each separated by the one join
+    /// and none of them carrying the lead of its own: the lead stands once at the front of the line, the entries
+    /// fall between the commas the worst first, and the count of joins is the count of entries minus one.</summary>
+    [Fact]
+    public void TwoOrMoreFailingEntriesStandAfterOneLeadAndAreJoinedOneAtATime()
+    {
+        var failed = HealthDetailText.Failed(Detail(
+            Entry("Last", CheckState.Degraded, null),
+            Entry("First", CheckState.Unhealthy, null),
+            Entry("Middle", CheckState.Unknown, null),
+            Entry("Well", CheckState.Healthy, null)))!;
+
+        Assert.StartsWith("Not healthy: ", failed, StringComparison.Ordinal);
+        // The lead is said once, at the front: it appears nowhere else in the line.
+        Assert.DoesNotContain("Not healthy: ", failed["Not healthy: ".Length..], StringComparison.Ordinal);
+
+        // Worst first: unhealthy, then degraded, then not known - the healthy one is not named at all.
+        Assert.Equal("Not healthy: First (Unhealthy), Last (Degraded), Middle (Not known)", failed);
+        Assert.DoesNotContain("Well", failed, StringComparison.Ordinal);
+
+        // One join between each pair of the three entries: two joins for three entries.
+        Assert.Equal(2, failed.Split(", ", StringSplitOptions.None).Length - 1);
+    }
+
+    /// <summary>A single failing entry stands after the lead with nothing behind it: no trailing join, no second
+    /// word of its own - the line is the lead and the one entry and the close of its bracket, and one character
+    /// longer than the entry alone would make it.</summary>
+    [Fact]
+    public void ASingleFailingEntryCarriesNoTrailingJoin()
+    {
+        var failed = HealthDetailText.Failed(Detail(Entry("Queue", CheckState.Degraded)))!;
+
+        Assert.Equal("Not healthy: Queue (Degraded)", failed);
+        Assert.Equal(')', failed[^1]);
+        Assert.DoesNotContain(",", failed, StringComparison.Ordinal);
+        Assert.Equal("Queue (Degraded)", failed["Not healthy: ".Length..]);
+    }
+
+    /// <summary>An entry whose words are blank is named with its state alone, no reason clause standing between the
+    /// state and the bracket: the one trimming the words are joined by (#1167) leaves nothing of a blank, and the
+    /// bracket closes right after the state's word.</summary>
+    [Theory]
+    [InlineData(CheckState.Degraded, null, "Not healthy: Pool (Degraded)")]
+    [InlineData(CheckState.Degraded, "", "Not healthy: Pool (Degraded)")]
+    [InlineData(CheckState.Degraded, "   ", "Not healthy: Pool (Degraded)")]
+    [InlineData(CheckState.Unhealthy, "\t\n ", "Not healthy: Pool (Unhealthy)")]
+    [InlineData(CheckState.Unknown, "", "Not healthy: Pool (Not known)")]
+    public void AnEntryWhoseWordsAreBlankSaysNoReasonClause(CheckState state, string? description, string expected)
+    {
+        Assert.Equal(expected, HealthDetailText.Failed(Detail(Entry("Pool", state, description))));
+    }
+
     // ---------------------------------------------------------- the words under another thread culture
 
     /// <summary>The words of a length of checking are written with the invariant culture, so the thread culture the

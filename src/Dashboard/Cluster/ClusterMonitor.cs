@@ -65,7 +65,7 @@ public sealed class ClusterMonitor
     public Trend? CpuTrend => Trend.Of(Samples.Select(sample => sample?.CpuMillicores / ClusterText.MillicoresPerCore), "CPU used in the cluster", $" {ClusterText.CoresUnit}");
 
     /// <summary>The trend of the memory the nodes use, in GiB; null with fewer than two readings.</summary>
-    public Trend? MemoryTrend => Trend.Of(Samples.Select(sample => sample?.MemoryBytes / ClusterText.Gibibyte), "Memory used in the cluster", " GiB");
+    public Trend? MemoryTrend => Trend.Of(Samples.Select(sample => sample?.MemoryBytes / ClusterText.Gibibyte), "Memory used in the cluster", ClusterText.GibibyteTrendUnit);
 
     /// <summary>Reads both files at the same time; each is recorded as it arrives.</summary>
     public Task CheckAsync(CancellationToken cancellationToken) =>

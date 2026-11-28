@@ -21,6 +21,21 @@ internal static class WorkWeekCharts
     /// </summary>
     internal const string PixelFormat = "0.##";
 
+    /// <summary>The lead sentence of the chart's accessible title, before the bars' own sentences.</summary>
+    private const string ChartLead = "Merged and deployed to prod per week. ";
+
+    /// <summary>The separator between the bars' sentences in the chart's accessible title.</summary>
+    private const string BarSeparator = " ";
+
+    /// <summary>The lead of a bar's label for a week that has a start date.</summary>
+    private const string WeekLead = "Week of ";
+
+    /// <summary>The date format a week start is written in, under the invariant culture.</summary>
+    private const string WeekStartFormat = "yyyy-MM-dd";
+
+    /// <summary>The label of a bar whose week has no start date.</summary>
+    private const string NoStartLabel = "Week";
+
     /// <summary>The weekly chart; null when the file gives no week.</summary>
     internal static WorkWeekChart? Chart(IReadOnlyList<WorkWeek> weeks)
     {
@@ -32,7 +47,7 @@ internal static class WorkWeekCharts
 
         var bars = weeks.Select(Bar).ToList();
         var scale = Math.Max(1, bars.Max(bar => Math.Max(bar.Merged, bar.DeployedProd)));
-        return new WorkWeekChart(bars, scale, "Merged and deployed to prod per week. " + string.Join(" ", bars.Select(bar => bar.Title)));
+        return new WorkWeekChart(bars, scale, ChartLead + string.Join(BarSeparator, bars.Select(bar => bar.Title)));
     }
 
     /// <summary>How tall a bar is in the chart's units. Zero stays zero, so a week with nothing is a gap, not a sliver.</summary>
@@ -60,8 +75,8 @@ internal static class WorkWeekCharts
         var merged = week.Merged ?? 0;
         var deployed = week.DeployedProd ?? 0;
         var label = week.WeekStart is { } start
-            ? string.Create(CultureInfo.InvariantCulture, $"Week of {start.UtcDateTime:yyyy-MM-dd}")
-            : "Week";
+            ? string.Create(CultureInfo.InvariantCulture, $"{WeekLead}{start.UtcDateTime.ToString(WeekStartFormat, CultureInfo.InvariantCulture)}")
+            : NoStartLabel;
         return new WorkWeekBar(
             label,
             merged,

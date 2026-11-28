@@ -269,7 +269,7 @@ public static class WorkItemsText
             .Distinct()
             .Order()
             .ToList();
-        return numbers.Count == 0 ? null : "carries " + string.Join(", ", numbers.Select(NumberMark));
+        return numbers.Count == 0 ? null : "carries " + string.Join(ListSeparator, numbers.Select(NumberMark));
     }
 
     /// <summary>An element id for a column heading: <c>work-col-in-progress</c>.</summary>
@@ -286,7 +286,7 @@ public static class WorkItemsText
     public static string IssueTitle(WorkItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        var name = item.Identity.Number is { } number ? $"Work item {NumberMark(number)}" : "Work item";
+        var name = Named(ItemWords, item.Identity.Number);
         return item.Identity.State is { } state ? $"{name}, {state}{LinkText.GitHubSuffix}" : name + LinkText.GitHubSuffix;
     }
 
@@ -298,12 +298,12 @@ public static class WorkItemsText
         item.Assignee is { } who && !string.Equals(who, item.Agent, StringComparison.Ordinal) ? who : null;
 
     public static string PullLabel(WorkPullRequest pull) =>
-        pull.Number is { } number ? NumberMark(number) : "Pull request";
+        pull.Number is { } number ? NumberMark(number) : PullWords;
 
     public static string PullTitle(WorkPullRequest pull)
     {
         ArgumentNullException.ThrowIfNull(pull);
-        var name = pull.Number is { } number ? $"Pull request {NumberMark(number)}" : "Pull request";
+        var name = Named(PullWords, pull.Number);
         var when = pull.MergedAt is { } merged ? $", merged {TimeText.Iso(merged)}" : string.Empty;
         return name + when + LinkText.GitHubSuffix;
     }
@@ -320,7 +320,7 @@ public static class WorkItemsText
             return Missing;
         }
 
-        return string.Join(", ", item.PullRequests.Select(pull =>
+        return string.Join(ListSeparator, item.PullRequests.Select(pull =>
             pull.State is { } state ? $"{PullLabel(pull)} {state}" : PullLabel(pull)));
     }
 
@@ -378,4 +378,11 @@ public static class WorkItemsText
 
     /// <summary>A work item or pull request number the way the page shows it: <c>#</c> and the digits in the invariant culture.</summary>
     private static string NumberMark(int number) => "#" + number.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>The words of a work item or pull request, with its number when the file gives one.</summary>
+    private static string Named(string words, int? number) => number is { } n ? $"{words} {NumberMark(n)}" : words;
+
+    private const string PullWords = "Pull request";
+    private const string ItemWords = "Work item";
+    private const string ListSeparator = ", ";
 }

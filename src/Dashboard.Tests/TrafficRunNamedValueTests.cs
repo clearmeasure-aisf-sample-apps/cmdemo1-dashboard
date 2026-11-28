@@ -160,16 +160,18 @@ public partial class TrafficRunNamedValueTests
     {
         var text = MarkupGuards.ComponentText("TrafficPanel");
 
-        Assert.Contains(
-            """$"Traffic started: {Run.PerSecond} requests a second for {Run.Seconds} s to """,
-            text,
-            StringComparison.Ordinal);
+        // The start sentence now has a home on the plan: the panel hands it plan.Started(Run) and says no word of it
+        // itself, so the words a viewer reads and the requests the browser sends cannot come apart from a literal.
+        Assert.Contains("plan.Started(Run)", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Traffic started", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("requests a second", text, StringComparison.Ordinal);
         Assert.Contains("Math.Max(0, Run.Seconds - ", text, StringComparison.Ordinal);
 
         // And the words are the ones the button always said, written from the run: two a second for a minute.
+        var plan = new TrafficPlan("uat", [new Uri("https://uat.example.net")], ["ui at uat.example.net"]);
         Assert.Equal(
             "Traffic started: 2 requests a second for 60 s to ui at uat.example.net",
-            $"Traffic started: {TrafficRun.Default.PerSecond} requests a second for {TrafficRun.Default.Seconds} s to ui at uat.example.net");
+            plan.Started(TrafficRun.Default));
     }
 
     // ---------------------------------------------------------------- the machinery

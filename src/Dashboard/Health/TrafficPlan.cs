@@ -1,3 +1,4 @@
+using System.Globalization;
 using Dashboard.Runtime;
 
 namespace Dashboard.Health;
@@ -52,6 +53,22 @@ public sealed record TrafficPlan(string Environment, IReadOnlyList<Uri> Addresse
     /// <see cref="ProbeDefaults.DefaultTimeoutSeconds"/> and <see cref="ProbeDefaults.DefaultTimeout"/>.
     /// </summary>
     public static readonly TimeSpan CheckEvery = TimeSpan.FromSeconds(CheckEverySeconds);
+
+    /// <summary>The lead of the start sentence, before the rate: <c>Traffic started: </c>.</summary>
+    private const string StartedLead = "Traffic started: ";
+
+    /// <summary>The rate words of the start sentence: <c>requests a second</c>.</summary>
+    private const string PerSecondWords = "requests a second";
+
+    /// <summary>
+    /// The event a press of the traffic button writes at its start: the rate and the length the run sends, then the
+    /// targets it calls, joined the way a list is said: <c>Traffic started: 2 requests a second for 60 s to web at
+    /// x.azurefd.net</c>. The words are written from the run, in the invariant culture, the way the end sentence of
+    /// <see cref="TrafficCount.Ended" /> is, so a start and an end of one run say their numbers in the same reader.
+    /// </summary>
+    /// <param name="run">The press that started: its <see cref="TrafficRun.PerSecond"/> and <see cref="TrafficRun.Seconds"/> are the numbers said.</param>
+    public string Started(TrafficRun run) =>
+        string.Create(CultureInfo.InvariantCulture, $"{StartedLead}{run.PerSecond} {PerSecondWords} for {run.Seconds} s to {string.Join(", ", Targets)}");
 
     /// <summary>
     /// The environment the panel's choice shows, among those that have something to call. The viewer's own choice

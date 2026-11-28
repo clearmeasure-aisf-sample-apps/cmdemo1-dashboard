@@ -143,10 +143,7 @@
         _count = TrafficCount.Started;
         _stopRequested = false;
         _running = plan;
-        Events?.Add(EventDetector.Traffic(
-            plan.Environment,
-            $"Traffic started: {Run.PerSecond} requests a second for {Run.Seconds} s to {string.Join(", ", plan.Targets)}",
-            _started.Value));
+        Events?.Add(EventDetector.Traffic(plan.Environment, plan.Started(Run), _started.Value));
         await RunningChanged.InvokeAsync(true);
         _ = FollowAsync();
     }

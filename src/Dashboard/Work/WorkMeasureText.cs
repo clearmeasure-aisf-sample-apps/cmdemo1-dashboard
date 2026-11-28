@@ -9,9 +9,6 @@ internal static class WorkMeasureText
     /// <summary>A rate at or below this is a fraction (see <see cref="WorkRework.Rate"/>) and is shown as a percent.</summary>
     private const double LargestFraction = 1.0;
 
-    /// <summary>The percent scale: a whole is this many percent.</summary>
-    private const double PercentPerWhole = 100.0;
-
     /// <summary>A percent keeps this many decimals; <see cref="PercentFormat"/> says the same.</summary>
     private const int PercentDecimals = 1;
 
@@ -84,6 +81,6 @@ internal static class WorkMeasureText
 
     private static string Rate(double rate) =>
         rate <= LargestFraction
-            ? Math.Round(rate * PercentPerWhole, PercentDecimals).ToString(PercentFormat, CultureInfo.InvariantCulture) + PercentSuffix
+            ? Math.Round(Shares.Of(rate, LargestFraction), PercentDecimals).ToString(PercentFormat, CultureInfo.InvariantCulture) + PercentSuffix
             : rate.ToString(KeptFormat, CultureInfo.InvariantCulture);
 }

@@ -227,6 +227,30 @@ public static class DatabaseText
     /// <summary>The line the view shows when the live file's tables are not the diagram's.</summary>
     public const string SchemaChanged = "The schema changed since this diagram was drawn: deploy the dashboard again.";
 
+    /// <summary>The file word of a column that is a primary key, in the live file's key list.</summary>
+    private const string PrimaryKeyWord = "pk";
+
+    /// <summary>The file word of a column that is a foreign key, in the live file's key list.</summary>
+    private const string ForeignKeyWord = "fk";
+
+    /// <summary>The page word of a column that is a primary key.</summary>
+    private const string PrimaryKeyWords = "primary key";
+
+    /// <summary>The page word of a column that is a foreign key.</summary>
+    private const string ForeignKeyWords = "foreign key";
+
+    /// <summary>The file mark between the words of a column's key list.</summary>
+    private const char KeyMark = ',';
+
+    /// <summary>The page separator between the words of a column's key list.</summary>
+    private const string KeySeparator = ", ";
+
+    /// <summary>The page word of a column that takes null.</summary>
+    private const string TakesNull = "yes";
+
+    /// <summary>The page word of a column that refuses null.</summary>
+    private const string RefusesNull = "no";
+
     /// <summary>
     /// A row count as the diagram writes it: <c>1,234 rows</c>, <c>1 row</c>. (In the SVG the space is a no-break
     /// space, which <c>js/database.js</c> reads and writes.)
@@ -379,11 +403,11 @@ public static class DatabaseText
     public static string Key(string key)
     {
         ArgumentNullException.ThrowIfNull(key);
-        var parts = key.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        return string.Join(", ", parts.Select(part => part switch
+        var parts = key.Split(KeyMark, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return string.Join(KeySeparator, parts.Select(part => part switch
         {
-            "pk" => "primary key",
-            "fk" => "foreign key",
+            PrimaryKeyWord => PrimaryKeyWords,
+            ForeignKeyWord => ForeignKeyWords,
             _ => part,
         }));
     }
@@ -391,8 +415,8 @@ public static class DatabaseText
     /// <summary>Whether a column takes null, in a word; <see cref="NotSaid" /> where the live file does not say.</summary>
     public static string Nullable(bool? nullable) => nullable switch
     {
-        true => "yes",
-        false => "no",
+        true => TakesNull,
+        false => RefusesNull,
         null => NotSaid,
     };
 

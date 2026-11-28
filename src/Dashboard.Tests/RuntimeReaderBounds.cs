@@ -50,6 +50,9 @@ internal static class RuntimeReaderBounds
 
         /// <summary>The most ids of one box that are kept.</summary>
         public const int MostIds = 200;
+
+        /// <summary>The longest id kept of an entry of <c>unplaced</c>: twice the longest text.</summary>
+        public const int LongestUnplacedId = LongestUnplacedText * 2;
     }
 
     /// <summary>Each reader with the nested shape that names its bounds.</summary>

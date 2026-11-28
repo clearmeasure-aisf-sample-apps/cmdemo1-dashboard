@@ -36,7 +36,7 @@
     {
         if (DatabaseText.ReadLine(read, Live, Now) is { } line)
         {
-            <p class="database__note" title="@ReadTitle(read)">@line</p>
+            <p class="database__note" title="@DatabaseText.ReadTitle(read, Live, Zone)">@line</p>
         }
 
         if (DatabaseText.TruncatedLine(read) is { } first)
@@ -267,21 +267,6 @@
 
         _drawn = drawn;
         await _module.InvokeVoidAsync("counts", _host, counts.Select(count => count.QualifiedName).ToArray(), counts.Select(count => count.Text).ToArray());
-    }
-
-    /// <summary>The line's tooltip: the moments in full, and what is how old.</summary>
-    private string? ReadTitle(DatabaseManifest manifest)
-    {
-        var (at, live) = DatabaseText.ReadAt(manifest, Live);
-        if (at is not { } moment)
-        {
-            return null;
-        }
-
-        var drawn = manifest.ReadAt is { } readAt ? $" The diagram was drawn at the environment's last deployment, {TimeText.DateAndTime(readAt, Zone)}." : string.Empty;
-        return live
-            ? $"The row counts and the list are of {TimeText.DateAndTime(moment, Zone)}.{drawn}"
-            : $"The deployment read the schema {TimeText.DateAndTime(moment, Zone)}: the diagram is as old as the environment's last deployment of the dashboard.";
     }
 
     private async Task OnKeyDownAsync(KeyboardEventArgs pressed)

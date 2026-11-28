@@ -70,6 +70,22 @@ public static class DatabaseParser
     /// <summary>The file word of the list of tables, in the manifest and in the live file.</summary>
     internal const string TablesField = "tables";
 
+    /// <summary>
+    /// The file word of a table's name (and of a column's name), in the manifest and in the live file. The manifest
+    /// table and the live table are matched by schema and name (<see cref="DatabaseText"/>), so both readers must use
+    /// the same word.
+    /// </summary>
+    internal const string TableNameField = "name";
+
+    /// <summary>The file word of a table's schema, in the manifest and in the live file.</summary>
+    internal const string SchemaField = "schema";
+
+    /// <summary>The file word of a table's row count, in the manifest and in the live file.</summary>
+    internal const string RowsField = "rows";
+
+    /// <summary>The file word of a table's column list, in the manifest and in the live file.</summary>
+    internal const string ColumnsField = "columns";
+
     /// <summary>The file word of the flag that the database has more tables than are listed.</summary>
     private const string TruncatedField = "truncated";
 
@@ -164,17 +180,17 @@ public static class DatabaseParser
             var tables = new List<DatabaseLiveTable>();
             foreach (var element in JsonRead.Items(root, TablesField).Take(MostTables))
             {
-                if (JsonRead.Text(element, "name") is not { } name)
+                if (JsonRead.Text(element, TableNameField) is not { } name)
                 {
                     continue;
                 }
 
-                var columns = JsonRead.Items(element, "columns")
+                var columns = JsonRead.Items(element, ColumnsField)
                     .Take(MostColumns)
                     .Select(ReadColumn)
                     .OfType<DatabaseColumn>()
                     .ToList();
-                tables.Add(new DatabaseLiveTable(JsonRead.Text(element, "schema") ?? string.Empty, name, JsonRead.Long(element, "rows"), columns));
+                tables.Add(new DatabaseLiveTable(JsonRead.Text(element, SchemaField) ?? string.Empty, name, JsonRead.Long(element, RowsField), columns));
             }
 
             return new DatabaseLive(JsonRead.Time(root, GeneratedField), tables, JsonRead.Flag(root, TruncatedField) ?? false);
@@ -183,7 +199,7 @@ public static class DatabaseParser
 
     /// <summary>A column of the live file; null for one without a name, which is left out.</summary>
     private static DatabaseColumn? ReadColumn(JsonElement column) =>
-        JsonRead.Text(column, "name") is { } name
+        JsonRead.Text(column, TableNameField) is { } name
             ? new DatabaseColumn(
                 name,
                 JsonRead.Text(column, "type") ?? string.Empty,

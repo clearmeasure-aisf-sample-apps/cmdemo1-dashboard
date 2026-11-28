@@ -867,6 +867,30 @@ public class ApplicationTextEdgeCaseTests
             ApplicationText.VersionTitle(string.Empty, string.Empty, null));
     }
 
+    // ---------------------------------------------------------------------------- the separator between the problems
+
+    /// <summary>Three problems of a file that could not be read are joined by the problem separator, not by the list
+    /// separator: the line says them whole, and no comma-space stands between them - which is the guard against the
+    /// separator of the lists of references and packages being mistaken for this one.</summary>
+    [Fact]
+    public void TheProblemsOfAFailedReadAreJoinedByTheProblemSeparatorAndNotTheListSeparator()
+    {
+        var line = ApplicationText.ProblemLine("ui", "1.0.42", ApplicationRead.Failed("a", "b", "c"));
+
+        Assert.Equal("The architecture diagram of ui 1.0.42 could not be read: a; b; c", line);
+        Assert.DoesNotContain(", ", line, StringComparison.Ordinal);
+    }
+
+    /// <summary>One problem says no separator at all: the line is the lead, the colon, a space and the one problem -
+    /// the separator is what stands between problems, and between one there is nothing.</summary>
+    [Fact]
+    public void OneProblemOfAFailedReadSaysNoSeparator()
+    {
+        Assert.Equal(
+            "The architecture diagram of ui 1.0.42 could not be read: a",
+            ApplicationText.ProblemLine("ui", "1.0.42", ApplicationRead.Failed("a")));
+    }
+
     // ----------------------------------------------------------------------------------- the links of the heading row
 
     /// <summary>The links of a box, as the heading row takes them: <c>links.site</c> of the node stands in for its

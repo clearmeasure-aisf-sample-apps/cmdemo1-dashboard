@@ -341,7 +341,7 @@ public static class ApplicationText
     public static string? ProblemLine(string deployable, string version, ApplicationRead read) => read switch
     {
         { State: ApplicationReadState.Failed, Problems.Count: > 0 } =>
-            $"{NotReadLead(deployable, version)}: {string.Join("; ", read.Problems)}",
+            $"{NotReadLead(deployable, version)}: {string.Join(ProblemSeparator, read.Problems)}",
         { } => ProblemLine(deployable, version, read.State),
         _ => null,
     };
@@ -453,6 +453,9 @@ public static class ApplicationText
     }
 
     private const string ListSeparator = ", ";
+
+    /// <summary>The separator between the problems of a file that could not be read.</summary>
+    private const string ProblemSeparator = "; ";
 
     /// <summary>The references of an assembly as the list names them: <c>Core, DataAccess</c>; empty when there are none.</summary>
     public static string References(ApplicationAssembly assembly)

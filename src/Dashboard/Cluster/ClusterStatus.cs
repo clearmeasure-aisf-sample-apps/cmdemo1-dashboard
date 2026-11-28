@@ -76,7 +76,7 @@ public sealed record ClusterStatus(
                 }
 
                 return new Parsed<ClusterStatus>(new ClusterStatus(
-                    JsonRead.Time(root, "generated"),
+                    JsonRead.Generated(root),
                     JsonRead.Count(root, "intervalSeconds"),
                     JsonRead.Text(root, "kubernetesVersion"),
                     JsonRead.Named(root, NodesWord, ClusterNode.Read),

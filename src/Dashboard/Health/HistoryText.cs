@@ -21,6 +21,17 @@ public static class HistoryText
     private static readonly HealthState[] Counted = [HealthState.Healthy, HealthState.Unhealthy, HealthState.Unreachable];
 
     /// <summary>
+    /// The list separator between counted states and between a check's facts: <c>10 healthy, 2 unreachable</c> and
+    /// <c>Healthy, HTTP 200, 123 ms</c>. All three of <see cref="Describe(IReadOnlyCollection{ProbeResult})" />'s
+    /// joins and <see cref="Describe(ProbeResult, TimeZoneInfo)" />'s facts lead must stay the same string, or the
+    /// one-check sentence stops reading evenly.
+    /// </summary>
+    private const string ListSeparator = ", ";
+
+    /// <summary>The lead word of the counted sentence: <c>Last check</c> and <c>Last 12 checks</c>.</summary>
+    private const string LastWord = "Last";
+
+    /// <summary>
     /// <c>Last 12 checks: 10 healthy, 2 unreachable</c>; the single check is said without its digit, <c>Last check:
     /// 1 healthy</c>. The word after <c>Last</c> is <see cref="Plural.Noun(int, string, string?)" />'s, so the
     /// sentence carries no second copy of the agreement; the digit it counts with is written only when there is more
@@ -39,8 +50,8 @@ public static class HistoryText
             .Where(entry => entry.Count > 0)
             .Select(entry => string.Create(CultureInfo.InvariantCulture, $"{entry.Count} {HealthClassifier.Sentence(entry.State)}"));
         var noun = Plural.Noun(history.Count, "check");
-        var last = history.Count == 1 ? "Last" : string.Create(CultureInfo.InvariantCulture, $"Last {history.Count}");
-        return $"{last} {noun}: {string.Join(", ", parts)}";
+        var last = history.Count == 1 ? LastWord : string.Create(CultureInfo.InvariantCulture, $"{LastWord} {history.Count}");
+        return $"{last} {noun}: {string.Join(ListSeparator, parts)}";
     }
 
     /// <summary>One check in words: <c>15:04:05 Healthy, HTTP 200, 123 ms</c>.</summary>
@@ -48,10 +59,10 @@ public static class HistoryText
     {
         ArgumentNullException.ThrowIfNull(result);
         var text = $"{TimeText.Clock(result.CheckedAt, zone)} {HealthClassifier.Label(result.State)}";
-        var facts = ResultFacts(result, ", ");
+        var facts = ResultFacts(result, ListSeparator);
         if (facts.Length > 0)
         {
-            text += $", {facts}";
+            text += $"{ListSeparator}{facts}";
         }
 
         return text;

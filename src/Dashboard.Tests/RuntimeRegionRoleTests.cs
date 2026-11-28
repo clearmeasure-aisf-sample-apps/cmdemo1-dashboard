@@ -76,6 +76,25 @@ public class RuntimeRegionRoleTests
     }
 
     [Fact]
+    public void NotProbedOfASingleRoleHasNoSeparator()
+    {
+        Assert.Equal("static sites: not probed", RuntimeRegionRole.NotProbed(["static"]));
+    }
+
+    [Fact]
+    public void UnprobedOfDataAndStaticWithARachableDatabasePinsTheClauseSeparator()
+    {
+        Assert.Equal("database: reachable; static sites: not probed", RuntimeRegionRole.Unprobed(["data", "static"], true));
+    }
+
+    [Fact]
+    public void TheWordsOfTheDataRoleAreThePrefixOfDatabaseReachable()
+    {
+        Assert.Equal(RuntimeRegionRole.Words(RuntimeRegionRole.Data),
+            RuntimeRegionRole.DatabaseReachable[..RuntimeRegionRole.Words(RuntimeRegionRole.Data).Length]);
+    }
+
+    [Fact]
     public void ARegionWhoseOnlyRoleIsDataSaysExactlyThatItsDatabaseIsReachable()
     {
         var shipped = RuntimeManifestParser.ParseManifest(RuntimeManifestParserTests.Sample("uat.json")).Value!;

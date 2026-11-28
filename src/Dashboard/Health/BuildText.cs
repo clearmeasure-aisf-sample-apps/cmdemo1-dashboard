@@ -48,9 +48,6 @@ public static class BuildText
     /// </summary>
     private const string OneDecimalFormat = "0.#";
 
-    /// <summary>The format of the whole percentage <see cref="SharePercent" /> writes after rounding: <c>73</c>.</summary>
-    private const string WholeFormat = "0";
-
     /// <summary>The noun <see cref="Problems(int)" /> counts with: <c>1 problem</c>, <c>2 problems</c>.</summary>
     private const string ProblemNoun = "problem";
 
@@ -72,8 +69,11 @@ public static class BuildText
     /// </summary>
     private const string BarLead = "Lines of code by language: ";
 
-    /// <summary>What every percent word ends with: a space and the sign, <c>81.2 %</c>.</summary>
-    private const string PercentSign = " %";
+    /// <summary>
+    /// What every percent word ends with: a space and the sign, <c>81.2 %</c> - the one
+    /// <see cref="Dashboard.Shares.PercentSign" /> of the dashboard.
+    /// </summary>
+    private const string PercentSign = Dashboard.Shares.PercentSign;
 
     /// <summary>What the page calls itself next to the dashboard's name: the chip of its heading.</summary>
     public const string ThisPage = "this page";
@@ -155,11 +155,14 @@ public static class BuildText
     public static string Describe(IEnumerable<LanguageShare> shares) =>
         string.Join(", ", shares.Select(share => $"{share.Name} {SharePercent(share.Percent)}"));
 
-    /// <summary>A share as a whole percentage; a share above zero and below the <see cref="SmallShareBound" /> as <c>&lt;1 %</c>.</summary>
+    /// <summary>
+    /// A share as a whole percentage, by the <see cref="Dashboard.Shares.WholePercent" /> rule; a share above zero
+    /// and below the <see cref="SmallShareBound" /> as <c>&lt;1 %</c>.
+    /// </summary>
     public static string SharePercent(double percent) =>
         percent is > 0 and < SmallShareBound
             ? "<1" + PercentSign
-            : Math.Round(percent).ToString(WholeFormat, CultureInfo.InvariantCulture) + PercentSign;
+            : Dashboard.Shares.WholePercent(percent);
 
     /// <summary>
     /// A share's line count in words, the same unit word <see cref="Size(CodeSize)" /> says: <c>1,234 lines</c> -

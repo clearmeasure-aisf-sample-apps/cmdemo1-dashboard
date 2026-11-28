@@ -25,7 +25,7 @@ public static class ClusterText
     /// <summary>The millicores in one core: the cluster reads CPU in millicores and says it in cores.</summary>
     internal const double MillicoresPerCore = 1000;
 
-    /// <summary>The format of a whole number: a count of MiB or KiB, a percentage.</summary>
+    /// <summary>The format of a whole number: a count of MiB or KiB, of millicores.</summary>
     private const string WholeFormat = "0";
 
     /// <summary>The format of a pod's CPU below one core: a whole number of millicores.</summary>
@@ -60,9 +60,6 @@ public static class ClusterText
 
     /// <summary>The unit a number of KiB is said with: <c>512 KiB</c>.</summary>
     private const string KibibyteUnit = "KiB";
-
-    /// <summary>The suffix a percentage is said with: <c>63 %</c>.</summary>
-    private const string PercentSign = " %";
 
     /// <summary>The separator between the parts of one cluster line: <c>3 of 3 ready · 1 restart</c>.</summary>
     private const string PartSeparator = " · ";
@@ -192,8 +189,8 @@ public static class ClusterText
     public static double? Share(double? part, double? whole) =>
         part is { } value && whole is { } of && of > 0 ? Shares.Of(value, of) : null;
 
-    /// <summary>A whole percentage: <c>63 %</c>.</summary>
-    public static string Percent(double percent) => Math.Round(percent).ToString(WholeFormat, CultureInfo.InvariantCulture) + PercentSign;
+    /// <summary>A whole percentage, by the <see cref="Shares.WholePercent" /> rule: <c>63 %</c>.</summary>
+    public static string Percent(double percent) => Shares.WholePercent(percent);
 
     /// <summary>True from <see cref="HighPercent"/> on: the meter and its number are marked.</summary>
     public static bool IsHigh(double? percent) => percent >= HighPercent;

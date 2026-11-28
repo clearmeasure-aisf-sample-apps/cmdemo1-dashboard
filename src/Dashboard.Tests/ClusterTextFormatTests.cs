@@ -50,7 +50,14 @@ public class ClusterTextFormatTests
         Assert.Contains("private const string GibibyteUnit", source, StringComparison.Ordinal);
         Assert.Contains("private const string MebibyteUnit", source, StringComparison.Ordinal);
         Assert.Contains("private const string KibibyteUnit", source, StringComparison.Ordinal);
-        Assert.Contains("private const string PercentSign", source, StringComparison.Ordinal);
+
+        // The percent's sign and whole rounding moved to the one Shares.WholePercent rule: the named constant is
+        // pinned where it now stands, and the class can neither type the sign nor the rounding again.
+        var shares = File.ReadAllText(Path.Combine(RepoRoot(), "src", "Dashboard", "Shares.cs"));
+        Assert.Contains("internal const string PercentSign", shares, StringComparison.Ordinal);
+        Assert.Contains("Percent(double percent) => Shares.WholePercent(percent);", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("\" %\"", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Math.Round(percent).ToString(", source, StringComparison.Ordinal);
     }
 
     private static string RepoRoot()

@@ -295,16 +295,27 @@ public static class ApplicationText
         var count = architecture.Assemblies.Count;
         if (count == 0)
         {
-            return architecture.Process is { } process
-                ? $"Architecture of {deployable} {version}: no assemblies, process {process}"
-                : $"Architecture of {deployable} {version}: no assemblies";
+            return WithTail(EmptyLead(deployable, version), "process", architecture.Process);
         }
 
-        var counted = Plural.Of(count, "assembly", "assemblies");
-        return architecture.Entry is { } entry
-            ? $"Assemblies of {deployable} {version}: {counted}, entry {entry}"
-            : $"Assemblies of {deployable} {version}: {counted}";
+        return WithTail(CountedLead(deployable, version, Plural.Of(count, "assembly", "assemblies")), "entry", architecture.Entry);
     }
+
+    /// <summary>The lead of the no-assemblies alternative text: <c>Architecture of ui 1.0.42: no assemblies</c>.</summary>
+    private static string EmptyLead(string deployable, string version) =>
+        $"Architecture of {deployable} {version}: no assemblies";
+
+    /// <summary>The lead of the counted alternative text: <c>Assemblies of ui 1.0.42: 3 assemblies</c>.</summary>
+    private static string CountedLead(string deployable, string version, string counted) =>
+        $"Assemblies of {deployable} {version}: {counted}";
+
+    /// <summary>
+    /// The optional tail of the alternative text: the value as it stands after its word - <c>, process dotnet
+    /// Ui.Server.dll</c> - and nothing for the nothing: the empty word is still a word the file named, so the only
+    /// value refused a tail is the null alone, never a word of whitespace.
+    /// </summary>
+    private static string WithTail(string lead, string word, string? value) =>
+        value is null ? lead : $"{lead}, {word} {value}";
 
     /// <summary>What the artifact is and how it starts: <c>container image, process: dotnet Ui.Server.dll</c>; null when the file says neither.</summary>
     public static string? KindLine(ApplicationArchitecture architecture)

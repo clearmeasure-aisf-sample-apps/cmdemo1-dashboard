@@ -10,9 +10,23 @@ public sealed record NodeInfo(string Name, string? Region, string Role, Uri Url,
     public bool IsPrimary => NodeRole.IsPrimary(Role);
 }
 
-/// <summary>The one place that decides which role word names a primary node.</summary>
+/// <summary>The one place that decides which role word names a primary node and reads it from a file.</summary>
 public static class NodeRole
 {
+    /// <summary>The element word of a node's role.</summary>
+    internal const string RoleWord = "role";
+
+    /// <summary>The element word of a node's region.</summary>
+    internal const string RegionWord = "region";
+
+    /// <summary>
+    /// The file's role word in lower case, null when there is none: the one reading of a node's role, so the topology
+    /// and the runtime manifest cannot disagree about the same node. The word is trimmed by <see cref="JsonRead.Text"/>
+    /// before it is lowered; no space is trimmed again, and no word at all (or a blank one) is no role.
+    /// <see cref="Default"/> still decides for a missing role where the caller wants a fallback.
+    /// </summary>
+    public static string? Read(System.Text.Json.JsonElement element) => JsonRead.Text(element, RoleWord)?.ToLowerInvariant();
+
     /// <summary>
     /// Whether <paramref name="role"/> is <see cref="NodeInfo.PrimaryRole"/>: the whole word in any case, as written,
     /// with no space trimmed; no word at all is no primary.

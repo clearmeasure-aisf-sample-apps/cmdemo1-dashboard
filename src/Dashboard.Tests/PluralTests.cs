@@ -197,4 +197,39 @@ public class PluralTests
         Assert.Equal(pending, SummaryWords.Text(SummaryLevel.Pending, total, 0, total));
         Assert.Equal(empty, SummaryWords.Text(SummaryLevel.Empty, total, total, 0));
     }
+
+    // ----- The copula: is/are owned by Plural.Be -----
+
+    /// <summary>The copula a sentence agrees with a count is <c>is</c> for one and <c>are</c> for every other count,
+    /// zero included - owned by <see cref="Plural.Be" /> so no call site types the pair again.</summary>
+    [Theory]
+    [InlineData(1, "is")]
+    [InlineData(0, "are")]
+    [InlineData(2, "are")]
+    [InlineData(int.MaxValue, "are")]
+    public void TheCopulaTakesIsForOneAndAreForEveryOtherCount(int count, string expected) =>
+        Assert.Equal(expected, Plural.Be(count));
+
+    /// <summary><see cref="Plural.Be" /> and <see cref="Plural.Agreement(int, string, string)" /> given the copula
+    /// pair say the same word, for every count out to the end of the number: <see cref="Plural.Be" /> is the
+    /// <see cref="Plural.Agreement" /> of the pair <c>is</c>/<c>are</c>, nothing more and nothing less.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(1234)]
+    [InlineData(int.MaxValue)]
+    public void BeIsAgreementOfTheCopulaPair(int count) =>
+        Assert.Equal(Plural.Agreement(count, "is", "are"), Plural.Be(count));
+
+    /// <summary>The copula is the dashboard's word and not the viewer's: a reader of German is given <c>is</c> for
+    /// one and <c>are</c> for every other count, as written.</summary>
+    [Fact]
+    public void TheCopulaDoesNotChangeWithTheViewersCulture() =>
+        ViewerCulture.German(() =>
+        {
+            Assert.Equal("is", Plural.Be(1));
+            Assert.Equal("are", Plural.Be(0));
+            Assert.Equal("are", Plural.Be(2));
+        });
 }

@@ -258,6 +258,57 @@ public class WorkThroughputAndReleaseTests
         Assert.Throws<ArgumentNullException>(() => WorkBotText.Throughput(WorkItemsStats.Empty, null!));
     }
 
+    // ---- WorkThroughput: the fallback name from the file's words ----
+
+    /// <summary>
+    /// A <c>throughput</c> array row that gives counts but names no bot reads with <see cref="WorkThroughput.Unnamed"/>;
+    /// a <c>perWeek</c> entry and a <c>throughput</c> entry that give the same two counts read them the same way, so
+    /// the file word is written once and the two readers agree.
+    /// </summary>
+    [Fact]
+    public void AThroughputRowWithCountsButNoNameReadsAsUnnamedAndTheWeekReadsTheSameCounts()
+    {
+        var report = WorkItemsReport.Parse("""
+            { "stats": {
+                "perWeek": [ { "weekStart": "2026-11-02T00:00:00Z", "merged": 5, "deployedProd": 3 } ],
+                "throughput": [ { "merged": 5, "deployedProd": 3 } ] } }
+            """)!;
+
+        // The throughput row has no agent, no name, no identity: it reads as the fallback word.
+        var row = Assert.Single(report.Stats.Throughput!);
+        Assert.Equal(WorkThroughput.Unnamed, row.Agent);
+        Assert.Equal(5, row.Merged);
+        Assert.Equal(3, row.DeployedProd);
+
+        // The perWeek entry reads the same two counts from the same two file words.
+        var week = Assert.Single(report.Stats.PerWeek);
+        Assert.Equal(5, week.Merged);
+        Assert.Equal(3, week.DeployedProd);
+    }
+
+    /// <summary>
+    /// <see cref="WorkBotText.Throughput" /> counts the items by their agent; items with no agent group under one
+    /// row whose <see cref="WorkThroughput.Agent"/> is <see cref="WorkThroughput.Unnamed"/>.
+    /// </summary>
+    [Fact]
+    public void ItemsWithNoAgentGroupUnderTheUnnamedRow()
+    {
+        IReadOnlyList<WorkItem> items =
+        [
+            Item(1, null, [Pull(10, "merged", At(9, 1))]),
+            Item(2, null, [Pull(11, "merged", At(9, 2))]),
+            Item(3, "alpha", [Pull(12, "merged", At(9, 3))]),
+        ];
+
+        var rows = WorkBotText.Throughput(null, items);
+
+        Assert.Equal(2, rows.Count);
+        var unnamedRow = rows.Single(row => row.Agent == WorkThroughput.Unnamed);
+        Assert.Equal(2, unnamedRow.Merged);
+        var namedRow = rows.Single(row => row.Agent == "alpha");
+        Assert.Equal(1, namedRow.Merged);
+    }
+
     // ---- WorkRelease: what the record holds ----
 
     [Fact]

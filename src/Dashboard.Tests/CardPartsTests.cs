@@ -67,6 +67,10 @@ public class CardPartsTests
         Assert.Equal(", worst 34", parts.Join());
     }
 
+    [Fact]
+    public void TwoPartsAndAnAsidePinTheSingleSpaceAsideLead() =>
+        Assert.Equal("worst 34, threshold 30 (5,210 methods)", new CardParts().Add("worst 34").Add("threshold 30").Join("(5,210 methods)"));
+
     // ----- The four card lines built on it keep their words
 
     [Theory]

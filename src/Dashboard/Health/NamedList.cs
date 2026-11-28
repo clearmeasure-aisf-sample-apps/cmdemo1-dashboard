@@ -9,6 +9,9 @@ namespace Dashboard.Health;
 /// </summary>
 public static class NamedList
 {
+    private const string ListSeparator = ", ";
+    private const string LastLead = " and ";
+    private const string MoreWord = "more";
     /// <summary>
     /// The first <paramref name="most"/> of <paramref name="names"/>, in order. Only those are read, so a caller
     /// that words each item on the way in words no more than it names.
@@ -24,7 +27,7 @@ public static class NamedList
     public static string? More(int count, int most)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(most);
-        return count > most ? string.Create(CultureInfo.InvariantCulture, $"{count - most} more") : null;
+        return count > most ? string.Create(CultureInfo.InvariantCulture, $"{count - most} {MoreWord}") : null;
     }
 
     /// <summary>
@@ -50,7 +53,7 @@ public static class NamedList
         {
             0 => string.Empty,
             1 => names[0],
-            _ => $"{string.Join(", ", names.Take(names.Count - 1))} and {names[^1]}",
+            _ => $"{string.Join(ListSeparator, names.Take(names.Count - 1))}{LastLead}{names[^1]}",
         };
     }
 }

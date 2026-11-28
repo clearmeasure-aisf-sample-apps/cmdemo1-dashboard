@@ -47,6 +47,14 @@ public class NamedListTests
         Assert.Equal(expected, NamedList.More(count, most));
 
     [Fact]
+    public void ThreeNamesJoinWithTheCommaSeparatorAndTheAndLead() =>
+        Assert.Equal("a, b and c", NamedList.Join(["a", "b", "c"]));
+
+    [Fact]
+    public void WordsWithARemainderNamesTheFirstTwoThenCountsTheRest() =>
+        Assert.Equal("a, b and 2 more", NamedList.Words(["a", "b", "c", "d"], 2));
+
+    [Fact]
     public void ANegativeMostIsRefused()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => NamedList.Named(["a"], -1));

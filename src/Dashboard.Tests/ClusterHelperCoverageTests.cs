@@ -21,7 +21,7 @@ namespace Dashboard.Tests;
 /// The walk includes this file: the real-value test below is the coverage it is, the last word, not a hole.
 /// </para>
 /// <para>
-/// As of today the allowlist is empty: every one of the 53 methods of the 9 helper types is called by name in at
+/// As of today the allowlist is empty: every one of the 56 methods of the 9 helper types is called by name in at
 /// least one test file. The five whose coverage rests on a single call site elsewhere - <c>ClusterAssessment.
 /// Problems</c>, <c>ClusterEventDetector.Status</c>, <c>ClusterText.PodWords</c>, <c>ClusterText.Cores</c> and
 /// <c>ClusterText.Memory</c> - get a second, independent call with real values in this file.
@@ -91,7 +91,7 @@ public class ClusterHelperCoverageTests
         var declared = Declared();
 
         Assert.Equal(8, sources.Count);
-        Assert.Equal(53, methods.Count);
+        Assert.Equal(56, methods.Count);
         Assert.Equal(9, methods.Select(method => method.Type).Distinct(StringComparer.Ordinal).Count());
         Assert.Contains("ClusterText.Cores", methods.Select(method => method.Full));
         Assert.Contains("ClusterAssessment.Live", methods.Select(method => method.Full));

@@ -7,7 +7,8 @@ namespace Dashboard;
 /// <see cref="Health.DeploymentActivity.Cut" /> (a node's deployment lines) both cut this way, each behind its own
 /// "does it fit" test and its own guard. The cut has no guard of its own: a length below 1 is refused by the slice
 /// itself, with the length less one as the actual value, which is the refusal <c>Brief</c> has always given. The middle
-/// ellipsis of a node's name in <see cref="Cluster.ClusterText" /> keeps both ends of the name and is a different rule.
+/// ellipsis of a node's name in <see cref="Cluster.ClusterText" /> keeps both ends of the name and is a different rule;
+/// <see cref="Cluster.ClusterText.ShortNode" /> borrows the <see cref="Mark" /> for that rule.
 /// </summary>
 internal static class Ellipsis
 {

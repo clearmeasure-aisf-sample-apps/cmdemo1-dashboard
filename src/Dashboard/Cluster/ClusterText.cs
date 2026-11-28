@@ -208,7 +208,8 @@ public static class ClusterText
         ArgumentNullException.ThrowIfNull(name);
         const int Tail = 6;
         var dash = name.IndexOf('-', StringComparison.Ordinal);
-        return dash > 0 && name.Length > dash + 1 + Tail + 1 ? $"{name[..(dash + 1)]}…{name[^Tail..]}" : name;
+        var head = dash + 1;
+        return dash > 0 && name.Length > head + Ellipsis.Mark.Length + Tail ? $"{name[..head]}{Ellipsis.Mark}{name[^Tail..]}" : name;
     }
 
     /// <summary>A node as a sentence names it: <c>Node aks-…000000</c>.</summary>

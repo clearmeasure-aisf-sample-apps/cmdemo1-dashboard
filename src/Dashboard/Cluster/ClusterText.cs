@@ -49,6 +49,12 @@ public static class ClusterText
     /// <summary>The unit a number of GiB is said with: <c>9.2 GiB</c>.</summary>
     private const string GibibyteUnit = "GiB";
 
+    /// <summary>
+    /// The unit a memory trend's title says after its numbers, with its leading space: <c> GiB</c>, the word the
+    /// memory meter says.
+    /// </summary>
+    internal const string GibibyteTrendUnit = " " + GibibyteUnit;
+
     /// <summary>The unit a number of MiB is said with: <c>258 MiB</c>.</summary>
     private const string MebibyteUnit = "MiB";
 

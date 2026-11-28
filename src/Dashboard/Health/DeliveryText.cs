@@ -255,27 +255,34 @@ public static class DeliveryText
             return SameAs(first);
         }
 
-        var parts = new List<string>();
-        if (behind.Versions is { } versions && versions > 0)
-        {
-            parts.Add(Plural.Of(versions, "version"));
-        }
-
-        if (behind.Days is { } days)
-        {
-            var whole = (int)Math.Round(days);
-            if (whole >= 1)
-            {
-                parts.Add(Plural.Of(whole, "day"));
-            }
-        }
-
+        var parts = new CardParts().Add(VersionsPart(behind.Versions)).Add(DaysPart(behind.Days));
         if (parts.Count > 0)
         {
-            return $"{string.Join(", ", parts)} behind {first}";
+            return $"{parts.Join()} behind {first}";
         }
 
         return behind.Days is not null ? SameAs(first) : null;
+    }
+
+    /// <summary>
+    /// The versions part of the behind line: <c>1 version</c>, <c>2 versions</c>; null when nothing is said - no
+    /// versions, or a distance of zero the earlier arm already answered.
+    /// </summary>
+    private static string? VersionsPart(int? versions) => versions is > 0 ? Plural.Of(versions.Value, "version") : null;
+
+    /// <summary>
+    /// The days part of the behind line: <c>3 days</c>; null when the days are not said - absent, or rounding to
+    /// under one day - the rounding and the cast keeping NaN, negative and fractional days out, as before.
+    /// </summary>
+    private static string? DaysPart(double? days)
+    {
+        if (days is not { } value)
+        {
+            return null;
+        }
+
+        var whole = (int)Math.Round(value);
+        return whole >= 1 ? Plural.Of(whole, "day") : null;
     }
 
     /// <summary>The one home of the answer "this environment is level with the first": <c>same as tdd</c>.</summary>

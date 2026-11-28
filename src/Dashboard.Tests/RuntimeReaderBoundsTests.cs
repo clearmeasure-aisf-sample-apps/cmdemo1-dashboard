@@ -53,7 +53,8 @@ public class RuntimeReaderBoundsTests
         Assert.Equal(2000, RuntimeReaderBounds.Manifest.LongestAddress);
         Assert.Equal(200, RuntimeReaderBounds.Manifest.LongestPath);
         Assert.Equal(200, RuntimeReaderBounds.Manifest.MostIds);
-        Assert.Equal(10, RuntimeReaderBounds.ShapeOf.Values.Sum(shape => RuntimeReaderBounds.BoundsOf(shape).Count));
+        Assert.Equal(600, RuntimeReaderBounds.Manifest.LongestUnplacedId);
+        Assert.Equal(11, RuntimeReaderBounds.ShapeOf.Values.Sum(shape => RuntimeReaderBounds.BoundsOf(shape).Count));
     }
 
     /// <summary>The application reader's shape and the older <see cref="ParserBounds" /> agree name for name.</summary>

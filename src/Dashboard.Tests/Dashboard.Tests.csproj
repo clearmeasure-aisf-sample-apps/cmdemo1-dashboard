@@ -50,6 +50,13 @@
     <Compile Include="..\Dashboard\Ellipsis.cs" Link="Ellipsis.cs" />
   </ItemGroup>
 
+  <!-- Clip is internal to the app for the same reason: the tests pin the one no-mark keep-the-head cut the runtime
+       parsers and the application view share, so they compile this one file too and assert against the source the
+       app runs. -->
+  <ItemGroup>
+    <Compile Include="..\Dashboard\Clip.cs" Link="Clip.cs" />
+  </ItemGroup>
+
   <!-- Shares is internal to the app for the same reason: the tests pin the percent a part holds of a whole - the
        one rule the bar of the "Code" card, the cluster's share and the cost estimate cut their percents in - so
        they compile this one file too and assert against the source the app runs. -->

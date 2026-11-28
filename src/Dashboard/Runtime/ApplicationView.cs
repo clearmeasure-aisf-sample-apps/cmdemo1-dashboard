@@ -132,7 +132,7 @@ public static class ApplicationParser
     private static string? Text(JsonElement parent, string name) =>
         JsonRead.Text(parent, name) is { } text ? Shorten(text) : null;
 
-    private static string Shorten(string text) => text.Length <= LongestText ? text : text[..LongestText];
+    private static string Shorten(string text) => Clip.At(text, LongestText);
 
     private static ApplicationPackage? Package(JsonElement package) =>
         Text(package, NameField) is { } name ? new ApplicationPackage(name, Text(package, "version")) : null;

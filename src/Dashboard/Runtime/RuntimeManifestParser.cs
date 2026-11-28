@@ -349,6 +349,7 @@ public static class RuntimeManifestParser
     /// <summary>The longest text kept of an entry of <c>unplaced</c>, and the most entries.</summary>
     public const int LongestUnplacedText = 300;
     public const int MostUnplaced = 500;
+    private const int LongestUnplacedId = LongestUnplacedText * 2;
     private const int LongestAddress = 2000;
 
     /// <summary>
@@ -383,7 +384,7 @@ public static class RuntimeManifestParser
                 Cut(element, "type"),
                 Cut(element, "group"),
                 Cut(element, "words"),
-                Ids(element)?.Select(id => id.Length > LongestUnplacedText * 2 ? id[..(LongestUnplacedText * 2)] : id).ToList(),
+                Ids(element)?.Select(id => Clip.At(id, LongestUnplacedId)).ToList(),
                 links is { } portal ? Secure(portal, "portal") : null,
                 (links is { } site ? Secure(site, "site") : null) ?? Secure(element, Url)));
         }
@@ -393,9 +394,7 @@ public static class RuntimeManifestParser
 
     /// <summary>A text of an entry of <c>unplaced</c>, cut at <see cref="LongestUnplacedText"/> characters.</summary>
     private static string? Cut(JsonElement parent, string property) =>
-        JsonRead.Text(parent, property) is { } text
-            ? text.Length > LongestUnplacedText ? text[..LongestUnplacedText] : text
-            : null;
+        JsonRead.Text(parent, property) is { } text ? Clip.At(text, LongestUnplacedText) : null;
 
     /// <summary>An absolute https address without a user name, of a sensible length; anything else is null.</summary>
     private static Uri? Secure(JsonElement parent, string property) =>

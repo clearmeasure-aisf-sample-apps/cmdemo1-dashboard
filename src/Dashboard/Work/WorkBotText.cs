@@ -111,7 +111,7 @@ public static class WorkBotText
     }
 
     public static string NoteHeading(WorkNote note) =>
-        string.Equals(note.Kind, "blocker", StringComparison.OrdinalIgnoreCase) ? "Blocker" : "Status";
+        string.Equals(note.Kind, WorkNote.BlockerKind, StringComparison.OrdinalIgnoreCase) ? WorkNote.BlockerHeading : WorkNote.StatusHeading;
 
     /// <summary>Merge to production. The file's <c>mergeToProdHours</c> wins; otherwise merged-at against the prod deployment.</summary>
     public static WorkDuration? MergeToProd(WorkItemsStats? published, IReadOnlyList<WorkItem> items)

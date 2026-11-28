@@ -95,7 +95,7 @@ public sealed record ResourceHealthReading(string Status, string Source, DateTim
             _ => None,
         };
         var summary = JsonRead.Text(section, "summary");
-        return new ResourceHealthReading(status, source, checkedAt, summary is { Length: > LongestSummary } ? summary[..LongestSummary] : summary);
+        return new ResourceHealthReading(status, source, checkedAt, summary is null ? null : Clip.At(summary, LongestSummary));
     }
 }
 

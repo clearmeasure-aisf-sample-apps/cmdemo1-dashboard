@@ -102,8 +102,8 @@ public sealed record HealthReports(HealthWindow? Last24Hours, HealthWindow? Last
 {
     internal static HealthReports? Read(JsonElement? section)
     {
-        var day = HealthWindow.Read(JsonRead.Section(section, "last24Hours"));
-        var week = HealthWindow.Read(JsonRead.Section(section, "last7Days"));
+        var day = HealthWindow.Read(JsonRead.Section(section, HealthWindow.DayWord));
+        var week = HealthWindow.Read(JsonRead.Section(section, HealthWindow.WeekWord));
         return day is null && week is null ? null : new HealthReports(day, week, JsonRead.Time(section, "lastFailure"), ContainerAppReports.ReadAll(section));
     }
 }
@@ -112,11 +112,20 @@ public sealed record HealthReports(HealthWindow? Last24Hours, HealthWindow? Last
 /// <param name="Healthy">How many of them found every node healthy.</param>
 public sealed record HealthWindow(int Reports, int Healthy)
 {
+    /// <summary>The window of the last 24 hours, as the file writes it.</summary>
+    internal const string DayWord = "last24Hours";
+
+    /// <summary>The window of the last seven days, as the file writes it.</summary>
+    internal const string WeekWord = "last7Days";
+
+    private const string ReportsWord = "reports";
+    private const string HealthyWord = "healthy";
+
     public bool AllHealthy => Healthy == Reports;
 
     /// <summary>The window; null unless both counts are there and no more reports are healthy than there were.</summary>
     internal static HealthWindow? Read(JsonElement? section) =>
-        JsonRead.Count(section, "reports") is { } reports && JsonRead.Count(section, "healthy") is { } healthy && healthy <= reports
+        JsonRead.Count(section, ReportsWord) is { } reports && JsonRead.Count(section, HealthyWord) is { } healthy && healthy <= reports
             ? new HealthWindow(reports, healthy)
             : null;
 }

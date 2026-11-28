@@ -21,7 +21,13 @@ public sealed record HealthSummary(int Total, int Healthy, int Pending)
     /// <summary>The summary before anything is counted: no node at all, so its level is <see cref="SummaryLevel.Empty" />.</summary>
     public static HealthSummary Empty { get; } = new(0, 0, 0);
 
-    public int NotHealthy => Total - Healthy - Pending;
+    public int NotHealthy => NotHealthyOf(Total, Healthy, Pending);
+
+    /// <summary>
+    /// The not-healthy count is whatever is neither healthy nor pending: <paramref name="total" /> minus the healthy
+    /// and the pending. Counts that do not add up are kept as given, so the result may be negative.
+    /// </summary>
+    internal static int NotHealthyOf(int total, int healthy, int pending) => total - healthy - pending;
 
     /// <summary>
     /// The level the counts fall on, asked in order of precedence: a total of nothing outranks a problem, and a problem

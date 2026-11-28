@@ -45,15 +45,27 @@ public sealed class NodeProber(HttpClient http, TimeProvider time)
         }
         catch (HttpRequestException)
         {
-            result = Unreachable(
-                checkedAt,
-                "The browser could not read an answer: the network failed, or the node does not allow this origin (CORS).");
+            result = Unreachable(checkedAt, NodeNotReadable);
         }
 
         var reported = await version;
         cancellationToken.ThrowIfCancellationRequested();
         return result with { Version = reported };
     }
+
+    /// <summary>
+    /// The sentence a node's probe says when the browser could not read an answer at all: a network failure, or
+    /// an origin the node refuses.
+    /// </summary>
+    private const string NodeNotReadable =
+        "The browser could not read an answer: the network failed, or the node does not allow this origin (CORS).";
+
+    /// <summary>
+    /// The sentence a container app's probe says when the browser got no answer at all: a network failure, or
+    /// nothing that answers at the address.
+    /// </summary>
+    private const string NothingAnswers =
+        "The browser got no answer: the network failed, or nothing answers at the address.";
 
     /// <summary>The shared timeout clause (<see cref="ProbeDefaults.NoAnswerWithin" />) as a sentence of its own,
     /// capitalised and full-stopped: <c>No answer within 10 s.</c></summary>
@@ -71,6 +83,13 @@ public sealed class NodeProber(HttpClient http, TimeProvider time)
 
     private static ProbeResult Unreachable(DateTimeOffset checkedAt, string detail) =>
         new(HealthState.Unreachable, StatusCode: null, LatencyMs: null, checkedAt, Detail: detail);
+
+    /// <summary>
+    /// The container-app answer with no status, not opaque, no latency, and a sentence of why: the no-answer shape
+    /// the two failure arms of <see cref="ProbeContainerAppAsync" /> share.
+    /// </summary>
+    private static ContainerAppAnswer NoAnswerFrom(string path, bool readsHealth, DateTimeOffset checkedAt, string detail) =>
+        new(path, readsHealth, StatusCode: null, Opaque: false, LatencyMs: null, checkedAt, Detail: detail);
 
     /// <summary>
     /// Asks a container app (<see cref="ContainerAppProbe"/>) at its health path (<c>/_healthcheck</c> by default),
@@ -122,11 +141,11 @@ public sealed class NodeProber(HttpClient http, TimeProvider time)
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return new ContainerAppAnswer(path, readsHealth, null, false, null, checkedAt, NoAnswer);
+            return NoAnswerFrom(path, readsHealth, checkedAt, NoAnswer);
         }
         catch (HttpRequestException)
         {
-            return new ContainerAppAnswer(path, readsHealth, null, false, null, checkedAt, "The browser got no answer: the network failed, or nothing answers at the address.");
+            return NoAnswerFrom(path, readsHealth, checkedAt, NothingAnswers);
         }
     }
 

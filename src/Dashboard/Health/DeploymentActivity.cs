@@ -21,7 +21,13 @@ public sealed record DeploymentWait(string Kind, string? Title, DateTimeOffset? 
     public bool IsGuidedFailure => string.Equals(Kind, GuidedFailure, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>True for a title that says no more than the kind does (<c>Sign-off</c> for a sign-off).</summary>
-    public bool TitleIsTheKind => Title is null || string.Equals(Title.Replace(" ", "-", StringComparison.Ordinal), Kind.Replace(" ", "-", StringComparison.Ordinal), StringComparison.OrdinalIgnoreCase);
+    public bool TitleIsTheKind => Title is null || string.Equals(Spelled(Title), Spelled(Kind), StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// A kind word spelled with a hyphen instead of its space (<c>guided failure</c> / <c>guided-failure</c>,
+    /// <c>Sign off</c> / <c>sign-off</c>): the same kind, in the letters the file writes it in.
+    /// </summary>
+    private static string Spelled(string word) => word.Replace(" ", "-", StringComparison.Ordinal);
 
     /// <summary>
     /// The kind as a noun: <c>the question after a failed step</c>, <c>the sign-off</c>, else the file's own word.

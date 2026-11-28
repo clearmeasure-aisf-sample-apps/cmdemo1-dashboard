@@ -337,9 +337,9 @@ public static class WorkItemsText
     {
         ArgumentNullException.ThrowIfNull(item);
         var places = new List<WorkPlace>(3);
-        Add(places, "tdd", item.Environments.Tdd);
-        Add(places, "uat", item.Environments.Uat);
-        Add(places, "prod", item.Environments.Prod);
+        Add(places, WorkItemEnvironments.TddWord, item.Environments.Tdd);
+        Add(places, WorkItemEnvironments.UatWord, item.Environments.Uat);
+        Add(places, WorkItemEnvironments.ProdWord, item.Environments.Prod);
         return places;
     }
 

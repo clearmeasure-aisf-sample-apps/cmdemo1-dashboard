@@ -612,8 +612,17 @@ public sealed record WorkItemEnvironments(WorkDeployment? Tdd, WorkDeployment? U
 {
     public static WorkItemEnvironments None { get; } = new(null, null, null);
 
+    /// <summary>The word the work-items file uses for the tdd environment, and the place name the page shows for it.</summary>
+    public const string TddWord = "tdd";
+
+    /// <summary>The word the work-items file uses for the uat environment, and the place name the page shows for it.</summary>
+    public const string UatWord = "uat";
+
+    /// <summary>The word the work-items file uses for the prod environment, and the place name the page shows for it.</summary>
+    public const string ProdWord = "prod";
+
     internal static WorkItemEnvironments Read(JsonElement? section) =>
-        new(Deployment(section, "tdd"), Deployment(section, "uat"), Deployment(section, "prod"));
+        new(Deployment(section, TddWord), Deployment(section, UatWord), Deployment(section, ProdWord));
 
     private static WorkDeployment? Deployment(JsonElement? parent, string name)
     {

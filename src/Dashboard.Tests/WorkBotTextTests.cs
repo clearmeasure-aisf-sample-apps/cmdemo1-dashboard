@@ -272,6 +272,31 @@ public class WorkBotTextTests
         Assert.Throws<ArgumentNullException>(() => WorkBotText.Stay(null!));
     }
 
+    [Fact]
+    public void AClosedStayWithTimeCarriesNoSoFarWord()
+    {
+        var line = WorkBotText.Stay(new ColumnStay("Review", At(1), TimeSpan.FromMinutes(45), Open: false));
+
+        Assert.Equal("Review · 45 min", line);
+        Assert.DoesNotContain("so far", line);
+    }
+
+    [Fact]
+    public void ANOpenStayEndsInSoFarExactlyOnce()
+    {
+        var line = WorkBotText.Stay(new ColumnStay("Merged", At(1), TimeSpan.FromDays(2), Open: true));
+
+        Assert.Equal("Merged · 2 d so far", line);
+        Assert.EndsWith(" so far", line);
+        Assert.DoesNotContain(" so far so far", line);
+    }
+
+    [Fact]
+    public void ANOpenStayWithNoTimeIsStillJustTheColumn()
+    {
+        Assert.Equal("Review", WorkBotText.Stay(new ColumnStay("Review", At(1), null, Open: true)));
+    }
+
     /// <summary>An item that reached Done after <paramref name="hours"/> of work in Review.</summary>
     private static WorkItem Done(int number, double hours) =>
         Item(number, "Done", [new ColumnVisit(WorkColumns.Review, At(1)), new ColumnVisit(WorkColumns.Done, At(1).AddHours(hours))]);

@@ -174,6 +174,12 @@ public static class WorkBotText
         return stays;
     }
 
+    /// <summary>What stands between the parts of a work line, both the pull's line and a column stay.</summary>
+    private const string PartSeparator = " · ";
+
+    /// <summary>The words after the length of a stay that is still open.</summary>
+    private const string SoFarWord = "so far";
+
     public static string Stay(ColumnStay stay)
     {
         ArgumentNullException.ThrowIfNull(stay);
@@ -182,12 +188,9 @@ public static class WorkBotText
             return stay.Column;
         }
 
-        var length = TimeText.Span(spent);
-        return stay.Open ? $"{stay.Column} · {length} so far" : $"{stay.Column} · {length}";
+        var line = $"{stay.Column}{PartSeparator}{TimeText.Span(spent)}";
+        return stay.Open ? $"{line} {SoFarWord}" : line;
     }
-
-    /// <summary>What stands between the parts of a pull's line.</summary>
-    private const string PartSeparator = " · ";
 
     /// <summary>The word before what the file says of a pull's checks.</summary>
     private const string ChecksWord = "checks";

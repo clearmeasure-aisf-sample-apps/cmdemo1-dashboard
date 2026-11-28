@@ -187,6 +187,10 @@ public static class ResourceHealthText
     private const string NotReadYetWords = "no Resource Health read yet";
     private const string AgeLead = ", ";
 
+    private const string ByResourceHealthClause = "by Resource Health";
+    private const string ProvisioningFallbackClause = "Resource Health has no answer for it; its provisioning state";
+    private const string NeitherAnsweredClause = "neither Resource Health nor a provisioning state answered";
+
     /// <summary>The words of a box of these resources; null for a box without ids (a manifest from before them).</summary>
     public static ResourceHealthWords? Of(IReadOnlyList<string>? ids, ResourceHealthReport? report, DateTimeOffset? now, TimeZoneInfo zone)
     {
@@ -291,19 +295,22 @@ public static class ResourceHealthText
         _ => HealthBadge.OtherProvisioningState,
     };
 
+    /// <summary>The resource's name: the last segment of its Azure resource id, a trailing <c>/</c> cut first.</summary>
+    private static string ResourceName(string id) => id.TrimEnd('/').Split('/')[^1];
+
     private static string Describe(string id, ResourceHealthReading? reading, DateTimeOffset? now, TimeZoneInfo zone)
     {
-        var name = id.TrimEnd('/').Split('/')[^1];
+        var name = ResourceName(id);
         if (reading is null)
         {
-            return $"{name}: not in the hourly reading.";
+            return $"{name}: {NotInReadingWords}.";
         }
 
         var source = reading.Source switch
         {
-            ResourceHealthReading.FromResourceHealth => "by Resource Health",
-            ResourceHealthReading.FromProvisioningState => "Resource Health has no answer for it; its provisioning state",
-            _ => "neither Resource Health nor a provisioning state answered",
+            ResourceHealthReading.FromResourceHealth => ByResourceHealthClause,
+            ResourceHealthReading.FromProvisioningState => ProvisioningFallbackClause,
+            _ => NeitherAnsweredClause,
         };
         var when = now is { } moment ? $"{TimeText.DateAndTime(reading.CheckedAt, zone)} ({TimeText.Ago(reading.CheckedAt, moment)})" : TimeText.DateAndTime(reading.CheckedAt, zone);
         var summary = reading.Summary is { } said ? $" {said}" : string.Empty;

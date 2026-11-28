@@ -79,4 +79,62 @@ public class FreezeTextTests
             "Deployment freeze all: no deployment of the system to prod until 2026-10-12 00:00 +00:00. In force now." + FreezeEnd,
             FreezeText.Title(TheSystem, Now, Utc));
     }
+
+    [Fact]
+    public void ACountOfOneEndsWithTheUntilTimeAndNoMoreTail()
+    {
+        // In force, alone: the sentence ends with the until time; no ", and" tail.
+        var sentence = FreezeText.Sentence(InForce, 1, Now, Utc);
+        Assert.Equal("deployment freeze prod weekend: demo-ui frozen until Mon 00:00", sentence);
+        Assert.DoesNotContain(", and", sentence);
+    }
+
+    [Fact]
+    public void ACountOfZeroAlsoSaysNoMoreTail()
+    {
+        // The old count > 1 guard: even a count of 0 says nothing after the until time.
+        var inForce = FreezeText.Sentence(InForce, 0, Now, Utc);
+        Assert.Equal("deployment freeze prod weekend: demo-ui frozen until Mon 00:00", inForce);
+
+        var coming = FreezeText.Sentence(Coming, 0, Now, Utc);
+        Assert.Equal("deployment freeze release week: demo-ui, demo-system frozen from Sat 19:00 until Sun 19:00", coming);
+    }
+
+    [Fact]
+    public void TheMoreTailSaysTheRestOfTheFreezesForInForceAndComing()
+    {
+        Assert.Equal(
+            "deployment freeze prod weekend: demo-ui frozen until Mon 00:00, and 1 more",
+            FreezeText.Sentence(InForce, 2, Now, Utc));
+        Assert.Equal(
+            "deployment freeze prod weekend: demo-ui frozen until Mon 00:00, and 3 more",
+            FreezeText.Sentence(InForce, 4, Now, Utc));
+        Assert.Equal(
+            "deployment freeze release week: demo-ui, demo-system frozen from Sat 19:00 until Sun 19:00, and 1 more",
+            FreezeText.Sentence(Coming, 2, Now, Utc));
+        Assert.Equal(
+            "deployment freeze release week: demo-ui, demo-system frozen from Sat 19:00 until Sun 19:00, and 3 more",
+            FreezeText.Sentence(Coming, 4, Now, Utc));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(5)]
+    [InlineData(11)]
+    public void TheTailEqualsNamedListMoreOfTheCountMinusOne(int count)
+    {
+        // The tail of the sentence is exactly ", and " + NamedList.More(count, 1); the two rules are pinned together.
+        var expectedTail = NamedList.More(count, 1) is { } rest ? $", and {rest}" : string.Empty;
+        var sentence = FreezeText.Sentence(InForce, count, Now, Utc);
+        if (expectedTail.Length == 0)
+        {
+            Assert.DoesNotContain(", and", sentence);
+        }
+        else
+        {
+            Assert.EndsWith(expectedTail, sentence);
+        }
+    }
 }

@@ -33,7 +33,7 @@ public static class FreezeText
         ArgumentNullException.ThrowIfNull(zone);
         var more = NamedList.More(count, NamedFreezes) is { } rest ? $", and {rest}" : string.Empty;
         var from = freeze.InForceAt(now) ? string.Empty : $" from {DeploymentActivity.When(Begins(freeze), now, zone)}";
-        return $"deployment freeze {freeze.Name}: {Words(freeze.Projects)} frozen{from} until {DeploymentActivity.When(freeze.To, now, zone)}{more}";
+        return $"deployment freeze {freeze.Name}: {Covered(freeze.Projects)} frozen{from} until {DeploymentActivity.When(freeze.To, now, zone)}{more}";
     }
 
     /// <summary>
@@ -50,7 +50,7 @@ public static class FreezeText
         var state = freeze.InForceAt(now)
             ? "In force now"
             : $"Begins in {TimeText.Span(Begins(freeze) - now)}";
-        return $"Deployment freeze {freeze.Name}: no deployment of {Words(freeze.Projects)} to {Words(freeze.Environments)}{from} until {TimeText.DateAndTime(freeze.To, zone)}. {state}. "
+        return $"Deployment freeze {freeze.Name}: no deployment of {Covered(freeze.Projects)} to {Covered(freeze.Environments)}{from} until {TimeText.DateAndTime(freeze.To, zone)}. {state}. "
             + "A freeze belongs to the Octopus Deploy instance; a person with the right may override it for one deployment.";
     }
 
@@ -62,10 +62,20 @@ public static class FreezeText
     private static DateTimeOffset Begins(DeploymentFreeze freeze) => freeze.From!.Value;
 
     /// <summary>
-    /// The words of a list of names: the names joined, or <c>the system</c> when the list names nothing - a freeze
-    /// that names no projects covers the system as a whole.
+    /// What a freeze covers, in the words of the page: the names joined, or <c>the system</c> when the list names
+    /// nothing - a freeze that names no projects or environments covers the system as a whole.
     /// </summary>
-    private static string Words(IReadOnlyList<string> names) => names.Count == 0 ? "the system" : string.Join(", ", names);
+    internal static string Covered(IReadOnlyList<string> names)
+    {
+        ArgumentNullException.ThrowIfNull(names);
+        return names.Count == 0 ? WholeSystem : string.Join(ListSeparator, names);
+    }
+
+    /// <summary>The separator between the names of a list: <c>demo-ui, demo-system</c>.</summary>
+    private const string ListSeparator = ", ";
+
+    /// <summary>What a freeze that names no projects or environments covers: the system as a whole.</summary>
+    private const string WholeSystem = "the system";
 
     /// <summary>
     /// How many freezes the sentence names one by one: it says the first, then counts the rest with <see cref="NamedList.More(int, int)"/>.

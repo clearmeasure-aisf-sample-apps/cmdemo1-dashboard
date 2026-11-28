@@ -20,6 +20,8 @@ public sealed record VersionAssessment(
     private const string NotComparedWord = "Not compared";
     private const string NoPinnedVersion = "No pinned version";
     private const string NodeSeparator = ", ";
+    private const string NothingKnownLead = ": ";
+    private const string UnknownTailSeparator = "; ";
 
     public bool Differs => State == VersionState.Differs;
 
@@ -103,6 +105,13 @@ public sealed record VersionAssessment(
     /// <summary>Joins a list of node clauses with the separator a sentence of nodes uses.</summary>
     private static string Nodes(IEnumerable<string> clauses) => string.Join(NodeSeparator, clauses);
 
+    /// <summary>
+    /// The lead into the unknown-node clause: a colon and a space when nothing is known, a semicolon and a space when a
+    /// known clause stands before it.
+    /// </summary>
+    private static string UnknownLead(VersionState state) =>
+        state == VersionState.NodesUnknown ? NothingKnownLead : UnknownTailSeparator;
+
     private static string Describe(NodeTally tally, string version)
     {
         var (matching, differing, unknown) = tally;
@@ -122,8 +131,7 @@ public sealed record VersionAssessment(
             return $"{known}.";
         }
 
-        var separator = state == VersionState.NodesUnknown ? ": " : "; ";
-        return $"{known}{separator}{Nodes(unknown.Select(node => $"{node.Label} {node.UnknownReason}"))}.";
+        return $"{known}{UnknownLead(state)}{Nodes(unknown.Select(node => node.UnknownClause))}.";
     }
 
     /// <summary>

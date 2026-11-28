@@ -238,13 +238,15 @@ public class VersionAssessmentEdgeCaseTests
         Assert.Null(nowhere);
 
         Assert.Equal(
-            "NodeVersion { Label = westus3, State = Healthy, Version = 2.4.7, Running = 2.4.7, UnknownReason = reports no version }",
+            "NodeVersion { Label = westus3, State = Healthy, Version = 2.4.7, Running = 2.4.7, UnknownReason = reports no version, "
+            + "UnknownClause = westus3 reports no version }",
             West(Healthy, "2.4.7").ToString());
 
         // The three parts are said as they were handed and the two words along with them: a state no word of the enum
         // names is said as the number it is, and a word with nothing behind it is said as nothing at all.
         Assert.Equal(
-            "NodeVersion { Label = , State = 4, Version = , Running = , UnknownReason = reports no version }",
+            "NodeVersion { Label = , State = 4, Version = , Running = , UnknownReason = reports no version, "
+            + "UnknownClause =  reports no version }",
             new NodeVersion(string.Empty, Unnamed, null).ToString());
     }
 
@@ -895,7 +897,7 @@ public class VersionAssessmentEdgeCaseTests
     public void TheNodeAndTheSummaryDeclareTheirPartsAndNothingElse()
     {
         Assert.Equal(
-            ["Deconstruct", "Equals", "GetHashCode", "Label", "Running", "State", "ToString", "UnknownReason", "Version", "op_Equality", "op_Inequality"],
+            ["Deconstruct", "Equals", "GetHashCode", "Label", "Running", "State", "ToString", "UnknownClause", "UnknownReason", "Version", "op_Equality", "op_Inequality"],
             PublicSurface(typeof(NodeVersion)));
         Assert.Equal(
             ["Deconstruct", "Differs", "EnvironmentsThatDiffer", "Equals", "GetHashCode", "Text", "ToString", "op_Equality", "op_Inequality"],

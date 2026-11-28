@@ -19,4 +19,7 @@ public sealed record NodeVersion(string Label, HealthState State, string? Versio
         HealthState.Unreachable => "is unreachable",
         _ => "reports no version",
     };
+
+    /// <summary>Why the running version is not known, as a whole clause: <c>eastus2 is unreachable</c>.</summary>
+    public string UnknownClause => $"{Label} {UnknownReason}";
 }

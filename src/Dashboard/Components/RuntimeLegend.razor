@@ -6,7 +6,7 @@
         {
             <li>
                 <svg class="runtime-legend__swatch" viewBox="0 0 30 18" width="30" height="18" aria-hidden="true" focusable="false">
-                    <g class="rt-node" data-rt-state="@state"><rect class="rt-box" x="2" y="2" width="26" height="14" /></g>
+                    <g class="rt-node" data-rt-state="@state.Word()"><rect class="rt-box" x="2" y="2" width="26" height="14" /></g>
                 </svg>
                 <span>@text</span>
             </li>
@@ -17,7 +17,7 @@
         {
             <li>
                 <svg class="runtime-legend__swatch" viewBox="0 0 30 18" width="30" height="18" aria-hidden="true" focusable="false">
-                    <g class="rt-region" data-rt-state="@state"><rect class="rt-frame" x="1.5" y="1.5" width="27" height="15" /></g>
+                    <g class="rt-region" data-rt-state="@state.Word()"><rect class="rt-frame" x="1.5" y="1.5" width="27" height="15" /></g>
                 </svg>
                 <span>@text</span>
             </li>
@@ -28,7 +28,7 @@
         {
             <li>
                 <svg class="runtime-legend__swatch" viewBox="0 0 30 18" width="30" height="18" aria-hidden="true" focusable="false">
-                    <g class="rt-edge" data-rt-state="@state"><path class="rt-edge-line" d="M2 9H28" /></g>
+                    <g class="rt-edge" data-rt-state="@state.Word()"><path class="rt-edge-line" d="M2 9H28" /></g>
                 </svg>
                 <span>@text</span>
             </li>
@@ -37,13 +37,13 @@
             <svg class="runtime-legend__swatch" viewBox="0 0 30 18" width="30" height="18" aria-hidden="true" focusable="false">
                 <g class="rt-number rt-number--counted"><rect class="rt-number__hook" x="1.5" y="2.5" width="27" height="13" rx="3" /></g>
             </svg>
-            <span>calls/min: the last minute, counted by the web apps themselves</span>
+            <span>@RuntimePayloadBuilder.CallsUnit: the last minute, counted by the web apps themselves</span>
         </li>
         <li>
             <svg class="runtime-legend__swatch" viewBox="0 0 30 18" width="30" height="18" aria-hidden="true" focusable="false">
                 <g class="rt-number"><rect class="rt-number__hook" x="1.5" y="2.5" width="27" height="13" rx="3" /></g>
             </svg>
-            <span>– calls/min: no web app reports this number</span>
+            <span>@RuntimePayloadBuilder.NoNumber @RuntimePayloadBuilder.CallsUnit: no web app reports this number</span>
         </li>
     </ul>
     @* The marks of a deployment: only where the topology names the deployments file. *@
@@ -74,28 +74,28 @@
         (DeploymentState.Succeeded, "A deployment ended in the last ten minutes"),
     ];
 
-    private static readonly (string State, string Text)[] Nodes =
+    private static readonly (TileState State, string Text)[] Nodes =
     [
-        ("healthy", "Healthy (a container app that cannot tell its health: Responding)"),
-        ("unhealthy", "Unhealthy: 5xx, or 2xx without a healthy payload"),
-        ("unreachable", "Unreachable: no answer, or HTTP 404 at the health path"),
-        ("checking", "Checking (a container app: Probing or Waking)"),
-        ("neutral", "Not asked by the browser: what the pipeline found"),
+        (TileState.Healthy, "Healthy (a container app that cannot tell its health: Responding)"),
+        (TileState.Unhealthy, "Unhealthy: 5xx, or 2xx without a healthy payload"),
+        (TileState.Unreachable, "Unreachable: no answer, or HTTP 404 at the health path"),
+        (TileState.Checking, "Checking (a container app: Probing or Waking)"),
+        (TileState.Neutral, "Not asked by the browser: what the pipeline found"),
     ];
 
-    private static readonly (string State, string Text)[] Regions =
+    private static readonly (RegionState State, string Text)[] Regions =
     [
         // "Frame", not "region": what the frame holds is a region on App Service and a namespace in a cluster, and the
         // diagram names it in the frame's own title.
-        ("serving", "Frame of a region or namespace that serves traffic"),
-        ("standby", "On standby: healthy, no traffic"),
-        ("down", "Not serving: its web app is not healthy"),
+        (RegionState.Serving, "Frame of a region or namespace that serves traffic"),
+        (RegionState.Standby, "On standby: healthy, no traffic"),
+        (RegionState.Down, "Not serving: its web app is not healthy"),
     ];
 
-    private static readonly (string State, string Text)[] Edges =
+    private static readonly (EdgeState State, string Text)[] Edges =
     [
-        ("active", "Carries the traffic"),
-        ("idle", "Idle: no traffic expected"),
-        ("down", "Down: its target is not healthy"),
+        (EdgeState.Active, "Carries the traffic"),
+        (EdgeState.Idle, "Idle: no traffic expected"),
+        (EdgeState.Down, "Down: its target is not healthy"),
     ];
 }

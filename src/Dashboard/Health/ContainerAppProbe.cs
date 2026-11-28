@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 
 namespace Dashboard.Health;
@@ -91,7 +90,13 @@ public sealed record ContainerAppAnswer(
     string? Detail = null,
     bool HealthyPayload = false)
 {
+    private const string PartSeparator = " · ";
+
+    private const string AnsweredWord = "answered";
+
     public bool Answered => StatusCode is not null || Opaque;
+
+    private string Lead(string when) => $"Last probe {when}: {Path}";
 
     /// <summary>
     /// What the answer heard, next to the badge: <c>HTTP 200 · 85 ms</c>, <c>answered · 85 ms</c>, or for silence
@@ -99,10 +104,10 @@ public sealed record ContainerAppAnswer(
     /// </summary>
     public string SaidShort(bool waking) => this switch
     {
-        { StatusCode: { } code, LatencyMs: { } ms } => $"{HistoryText.Status(code)} · {HistoryText.Milliseconds(ms)}",
+        { StatusCode: { } code, LatencyMs: { } ms } => $"{HistoryText.Status(code)}{PartSeparator}{HistoryText.Milliseconds(ms)}",
         { StatusCode: { } code } => HistoryText.Status(code),
-        { Opaque: true, LatencyMs: { } ms } => $"answered · {HistoryText.Milliseconds(ms)}",
-        { Opaque: true } => "answered",
+        { Opaque: true, LatencyMs: { } ms } => $"{AnsweredWord}{PartSeparator}{HistoryText.Milliseconds(ms)}",
+        { Opaque: true } => AnsweredWord,
         _ when waking => "no answer yet",
         _ => "no answer",
     };
@@ -110,9 +115,9 @@ public sealed record ContainerAppAnswer(
     /// <summary>What the answer heard, as the tooltip's sentence about the probe made at <paramref name="when"/>.</summary>
     public string SaidIn(string when) => this switch
     {
-        { StatusCode: { } code } => string.Create(CultureInfo.InvariantCulture, $"Last probe {when}: {Path} answered HTTP {code}."),
-        { Opaque: true } => $"Last probe {when}: {Path} answered. The app does not allow this page's origin (CORS), so the page cannot read its answer or its health; it asks without reading the answer.",
-        _ => $"Last probe {when}: {Path}, no answer. {Detail}".TrimEnd(),
+        { StatusCode: { } code } => $"{Lead(when)} {AnsweredWord} {HistoryText.Status(code)}.",
+        { Opaque: true } => $"{Lead(when)} {AnsweredWord}. The app does not allow this page's origin (CORS), so the page cannot read its answer or its health; it asks without reading the answer.",
+        _ => $"{Lead(when)}, no answer. {Detail}".TrimEnd(),
     };
 
     /// <summary>

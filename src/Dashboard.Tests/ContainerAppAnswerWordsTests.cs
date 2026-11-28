@@ -108,4 +108,13 @@ public class ContainerAppAnswerWordsTests
         Assert.StartsWith("app (app.example.com): Probing. This page asks it once a minute", title, StringComparison.Ordinal);
         Assert.EndsWith("before it says Not responding.", title, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void SaidInStatusArmUsesHistoryTextStatus()
+    {
+        var answer = new ContainerAppAnswer("/h", true, 200, false, null, Checked);
+        var expected = $"Last probe 22:00: /h answered {HistoryText.Status(200)}.";
+
+        Assert.Equal(expected, answer.SaidIn("22:00"));
+    }
 }

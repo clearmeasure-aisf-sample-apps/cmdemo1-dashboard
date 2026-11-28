@@ -96,15 +96,27 @@ public static class LinkText
     public static string InPortal(string subject) => $"{subject} in the Azure portal";
 
     /// <summary>
-    /// The name of an environment's group of links: its resources in the Azure portal, its pages of the system,
-    /// or both.
+    /// The accessible name of an environment's group of links: its resources in the Azure portal, its pages of the
+    /// system, or both.
+    /// <c>EnvironmentGroup("tdd", true, true)</c> gives
+    /// <c>"Resources of tdd in the Azure portal, and pages of the system there"</c>;
+    /// <c>EnvironmentGroup("tdd", false, true)</c> gives <c>"Pages of the system in tdd"</c>;
+    /// <c>EnvironmentGroup("tdd", true, false)</c> and <c>EnvironmentGroup("tdd", false, false)</c> both give
+    /// <c>"Resources of tdd in the Azure portal"</c>.
     /// </summary>
-    public static string Group(string environment, bool hasResources, bool hasPages) => (hasResources, hasPages) switch
+    /// <param name="environment">The environment's name; not null.</param>
+    /// <param name="hasLinks">Whether the group has at least one resource link.</param>
+    /// <param name="hasPages">Whether the group has at least one page of the system.</param>
+    public static string EnvironmentGroup(string environment, bool hasLinks, bool hasPages)
     {
-        (true, true) => $"{InPortal($"Resources of {environment}")}, and pages of the system there",
-        (false, true) => $"Pages of the system in {environment}",
-        _ => InPortal($"Resources of {environment}"),
-    };
+        ArgumentNullException.ThrowIfNull(environment);
+        return (hasLinks, hasPages) switch
+        {
+            (true, true) => $"{InPortal($"Resources of {environment}")}, and pages of the system there",
+            (false, true) => $"Pages of the system in {environment}",
+            _ => InPortal($"Resources of {environment}"),
+        };
+    }
 
     /// <summary>
     /// The one table of a key of <see cref="LinkSet"/> to the sentence its tooltip says of a subject. A new link is one

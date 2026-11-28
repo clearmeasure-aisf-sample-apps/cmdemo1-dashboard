@@ -66,6 +66,12 @@ public static class BuildText
     /// <summary>The lead <see cref="Complexity" /> and <see cref="Crap" /> put before their largest score: <c>worst 34</c>.</summary>
     private const string WorstLead = "worst";
 
+    /// <summary>
+    /// The lead <see cref="BarLabel" /> puts before <see cref="Describe" />: the words the "Code" card's language bar
+    /// says of itself in its accessible name, <c>Lines of code by language: </c>.
+    /// </summary>
+    private const string BarLead = "Lines of code by language: ";
+
     /// <summary>What every percent word ends with: a space and the sign, <c>81.2 %</c>.</summary>
     private const string PercentSign = " %";
 
@@ -154,6 +160,37 @@ public static class BuildText
         percent is > 0 and < SmallShareBound
             ? "<1" + PercentSign
             : Math.Round(percent).ToString(WholeFormat, CultureInfo.InvariantCulture) + PercentSign;
+
+    /// <summary>
+    /// A share's line count in words, the same unit word <see cref="Size(CodeSize)" /> says: <c>1,234 lines</c> -
+    /// the hover text of one part of the "Code" card's language bar and of one of its legend items.
+    /// </summary>
+    public static string LinesTitle(LanguageShare share)
+    {
+        ArgumentNullException.ThrowIfNull(share);
+        return Lines(share.Lines);
+    }
+
+    /// <summary>
+    /// A share's full hover text for a part of the "Code" card's language bar: its name, its line count in words and
+    /// its share of the lines of all languages, <c>C#: 1,234 lines, 73 %</c>.
+    /// </summary>
+    public static string ShareTitle(LanguageShare share)
+    {
+        ArgumentNullException.ThrowIfNull(share);
+        return $"{share.Name}: {LinesTitle(share)}, {SharePercent(share.Percent)}";
+    }
+
+    /// <summary>
+    /// The accessible name of the "Code" card's language bar: the lead word and the bar in words,
+    /// <c>Lines of code by language: C# 73 %, Razor 12 %, Other 15 %</c>; the lead alone when the bar names no
+    /// language.
+    /// </summary>
+    public static string BarLabel(IEnumerable<LanguageShare> shares)
+    {
+        ArgumentNullException.ThrowIfNull(shares);
+        return BarLead + Describe(shares);
+    }
 
     /// <summary><c>1,417: 1,009 unit, 240 integration, 168 acceptance</c>.</summary>
     public static string Tests(TestCounts tests)

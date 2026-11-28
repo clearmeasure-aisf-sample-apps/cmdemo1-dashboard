@@ -23,19 +23,34 @@ public static class RuntimeRegionRole
     /// <summary>The region of the static sites.</summary>
     public const string Static = "static";
 
+    /// <summary>The page word of the <see cref="Data"/> role, spelled once so <see cref="DatabaseReachable"/> can't drift from it.</summary>
+    private const string DatabaseWords = "database";
+
+    /// <summary>The separator between two unprobed roles in <see cref="NotProbed"/>.</summary>
+    private const string RoleSeparator = ", ";
+
+    /// <summary>The tail that says the named roles are the ones nothing in the region probes.</summary>
+    private const string NotProbedTail = ": not probed";
+
+    /// <summary>The separator between the reachable-database clause and the unprobed roles in <see cref="Unprobed"/>.</summary>
+    private const string ClauseSeparator = "; ";
+
     /// <summary>
-    /// The words for a role on the region's box, where nothing in the region is probed: "database" for
+    /// The words for a role on the region's box, where nothing in the region is probed: <see cref="DatabaseWords"/> for
     /// <see cref="Data"/>, "static sites" for <see cref="Static"/>, any other role as it is written.
     /// </summary>
     public static string Words(string role) => role switch
     {
-        Data => "database",
+        Data => DatabaseWords,
         Static => "static sites",
         _ => role,
     };
 
-    /// <summary>What a region with no web app says when its database answered a health check.</summary>
-    public const string DatabaseReachable = "database: reachable";
+    /// <summary>
+    /// What a region with no web app says when its database answered a health check: the <see cref="DatabaseWords"/>
+    /// page word and the reachable tail.
+    /// </summary>
+    public const string DatabaseReachable = DatabaseWords + ": reachable";
 
     /// <summary>
     /// What a region with no web app says when there is nothing to say: no roles left to name and no database
@@ -43,20 +58,24 @@ public static class RuntimeRegionRole
     /// </summary>
     public const string NothingToSay = "";
 
-    /// <summary>The roles nothing in the region probes, in the page's words and in the deployment's order.</summary>
-    public static string NotProbed(IEnumerable<string> roles) => $"{string.Join(", ", roles.Select(Words))}: not probed";
+    /// <summary>
+    /// The roles nothing in the region probes, in the page's words and in the deployment's order, joined with
+    /// <see cref="RoleSeparator"/> and closed with <see cref="NotProbedTail"/>.
+    /// </summary>
+    public static string NotProbed(IEnumerable<string> roles) => string.Join(RoleSeparator, roles.Select(Words)) + NotProbedTail;
 
     /// <summary>
     /// The label of a region with no web app: <see cref="DatabaseReachable"/> when its database is reachable, then the
-    /// remaining roles as <see cref="NotProbed"/>, joined with "; "; <see cref="NothingToSay"/> when neither applies.
-    /// A <see cref="Data"/> role is left out of the unprobed roles once the database is said to be reachable.
+    /// remaining roles as <see cref="NotProbed"/>, joined with <see cref="ClauseSeparator"/>; <see cref="NothingToSay"/>
+    /// when neither applies. A <see cref="Data"/> role is left out of the unprobed roles once the database is said to be
+    /// reachable.
     /// </summary>
     public static string Unprobed(IEnumerable<string> roles, bool databaseReachable)
     {
         var others = roles.Where(role => !(databaseReachable && role == Data)).ToList();
         return (databaseReachable, others.Count > 0) switch
         {
-            (true, true) => $"{DatabaseReachable}; {NotProbed(others)}",
+            (true, true) => DatabaseReachable + ClauseSeparator + NotProbed(others),
             (true, false) => DatabaseReachable,
             (false, true) => NotProbed(others),
             (false, false) => NothingToSay,

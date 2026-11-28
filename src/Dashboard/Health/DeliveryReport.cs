@@ -66,7 +66,7 @@ public sealed record DeliveryReport(DateTimeOffset? Generated, IReadOnlyList<Del
             }
 
             var environments = JsonRead.Items(root, "environments")
-                .Select(environment => (Name: JsonRead.Text(environment, "name"), Element: environment))
+                .Select(environment => (Name: JsonRead.Text(environment, DeliveryFileWords.Name), Element: environment))
                 .Where(environment => environment.Name is not null)
                 .Select(environment => new DeliveryEnvironment(
                     environment.Name!,
@@ -163,7 +163,7 @@ public sealed record DeliveryEntry(
 {
     internal static DeliveryEntry? Read(JsonElement element)
     {
-        if (JsonRead.Text(element, "name") is not { } name)
+        if (JsonRead.Text(element, DeliveryFileWords.Name) is not { } name)
         {
             return null;
         }
@@ -174,14 +174,14 @@ public sealed record DeliveryEntry(
             VersionText.Read(element),
             JsonRead.Time(element, "deployedAt"),
             JsonRead.Text(element, "signedOffBy"),
-            JsonRead.Text(element, "reason"),
+            JsonRead.Text(element, DeliveryFileWords.Reason),
             JsonRead.Text(element, "commit"),
             JsonRead.Time(element, "commitAt"),
             JsonRead.Number(element, "leadTimeHours"),
             behind is null ? null : new BehindFirst(JsonRead.Count(behind, "versions"), JsonRead.Number(behind, "days")),
             JsonRead.Count(element, "deploymentsLast7Days"),
             JsonRead.Count(element, "failedLast7Days"),
-            JsonRead.Address(element, "releaseUrl"),
+            JsonRead.Address(element, DeliveryFileWords.ReleaseUrl),
             PersonSignOff.Read(JsonRead.Section(element, "lastPersonSignOff")));
     }
 }
@@ -205,7 +205,7 @@ public sealed record PersonSignOff(string? Version, string? By, DateTimeOffset? 
         var by = JsonRead.Text(section, "by");
         return version is null && by is null
             ? null
-            : new PersonSignOff(version, by, JsonRead.Time(section, "at"), JsonRead.Text(section, "reason"), JsonRead.Address(section, "releaseUrl"));
+            : new PersonSignOff(version, by, JsonRead.Time(section, DeliveryFileWords.At), JsonRead.Text(section, DeliveryFileWords.Reason), JsonRead.Address(section, DeliveryFileWords.ReleaseUrl));
     }
 }
 
@@ -221,7 +221,26 @@ public sealed record FailoverTest(string? Environment, DateTimeOffset? At, doubl
 {
     internal static FailoverTest? Read(JsonElement? section)
     {
-        var test = new FailoverTest(JsonRead.Text(section, "environment"), JsonRead.Time(section, "at"), JsonRead.Number(section, "seconds"));
+        var test = new FailoverTest(JsonRead.Text(section, "environment"), JsonRead.Time(section, DeliveryFileWords.At), JsonRead.Number(section, "seconds"));
         return test == new FailoverTest(null, null, null) ? null : test;
     }
+}
+
+/// <summary>
+/// The words of <c>delivery.json</c> that more than one reader of the file types by hand: naming them once keeps
+/// the readers from drifting apart, so a rename in one cannot silently blank a card line in another.
+/// </summary>
+internal static class DeliveryFileWords
+{
+    /// <summary>The environment's name in <c>Parse</c>, and the deployable's name in <c>DeliveryEntry.Read</c>.</summary>
+    internal const string Name = "name";
+
+    /// <summary>The deployable's note in <c>DeliveryEntry.Read</c>, and the sign-off's note in <c>PersonSignOff.Read</c>.</summary>
+    internal const string Reason = "reason";
+
+    /// <summary>The deployable's release page in <c>DeliveryEntry.Read</c>, and the sign-off's in <c>PersonSignOff.Read</c>.</summary>
+    internal const string ReleaseUrl = "releaseUrl";
+
+    /// <summary>When the sign-off happened in <c>PersonSignOff.Read</c>, and when the failover test ended in <c>FailoverTest.Read</c>.</summary>
+    internal const string At = "at";
 }

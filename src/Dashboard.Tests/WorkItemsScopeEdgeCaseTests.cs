@@ -602,4 +602,73 @@ public class WorkItemsScopeEdgeCaseTests
             Thread.CurrentThread.CurrentCulture = reader;
         }
     }
+
+    // --------------------------------------------- the rules read out of a whole file, through the parser
+
+    /// <summary>An array of sentences with padded and blank entries: the trimmed, non-blank lines are joined with one
+    /// space, in the order written, through <c>JsonRead.Strings</c>.</summary>
+    [Fact]
+    public void RulesAsAnArrayOfPaddedAndBlankEntriesJoinsTheTrimmedNonBlankLinesWithOneSpace()
+    {
+        var report = WorkItemsReport.Parse("""
+            { "scope": { "repo": "cmdemo1-system", "rules": ["  Take an item from Todo.  ", "", "  ", "Done means deployed to prod.", "   "] } }
+            """);
+
+        Assert.NotNull(report);
+        Assert.Equal("Take an item from Todo. Done means deployed to prod.", report!.Scope!.Rules);
+    }
+
+    /// <summary>An array of only blanks, numbers and nulls: no string survives the trim, so <c>Rules</c> is null, and
+    /// the scope is still said by its other parts.</summary>
+    [Fact]
+    public void RulesAsAnArrayOfOnlyBlanksNumbersAndNullsGivesNullRules()
+    {
+        var report = WorkItemsReport.Parse("""
+            { "scope": { "repo": "cmdemo1-system", "project": 679, "rules": ["  ", "", 42, null] } }
+            """);
+
+        Assert.NotNull(report);
+        Assert.NotNull(report!.Scope);
+        Assert.Null(report.Scope.Rules);
+    }
+
+    /// <summary>An empty array: <c>Rules</c> is null, not the empty word.</summary>
+    [Fact]
+    public void RulesAsAnEmptyArrayGivesNullRules()
+    {
+        var report = WorkItemsReport.Parse("""
+            { "scope": { "repo": "cmdemo1-system", "project": 679, "rules": [] } }
+            """);
+
+        Assert.NotNull(report);
+        Assert.NotNull(report!.Scope);
+        Assert.Null(report.Scope.Rules);
+    }
+
+    /// <summary><c>rules</c> as an object or a number: the array read finds no array, so <c>Rules</c> is null.</summary>
+    [Theory]
+    [InlineData("{ \"a\": 1 }")]
+    [InlineData("7")]
+    public void RulesAsAnObjectOrANumberGivesNullRules(string rulesValue)
+    {
+        var report = WorkItemsReport.Parse($$"""
+            { "scope": { "repo": "cmdemo1-system", "project": 679, "rules": {{rulesValue}} } }
+            """);
+
+        Assert.NotNull(report);
+        Assert.NotNull(report!.Scope);
+        Assert.Null(report.Scope.Rules);
+    }
+
+    /// <summary><c>rules</c> as a plain string is taken as-is ahead of the array read: the string arm wins.</summary>
+    [Fact]
+    public void RulesAsAPlainStringIsTakenAsIsAheadOfTheArrayRead()
+    {
+        var report = WorkItemsReport.Parse("""
+            { "scope": { "repo": "cmdemo1-system", "rules": "Take an item from Todo. Done means deployed to prod." } }
+            """);
+
+        Assert.NotNull(report);
+        Assert.Equal("Take an item from Todo. Done means deployed to prod.", report!.Scope!.Rules);
+    }
 }

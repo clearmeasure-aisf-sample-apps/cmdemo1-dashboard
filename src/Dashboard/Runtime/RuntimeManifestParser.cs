@@ -84,8 +84,8 @@ public static class RuntimeManifestParser
                     continue;
                 }
 
-                var manifest = RelativeFile(element, "manifest", $"{name}.json", path, errors);
-                var svg = RelativeFile(element, "svg", $"{name}.svg", path, errors);
+                var manifest = RelativeFile(element, ManifestWord, $"{name}.json", path, errors);
+                var svg = RelativeFile(element, SvgWord, $"{name}.svg", path, errors);
                 entries.Add(new RuntimeIndexEntry(name, manifest, svg, Database(element)));
             }
 
@@ -104,10 +104,10 @@ public static class RuntimeManifestParser
         {
             var root = document.RootElement;
             var errors = new List<string>();
-            var environment = JsonRead.Text(root, "environment");
+            var environment = JsonRead.Text(root, EnvironmentWord);
             if (environment is null)
             {
-                errors.Add(FileProblems.MissingOrEmpty("environment"));
+                errors.Add(FileProblems.MissingOrEmpty(EnvironmentWord));
             }
 
             var nodes = ReadArray(root, "nodes", errors, (element, path) =>
@@ -303,9 +303,9 @@ public static class RuntimeManifestParser
     /// never an error: the runtime diagram shows all the same, and the database's box behaves as without the files.
     /// </summary>
     private static RuntimeDatabaseFiles? Database(JsonElement entry) =>
-        entry.TryGetProperty("database", out var database) && database.ValueKind == JsonValueKind.Object
-            && JsonRead.Text(database, "svg") is { } svg && IsFileName(svg)
-            && JsonRead.Text(database, "manifest") is { } manifest && IsFileName(manifest)
+        JsonRead.Section(entry, DatabaseWord) is { } section
+            && JsonRead.Text(section, SvgWord) is { } svg && IsFileName(svg)
+            && JsonRead.Text(section, ManifestWord) is { } manifest && IsFileName(manifest)
             ? new RuntimeDatabaseFiles(svg, manifest)
             : null;
 
@@ -345,6 +345,10 @@ public static class RuntimeManifestParser
     private const string Url = "url";
     private const string Environments = "environments";
     private const string LinksWord = "links";
+    private const string EnvironmentWord = "environment";
+    private const string ManifestWord = "manifest";
+    private const string SvgWord = "svg";
+    private const string DatabaseWord = "database";
 
     /// <summary>The longest text kept of an entry of <c>unplaced</c>, and the most entries.</summary>
     public const int LongestUnplacedText = 300;

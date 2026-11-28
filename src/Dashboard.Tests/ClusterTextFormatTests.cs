@@ -39,7 +39,8 @@ public class ClusterTextFormatTests
     // ----- the source guard
 
     /// <summary>The named formats and unit words the class says its numbers with stand as constants in its
-    /// source, so the literals cannot come back beside the code that says them.</summary>
+    /// source, so the literals cannot come back beside the code that says them. The percent sign stands in
+    /// <see cref="Shares" />, whose whole percent the class says.</summary>
     [Fact]
     public void TheNamedFormatsAndUnitsAreDeclaredInTheSource()
     {
@@ -50,7 +51,11 @@ public class ClusterTextFormatTests
         Assert.Contains("private const string GibibyteUnit", source, StringComparison.Ordinal);
         Assert.Contains("private const string MebibyteUnit", source, StringComparison.Ordinal);
         Assert.Contains("private const string KibibyteUnit", source, StringComparison.Ordinal);
-        Assert.Contains("private const string PercentSign", source, StringComparison.Ordinal);
+
+        var shares = File.ReadAllText(Path.Combine(RepoRoot(), "src", "Dashboard", "Shares.cs"));
+        Assert.Contains("internal const string PercentSign", shares, StringComparison.Ordinal);
+        Assert.Contains("Shares.WholePercent(percent)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("\" %\"", source, StringComparison.Ordinal);
     }
 
     private static string RepoRoot()

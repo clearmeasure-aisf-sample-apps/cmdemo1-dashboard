@@ -61,6 +61,18 @@ public static class ClusterText
     /// <summary>The unit a number of KiB is said with: <c>512 KiB</c>.</summary>
     private const string KibibyteUnit = "KiB";
 
+    /// <summary>The tail of a node's meter label: <c>, used of what it offers</c>.</summary>
+    private const string UsedOfWhatItOffers = ", used of what it offers";
+
+    /// <summary>The tail of a pod's meter label: <c> against its limit</c>.</summary>
+    private const string AgainstItsLimit = " against its limit";
+
+    /// <summary>The word a node's or pod's CPU meter says: <c>CPU</c>.</summary>
+    private const string CpuWord = "CPU";
+
+    /// <summary>The word a node's or pod's memory meter says: <c>Memory</c>.</summary>
+    private const string MemoryWord = "Memory";
+
     /// <summary>The separator between the parts of one cluster line: <c>3 of 3 ready · 1 restart</c>.</summary>
     private const string PartSeparator = " · ";
 
@@ -116,11 +128,25 @@ public static class ClusterText
         return UseAgainst(cpu.Usage, cpu.Limits, CpuOf, Cpu);
     }
 
+    /// <summary>The accessible name of a pod's CPU meter: <c>CPU of ui-6d5f7c9b8-x2k4q against its limit</c>.</summary>
+    public static string PodCpuLabel(ClusterPod pod)
+    {
+        ArgumentNullException.ThrowIfNull(pod);
+        return $"{CpuWord} of {pod.Name}{AgainstItsLimit}";
+    }
+
     /// <summary>A pod's memory for its row, by the same rule.</summary>
     public static string? MemoryUse(ResourceUse memory)
     {
         ArgumentNullException.ThrowIfNull(memory);
         return UseAgainst(memory.Usage, memory.Limits, MemoryOf, Memory);
+    }
+
+    /// <summary>The accessible name of a pod's memory meter: <c>Memory of ui-6d5f7c9b8-x2k4q against its limit</c>.</summary>
+    public static string PodMemoryLabel(ClusterPod pod)
+    {
+        ArgumentNullException.ThrowIfNull(pod);
+        return $"{MemoryWord} of {pod.Name}{AgainstItsLimit}";
     }
 
     /// <summary>The CPU of a node or of all nodes against what they offer, in cores; null without a usage.</summary>
@@ -130,11 +156,25 @@ public static class ClusterText
         return UseAgainst(cpu.Usage, cpu.Allocatable, CoresOf, used => $"{Cores(used)} {CoresUnit}");
     }
 
+    /// <summary>The accessible name of a node's CPU meter: <c>CPU of aks-…000000, used of what it offers</c>.</summary>
+    public static string NodeCpuLabel(ClusterNode node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        return $"{CpuWord} of {node.Name}{UsedOfWhatItOffers}";
+    }
+
     /// <summary>The memory of a node or of all nodes against what they offer; null without a usage.</summary>
     public static string? NodeMemory(ResourceUse memory)
     {
         ArgumentNullException.ThrowIfNull(memory);
         return UseAgainst(memory.Usage, memory.Allocatable, MemoryOf, Memory);
+    }
+
+    /// <summary>The accessible name of a node's memory meter: <c>Memory of aks-…000000, used of what it offers</c>.</summary>
+    public static string NodeMemoryLabel(ClusterNode node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        return $"{MemoryWord} of {node.Name}{UsedOfWhatItOffers}";
     }
 
     /// <summary><c>12 of 110</c>; <c>12</c> without a capacity; null without a count.</summary>
@@ -147,6 +187,13 @@ public static class ClusterText
             ({ } count, null) => BuildText.Count(count),
             _ => null,
         };
+    }
+
+    /// <summary>The accessible name of a node's pods meter: <c>Pods on aks-…000000, of how many it can take</c>.</summary>
+    public static string NodePodsLabel(ClusterNode node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        return $"Pods on {node.Name}, of how many it can take";
     }
 
     /// <summary><c>Phase Running; 2 of 2 containers ready</c>; <c>Phase Running</c> without container counts.</summary>

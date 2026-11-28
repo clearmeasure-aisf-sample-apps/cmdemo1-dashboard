@@ -70,15 +70,15 @@
                             </td>
                             <td>
                                 <UseCell Value="@ClusterText.NodeCpu(node.Cpu)" Percent="ClusterText.Share(node.Cpu.Usage, node.Cpu.Allocatable)"
-                                         Label="@($"CPU of {node.Name}, used of what it offers")" />
+                                         Label="@ClusterText.NodeCpuLabel(node)" />
                             </td>
                             <td>
                                 <UseCell Value="@ClusterText.NodeMemory(node.Memory)" Percent="ClusterText.Share(node.Memory.Usage, node.Memory.Allocatable)"
-                                         Label="@($"Memory of {node.Name}, used of what it offers")" />
+                                         Label="@ClusterText.NodeMemoryLabel(node)" />
                             </td>
                             <td>
                                 <UseCell Value="@ClusterText.NodePods(node)" Percent="ClusterText.Share(node.Pods, node.PodCapacity)"
-                                         Label="@($"Pods on {node.Name}, of how many it can take")" />
+                                         Label="@ClusterText.NodePodsLabel(node)" />
                             </td>
                         </tr>
                     }

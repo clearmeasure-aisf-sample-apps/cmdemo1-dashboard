@@ -653,7 +653,7 @@ public class RuntimeDiagramEdgeCaseTests
 
         Assert.Equal(
             [
-                "Deconstruct", "Environment", "Equals", "Errors", "GetHashCode", "IsValid", "Manifest", "Svg",
+                "Deconstruct", "Environment", "Equals", "Errors", "GetHashCode", "IsValid", "Lacks", "Manifest", "Svg",
                 "ToString", "op_Equality", "op_Inequality",
             ],
             surface);
@@ -701,6 +701,25 @@ public class RuntimeDiagramEdgeCaseTests
             typeof(RuntimeDiagram)
                 .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                 .Count(method => method.Name == "Equals"));
+
+        // The diagram's one static sentence: the words under the picture naming the boxes the manifest has and the
+        // SVG lacks. It is a static method, read of nothing the record keeps, so it is declared only and is no part.
+        var lacks = typeof(RuntimeDiagram).GetMethod("Lacks", BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
+
+        Assert.NotNull(lacks);
+        Assert.Equal(typeof(string), lacks.ReturnType);
+        Assert.Equal(typeof(IReadOnlyList<string>), lacks.GetParameters().Single().ParameterType);
+
+        // The static members a record may carry are pinned here: no static property, and the one static method is
+        // Lacks - the words of the mismatch, said once in tested C# and read by the page.
+        Assert.Empty(typeof(RuntimeDiagram).GetProperties(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly));
+        Assert.Equal(
+            ["Lacks"],
+            typeof(RuntimeDiagram)
+                .GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)
+                .Where(method => !method.IsSpecialName && !method.Name.StartsWith("op_", StringComparison.Ordinal))
+                .Select(method => method.Name)
+                .Order(StringComparer.Ordinal));
 
         // The four parts fall out in their order, as the out parameters the record names them, and the verdict is no
         // fifth of them.

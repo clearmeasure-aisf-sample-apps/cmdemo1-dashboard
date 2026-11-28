@@ -88,6 +88,21 @@ public static class VitalsText
     /// <summary>The word <see cref="Uptime" /> says before the length of a settled process, <c>up </c>: from <see cref="ProcessVitals.RecentRestart" /> on.</summary>
     private const string UpLead = "up ";
 
+    /// <summary>The words <see cref="MemoryDetail" /> says before the working set, <c>Working set </c>: the first clause of the memory tooltip.</summary>
+    private const string WorkingSetLead = "Working set ";
+
+    /// <summary>The words <see cref="MemoryDetail" /> says between the working set and the heap within it, <c>, of which </c>.</summary>
+    private const string OfWhichLead = ", of which ";
+
+    /// <summary>The words <see cref="MemoryDetail" /> says before the heap after <see cref="OfWhichLead" />, <c>managed heap </c>.</summary>
+    private const string HeapWords = "managed heap ";
+
+    /// <summary>The words <see cref="MemoryDetail" /> says before the heap when no working set leads it, <c>Managed heap </c>: <see cref="HeapWords" /> opening the clause.</summary>
+    private const string ManagedHeapLead = "Managed heap ";
+
+    /// <summary>The word <see cref="MemoryDetail" /> says after the thread count, <c> threads</c>.</summary>
+    private const string ThreadsWord = " threads";
+
     /// <summary><c>3 %</c>; one decimal below <see cref="OneDecimalBelow" />.</summary>
     public static string Cpu(double percent) =>
         percent.ToString(percent < OneDecimalBelow && Math.Round(percent, OneDecimalDigits) != Math.Round(percent)
@@ -115,16 +130,17 @@ public static class VitalsText
         var parts = new List<string>();
         if (vitals.WorkingSetMb is { } workingSet)
         {
-            parts.Add(vitals.GcHeapMb is { } heap ? $"Working set {Memory(workingSet)}, of which managed heap {Memory(heap)}" : $"Working set {Memory(workingSet)}");
+            var said = WorkingSetLead + Memory(workingSet);
+            parts.Add(vitals.GcHeapMb is { } heap ? said + OfWhichLead + HeapWords + Memory(heap) : said);
         }
         else if (vitals.GcHeapMb is { } heap)
         {
-            parts.Add($"Managed heap {Memory(heap)}");
+            parts.Add(ManagedHeapLead + Memory(heap));
         }
 
         if (vitals.Threads is { } threads)
         {
-            parts.Add(string.Create(CultureInfo.InvariantCulture, $"{threads} threads"));
+            parts.Add(threads.ToString(CultureInfo.InvariantCulture) + ThreadsWord);
         }
 
         return TooltipClauses.Join(parts);

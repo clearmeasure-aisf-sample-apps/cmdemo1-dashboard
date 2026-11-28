@@ -19,6 +19,7 @@ public sealed record VersionAssessment(
     private const string DiffersWord = "Differs";
     private const string NotComparedWord = "Not compared";
     private const string NoPinnedVersion = "No pinned version";
+    private const string NodeSeparator = ", ";
 
     public bool Differs => State == VersionState.Differs;
 
@@ -96,14 +97,21 @@ public sealed record VersionAssessment(
         return tally;
     }
 
+    /// <summary>The node clause a single node says: its label and the version it runs.</summary>
+    private static string Runs(string label, string version) => $"{label} runs {version}";
+
+    /// <summary>Joins a list of node clauses with the separator a sentence of nodes uses.</summary>
+    private static string Nodes(IEnumerable<string> clauses) => string.Join(NodeSeparator, clauses);
+
     private static string Describe(NodeTally tally, string version)
     {
         var (matching, differing, unknown) = tally;
         var (total, state) = (tally.Total, tally.State);
         var known = state switch
         {
-            VersionState.Differs => $"{DiffersWord}: {string.Join(", ", differing.Select(node => $"{node.Label} runs {node.Running}"))}",
-            VersionState.InSync when matching.Count == 1 => $"{InSyncWord}: {matching[0].Label} runs {version}",
+            // A node in Differing always has a non-null Running: Tally only puts a node there when Running is non-null.
+            VersionState.Differs => $"{DiffersWord}: {Nodes(differing.Select(node => Runs(node.Label, node.Running!)))}",
+            VersionState.InSync when matching.Count == 1 => $"{InSyncWord}: {Runs(matching[0].Label, version)}",
             VersionState.InSync when matching.Count == total => $"{InSyncWord}: all {total} nodes run {version}",
             VersionState.InSync => $"{InSyncWord}: {matching.Count} of {total} nodes run {version}",
             _ when total == 0 => $"{NotComparedWord}: the deployable has no nodes",
@@ -115,7 +123,7 @@ public sealed record VersionAssessment(
         }
 
         var separator = state == VersionState.NodesUnknown ? ": " : "; ";
-        return $"{known}{separator}{string.Join(", ", unknown.Select(node => $"{node.Label} {node.UnknownReason}"))}.";
+        return $"{known}{separator}{Nodes(unknown.Select(node => $"{node.Label} {node.UnknownReason}"))}.";
     }
 
     /// <summary>

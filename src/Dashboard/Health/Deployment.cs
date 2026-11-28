@@ -55,6 +55,28 @@ public sealed record Deployment(
 
     /// <summary>The word of what the deployment waits for while it is waiting.</summary>
     private const string WaitsForWord = "waitsFor";
+
+    // The values of <c>state</c>, named once beside the entry words: what the file says a deployment is doing, as
+    // opposed to the entry's own name. <c>DeploymentText.Shape</c> and <c>ActivityKind</c> carry the same letters as
+    // dot-shape classes and line kinds; these are the file's words, and the only ones <see cref="Of"/> matches.
+
+    /// <summary>The value of <c>state</c> for a deployment waiting behind another task.</summary>
+    private const string QueuedState = "queued";
+
+    /// <summary>The value of <c>state</c> for a deployment running now.</summary>
+    private const string ExecutingState = "executing";
+
+    /// <summary>The value of <c>state</c> for a deployment stopped for a person.</summary>
+    private const string WaitingState = "waiting";
+
+    /// <summary>The value of <c>state</c> for a deployment that succeeded.</summary>
+    private const string SucceededState = "succeeded";
+
+    /// <summary>The value of <c>state</c> for a deployment that failed.</summary>
+    private const string FailedState = "failed";
+
+    /// <summary>The value of <c>state</c> for a deployment that was canceled.</summary>
+    private const string CanceledState = "canceled";
     /// <summary>
     /// True while it has not ended: queued, executing or waiting. A state the page does not know counts while the
     /// file gives it no end.
@@ -102,12 +124,12 @@ public sealed record Deployment(
     /// <summary>The state a word of the file means; <see cref="DeploymentState.Unknown"/> for one the page does not know.</summary>
     internal static DeploymentState Of(string state) => state.ToLowerInvariant() switch
     {
-        "queued" => DeploymentState.Queued,
-        "executing" => DeploymentState.Executing,
-        "waiting" => DeploymentState.Waiting,
-        "succeeded" => DeploymentState.Succeeded,
-        "failed" => DeploymentState.Failed,
-        "canceled" => DeploymentState.Canceled,
+        QueuedState => DeploymentState.Queued,
+        ExecutingState => DeploymentState.Executing,
+        WaitingState => DeploymentState.Waiting,
+        SucceededState => DeploymentState.Succeeded,
+        FailedState => DeploymentState.Failed,
+        CanceledState => DeploymentState.Canceled,
         _ => DeploymentState.Unknown,
     };
 

@@ -445,12 +445,21 @@ public sealed record WorkItemIdentity(int? Number, string? Title, Uri? Url, stri
     /// <summary>True when the file names no item: no number, title, page or column. A state word alone names none.</summary>
     public bool IsUnsaid => Number is null && Title is null && Url is null && Column is null;
 
+    /// <summary>The file's word for an item's or pull request's number on the board.</summary>
+    internal const string NumberWord = "number";
+
+    /// <summary>The file's word for an item's or pull request's page, and for a checks page.</summary>
+    internal const string UrlWord = "url";
+
+    /// <summary>The file's word for an item's or pull request's state word, and a checks state.</summary>
+    internal const string StateWord = "state";
+
     internal static WorkItemIdentity Read(JsonElement element) =>
         new(
-            JsonRead.Count(element, "number"),
+            JsonRead.Count(element, NumberWord),
             JsonRead.Text(element, "title"),
-            JsonRead.Address(element, "url"),
-            JsonRead.Text(element, "state"),
+            JsonRead.Address(element, UrlWord),
+            JsonRead.Text(element, StateWord),
             JsonRead.Text(element, "column"));
 }
 
@@ -607,9 +616,9 @@ public sealed record WorkPullRequest(int? Number, Uri? Url, string? State, DateT
 
         var (checks, checksUrl) = ChecksOf(element);
         var pull = new WorkPullRequest(
-            JsonRead.Count(element, "number"),
-            JsonRead.Address(element, "url"),
-            JsonRead.Text(element, "state"),
+            JsonRead.Count(element, WorkItemIdentity.NumberWord),
+            JsonRead.Address(element, WorkItemIdentity.UrlWord),
+            JsonRead.Text(element, WorkItemIdentity.StateWord),
             JsonRead.Time(element, "mergedAt"),
             JsonRead.Text(element, "mergeSha"),
             checks,
@@ -624,8 +633,8 @@ public sealed record WorkPullRequest(int? Number, Uri? Url, string? State, DateT
     {
         if (JsonRead.Section(element, ChecksField) is { } section)
         {
-            var word = JsonRead.Text(section, "result") ?? JsonRead.Text(section, "state") ?? JsonRead.Text(section, "conclusion");
-            return (CheckWord(word), JsonRead.Address(section, "url"));
+            var word = JsonRead.Text(section, "result") ?? JsonRead.Text(section, WorkItemIdentity.StateWord) ?? JsonRead.Text(section, "conclusion");
+            return (CheckWord(word), JsonRead.Address(section, WorkItemIdentity.UrlWord));
         }
 
         return (CheckWord(JsonRead.Text(element, ChecksField) ?? JsonRead.Text(element, "checksResult")), JsonRead.Address(element, "checksUrl"));

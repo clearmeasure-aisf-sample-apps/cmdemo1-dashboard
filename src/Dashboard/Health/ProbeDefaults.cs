@@ -32,5 +32,5 @@ internal static class ProbeDefaults
     /// The timeout reads in whole seconds, rounded (2.5 s reads "3 s"), formatted in the invariant culture.
     /// </summary>
     public static string NoAnswerWithin(TimeSpan timeout) =>
-        string.Create(CultureInfo.InvariantCulture, $"no answer within {timeout.TotalSeconds:0} s");
+        string.Create(CultureInfo.InvariantCulture, $"no answer within {timeout.TotalSeconds:0} {TimeText.SecondsUnit}");
 }

@@ -77,7 +77,7 @@ public sealed record TrafficCount(int Sent, int Answered, int Failed, int Unansw
     /// </summary>
     public string Status(int secondsLeft) =>
         Over ? $"Done: {Counts}."
-        : Sending ? string.Create(CultureInfo.InvariantCulture, $"{Counts}; {secondsLeft} s left.")
+        : Sending ? string.Create(CultureInfo.InvariantCulture, $"{Counts}; {secondsLeft} {TimeText.SecondsUnit} left.")
         : $"{Counts}; waiting for {Plural.Agreement(OnTheirWay, ItsAnswerWords, TheirAnswersWords)}.";
 
     /// <summary>The event at the end of a run: <c>Traffic ended: 119 sent, 119 answered</c>.</summary>

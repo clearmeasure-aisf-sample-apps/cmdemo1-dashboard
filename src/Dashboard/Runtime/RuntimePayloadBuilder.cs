@@ -111,6 +111,9 @@ public static class RuntimePayloadBuilder
     /// <summary>The mark between the parts of one tile line: `120 req/min · p95 40 ms`.</summary>
     private const string PartSeparator = " · ";
 
+    /// <summary>The mark between the app names a reachable title speaks: `app1, app2`.</summary>
+    private const string NameSeparator = ", ";
+
     /// <summary>
     /// A monitor target as the payload reads it: its deployable, the target, the serving decision of the deployable,
     /// and whether that decision sends traffic through it. Internal so the edge marks (<see cref="RuntimeEdgeMarks"/>)
@@ -576,7 +579,7 @@ public static class RuntimePayloadBuilder
         if (passed.Count > 0)
         {
             var (target, entry) = passed[0];
-            var names = string.Join(", ", passed.Select(reading => reading.Target.Name));
+            var names = Names(passed.Select(reading => reading.Target.Name));
             var reachable = DependencyReadTitle(node, "reachable, ", names, target.Last!.CheckedAt, zone, entry);
 
             // One web app reaches it and another says otherwise: reachable, and the line names the one that differs.
@@ -770,7 +773,7 @@ public static class RuntimePayloadBuilder
     /// </summary>
     private static RuntimeTile DatabaseReachedTile(RuntimeNode node, IReadOnlyList<Reached> reached, string line, string? facts, IReadOnlyList<TelemetrySnapshot> queries, TimeZoneInfo zone)
     {
-        var names = string.Join(", ", reached.Select(app => app.Name));
+        var names = Names(reached.Select(app => app.Name));
         var latest = reached.Max(app => app.CheckedAt);
         return ReachableTile(node, new RuntimeTileLine(line, RuntimeLineTone.Ok), facts, DatabaseReachedTitle(node, names, latest, zone, queries));
     }
@@ -812,6 +815,12 @@ public static class RuntimePayloadBuilder
     /// </summary>
     private static string PassedLine(int count, string name, string apps) =>
         Plural.Noun(count, $"health check of {name} passed", string.Create(CultureInfo.InvariantCulture, $"health checks of {count} {apps} passed"));
+
+    /// <summary>
+    /// The list of app names that the reachable titles (<see cref="DependencyReadTitle"/>, <see cref="DatabaseReachedTitle"/>) speak,
+    /// joined with <see cref="NameSeparator"/>.
+    /// </summary>
+    private static string Names(IEnumerable<string> names) => string.Join(NameSeparator, names);
 
     private static RuntimeTile WebAppTile(RuntimeNode node, Entry entry, EnvironmentStatus environment, TimeZoneInfo zone)
     {

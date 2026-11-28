@@ -274,8 +274,8 @@ public static class TopologyParser
             }
 
             // Without a role, the order of the nodes read decides: the first node read is the primary.
-            var role = JsonRead.Text(element, "role")?.ToLowerInvariant() ?? NodeRole.Default(nodes.Count);
-            nodes.Add(new NodeInfo(JsonRead.Text(element, NameField) ?? url.Host, JsonRead.Text(element, "region"), role, url, ReadLinks(element)));
+            var role = NodeRole.Read(element) ?? NodeRole.Default(nodes.Count);
+            nodes.Add(new NodeInfo(JsonRead.Text(element, NameField) ?? url.Host, JsonRead.Text(element, NodeRole.RegionWord), role, url, ReadLinks(element)));
         }
 
         return nodes;

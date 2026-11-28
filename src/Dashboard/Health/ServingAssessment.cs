@@ -107,18 +107,33 @@ public sealed record ServingAssessment(
     public string? FailoverDetail => State != ServingState.FailedOver || OnlyNode is not null
         ? null
         : FailedPrimary is null
-            ? $"No primary node is healthy; {Expected!.Label} is expected to serve traffic."
-            : $"Primary {FailedPrimary.Label} is {HealthClassifier.Sentence(FailedPrimary.State)}; {Expected!.Label} is expected to serve traffic.";
+            ? $"No primary node is healthy; {ExpectedToServe(Expected!)}"
+            : $"Primary {FailedPrimary.Label} is {HealthClassifier.Sentence(FailedPrimary.State)}; {ExpectedToServe(Expected!)}";
+
+    /// <summary>The words <see cref="FailoverDetail" /> ends with in both arms: <c>{label} is expected to serve traffic.</c>.</summary>
+    private static string ExpectedToServe(NodeHealth node) => $"{node.Label} is expected to serve traffic.";
+
+    /// <summary>The words <see cref="FrontDoorText" /> says before the healthy arm's <c>healthy.</c> and the not-healthy arm's state: <c>Front Door agrees: it is </c>.</summary>
+    private const string AgreesLead = "Front Door agrees: it is ";
+
+    /// <summary>The words <see cref="FrontDoorText" /> says before both disagrees arms: <c>Front Door disagrees: it is </c>.</summary>
+    private const string DisagreesLead = "Front Door disagrees: it is ";
+
+    /// <summary>The words <see cref="FrontDoorText" /> names when <see cref="Expected"/> is null: <c>a node</c>.</summary>
+    private const string SomeNode = "a node";
+
+    /// <summary>The words <see cref="RotationHeadline" /> says before both returns: <c>Front Door rotates over </c>.</summary>
+    private const string RotatesLead = "Front Door rotates over ";
 
     /// <summary>Whether the Front Door endpoint shows what the nodes predict; null without a Front Door endpoint.</summary>
     public string? FrontDoorText => FrontDoor switch
     {
         FrontDoorAgreement.NotPresent => null,
         FrontDoorAgreement.Pending => "Front Door is being checked.",
-        FrontDoorAgreement.Agrees when FrontDoorState == HealthState.Healthy => "Front Door agrees: it is healthy.",
-        FrontDoorAgreement.Agrees => $"Front Door agrees: it is {HealthClassifier.Sentence(FrontDoorState)} too.",
-        _ when FrontDoorState == HealthState.Healthy => "Front Door disagrees: it is healthy although no node is.",
-        _ => $"Front Door disagrees: it is {HealthClassifier.Sentence(FrontDoorState)} although {Expected?.Label ?? "a node"} is healthy.",
+        FrontDoorAgreement.Agrees when FrontDoorState == HealthState.Healthy => $"{AgreesLead}healthy.",
+        FrontDoorAgreement.Agrees => $"{AgreesLead}{HealthClassifier.Sentence(FrontDoorState)} too.",
+        _ when FrontDoorState == HealthState.Healthy => $"{DisagreesLead}healthy although no node is.",
+        _ => $"{DisagreesLead}{HealthClassifier.Sentence(FrontDoorState)} although {Expected?.Label ?? SomeNode} is healthy.",
     };
 
     public static ServingAssessment Assess(IEnumerable<NodeHealth> nodes, HealthState? frontDoor)
@@ -183,11 +198,11 @@ public sealed record ServingAssessment(
     {
         if (stopped.Count == 0)
         {
-            return $"Front Door rotates over {count} regions: all healthy";
+            return $"{RotatesLead}{count} regions: all healthy";
         }
 
         var listed = NamedList.Words([.. stopped.Select(node => node.Label)], MostNamed);
-        return $"Front Door rotates over {count - stopped.Count} of {count} regions: {listed} {Plural.Agreement(stopped.Count, "is", "are")} not healthy";
+        return $"{RotatesLead}{count - stopped.Count} of {count} regions: {listed} {Plural.Agreement(stopped.Count, "is", "are")} not healthy";
     }
 
     private static (ServingState State, NodeHealth? Expected) Decide(List<NodeHealth> byPriority)

@@ -32,6 +32,14 @@ public class RotationTests
     }
 
     [Fact]
+    public void TwoAllHealthyRegionsGetTheAllHealthyHeadline()
+    {
+        NodeHealth[] nodes = [NodeHealths.Primary(Healthy, "westus3"), NodeHealths.Primary(Healthy, "eastus2")];
+
+        Assert.Equal("Front Door rotates over 2 regions: all healthy", ServingAssessment.Assess(nodes, Healthy).Headline);
+    }
+
+    [Fact]
     public void ElevenRegionsAreCounted()
     {
         var nodes = Enumerable.Range(1, 11).Select(index => NodeHealths.Primary(index == 4 ? Unhealthy : Healthy, $"region{index}")).ToList();

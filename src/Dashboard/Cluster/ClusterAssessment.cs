@@ -342,7 +342,7 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
         problems.AddRange(status.Nodes.Where(node => !node.Ready).Select(node => $"{ClusterText.NodeIn(node.Name)} is not ready"));
         problems.AddRange(status.Nodes
             .Where(node => node.Ready && node.Pressures.Count > 0)
-            .Select(node => $"{ClusterText.NodeIn(node.Name)}: {string.Join(", ", node.Pressures.Select(ClusterText.Pressure))}"));
+            .Select(node => $"{ClusterText.NodeIn(node.Name)}: {ClusterText.Pressures(node.Pressures)}"));
         problems.AddRange(status.Pods
             .Where(entry => PodRules.StateOf(entry.Pod, asOf) == PodState.Unhealthy)
             .OrderBy(entry => Severity(entry.Pod))

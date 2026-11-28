@@ -61,6 +61,9 @@ public static class ClusterText
     /// <summary>The separator between the parts of one cluster line: <c>3 of 3 ready · 1 restart</c>.</summary>
     private const string PartSeparator = " · ";
 
+    /// <summary>The separator between the words of a list: <c>Running, Succeeded</c>.</summary>
+    private const string ListSeparator = ", ";
+
     /// <summary>The cell a cluster table shows when the cluster file does not give that fact.</summary>
     public const string NotGiven = "—";
 
@@ -225,6 +228,13 @@ public static class ClusterText
         _ => condition,
     };
 
+    /// <summary>A node's conditions in words, joined in the order given: <c>memory pressure, disk pressure</c>.</summary>
+    public static string Pressures(IEnumerable<string> conditions)
+    {
+        ArgumentNullException.ThrowIfNull(conditions);
+        return string.Join(ListSeparator, conditions.Select(Pressure));
+    }
+
     /// <summary><c>as of 15:10:04 (5 min ago)</c>.</summary>
     public static string AsOf(DateTimeOffset generated, DateTimeOffset now, TimeZoneInfo zone) =>
         $"as of {TimeText.Clock(generated, zone)} ({TimeText.Ago(generated, now)})";
@@ -362,7 +372,7 @@ public static class ClusterText
         {
             return null;
         }
-        return string.Join(", ", new[] { pool.PowerState, pool.ProvisioningState }.OfType<string>());
+        return string.Join(ListSeparator, new[] { pool.PowerState, pool.ProvisioningState }.OfType<string>());
     }
 
     /// <summary>A node pool as Azure describes it: <c>1 × Standard_D4as_v6</c>; null when Azure names neither.</summary>

@@ -451,6 +451,22 @@ public static class ApplicationText
         ArgumentNullException.ThrowIfNull(package);
         return package.Version is { } version ? $"{package.Name} {version}" : package.Name;
     }
+
+    private const string ListSeparator = ", ";
+
+    /// <summary>The references of an assembly as the list names them: <c>Core, DataAccess</c>; empty when there are none.</summary>
+    public static string References(ApplicationAssembly assembly)
+    {
+        ArgumentNullException.ThrowIfNull(assembly);
+        return string.Join(ListSeparator, assembly.References);
+    }
+
+    /// <summary>The packages of an assembly as the list names them: <c>Serilog 4.0.1, MediatR</c>; empty when there are none.</summary>
+    public static string Packages(ApplicationAssembly assembly)
+    {
+        ArgumentNullException.ThrowIfNull(assembly);
+        return string.Join(ListSeparator, assembly.Packages.Select(Package));
+    }
 }
 
 /// <summary>

@@ -84,8 +84,8 @@
                                                 <span class="application__entry"> entry</span>
                                             }
                                         </th>
-                                        <td>@string.Join(", ", assembly.References)</td>
-                                        <td>@string.Join(", ", assembly.Packages.Select(ApplicationText.Package))</td>
+                                        <td>@ApplicationText.References(assembly)</td>
+                                        <td>@ApplicationText.Packages(assembly)</td>
                                     </tr>
                                 }
                             </tbody>

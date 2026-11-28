@@ -21,13 +21,13 @@
                     @* An environment something is being deployed to carries a dot, so it shows while another one is looked at. *@
                     var inFlight = Monitor.DeploymentMarks(entry.Name, [], Now).Where(mark => mark.InFlight).ToList();
                     <button type="button" class="button @(selected ? "button--selected" : "button--quiet")" aria-pressed="@(selected ? "true" : "false")"
-                            title="@(inFlight.Count > 0 ? string.Join('\n', inFlight.Select(DeploymentText.Title)) : null)"
+                            title="@DeploymentText.Titles(inFlight)"
                             @onclick="() => SelectAsync(entry.Name)">
                         @entry.Name
                         @if (inFlight.Count > 0)
                         {
                             <DeploymentDot State="inFlight[0].State" />
-                            <span class="visually-hidden">: @string.Join("; ", inFlight.Select(mark => mark.Sentence))</span>
+                            <span class="visually-hidden">: @DeploymentText.Sentences(inFlight)</span>
                         }
                     </button>
                 }

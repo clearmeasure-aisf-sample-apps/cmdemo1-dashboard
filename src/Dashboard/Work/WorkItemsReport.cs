@@ -730,20 +730,37 @@ public sealed record WorkRelease(string? Version, string? Sha, IReadOnlyList<int
             return null;
         }
 
-        var items = new List<int>();
-        foreach (var item in JsonRead.Items(element, "items"))
-        {
-            if (item.ValueKind == JsonValueKind.Number && item.TryGetInt32(out var number) && number >= 0)
-            {
-                items.Add(number);
-            }
-            else if (item.ValueKind == JsonValueKind.Number && item.TryGetDouble(out var real) && double.IsFinite(real) && real >= 0 && real <= int.MaxValue)
-            {
-                items.Add((int)Math.Round(real));
-            }
-        }
-
+        IReadOnlyList<int> items = [.. JsonRead.Items(element, "items").Select(ItemNumber).OfType<int>()];
         var release = new WorkRelease(VersionText.Read(element), JsonRead.Text(element, "sha"), items);
         return release.Version is null && items.Count == 0 ? null : release;
+    }
+
+    /// <summary>
+    /// The work item number an array entry holds: a JSON number that fits <see cref="int"/> and is not negative, or a
+    /// finite, non-negative, in-range double rounded to the nearest whole number. Anything else (strings, negatives,
+    /// objects, out-of-range or non-finite numbers) is null.
+    /// <para>
+    /// A half is rounded to the even number, as <see cref="Math.Round(double)" /> does, unlike <see cref="JsonRead.Count" />
+    /// which rounds a half away from zero (2.5 → 3). This difference is intentional and pinned by tests.
+    /// </para>
+    /// </summary>
+    private static int? ItemNumber(JsonElement item)
+    {
+        if (item.ValueKind != JsonValueKind.Number)
+        {
+            return null;
+        }
+
+        if (item.TryGetInt32(out var number) && number >= 0)
+        {
+            return number;
+        }
+
+        if (item.TryGetDouble(out var real) && double.IsFinite(real) && real >= 0 && real <= int.MaxValue)
+        {
+            return (int)Math.Round(real);
+        }
+
+        return null;
     }
 }

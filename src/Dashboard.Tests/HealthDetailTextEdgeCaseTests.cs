@@ -515,13 +515,13 @@ public class HealthDetailTextEdgeCaseTests
     // ---------------------------------------------------------------------- what the class declares itself
 
     /// <summary>The whole public surface of the words of a detailed health check, as the running assembly holds it:
-    /// a static class of no constructor and no instance member, its eight sayers - the word of a state, its place in
-    /// the order of the worst first, the shape of its mark, the tooltip of an entry, a length of checking, the short
-    /// line of an answer, a cut to a line and the reason of a failure - each of them public, static and single, and
-    /// nothing else to call. A ninth word added to the class has to be written here as well, which is the point: a
-    /// mark cannot be drawn with a word nobody decided what it means.</summary>
+    /// a static class of no constructor and no instance member, its nine sayers - the word of a state, its place in
+    /// the order of the worst first, the shape of its mark, the tooltip of an entry, the phrase of one failing entry,
+    /// a length of checking, the short line of an answer, a cut to a line and the reason of a failure - each of them
+    /// public, static and single, and nothing else to call. A tenth word added to the class has to be written here as
+    /// well, which is the point: a mark cannot be drawn with a word nobody decided what it means.</summary>
     [Fact]
-    public void TheClassIsTheEightSayersOfThePagesWordsAndNothingElse()
+    public void TheClassIsTheNineSayersOfThePagesWordsAndNothingElse()
     {
         var type = typeof(HealthDetailText);
 
@@ -532,16 +532,17 @@ public class HealthDetailTextEdgeCaseTests
         var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
 
         Assert.Equal(
-            ["Brief", "Duration", "Failed", "Icon", "Label", "Severity", "Summary", "Title"],
+            ["Brief", "Duration", "Failed", "Failing", "Icon", "Label", "Severity", "Summary", "Title"],
             methods.Select(method => method.Name).Order(StringComparer.Ordinal));
-        Assert.Equal(8, methods.Length);
+        Assert.Equal(9, methods.Length);
         Assert.All(methods, method => Assert.True(method.IsStatic));
-        Assert.Equal(8, methods.Select(method => method.Name).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(9, methods.Select(method => method.Name).Distinct(StringComparer.Ordinal).Count());
 
         Assert.Equal(typeof(string), type.GetMethod("Label")!.ReturnType);
         Assert.Equal(typeof(int), type.GetMethod("Severity")!.ReturnType);
         Assert.Equal(typeof(HealthState), type.GetMethod("Icon")!.ReturnType);
         Assert.Equal(typeof(string), type.GetMethod("Title")!.ReturnType);
+        Assert.Equal(typeof(string), type.GetMethod("Failing")!.ReturnType);
         Assert.Equal(typeof(string), type.GetMethod("Duration")!.ReturnType);
         Assert.Equal(typeof(string), type.GetMethod("Summary")!.ReturnType);
         Assert.Equal(typeof(string), type.GetMethod("Brief")!.ReturnType);
@@ -553,6 +554,9 @@ public class HealthDetailTextEdgeCaseTests
         Assert.Equal(
             [typeof(HealthCheckEntry)],
             type.GetMethod("Title")!.GetParameters().Select(parameter => parameter.ParameterType));
+        Assert.Equal(
+            [typeof(HealthCheckEntry)],
+            type.GetMethod("Failing")!.GetParameters().Select(parameter => parameter.ParameterType));
         Assert.Equal(
             [typeof(double)],
             type.GetMethod("Duration")!.GetParameters().Select(parameter => parameter.ParameterType));

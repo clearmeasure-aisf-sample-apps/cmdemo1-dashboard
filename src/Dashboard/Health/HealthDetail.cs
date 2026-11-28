@@ -154,6 +154,12 @@ public static class HealthDetailText
     /// <summary>The word for <see cref="CheckState.Degraded" />.</summary>
     private const string DegradedWord = "Degraded";
 
+    /// <summary>The lead words of <see cref="Failed" />'s sentence, before the list of the entries that failed.</summary>
+    private const string NotHealthyLead = "Not healthy: ";
+
+    /// <summary>The separator between the entries in <see cref="Failed" />'s list.</summary>
+    private const string ListSeparator = ", ";
+
     /// <summary>The state's word: a mark is never colour alone.</summary>
     public static string Label(CheckState state) => state switch
     {
@@ -238,6 +244,16 @@ public static class HealthDetailText
     }
 
     /// <summary>
+    /// One entry's phrase in <see cref="Failed" />'s list: its name in brackets with its state and its own words:
+    /// <c>DataAccess (Unhealthy: Login failed)</c>.
+    /// </summary>
+    public static string Failing(HealthCheckEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        return $"{entry.Name} ({Label(entry.State)}{TextReason.Reason(entry.Description)})";
+    }
+
+    /// <summary>
     /// Which entries are the reason a node's health check fails, each with its state and its own words:
     /// <c>Not healthy: DataAccess (Unhealthy: Login failed), LlmGateway (Degraded)</c>. Null when every entry is healthy.
     /// </summary>
@@ -248,6 +264,6 @@ public static class HealthDetailText
             return null;
         }
 
-        return $"Not healthy: {string.Join(", ", failing.Select(entry => $"{entry.Name} ({Label(entry.State)}{TextReason.Reason(entry.Description)})"))}";
+        return NotHealthyLead + string.Join(ListSeparator, failing.Select(Failing));
     }
 }

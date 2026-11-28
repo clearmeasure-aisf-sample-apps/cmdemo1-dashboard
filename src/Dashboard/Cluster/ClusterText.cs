@@ -22,6 +22,14 @@ public static class ClusterText
     public static string MeterValue(double percent) =>
         Math.Round(Math.Clamp(percent, MeterEmpty, MeterFull)).ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>
+    /// What a screen reader hears for the meter's value: the number in words, then its share of the whole when it
+    /// has one - <c>0.81 of 3.86 cores, 21 %</c> - the words of <see cref="Percent"/> behind the list separator;
+    /// the value alone without a share, and the empty string when there is neither (never null).
+    /// </summary>
+    public static string MeterValueText(string? value, double? percent) =>
+        percent is { } share ? $"{value}{ListSeparator}{Percent(share)}" : value ?? string.Empty;
+
     /// <summary>The millicores in one core: the cluster reads CPU in millicores and says it in cores.</summary>
     internal const double MillicoresPerCore = 1000;
 

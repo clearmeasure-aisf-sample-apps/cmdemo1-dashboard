@@ -10,7 +10,7 @@
             }
             @value
         </span>
-        <Meter Label="@Label" Percent="Percent" ValueText="@(Percent is { } share ? $"{value}, {ClusterText.Percent(share)}" : value)" />
+        <Meter Label="@Label" Percent="Percent" ValueText="@ClusterText.MeterValueText(value, Percent)" />
     </span>
 }
 else

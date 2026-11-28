@@ -256,7 +256,7 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
             var count => new ClusterAssessment(
                 ClusterState.Checking,
                 "Starting",
-                $"{Plural.Of(count, "pod")} {Plural.Agreement(count, "is", "are")} starting: {Named(starting)}"),
+                $"{Plural.Of(count, "pod")} {Plural.Be(count)} starting: {Named(starting)}"),
         };
     }
 

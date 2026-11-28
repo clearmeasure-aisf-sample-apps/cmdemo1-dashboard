@@ -240,4 +240,57 @@ public class WorkReworkEdgeCaseTests
         Assert.Equal("Reverts", constructor.GetParameters()[1].Name);
         Assert.Equal("Rate", constructor.GetParameters()[2].Name);
     }
+
+    // --------------------------------- the named file words
+
+    /// <summary>The internal consts on <see cref="WorkRework"/> equal the words the work-items file actually uses,
+    /// so the readers and the file cannot drift apart. Pinned through reflection because the consts are internal
+    /// to an app that declares no <c>InternalsVisibleTo</c>.</summary>
+    [Fact]
+    public void TheNamedWordsEqualTheFileWords()
+    {
+        var type = typeof(WorkRework);
+        const BindingFlags Flags = BindingFlags.NonPublic | BindingFlags.Static;
+
+        Assert.Equal("ftFailures", type.GetField("FtFailuresWord", Flags)!.GetValue(null));
+        Assert.Equal("reverts", type.GetField("RevertsWord", Flags)!.GetValue(null));
+        Assert.Equal("rework", type.GetField("SectionWord", Flags)!.GetValue(null));
+        Assert.Equal("rate", type.GetField("RateWord", Flags)!.GetValue(null));
+    }
+
+    // --------------------------------- reading through the public surface
+
+    /// <summary>An item that says only <c>ftFailures</c> or <c>reverts</c> (no <c>rework</c> object) reads those
+    /// counts with a null rate: the item's own words win and the rate stays unsaid.</summary>
+    [Fact]
+    public void AnItemWithOnlyFtFailuresAndRevertsReadsThemWithANullRate()
+    {
+        var report = WorkItemsReport.Parse("""{ "items": [ { "number": 1, "ftFailures": 3, "reverts": 1 } ] }""")!;
+
+        var item = Assert.Single(report.Items);
+
+        Assert.Equal(new WorkRework(3, 1, null), item.Rework);
+    }
+
+    /// <summary>An item that says neither <c>ftFailures</c> nor <c>reverts</c> falls back to its <c>rework</c>
+    /// object, reading all three parts from it.</summary>
+    [Fact]
+    public void AnItemWithNeitherCountFallsBackToTheReworkObject()
+    {
+        var report = WorkItemsReport.Parse("""{ "items": [ { "number": 1, "rework": { "ftFailures": 2, "reverts": 4, "rate": 0.25 } } ] }""")!;
+
+        var item = Assert.Single(report.Items);
+
+        Assert.Equal(new WorkRework(2, 4, 0.25), item.Rework);
+    }
+
+    /// <summary>The stats <c>rework</c> section reads all three parts through <see cref="WorkRework.SectionWord"/>:
+    /// <c>ftFailures</c>, <c>reverts</c> and <c>rate</c>.</summary>
+    [Fact]
+    public void TheStatsReworkSectionReadsAllThreeParts()
+    {
+        var stats = WorkItemsReport.Parse("""{ "stats": { "rework": { "ftFailures": 7, "reverts": 3, "rate": 0.5 } } }""")!.Stats;
+
+        Assert.Equal(new WorkRework(7, 3, 0.5), stats.Rework);
+    }
 }

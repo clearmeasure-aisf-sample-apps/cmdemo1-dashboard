@@ -170,6 +170,32 @@ public class CostTests
     }
 
     [Fact]
+    public void ThreeServicesAreJoinedInTheOrderGivenWithTheCommaSeparator()
+    {
+        List<CostService> services =
+        [
+            new CostService("SQL Database", 2.0),
+            new CostService("Azure Container Apps", 0.62),
+            new CostService("Azure Front Door Service", 8.11),
+        ];
+
+        Assert.Equal("Most this month: SQL Database $2.00, Azure Container Apps $0.62, Azure Front Door Service $8.11", CostText.Services(services, Report, Now));
+    }
+
+    [Fact]
+    public void AServiceWithoutAnAmountInTheMiddleSaysADashWhileItsNeighboursKeepTheirAmounts()
+    {
+        List<CostService> services =
+        [
+            new CostService("SQL Database", 0.97),
+            new CostService("Azure Container Apps", null),
+            new CostService("Azure Front Door Service", 8.11),
+        ];
+
+        Assert.Equal("Most this month: SQL Database $0.97, Azure Container Apps —, Azure Front Door Service $8.11", CostText.Services(services, Report, Now));
+    }
+
+    [Fact]
     public void TheHelpSaysTheNumbersAreNotLiveAndWhichDaysTheyAreOf()
     {
         Assert.StartsWith("Not live: what Azure Cost Management reported for complete UTC days up to 2026-10-03, by the tag \"environment\"", CostText.Help(Report), StringComparison.Ordinal);

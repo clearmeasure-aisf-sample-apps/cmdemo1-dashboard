@@ -57,6 +57,15 @@ public static class BuildText
     /// <summary>The noun <see cref="CrapOver" /> counts with: <c>1 method</c>, <c>2 methods</c>.</summary>
     private const string MethodNoun = "method";
 
+    /// <summary>The unit <see cref="Size(CodeSize)" /> puts after a line count: <c>84,210 lines</c>.</summary>
+    private const string LinesWord = "lines";
+
+    /// <summary>The unit <see cref="Size(CodeSize)" /> puts after a file count: <c>1,203 files</c>.</summary>
+    private const string FilesWord = "files";
+
+    /// <summary>The lead <see cref="Complexity" /> and <see cref="Crap" /> put before their largest score: <c>worst 34</c>.</summary>
+    private const string WorstLead = "worst";
+
     /// <summary>What every percent word ends with: a space and the sign, <c>81.2 %</c>.</summary>
     private const string PercentSign = " %";
 
@@ -95,9 +104,9 @@ public static class BuildText
         ArgumentNullException.ThrowIfNull(code);
         return (code.LinesOfCode, code.Files) switch
         {
-            ({ } lines, { } files) => $"{Count(lines)} lines in {Count(files)} files",
-            ({ } lines, null) => $"{Count(lines)} lines",
-            (null, { } files) => $"{Count(files)} files",
+            ({ } lines, { } files) => $"{Lines(lines)} in {Files(files)}",
+            ({ } lines, null) => Lines(lines),
+            (null, { } files) => Files(files),
             _ => null,
         };
     }
@@ -173,7 +182,7 @@ public static class BuildText
         ArgumentNullException.ThrowIfNull(complexity);
         return new CardParts()
             .Add(complexity.Average is { } average ? $"average {Number(average)}" : null)
-            .Add(complexity.Max is { } max ? $"worst {Count(max)}" : null)
+            .Add(complexity.Max is { } max ? $"{WorstLead} {Count(max)}" : null)
             .Join(complexity.Methods is { } methods ? $"({Count(methods)} methods)" : null);
     }
 
@@ -182,13 +191,19 @@ public static class BuildText
     {
         ArgumentNullException.ThrowIfNull(crap);
         return new CardParts()
-            .Add(crap.Max is { } max ? $"worst {Number(max)}" : null)
+            .Add(crap.Max is { } max ? $"{WorstLead} {Number(max)}" : null)
             .Add(CrapOver(crap) ?? (crap.Threshold is { } threshold ? $"threshold {Number(threshold)}" : null))
             .Join();
     }
 
     /// <summary><c>1,009 unit</c>; null when the build did not count that kind.</summary>
     private static string? Counted(int? count, string kind) => count is { } value ? $"{Count(value)} {kind}" : null;
+
+    /// <summary><c>84,210 lines</c>: a line count and the unit the card says with it.</summary>
+    private static string Lines(long lines) => $"{Count(lines)} {LinesWord}";
+
+    /// <summary><c>1,203 files</c>: a file count and the unit the card says with it.</summary>
+    private static string Files(int files) => $"{Count(files)} {FilesWord}";
 
     /// <summary><c>none over 30</c>, <c>1 method over 30</c>, <c>3 methods over the threshold</c>; null when not counted.</summary>
     private static string? CrapOver(CrapFacts crap)

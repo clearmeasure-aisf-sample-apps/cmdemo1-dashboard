@@ -262,7 +262,7 @@ public static class RuntimePayloadBuilder
         var marks = deployments?.Where(mark => string.Equals(mark.Deployable, node.Deployable, StringComparison.OrdinalIgnoreCase)).ToList() ?? [];
         if (marks.Count > 0)
         {
-            var title = string.Join('\n', marks.Select(DeploymentText.Title));
+            var title = DeploymentText.Titles(marks)!;
             tile = tile with
             {
                 Title = $"{tile.Title}\n{title}",

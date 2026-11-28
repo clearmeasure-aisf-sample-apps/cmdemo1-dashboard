@@ -92,6 +92,33 @@ public static class DeploymentText
         return mark.Detail is { } detail ? $"{sentence}\n{detail}" : sentence;
     }
 
+    /// <summary>The separator between the titles of a list of marks: one per line.</summary>
+    private const char TitleSeparator = '\n';
+
+    /// <summary>The separator between the sentences of a list of marks.</summary>
+    private const string SentenceSeparator = "; ";
+
+    /// <summary>
+    /// The titles of a list of marks, one per line (<see cref="TitleSeparator"/>), for a tooltip of more than one of
+    /// them - <c>null</c> when there are none, since a tooltip with no mark says nothing. The list's counterpart of
+    /// <see cref="Title(DeploymentMark)"/>.
+    /// </summary>
+    public static string? Titles(IReadOnlyCollection<DeploymentMark> marks)
+    {
+        ArgumentNullException.ThrowIfNull(marks);
+        return marks.Count == 0 ? null : string.Join(TitleSeparator, marks.Select(Title));
+    }
+
+    /// <summary>
+    /// The sentences of a list of marks joined with <c>"; "</c> (<see cref="SentenceSeparator"/>) - what a screen
+    /// reader hears of more than one of them - and the empty string when there are none.
+    /// </summary>
+    public static string Sentences(IReadOnlyCollection<DeploymentMark> marks)
+    {
+        ArgumentNullException.ThrowIfNull(marks);
+        return string.Join(SentenceSeparator, marks.Select(mark => mark.Sentence));
+    }
+
     /// <summary>
     /// What the file says about a deployment beyond its state: <c>the sign-off is with cmdemo2 approvers; asked 2 h
     /// ago; started by jeffrey</c>. A title Octopus Deploy gives the question is quoted when it says more than the

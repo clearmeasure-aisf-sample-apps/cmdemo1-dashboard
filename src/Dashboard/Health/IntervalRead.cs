@@ -27,32 +27,26 @@ public sealed class IntervalRead<T>(TimeSpan interval) where T : class
     public bool IsDue(DateTimeOffset now) => IntervalDue.IsDue(LastAsked, now, interval);
 
     /// <summary>
-    /// Reads, where due: it stamps the asking at <paramref name="now"/>, reads, and keeps the answer where it
-    /// answers, else the last good one. The answer it kept; null where it was not due or the read answered nothing.
+    /// The ask, plus keeping the answer: it asks through <see cref="AskIfDueAsync"/> and, where the ask answers,
+    /// keeps that answer, else the last good one. The answer; null where it was not due or the read answered
+    /// nothing.
     /// </summary>
     public async Task<T?> ReadIfDueAsync(DateTimeOffset now, Func<CancellationToken, Task<T?>> read, CancellationToken cancellationToken)
     {
-        if (!IsDue(now))
+        var answer = await AskIfDueAsync(now, read, cancellationToken);
+        if (answer is not null)
         {
-            return null;
+            Last = answer;
         }
 
-        LastAsked = now;
-        var answer = await read(cancellationToken);
-        Asked = true;
-        if (answer is null)
-        {
-            return null;
-        }
-
-        Last = answer;
         return answer;
     }
 
     /// <summary>
     /// Asks, where due: it stamps the asking at <paramref name="now"/> and takes the answer as it is, kept or not -
-    /// the read whose no-answer is itself the answer, a file that is gone saying nothing is deploying. The answer,
-    /// kept or not; null where it was not due or the read answered nothing.
+    /// the one home of the asking the read goes through (<see cref="ReadIfDueAsync"/> is this, plus keeping the
+    /// answer) - the read whose no-answer is itself the answer, a file that is gone saying nothing is deploying. The
+    /// answer, kept or not; null where it was not due or the read answered nothing.
     /// </summary>
     public async Task<T?> AskIfDueAsync(DateTimeOffset now, Func<CancellationToken, Task<T?>> read, CancellationToken cancellationToken)
     {

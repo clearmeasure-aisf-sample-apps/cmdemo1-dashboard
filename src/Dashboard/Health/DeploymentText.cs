@@ -27,7 +27,7 @@ public static class DeploymentText
     public static string Sentence(Deployment deployment, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(deployment);
-        var what = $"{deployment.Project} {deployment.Release}";
+        var what = What(deployment.Project, deployment.Release);
         var where = deployment.Environment;
         var ago = deployment.Finished is { } ended ? $" {Ago(now - ended)}" : string.Empty;
         return deployment.State switch
@@ -35,12 +35,28 @@ public static class DeploymentText
             DeploymentState.Queued => $"{what} is queued for {where}",
             DeploymentState.Executing => $"deploying {what} to {where}",
             DeploymentState.Waiting => DeploymentWait.Asks(deployment.WaitsFor, what, where),
-            DeploymentState.Succeeded => $"{what} reached {where}{ago}",
-            DeploymentState.Failed => $"{what} failed in {where}{ago}",
-            DeploymentState.Canceled => $"{what} was canceled in {where}{ago}",
+            _ when Ended(deployment.State, what, where, ago) is { } sentence => sentence,
             _ => $"{what} in {where}: {deployment.StateText}",
         };
     }
+
+    /// <summary>
+    /// The <c>project release</c> a deployment names: <c>cmdemo2-ui 2.4.43</c>.
+    /// </summary>
+    internal static string What(string project, string release) => $"{project} {release}";
+
+    /// <summary>
+    /// The sentence of a deployment that has ended: <c>cmdemo2-ui 2.4.43 reached uat 5 min ago</c>, <c>cmdemo2-ui 2.4.43
+    /// failed in uat 5 min ago</c>, <c>cmdemo2-ui 2.4.43 was canceled in uat 5 min ago</c>. Null for a state the page
+    /// does not know.
+    /// </summary>
+    internal static string? Ended(DeploymentState state, string what, string where, string ago) => state switch
+    {
+        DeploymentState.Succeeded => $"{what} reached {where}{ago}",
+        DeploymentState.Failed => $"{what} failed in {where}{ago}",
+        DeploymentState.Canceled => $"{what} was canceled in {where}{ago}",
+        _ => null,
+    };
 
     /// <summary>
     /// <c>5 min</c> under an hour and never less than <c>1 min</c>, <c>5 h</c> under two days, then <c>3 d</c>. The

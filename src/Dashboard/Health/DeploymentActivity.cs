@@ -386,15 +386,10 @@ public static class DeploymentActivity
     /// <summary>The words of a mark that ended, for the last deployment: <c>cmdemo2-ui 2.4.43 reached uat 5 h ago</c>.</summary>
     private static string Sentence(RecentDeployment last, DateTimeOffset now)
     {
-        var what = $"{last.Project} {last.Release}";
+        var what = DeploymentText.What(last.Project, last.Release);
         var ago = DeploymentText.Ago(now - last.Finished);
-        return last.Result switch
-        {
-            DeploymentState.Succeeded => $"{what} reached {last.Environment} {ago}",
-            DeploymentState.Failed => $"{what} failed in {last.Environment} {ago}",
-            DeploymentState.Canceled => $"{what} was canceled in {last.Environment} {ago}",
-            _ => $"{what} in {last.Environment}: {last.ResultText}, {ago}",
-        };
+        return DeploymentText.Ended(last.Result, what, last.Environment, $" {ago}")
+            ?? $"{what} in {last.Environment}: {last.ResultText}, {ago}";
     }
 
     /// <summary>

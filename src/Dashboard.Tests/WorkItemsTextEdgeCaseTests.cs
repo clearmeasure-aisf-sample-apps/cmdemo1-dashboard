@@ -192,6 +192,10 @@ public class WorkItemsTextEdgeCaseTests
     public void ACountAloneIsSaidAsACount(int count, string text) =>
         Assert.Equal(text, WorkItemsText.Duration(new WorkDuration(null, null, count)));
 
+    [Fact]
+    public void AMedianAndACountLeaveTheP85OutOfTheLine() =>
+        Assert.Equal("median 18.5 h · 11 items", WorkItemsText.Duration(new WorkDuration(18.5, null, 11)));
+
     // ---- Rework ----
 
     [Fact]
@@ -204,6 +208,14 @@ public class WorkItemsTextEdgeCaseTests
         Assert.Equal("1 functional-test failure · 1 revert", WorkItemsText.Rework(new WorkRework(1, 1, null)));
         Assert.Equal("0 functional-test failures · 0 reverts", WorkItemsText.Rework(new WorkRework(0, 0, null)));
     }
+
+    [Fact]
+    public void AFailureAndTwoRevertsKeepTheirSingularsAndPluralsApart() =>
+        Assert.Equal("1 functional-test failure · 2 reverts", WorkItemsText.Rework(new WorkRework(1, 2, null)));
+
+    [Fact]
+    public void TwoFailuresAndARevertKeepTheirSingularsAndPluralsApart() =>
+        Assert.Equal("2 functional-test failures · 1 revert", WorkItemsText.Rework(new WorkRework(2, 1, null)));
 
     // ---- HasMeteredCost ----
 

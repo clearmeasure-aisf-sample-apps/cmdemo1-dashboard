@@ -24,6 +24,21 @@ internal static class WorkMeasureText
     /// <summary>A rate above one is shown as the file gave it, to two decimals.</summary>
     private const string KeptFormat = "0.##";
 
+    /// <summary>The lead word of a duration's median: <c>median 18.5 h</c>.</summary>
+    private const string MedianLead = "median ";
+
+    /// <summary>The lead word of a duration's 85th percentile: <c>p85 3 d</c>.</summary>
+    private const string P85Lead = "p85 ";
+
+    /// <summary>The counted noun of a duration: <c>11 items</c>.</summary>
+    private const string ItemNoun = "item";
+
+    /// <summary>The counted noun of a rework's functional-test failures: <c>2 functional-test failures</c>.</summary>
+    private const string FailureNoun = "functional-test failure";
+
+    /// <summary>The counted noun of a rework's reverts: <c>1 revert</c>.</summary>
+    private const string RevertNoun = "revert";
+
     internal static string Duration(WorkDuration? duration)
     {
         if (duration is null)
@@ -34,17 +49,17 @@ internal static class WorkMeasureText
         var parts = new List<string>();
         if (duration.Median is { } median)
         {
-            parts.Add($"median {DeliveryText.LeadTime(median)}");
+            parts.Add($"{MedianLead}{DeliveryText.LeadTime(median)}");
         }
 
         if (duration.P85 is { } p85)
         {
-            parts.Add($"p85 {DeliveryText.LeadTime(p85)}");
+            parts.Add($"{P85Lead}{DeliveryText.LeadTime(p85)}");
         }
 
         if (duration.N is { } counted)
         {
-            parts.Add(Plural.Of(counted, "item"));
+            parts.Add(Plural.Of(counted, ItemNoun));
         }
 
         return Joined(parts);
@@ -60,12 +75,12 @@ internal static class WorkMeasureText
         var parts = new List<string>();
         if (rework.FtFailures is { } failures)
         {
-            parts.Add(Plural.Of(failures, "functional-test failure"));
+            parts.Add(Plural.Of(failures, FailureNoun));
         }
 
         if (rework.Reverts is { } reverts)
         {
-            parts.Add(Plural.Of(reverts, "revert"));
+            parts.Add(Plural.Of(reverts, RevertNoun));
         }
 
         if (rework.Rate is { } rate)

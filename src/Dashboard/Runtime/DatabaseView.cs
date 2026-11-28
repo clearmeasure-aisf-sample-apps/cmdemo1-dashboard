@@ -337,6 +337,26 @@ public static class DatabaseText
             _ => null,
         };
 
+    /// <summary>
+    /// The tooltip of the line under the heading: the moments in full, in the viewer's zone, and what is how old.
+    /// Null when neither the manifest nor the live file names a moment.
+    /// </summary>
+    public static string? ReadTitle(DatabaseManifest manifest, DatabaseLive? live, TimeZoneInfo zone)
+    {
+        ArgumentNullException.ThrowIfNull(manifest);
+        ArgumentNullException.ThrowIfNull(zone);
+        var (at, fromLive) = ReadAt(manifest, live);
+        if (at is not { } moment)
+        {
+            return null;
+        }
+
+        var drawn = manifest.ReadAt is { } readAt ? $" The diagram was drawn at the environment's last deployment, {TimeText.DateAndTime(readAt, zone)}." : string.Empty;
+        return fromLive
+            ? $"The row counts and the list are of {TimeText.DateAndTime(moment, zone)}.{drawn}"
+            : $"The deployment read the schema {TimeText.DateAndTime(moment, zone)}: the diagram is as old as the environment's last deployment of the dashboard.";
+    }
+
     /// <summary>The line of a diagram that draws only the first tables; null for one that draws all.</summary>
     public static string? TruncatedLine(DatabaseManifest manifest)
     {

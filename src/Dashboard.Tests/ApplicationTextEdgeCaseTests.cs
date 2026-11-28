@@ -1045,11 +1045,12 @@ public class ApplicationTextEdgeCaseTests
     /// nothing else to call. A word added to the class has to be written here as well, which is the point: the page
     /// cannot be shown a word nobody decided what it means.</summary>
     [Fact]
-    public void TheSurfaceIsTheSixteenWordsAndGuardsOfTheView() =>
+    public void TheSurfaceIsTheEighteenWordsAndGuardsOfTheView() =>
         Assert.Equal(
             [
                 "AltText", "BoxLabel", "Boxes", "DiagramLink", "File", "IsName", "IsVersion", "KindLine",
-                "Links", "Package", "ProblemLine", "RefusedLine", "TruncatedLine", "Version", "VersionLine", "VersionTitle",
+                "Links", "Package", "Packages", "ProblemLine", "References", "RefusedLine", "TruncatedLine",
+                "Version", "VersionLine", "VersionTitle",
             ],
             PublicSurface());
 
@@ -1070,7 +1071,7 @@ public class ApplicationTextEdgeCaseTests
     private static readonly string[] Single =
     [
         "AltText", "BoxLabel", "DiagramLink", "File", "IsName", "IsVersion", "KindLine",
-        "Links", "Package", "RefusedLine", "TruncatedLine", "VersionLine", "VersionTitle",
+        "Links", "Package", "Packages", "References", "RefusedLine", "TruncatedLine", "VersionLine", "VersionTitle",
     ];
 
     /// <summary>How many public methods of the class carry the given name.</summary>

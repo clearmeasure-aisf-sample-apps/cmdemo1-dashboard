@@ -140,6 +140,13 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
     /// <summary>The lead of the sentence both cards say when Azure reports a verdict, with the space the verdict follows.</summary>
     private const string ReportsLead = "Azure reports the AKS service ";
 
+    /// <summary>
+    /// The label of the AKS service card when its facts are not known: the reading that could not be read, or the
+    /// reading that is read and holds nothing. Read from <see cref="HealthDetailText.NotKnown" /> (#2055) so the word
+    /// the Resource Health box and the runtime tiles say cannot drift from the word this card says.
+    /// </summary>
+    private const string NotKnownLabel = HealthDetailText.NotKnown;
+
     /// <summary>Whether the cluster's own status reaches the page, at the page's clock.</summary>
     public static ClusterLiveness LivenessOf(SourceReading<ClusterStatus> reading, DateTimeOffset now)
     {
@@ -277,7 +284,7 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
                 $"A scheduled workflow publishes them several times an hour; until its first run the address answers HTTP 404. {Again}"),
             SourceState.Malformed => new ClusterAssessment(ClusterState.Warning, UnreadableHeadline, NotRead, Sentence(reading.Detail)),
             SourceState.Read when reading.Value is { } service => Reported(service),
-            _ => new ClusterAssessment(ClusterState.Neutral, "Not known", NotRead, Join(Sentence(reading.Detail), Again)),
+            _ => new ClusterAssessment(ClusterState.Neutral, NotKnownLabel, NotRead, Join(Sentence(reading.Detail), Again)),
         };
     }
 

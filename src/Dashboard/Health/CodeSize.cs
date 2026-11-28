@@ -7,6 +7,12 @@ namespace Dashboard.Health;
 /// <param name="Languages">The lines by language, largest first.</param>
 public sealed record CodeSize(long? LinesOfCode, int? Files, IReadOnlyList<LanguageSize> Languages)
 {
+    /// <summary>The word a build file says the list of its languages in.</summary>
+    private const string LanguagesWord = "languages";
+
+    /// <summary>The word a build file says the total lines of code in.</summary>
+    private const string LinesOfCodeWord = "linesOfCode";
+
     internal static CodeSize? Read(JsonElement? section)
     {
         if (section is null)
@@ -14,14 +20,13 @@ public sealed record CodeSize(long? LinesOfCode, int? Files, IReadOnlyList<Langu
             return null;
         }
 
-        var languages = JsonRead.Items(section, "languages")
-            .Select(item => (Name: JsonRead.Text(item, "name"), Lines: JsonRead.Long(item, "lines"), Files: JsonRead.Count(item, "files")))
-            .Where(item => item.Name is not null && item.Lines > 0)
-            .Select(item => new LanguageSize(item.Name!, item.Lines!.Value, item.Files))
+        var languages = JsonRead.Items(section, LanguagesWord)
+            .Select(LanguageSize.Read)
+            .OfType<LanguageSize>()
             .OrderByDescending(language => language.Lines)
             .ToList();
-        var lines = JsonRead.Long(section, "linesOfCode") ?? (languages.Count > 0 ? languages.Sum(language => language.Lines) : null);
-        var code = new CodeSize(lines, JsonRead.Count(section, "files"), languages);
+        var lines = JsonRead.Long(section, LinesOfCodeWord) ?? (languages.Count > 0 ? languages.Sum(language => language.Lines) : null);
+        var code = new CodeSize(lines, JsonRead.Count(section, LanguageSize.FilesWord), languages);
         return MeasuredFacts.OrNone(code, code.MeasuredNothing);
     }
 

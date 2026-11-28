@@ -96,6 +96,17 @@ public static class LinkText
     public static string InPortal(string subject) => $"{subject} in the Azure portal";
 
     /// <summary>
+    /// The name of an environment's group of links: its resources in the Azure portal, its pages of the system,
+    /// or both.
+    /// </summary>
+    public static string Group(string environment, bool hasResources, bool hasPages) => (hasResources, hasPages) switch
+    {
+        (true, true) => $"{InPortal($"Resources of {environment}")}, and pages of the system there",
+        (false, true) => $"Pages of the system in {environment}",
+        _ => InPortal($"Resources of {environment}"),
+    };
+
+    /// <summary>
     /// The one table of a key of <see cref="LinkSet"/> to the sentence its tooltip says of a subject. A new link is one
     /// row here; a key with no row - <see cref="LinkSet.Workloads"/> among them - is said from the key by
     /// <see cref="SaidFromTheKey"/>.

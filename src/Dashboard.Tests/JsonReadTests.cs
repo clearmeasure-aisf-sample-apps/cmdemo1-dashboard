@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Dashboard.Cluster;
 
 namespace Dashboard.Tests;
 
@@ -226,6 +227,62 @@ public class JsonReadTests
 
         Assert.Equal(DateTimeOffset.Parse(expected, System.Globalization.CultureInfo.InvariantCulture), time);
         Assert.Equal(DateTimeOffset.Parse(expected, System.Globalization.CultureInfo.InvariantCulture).Offset, time?.Offset);
+    }
+
+    // ----- Generated: the file's stamp of when it was written -----
+
+    [Fact]
+    public void GeneratedReadsAnIsoStampFromARoot()
+    {
+        var stamp = JsonRead.Generated(Root("""{ "generated": "2026-11-19T06:00:00+02:00" }"""));
+
+        Assert.Equal(new DateTimeOffset(2026, 11, 19, 6, 0, 0, TimeSpan.FromHours(2)), stamp);
+    }
+
+    [Theory]
+    [InlineData("""{ }""")] // no such name
+    [InlineData("""{ "generated": "" }""")] // blank
+    [InlineData("""{ "generated": "   " }""")] // blank
+    [InlineData("""{ "generated": "not a time" }""")] // not a time
+    [InlineData("""{ "generated": 5 }""")] // a number
+    [InlineData("""{ "generated": true }""")]
+    [InlineData("""{ "generated": null }""")]
+    public void GeneratedAnswersNullWhenTheStampIsMissingBlankOrNoTime(string json) =>
+        Assert.Null(JsonRead.Generated(Root(json)));
+
+    [Fact]
+    public void GeneratedAnswersNullOnANullParent() =>
+        Assert.Null(JsonRead.Generated(null));
+
+    [Fact]
+    public void GeneratedAgreesWithTimeUnderGeneratedWord()
+    {
+        const string json = """{ "generated": "2026-11-19T06:00:00Z" }""";
+        var root = Root(json);
+
+        Assert.Equal(JsonRead.Time(root, JsonRead.GeneratedWord), JsonRead.Generated(root));
+    }
+
+    [Fact]
+    public void AClusterStatusFileThatCarriesGeneratedSurfacesTheSameStamp()
+    {
+        const string json = """{ "generated": "2026-11-19T06:00:00Z", "nodes": [] }""";
+        var parsed = ClusterStatus.Parse(json);
+        var root = Root(json);
+
+        Assert.NotNull(parsed.Value);
+        Assert.Equal(JsonRead.Generated(root), parsed.Value!.Generated);
+    }
+
+    [Fact]
+    public void AnAksServiceFileThatCarriesGeneratedSurfacesTheSameStamp()
+    {
+        const string json = """{ "generated": "2026-11-19T06:00:00Z", "name": "aks", "powerState": "Running" }""";
+        var parsed = AksService.Parse(json);
+        var root = Root(json);
+
+        Assert.NotNull(parsed.Value);
+        Assert.Equal(JsonRead.Generated(root), parsed.Value!.Generated);
     }
 
     [Fact]

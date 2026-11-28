@@ -154,8 +154,14 @@ internal static class JsonRead
         return string.IsNullOrEmpty(trimmed) ? null : trimmed;
     }
 
+    /// <summary>The word a file uses for its top-level stamp of when it was written.</summary>
+    internal const string GeneratedWord = "generated";
+
     public static DateTimeOffset? Time(JsonElement? parent, string name) =>
         DateTimeOffset.TryParse(Text(parent, name), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var time) ? time : null;
+
+    /// <summary>The file's stamp of when it was written: the time under <see cref="GeneratedWord"/>.</summary>
+    public static DateTimeOffset? Generated(JsonElement? root) => Time(root, GeneratedWord);
 
     /// <summary>An absolute http or https address: the only kind the dashboard links to.</summary>
     public static Uri? Address(JsonElement? parent, string name) => Address(Text(parent, name));

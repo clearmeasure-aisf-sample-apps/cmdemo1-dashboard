@@ -58,7 +58,7 @@ public sealed record AksService(
             root =>
             {
                 var service = new AksService(
-                    Generated: JsonRead.Time(root, "generated"),
+                    Generated: JsonRead.Generated(root),
                     Name: JsonRead.Text(root, "name"),
                     ResourceGroup: JsonRead.Text(root, "resourceGroup"),
                     Location: JsonRead.Text(root, "location"),

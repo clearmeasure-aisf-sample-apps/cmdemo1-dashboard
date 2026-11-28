@@ -54,9 +54,6 @@ public static class BuildText
     /// </summary>
     private const string OneDecimalFormat = "0.#";
 
-    /// <summary>The format of the whole percentage <see cref="SharePercent" /> writes after rounding: <c>73</c>.</summary>
-    private const string WholeFormat = "0";
-
     /// <summary>The noun <see cref="Problems(int)" /> counts with: <c>1 problem</c>, <c>2 problems</c>.</summary>
     private const string ProblemNoun = "problem";
 
@@ -78,8 +75,8 @@ public static class BuildText
     /// </summary>
     private const string BarLead = "Lines of code by language: ";
 
-    /// <summary>What every percent word ends with: a space and the sign, <c>81.2 %</c>.</summary>
-    private const string PercentSign = " %";
+    /// <summary>What every percent word ends with: the <see cref="Dashboard.Shares.PercentSign" />, <c>81.2 %</c>.</summary>
+    private const string PercentSign = Dashboard.Shares.PercentSign;
 
     /// <summary>
     /// The separator between the shares of the bar in words, <see cref="Describe" />, and between a share's parts in
@@ -174,11 +171,14 @@ public static class BuildText
         return $"{share.Name} {SharePercent(share.Percent)}";
     }
 
-    /// <summary>A share as a whole percentage; a share above zero and below the <see cref="SmallShareBound" /> as <c>&lt;1 %</c>.</summary>
+    /// <summary>
+    /// A share as a whole percentage, by <see cref="Dashboard.Shares.WholePercent" />; a share above zero and below
+    /// the <see cref="SmallShareBound" /> as <c>&lt;1 %</c>.
+    /// </summary>
     public static string SharePercent(double percent) =>
         percent is > 0 and < SmallShareBound
             ? BelowOneMark + PercentSign
-            : Math.Round(percent).ToString(WholeFormat, CultureInfo.InvariantCulture) + PercentSign;
+            : Dashboard.Shares.WholePercent(percent);
 
     /// <summary>
     /// A share's line count in words, the same unit word <see cref="Size(CodeSize)" /> says: <c>1,234 lines</c> -

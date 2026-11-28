@@ -24,7 +24,7 @@
                         var entry = row.Entry;
                         <tr>
                             <th scope="row" class="grid__name">
-                                <DeepLink Href="entry.Portal" Title="@LinkText.Portal($"{entry.Name} in the Azure portal")">@entry.Name</DeepLink>
+                                <DeepLink Href="entry.Portal" Title="@LinkText.Portal(LinkText.InPortal(entry.Name))">@entry.Name</DeepLink>
                             </th>
                             <td>@entry.Type</td>
                             <td class="grid__name">@entry.Group</td>

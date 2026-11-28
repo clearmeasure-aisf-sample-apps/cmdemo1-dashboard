@@ -287,6 +287,49 @@ public class HealthDetailTextEdgeCaseTests
         Assert.Equal(expected, HealthDetailText.Summary(detail));
     }
 
+    /// <summary>The every-entry-healthy line takes the noun from <c>Plural</c> and the tail from the class's own
+    /// word: one entry is the singular <c>1 check healthy</c> - the one place the singular stands - and three are
+    /// the plural <c>3 checks healthy</c>, so the noun and the tail say the same sentence the class says everywhere
+    /// else. The zero count is pinned above in <see cref="TheShortLineOfAnAnswerThatNamesNothingSaysNoneInItsOwnWords" />.</summary>
+    [Theory]
+    [InlineData(1, "1 check healthy")]
+    [InlineData(3, "3 checks healthy")]
+    public void TheShortLineOfEveryEntryHealthySaysTheNounAndTheHealthyTail(int count, string expected)
+    {
+        var detail = Detail([.. Enumerable.Range(0, count).Select(index => Entry($"Check{index}", CheckState.Healthy))]);
+
+        Assert.Equal(expected, HealthDetailText.Summary(detail));
+    }
+
+    /// <summary>The some-failing line counts the failing entries against the whole and takes its noun from
+    /// <c>Plural</c> with the class's own tail: two of two are the whole answer failing, two of five are a part of
+    /// it, and the noun agrees with the whole count - the two that is the failing count still says the plural the
+    /// whole carries. The one-failing line names the entry instead and is pinned below.</summary>
+    [Theory]
+    [InlineData(2, 2, "2 of 2 checks not healthy")]
+    [InlineData(5, 2, "2 of 5 checks not healthy")]
+    public void TheShortLineOfSomeFailingSaysTheNounAndTheNotHealthyTail(int total, int failing, string expected)
+    {
+        var detail = Detail([.. Enumerable.Range(0, total).Select(index => Entry($"Check{index}", index < failing ? CheckState.Unhealthy : CheckState.Healthy))]);
+
+        Assert.Equal(expected, HealthDetailText.Summary(detail));
+    }
+
+    /// <summary>The some-failing line is written with the invariant culture, so the thread culture the page reads
+    /// it in says the same sentence: the noun and the counts stand the same under Finnish, and the tail is a word
+    /// of this class, not of a culture.</summary>
+    [Theory]
+    [InlineData(2, 2, "2 of 2 checks not healthy")]
+    [InlineData(5, 2, "2 of 5 checks not healthy")]
+    public void TheShortLineOfSomeFailingSaysTheNounAndTailTheSameUnderFinnish(int total, int failing, string expected)
+    {
+        var detail = Detail([.. Enumerable.Range(0, total).Select(index => Entry($"Check{index}", index < failing ? CheckState.Unhealthy : CheckState.Healthy))]);
+
+        var said = CultureScope.Says("fi-FI", () => HealthDetailText.Summary(detail));
+
+        Assert.Equal(expected, said);
+    }
+
     /// <summary>The name in the short line is cut to the twenty characters a line of the diagram holds, and one
     /// character under that it is kept whole: the name of exactly twenty stands as the app registered it, the one of
     /// twenty-two loses its last two letters to the ellipsis, and a name that breaks in a space gives the space up

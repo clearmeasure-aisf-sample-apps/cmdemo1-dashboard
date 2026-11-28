@@ -160,6 +160,19 @@ public static class HealthDetailText
     /// <summary>The separator between the entries in <see cref="Failed" />'s list.</summary>
     private const string ListSeparator = ", ";
 
+    /// <summary>
+    /// The noun of the checks a detailed health check counts, asked of <see cref="Plural" /> by
+    /// <see cref="Summary" />: <c>check</c> for one, <c>checks</c> for every other count. Named once here, so the
+    /// three places the summary says it move together if the word moves.
+    /// </summary>
+    private const string CheckNoun = "check";
+
+    /// <summary>The tail word of <see cref="Summary" />'s every-entry-healthy sentence: <c>4 checks healthy</c>.</summary>
+    private const string HealthyTail = "healthy";
+
+    /// <summary>The tail words of <see cref="Summary" />'s some-failing sentence: <c>2 of 4 checks not healthy</c>.</summary>
+    private const string NotHealthyTail = "not healthy";
+
     /// <summary>The state's word: a mark is never colour alone.</summary>
     public static string Label(CheckState state) => state switch
     {
@@ -226,9 +239,9 @@ public static class HealthDetailText
         var count = detail.Entries.Count;
         return failing.Count switch
         {
-            0 => Plural.Of(count, "check healthy", "checks healthy"),
+            0 => $"{Plural.Of(count, CheckNoun)} {HealthyTail}",
             1 => $"{Brief(failing[0].Name, NameLength)} {Label(failing[0].State).ToLowerInvariant()}",
-            _ => string.Create(CultureInfo.InvariantCulture, $"{failing.Count} of {count} checks not healthy"),
+            _ => string.Create(CultureInfo.InvariantCulture, $"{failing.Count} of {count} {Plural.Noun(count, CheckNoun)} {NotHealthyTail}"),
         };
     }
 

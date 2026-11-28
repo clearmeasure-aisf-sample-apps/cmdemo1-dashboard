@@ -68,7 +68,7 @@ public sealed record TrafficPlan(string Environment, IReadOnlyList<Uri> Addresse
     /// </summary>
     /// <param name="run">The press that started: its <see cref="TrafficRun.PerSecond"/> and <see cref="TrafficRun.Seconds"/> are the numbers said.</param>
     public string Started(TrafficRun run) =>
-        string.Create(CultureInfo.InvariantCulture, $"{StartedLead}{run.PerSecond} {PerSecondWords} for {run.Seconds} s to {string.Join(", ", Targets)}");
+        string.Create(CultureInfo.InvariantCulture, $"{StartedLead}{run.PerSecond} {PerSecondWords} for {run.Seconds} {TimeText.SecondsUnit} to {string.Join(", ", Targets)}");
 
     /// <summary>
     /// The environment the panel's choice shows, among those that have something to call. The viewer's own choice
@@ -99,7 +99,7 @@ public sealed record TrafficPlan(string Environment, IReadOnlyList<Uri> Addresse
     /// are read from <see cref="CheckEverySeconds"/>, which is how a sentence is written.
     /// </summary>
     public static string? IntervalNote(bool running, TimeSpan interval) =>
-        running && interval > CheckEvery ? $"every {CheckEverySeconds} s while traffic runs" : null;
+        running && interval > CheckEvery ? $"every {CheckEverySeconds} {TimeText.SecondsUnit} while traffic runs" : null;
 
     /// <summary>The plan of an environment; null when it has nothing to call.</summary>
     public static TrafficPlan? For(EnvironmentInfo environment)

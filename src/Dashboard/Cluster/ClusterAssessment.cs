@@ -388,7 +388,7 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
                 return $"{NotPublished}.";
             case SourceState.Read when service.Value is { } facts:
                 var states = new[] { facts.Availability?.State, facts.PowerState }.OfType<string>().ToList();
-                var said = states.Count > 0 ? string.Join(" and ", states) : facts.ProvisioningState;
+                var said = states.Count > 0 ? NamedList.Join(states) : facts.ProvisioningState;
                 var asOf = facts.Generated is { } generated ? $", {ClusterText.AsOf(generated, now, zone)}" : string.Empty;
                 return said is null ? null : $"{ReportsLead}{said}{asOf}.";
             default:

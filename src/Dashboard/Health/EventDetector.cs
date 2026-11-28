@@ -8,6 +8,12 @@ namespace Dashboard.Health;
 /// </summary>
 public static class EventDetector
 {
+    /// <summary>The arrow between what was and what is now in a change event: <c>ui: 2.4.14 → 2.4.15, deployed</c>.</summary>
+    private const string Arrow = " → ";
+
+    /// <summary>The words of a state seen at the page's first check, with no check before it: <c>ui: Unhealthy at the first check</c>.</summary>
+    private const string AtFirstCheck = " at the first check";
+
     /// <summary>
     /// The events of one endpoint between the check before and this one: its health state, and for a web app the
     /// entries of its detailed health check that changed, a restart and another version. The first check of the page
@@ -49,7 +55,7 @@ public static class EventDetector
 
         if (before.Version is { } old && after.Version is { } current && !string.Equals(old, current, StringComparison.OrdinalIgnoreCase))
         {
-            events.Add(new DashboardEvent(at, EventKind.Version, EventLevel.Info, environment, node, $"{deployable}: {old} → {current}, deployed"));
+            events.Add(new DashboardEvent(at, EventKind.Version, EventLevel.Info, environment, node, $"{deployable}: {old}{Arrow}{current}, deployed"));
         }
 
         return events;
@@ -83,7 +89,7 @@ public static class EventDetector
             string? text = null;
             if (before is null)
             {
-                text = entry.IsHealthy ? null : $"{deployable}: {entry.Name} {label} at the first check{words}";
+                text = entry.IsHealthy ? null : $"{deployable}: {entry.Name} {label}{AtFirstCheck}{words}";
             }
             else if (before.Find(entry.Name) is not { } known)
             {
@@ -91,7 +97,7 @@ public static class EventDetector
             }
             else if (known.State != entry.State)
             {
-                text = $"{deployable}: {entry.Name} {HealthDetailText.Label(known.State)} → {label}{words}";
+                text = $"{deployable}: {entry.Name} {HealthDetailText.Label(known.State)}{Arrow}{label}{words}";
             }
 
             if (text is not null)
@@ -146,12 +152,12 @@ public static class EventDetector
         return after.State switch
         {
             // A single node whose role is not primary: nothing failed over, it serves again or still.
-            ServingState.FailedOver when after.OnlyNode is not null => known && before!.State == ServingState.Down ? Event(EventLevel.Good, $"{to} serves traffic again.") : null,
-            ServingState.FailedOver when from is not null => Event(EventLevel.Warning, $"Failover: {from} → {to}. {after.FailoverDetail}"),
+            ServingState.FailedOver when after.OnlyNode is not null => known && before!.State == ServingState.Down ? Event(EventLevel.Good, ServesAgain(to)) : null,
+            ServingState.FailedOver when from is not null => Event(EventLevel.Warning, $"Failover: {from}{Arrow}{to}. {after.FailoverDetail}"),
             ServingState.FailedOver => Event(EventLevel.Warning, $"Failed over to {to}. {after.FailoverDetail}"),
-            ServingState.Primary when known && before!.State == ServingState.FailedOver => Event(EventLevel.Good, $"Failback: {from} → {to}. The primary is healthy again."),
-            ServingState.Primary when known && before!.State == ServingState.Down => Event(EventLevel.Good, $"{to} serves traffic again."),
-            ServingState.Primary when known => Event(EventLevel.Info, $"Serving region: {from} → {to}."),
+            ServingState.Primary when known && before!.State == ServingState.FailedOver => Event(EventLevel.Good, $"Failback: {from}{Arrow}{to}. The primary is healthy again."),
+            ServingState.Primary when known && before!.State == ServingState.Down => Event(EventLevel.Good, ServesAgain(to)),
+            ServingState.Primary when known => Event(EventLevel.Info, $"Serving region: {from}{Arrow}{to}."),
             ServingState.Down => Event(EventLevel.Problem, from is null ? "No healthy node: nothing can serve traffic." : $"No healthy node: {from} no longer serves, and nothing else can."),
             _ => null,
         };
@@ -192,11 +198,11 @@ public static class EventDetector
             }
 
             case (ServingState.Primary, ServingState.FailedOver):
-                return [Event(EventLevel.Warning, $"Failover: the rotation → {after.Expected!.Label}. {after.FailoverDetail}")];
+                return [Event(EventLevel.Warning, $"Failover: the rotation{Arrow}{after.Expected!.Label}. {after.FailoverDetail}")];
             case (ServingState.Primary, ServingState.Down):
                 return [Event(EventLevel.Problem, "No healthy node: the rotation no longer serves, and nothing else can.")];
             case (ServingState.FailedOver, ServingState.Primary):
-                return [Event(EventLevel.Good, $"Failback: {before.Expected!.Label} → the rotation. {serve}.")];
+                return [Event(EventLevel.Good, $"Failback: {before.Expected!.Label}{Arrow}the rotation. {serve}.")];
             case (ServingState.Down, ServingState.Primary):
                 return [Event(EventLevel.Good, $"The rotation serves traffic again: {serve}.")];
             default:
@@ -224,13 +230,16 @@ public static class EventDetector
             return null;
         }
 
-        var text = old is null ? $"{deployable}: pinned {current} in Git (its first pin)" : $"{deployable}: pinned {old} → {current} in Git";
+        var text = old is null ? $"{deployable}: pinned {current} in Git (its first pin)" : $"{deployable}: pinned {old}{Arrow}{current} in Git";
         return new DashboardEvent(at, EventKind.Pinned, EventLevel.Info, environment, deployable, text);
     }
 
     /// <summary>The traffic button, started or stopped, in the words of the panel.</summary>
     public static DashboardEvent Traffic(string environment, string text, DateTimeOffset at) =>
         new(at, EventKind.Traffic, EventLevel.Info, environment, null, text);
+
+    /// <summary>The sentence of a node that serves again after nothing could: <c>uat-ui serves traffic again.</c></summary>
+    private static string ServesAgain(string? to) => $"{to} serves traffic again.";
 
     private static EventLevel LevelOf(CheckState state) => state switch
     {
@@ -257,7 +266,7 @@ public static class EventDetector
             _ => string.Empty,
         };
         return before.State == HealthState.Pending
-            ? $"{deployable}: {label} at the first check{facts}"
-            : $"{deployable}: {HealthClassifier.Label(before.State)} → {label}{facts}";
+            ? $"{deployable}: {label}{AtFirstCheck}{facts}"
+            : $"{deployable}: {HealthClassifier.Label(before.State)}{Arrow}{label}{facts}";
     }
 }

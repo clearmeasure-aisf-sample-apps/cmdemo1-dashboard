@@ -861,10 +861,13 @@ public static class RuntimePayloadBuilder
         _ => RuntimeStateWords.Unknown,
     };
 
-    /// <summary>A node's role and whether the deployable's traffic goes through it.</summary>
+    /// <summary>
+    /// A node's role and whether the deployable's traffic goes through it. A node that names no role is not primary
+    /// (<see cref="NodeRole.IsPrimary"/> of null is false), so it is said as the <see cref="NodeInfo.StandbyRole"/>.
+    /// </summary>
     private static RuntimeTileLine RoleLine(TargetStatus target, bool serves)
     {
-        var role = target.Role ?? (target.IsPrimary ? NodeInfo.PrimaryRole : NodeInfo.StandbyRole);
+        var role = target.Role ?? NodeInfo.StandbyRole;
         return serves
             ? new RuntimeTileLine($"{role}: serves traffic", RuntimeLineTone.Serving)
             : target.State switch

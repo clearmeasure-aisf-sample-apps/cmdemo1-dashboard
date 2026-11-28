@@ -1,17 +1,21 @@
+using Dashboard.Health;
+
 namespace Dashboard.Runtime;
 
 /// <summary>
 /// The roles a deployment writes for a region into the manifest (<see cref="RuntimeRegion.Roles"/>), in the
 /// deployment's own spelling. A region keeps whatever words it is handed; these are the four the page knows, and any
-/// other word is shown as the deployment wrote it.
+/// other word is shown as the deployment wrote it. <see cref="Primary"/> and <see cref="Standby"/> are the node role words of
+/// <see cref="NodeInfo"/> (<see cref="NodeInfo.PrimaryRole"/>, <see cref="NodeInfo.StandbyRole"/>): a region's roles and
+/// a node's role are the same deployment words, spelled once.
 /// </summary>
 public static class RuntimeRegionRole
 {
     /// <summary>The region whose apps take the traffic.</summary>
-    public const string Primary = "primary";
+    public const string Primary = NodeInfo.PrimaryRole;
 
     /// <summary>The region whose apps stand by for the traffic.</summary>
-    public const string Standby = "standby";
+    public const string Standby = NodeInfo.StandbyRole;
 
     /// <summary>The region of the database.</summary>
     public const string Data = "data";

@@ -185,4 +185,46 @@ public class IntervalReadTests
         Assert.Equal(At, read.LastAsked);
         Assert.False(read.Asked);
     }
+
+    /// <summary>The read and the ask share one stamp: an ask after a read within the interval asks nothing, because
+    /// the read stamped the asking and the interval has not passed since it.</summary>
+    [Fact]
+    public async Task AnAskAfterAReadWithinTheIntervalAsksNothing()
+    {
+        var read = new IntervalRead<string>(Interval);
+        var asked = 0;
+
+        Assert.Equal("one", await read.ReadIfDueAsync(At, _ => Answer("one"), Never));
+        Assert.Null(await read.AskIfDueAsync(At.AddSeconds(30), _ => { asked++; return Answer("two"); }, Never));
+
+        Assert.Equal(0, asked);
+        Assert.Equal(At, read.LastAsked);
+    }
+
+    /// <summary>An ask that answers never sets <c>Last</c>, even after an earlier read kept one: the last good one
+    /// the read kept stands.</summary>
+    [Fact]
+    public async Task AnAskThatAnswersNeverSetsLast()
+    {
+        var read = new IntervalRead<string>(Interval);
+
+        Assert.Equal("one", await read.ReadIfDueAsync(At, _ => Answer("one"), Never));
+        Assert.Equal("two", await read.AskIfDueAsync(At.AddSeconds(60), _ => Answer("two"), Never));
+
+        Assert.Equal("one", read.Last);
+    }
+
+    /// <summary>A read whose reading throws leaves <c>Asked</c> false and the stamp at the asking, as the ask does:
+    /// the stamp stands, the reading has not been made.</summary>
+    [Fact]
+    public async Task AReadWhoseReadingThrowsLeavesAskedFalseAndTheStampAtTheAsking()
+    {
+        var read = new IntervalRead<string>(Interval);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => read.ReadIfDueAsync(At, _ => throw new InvalidOperationException("the read failed"), Never));
+
+        Assert.False(read.Asked);
+        Assert.Equal(At, read.LastAsked);
+    }
 }

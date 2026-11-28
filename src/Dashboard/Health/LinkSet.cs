@@ -103,17 +103,17 @@ public static class LinkText
     private static readonly Dictionary<string, Func<string, string>> Sentences =
         new Dictionary<string, Func<string, string>>(StringComparer.Ordinal)
         {
-            [LinkSet.Portal] = subject => $"The web app {subject} in the Azure portal",
+            [LinkSet.Portal] = subject => InPortal($"The web app {subject}"),
             [LinkSet.LiveMetrics] = subject => $"Live Metrics of Application Insights for {subject}: requests, failures and servers as they happen",
             [LinkSet.Performance] = subject => $"Performance in Application Insights for {subject}: requests and their duration",
             [LinkSet.Failures] = subject => $"Failures in Application Insights for {subject}: failed requests and exceptions",
             [LinkSet.Dependencies] = subject => $"Dependency calls of {subject} (SQL and HTTP) of the last hour, a query in Application Insights Logs",
-            [LinkSet.FrontDoor] = subject => $"The Front Door profile of {subject} in the Azure portal",
+            [LinkSet.FrontDoor] = subject => InPortal($"The Front Door profile of {subject}"),
             [LinkSet.Logs] = subject => $"Requests of {subject} of the last hour, a query in Application Insights Logs",
-            [LinkSet.ApplicationInsights] = subject => $"Application Insights of {subject} in the Azure portal",
+            [LinkSet.ApplicationInsights] = subject => InPortal($"Application Insights of {subject}"),
             [LinkSet.ApplicationMap] = subject => $"The application map of {subject} in Application Insights",
-            [LinkSet.Database] = subject => $"The database of {subject} in the Azure portal",
-            [LinkSet.ResourceGroup] = subject => $"The resource group of {subject} in the Azure portal",
+            [LinkSet.Database] = subject => InPortal($"The database of {subject}"),
+            [LinkSet.ResourceGroup] = subject => InPortal($"The resource group of {subject}"),
         };
 
     /// <summary>The keys the table has a sentence for, matched by their exact spelling.</summary>

@@ -359,7 +359,7 @@ public static class ClusterText
 
     /// <summary>The tooltip of the link to the AKS cluster in the Azure portal.</summary>
     public static string PortalTitle(string? cluster) =>
-        LinkText.Portal(cluster is null ? "The AKS cluster in the Azure portal" : $"The AKS cluster {cluster} in the Azure portal");
+        LinkText.Portal(LinkText.InPortal(cluster is null ? "The AKS cluster" : $"The AKS cluster {cluster}"));
 
     /// <summary>The tooltip of the link to the cluster's workloads in the Azure portal.</summary>
     public static string WorkloadsTitle(string? cluster) =>

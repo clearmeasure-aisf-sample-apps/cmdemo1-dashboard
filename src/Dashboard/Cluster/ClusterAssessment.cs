@@ -113,6 +113,9 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
     /// <summary>How many problems a headline names before it counts the rest.</summary>
     public const int NamedProblems = 3;
 
+    /// <summary>The separator between the named problems of a list, and before its <c>and N more</c> tail: <c>; </c>.</summary>
+    private const string ProblemSeparator = "; ";
+
     // The headline words this file says twice, named once each (#2048): a word is one word here, so a typo at a call
     // site cannot silently split the page's vocabulary. The cluster card and the AKS service card sit side by side
     // on the cluster view, and both say these words; the const name carries the suffix because the private methods
@@ -364,9 +367,9 @@ public sealed record ClusterAssessment(ClusterState State, string Label, string 
     public static string Named(IReadOnlyList<string> items)
     {
         ArgumentNullException.ThrowIfNull(items);
-        var named = string.Join("; ", NamedList.Named(items, NamedProblems));
+        var named = string.Join(ProblemSeparator, NamedList.Named(items, NamedProblems));
         return NamedList.More(items.Count, NamedProblems) is { } more
-            ? $"{named}; and {more}"
+            ? $"{named}{ProblemSeparator}and {more}"
             : named;
     }
 

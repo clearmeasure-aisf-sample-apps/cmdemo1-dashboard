@@ -162,11 +162,15 @@ public static class HourlyCheckText
 
     private static string Count(HealthWindow window) => window.Reports == 0 ? AvailabilityText.NoneCounted : AvailabilityText.Count(window);
 
-    /// <summary>The last 24 hours: <c>24 h</c> on the box, <c>24 hours</c> in the tooltip.</summary>
-    private static readonly CountedWindow Day = new("24 h", "24 hours", reports => reports.Last24Hours);
+    /// <summary>
+    /// The last 24 hours: <c>24 h</c> on the box; the tooltip word is <see cref="AvailabilityText.DayWindow" />.
+    /// </summary>
+    private static readonly CountedWindow Day = new("24 h", AvailabilityText.DayWindow, reports => reports.Last24Hours);
 
-    /// <summary>The last seven days: <c>7 d</c> on the box, <c>7 days</c> in the tooltip.</summary>
-    private static readonly CountedWindow Week = new("7 d", "7 days", reports => reports.Last7Days);
+    /// <summary>
+    /// The last seven days: <c>7 d</c> on the box; the tooltip word is <see cref="AvailabilityText.WeekWindow" />.
+    /// </summary>
+    private static readonly CountedWindow Week = new("7 d", AvailabilityText.WeekWindow, reports => reports.Last7Days);
 
     /// <summary>The windows the report counts, in the order the box and the tooltip say them.</summary>
     private static readonly CountedWindow[] Windows = [Day, Week];

@@ -48,15 +48,18 @@ public static class AvailabilityText
     internal const string NoneCounted = "none";
 
     /// <summary>
-    /// The day's window word: the last 24 hours, as the hourly reports count them (<c>ContainerAppReports</c> names
-    /// the same window <c>Day</c>).
+    /// The day's window word, the one owner of the sentence "24 hours": <c>ContainerAppReports</c>'s
+    /// <c>HourlyCheckText.Day</c> reads this constant, so the availability line and the box tooltip say the same
+    /// words.
     /// </summary>
-    private const string DayWindow = "24 hours";
+    internal const string DayWindow = "24 hours";
 
     /// <summary>
-    /// The week's window word: the last seven days (<c>ContainerAppReports</c> names the same window <c>Week</c>).
+    /// The week's window word, the one owner of the sentence "7 days": <c>ContainerAppReports</c>'s
+    /// <c>HourlyCheckText.Week</c> reads this constant, so the availability line and the box tooltip say the same
+    /// words.
     /// </summary>
-    private const string WeekWindow = "7 days";
+    internal const string WeekWindow = "7 days";
 
     /// <summary>The words between the parts of the line, the dot the parts hang on: <c>·</c>.</summary>
     private const string PartSeparator = " · ";

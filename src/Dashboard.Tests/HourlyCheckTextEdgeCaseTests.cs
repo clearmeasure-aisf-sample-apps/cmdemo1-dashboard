@@ -319,16 +319,14 @@ public class HourlyCheckTextTemplateTests
     }
 
     /// <summary>
-    /// The words of the two counted windows - <c>24 h</c> and <c>7 d</c> on the box, <c>24 hours</c> and <c>7 days</c>
-    /// in the tooltip - are each written once in <see cref="HourlyCheckText" />: <c>Counts</c> and <c>Title</c> walk
-    /// the same list of windows, so a third window is one entry and the box and its tooltip cannot drift apart.
+    /// The box labels of the two counted windows - <c>24 h</c> and <c>7 d</c> - are each written once as string
+    /// literals in <see cref="HourlyCheckText" />: <c>Counts</c> and <c>Title</c> walk the same list of windows, so
+    /// a third window is one entry and the box and its tooltip cannot drift apart.
     /// </summary>
     [Theory]
     [InlineData(@"\b24 h\b")]
     [InlineData(@"\b7 d\b")]
-    [InlineData(@"\b24 hours\b")]
-    [InlineData(@"\b7 days\b")]
-    public void EachWordOfACountedWindowIsWrittenOnce(string word)
+    public void EachBoxLabelOfACountedWindowIsWrittenOnce(string word)
     {
         var literals = System.Text.RegularExpressions.Regex.Matches(HourlyCheckTextSource(), "\"(?:[^\"\\\\]|\\\\.)*\"")
             .Select(match => match.Value)
@@ -336,6 +334,37 @@ public class HourlyCheckTextTemplateTests
             .ToList();
 
         Assert.Single(literals);
+    }
+
+    /// <summary>
+    /// The tooltip words of the two counted windows - <c>24 hours</c> and <c>7 days</c> - are not written as string
+    /// literals in <see cref="HourlyCheckText" />: they are owned by <see cref="AvailabilityText.DayWindow" /> and
+    /// <see cref="AvailabilityText.WeekWindow" />, and <see cref="HourlyCheckText" /> reads them by reference, so the
+    /// availability line and the box tooltip say the same words.
+    /// </summary>
+    [Theory]
+    [InlineData("AvailabilityText.DayWindow")]
+    [InlineData("AvailabilityText.WeekWindow")]
+    public void TheTooltipWordsAreReadFromAvailabilityText(string reference)
+    {
+        Assert.Contains(reference, HourlyCheckTextSource(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The sentence words <c>24 hours</c> and <c>7 days</c> appear as string literals zero times in
+    /// <see cref="HourlyCheckText" />: they are owned by <see cref="AvailabilityText" /> and read by reference.
+    /// </summary>
+    [Theory]
+    [InlineData(@"\b24 hours\b")]
+    [InlineData(@"\b7 days\b")]
+    public void TheSentenceWordsAreNotLiteralsInHourlyCheckText(string word)
+    {
+        var literals = System.Text.RegularExpressions.Regex.Matches(HourlyCheckTextSource(), "\"(?:[^\"\\\\]|\\\\.)*\"")
+            .Select(match => match.Value)
+            .Where(literal => System.Text.RegularExpressions.Regex.IsMatch(literal, word))
+            .ToList();
+
+        Assert.Empty(literals);
     }
 
     /// <summary>

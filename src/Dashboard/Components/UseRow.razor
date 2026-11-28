@@ -23,7 +23,7 @@
         }
         <TrendLine Trend="Trend" />
     </p>
-    <Meter Label="@Label" Percent="Percent" ValueText="@(Percent is { } share && ShowPercent ? $"{Value}, {ClusterText.Percent(share)}" : Value ?? string.Empty)" />
+    <Meter Label="@Label" Percent="Percent" ValueText="@ClusterText.MeterValueText(Value, ShowPercent ? Percent : null)" />
     @if (Requested is { } requested)
     {
         <p class="use__sub">

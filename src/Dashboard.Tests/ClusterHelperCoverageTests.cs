@@ -91,7 +91,7 @@ public class ClusterHelperCoverageTests
         var declared = Declared();
 
         Assert.Equal(8, sources.Count);
-        Assert.Equal(62, methods.Count);
+        Assert.Equal(63, methods.Count);
         Assert.Equal(9, methods.Select(method => method.Type).Distinct(StringComparer.Ordinal).Count());
         Assert.Contains("ClusterText.Cores", methods.Select(method => method.Full));
         Assert.Contains("ClusterAssessment.Live", methods.Select(method => method.Full));

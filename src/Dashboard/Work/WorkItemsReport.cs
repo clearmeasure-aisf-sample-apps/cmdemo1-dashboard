@@ -389,6 +389,9 @@ public sealed record WorkThroughput(string Agent, int? Merged, int? DeployedProd
     /// <summary>The word the work-items file uses for the count of items that reached production.</summary>
     internal const string DeployedProdWord = "deployedProd";
 
+    /// <summary>The file's word for a bot's name, both in a throughput row and on an item.</summary>
+    internal const string AgentWord = "agent";
+
     internal static WorkThroughput? Read(JsonElement element)
     {
         if (element.ValueKind != JsonValueKind.Object)
@@ -396,7 +399,7 @@ public sealed record WorkThroughput(string Agent, int? Merged, int? DeployedProd
             return null;
         }
 
-        var name = JsonRead.Text(element, "agent") ?? JsonRead.Text(element, "name") ?? JsonRead.Text(element, "identity");
+        var name = JsonRead.Text(element, AgentWord) ?? JsonRead.Text(element, "name") ?? JsonRead.Text(element, "identity");
         var merged = JsonRead.Count(element, MergedWord);
         var deployed = JsonRead.Count(element, DeployedProdWord);
         return ReadParts.Said(name, merged, deployed) ? new WorkThroughput(name ?? Unnamed, merged, deployed) : null;
@@ -431,9 +434,12 @@ public sealed record WorkNote(string? Text, Uri? Url, DateTimeOffset? At, string
     /// <summary>The feed's word for whether the note is a status or a blocker.</summary>
     internal const string KindWord = "kind";
 
+    /// <summary>The file's word both for a note's words (the older form) and for an item's comment section.</summary>
+    internal const string CommentWord = "comment";
+
     internal static WorkNote? Read(JsonElement? section)
     {
-        var text = JsonRead.Text(section, TextWord) ?? JsonRead.Text(section, "comment") ?? JsonRead.Text(section, "summary");
+        var text = JsonRead.Text(section, TextWord) ?? JsonRead.Text(section, CommentWord) ?? JsonRead.Text(section, "summary");
         var url = JsonRead.Address(section, UrlWord);
         var at = JsonRead.Time(section, AtWord);
         return ReadParts.Said(text, url, at) ? new WorkNote(text, url, at) : null;
@@ -460,13 +466,16 @@ public sealed record WorkItemIdentity(int? Number, string? Title, Uri? Url, stri
     /// <summary>The file's word for an item's or pull request's state word, and a checks state.</summary>
     internal const string StateWord = "state";
 
+    /// <summary>The file's word for an item's current column, and for the column a visit was in.</summary>
+    internal const string ColumnWord = "column";
+
     internal static WorkItemIdentity Read(JsonElement element) =>
         new(
             JsonRead.Count(element, NumberWord),
             JsonRead.Text(element, "title"),
             JsonRead.Address(element, UrlWord),
             JsonRead.Text(element, StateWord),
-            JsonRead.Text(element, "column"));
+            JsonRead.Text(element, ColumnWord));
 }
 
 /// <summary>One work item on the board.</summary>
@@ -508,7 +517,7 @@ public sealed record WorkItem(
             WorkItemIdentity.Read(element),
             [.. JsonRead.Items(element, "columnHistory").Select(ColumnVisit.Read).OfType<ColumnVisit>()],
             JsonRead.Text(element, "assignee"),
-            JsonRead.Text(element, "agent"),
+            JsonRead.Text(element, WorkThroughput.AgentWord),
             JsonRead.Addresses(element, "cursorSessions"),
             [.. JsonRead.Items(element, "prs").Select(WorkPullRequest.Read).OfType<WorkPullRequest>()],
             ReleaseCandidate.Read(JsonRead.Section(element, "releaseCandidate")),
@@ -536,7 +545,7 @@ public sealed record WorkItem(
     private static WorkNote? Note(JsonElement element) =>
         StatusComment(JsonRead.Section(element, "latestStatusComment"))
         ?? WorkNote.Read(JsonRead.Section(element, "blocker"))
-        ?? WorkNote.Read(JsonRead.Section(element, "comment"))
+        ?? WorkNote.Read(JsonRead.Section(element, WorkNote.CommentWord))
         ?? (JsonRead.Text(element, "status") is { } status
             ? new WorkNote(status, JsonRead.Address(element, "statusUrl"), JsonRead.Time(element, "statusAt"))
             : null);
@@ -577,7 +586,7 @@ public sealed record ColumnVisit(string? Column, DateTimeOffset? EnteredAt, Date
         }
 
         var visit = new ColumnVisit(
-            JsonRead.Text(element, "column"),
+            JsonRead.Text(element, WorkItemIdentity.ColumnWord),
             JsonRead.Time(element, "enteredAt"),
             JsonRead.Time(element, "leftAt"),
             JsonRead.Number(element, "hours"));

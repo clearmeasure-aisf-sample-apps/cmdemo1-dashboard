@@ -131,10 +131,11 @@ public class TargetTileClusterCardEnvironmentDeliveryTests
         var text = File.ReadAllText(TargetTileComponent());
 
         // The tile is never empty: with no checks at all it is a pending tile whose numbers say "—", and no
-        // status region or empty-state paragraph is in it.
-        Assert.Contains("private const string None = \"—\";", text, StringComparison.Ordinal);
-        Assert.Contains("""<dd>@(Target.Last?.StatusCode?.ToString(CultureInfo.InvariantCulture) ?? None)</dd>""", text, StringComparison.Ordinal);
-        Assert.Contains("""<dd>@(Target.Last?.LatencyMs is { } latency ? HistoryText.Milliseconds(latency) : None)</dd>""", text, StringComparison.Ordinal);
+        // status region or empty-state paragraph is in it. The dash is TargetStatus.NotGiven, owned in tested C#;
+        // the two last-check cells are TargetStatus.StatusCell and TargetStatus.LatencyCell, also in tested C#.
+        Assert.Contains("private const string None = TargetStatus.NotGiven;", text, StringComparison.Ordinal);
+        Assert.Contains("""<dd>@Target.StatusCell</dd>""", text, StringComparison.Ordinal);
+        Assert.Contains("""<dd>@Target.LatencyCell</dd>""", text, StringComparison.Ordinal);
         Assert.Contains("""<time datetime="@TimeText.Iso(last.CheckedAt)">@TimeText.Clock(last.CheckedAt, Zone)</time>""", text, StringComparison.Ordinal);
         Assert.DoesNotContain("role=\"status\"", text, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"empty\"", text, StringComparison.Ordinal);

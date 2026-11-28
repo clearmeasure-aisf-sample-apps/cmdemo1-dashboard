@@ -70,11 +70,14 @@ public static class BuildText
     /// <summary>Whose code the dashboard's own "Code" card is about: <c>dashboard (this page)</c>.</summary>
     public static string DashboardContext(string name) => $"{name} ({ThisPage})";
 
-    /// <summary>The first <see cref="ShortCommitLength" /> characters of a commit.</summary>
+    /// <summary>
+    /// The first <see cref="ShortCommitLength" /> characters of a commit, cut by <see cref="Clip.At" />: the
+    /// dashboard's one rule for cutting a line short at its head without a mark.
+    /// </summary>
     public static string ShortCommit(string commit)
     {
         ArgumentNullException.ThrowIfNull(commit);
-        return commit.Length > ShortCommitLength ? commit[..ShortCommitLength] : commit;
+        return Clip.At(commit, ShortCommitLength);
     }
 
     /// <summary><c>84,210</c>.</summary>

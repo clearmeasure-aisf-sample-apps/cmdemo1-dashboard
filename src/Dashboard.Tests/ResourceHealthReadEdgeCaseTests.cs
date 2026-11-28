@@ -126,6 +126,37 @@ public class ResourceHealthReadEdgeCaseTests
         Assert.Equal("available", report.Find(Id)?.Status);
     }
 
+    /// <summary>A summary of exactly <see cref="T:string" /> length 200 is kept whole by the reading, cut through <c>Clip.At</c>.</summary>
+    [Fact]
+    public void ASummaryOfExactlyTwoHundredCharactersIsKeptWhole()
+    {
+        var summary = new string('s', 200);
+        var reading = Parse($$"""{ "status": "available", "source": "resourceHealth", "checkedAt": {{At}}, "summary": "{{summary}}" }""")!.Find(Id)!;
+
+        Assert.Equal(200, reading.Summary!.Length);
+        Assert.Equal(summary, reading.Summary);
+    }
+
+    /// <summary>A summary of 201 characters is cut to its first 200 by the reading, through <c>Clip.At</c>.</summary>
+    [Fact]
+    public void ASummaryOfTwoHundredAndOneCharactersIsCutToItsFirstTwoHundred()
+    {
+        var summary = new string('t', 201);
+        var reading = Parse($$"""{ "status": "available", "source": "resourceHealth", "checkedAt": {{At}}, "summary": "{{summary}}" }""")!.Find(Id)!;
+
+        Assert.Equal(200, reading.Summary!.Length);
+        Assert.Equal(new string('t', 200), reading.Summary);
+    }
+
+    /// <summary>A reading without a <c>summary</c> key reads its summary as null, not as the empty word.</summary>
+    [Fact]
+    public void AReadingWithoutASummaryKeyHasANullSummary()
+    {
+        var reading = Parse(Health("available"))!.Find(Id)!;
+
+        Assert.Null(reading.Summary);
+    }
+
     /// <summary>
     /// The length bounds are named and belong to the reading of the file alone (#685): the status's 40 and the
     /// summary's 200 are <c>ResourceHealthReading</c>'s, and neither the box's words nor the text that makes them
